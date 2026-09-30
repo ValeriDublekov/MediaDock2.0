@@ -68,6 +68,7 @@ export function CatalogView() {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selectedTitleId, setSelectedTitleId] = useState<number | null>(null)
+  const activeFilterCount = Object.entries(draftFilters).filter(([key, value]) => key !== 'search' && value !== '').length
 
   useEffect(() => {
     let current = true
@@ -93,42 +94,47 @@ export function CatalogView() {
   }
 
   return (
-    <section aria-label="Catalog">
-      <form className="filter-form" onSubmit={applyFilters}>
+    <section aria-label="Catalog" className="media-view">
+      <form className="filter-form browse-filters" onSubmit={applyFilters}>
         <div className="field filter-search">
           <label htmlFor="catalog-search">Search titles</label>
           <input id="catalog-search" onChange={(event) => updateFilter('search', event.target.value)} placeholder="Title or year" type="search" value={draftFilters.search} />
         </div>
-        <div className="field">
-          <label htmlFor="catalog-media-type">Media type</label>
-          <select id="catalog-media-type" onChange={(event) => updateFilter('mediaType', event.target.value)} value={draftFilters.mediaType}>
-            <option value="">All types</option><option value="movie">Movie</option><option value="series">Series</option><option value="documentary">Documentary</option><option value="short">Short</option>
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="catalog-feed-type">Feed type</label>
-          <select id="catalog-feed-type" onChange={(event) => updateFilter('sourceType', event.target.value)} value={draftFilters.sourceType}>
-            <option value="">All feeds</option><option value="movie">Movie feed</option><option value="series">Series feed</option>
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="catalog-content-kind">Content kind</label>
-          <select id="catalog-content-kind" onChange={(event) => updateFilter('contentKind', event.target.value)} value={draftFilters.contentKind}>
-            <option value="">All content</option><option value="standard">Standard</option><option value="documentary">Documentary</option><option value="short">Short</option>
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="catalog-year-from">Year from</label>
-          <input id="catalog-year-from" max="2200" min="1800" onChange={(event) => updateFilter('yearFrom', event.target.value)} type="number" value={draftFilters.yearFrom} />
-        </div>
-        <div className="field">
-          <label htmlFor="catalog-year-to">Year to</label>
-          <input id="catalog-year-to" max="2200" min="1800" onChange={(event) => updateFilter('yearTo', event.target.value)} type="number" value={draftFilters.yearTo} />
-        </div>
-        <div className="field">
-          <label htmlFor="catalog-genre">Genre</label>
-          <input id="catalog-genre" onChange={(event) => updateFilter('genre', event.target.value)} placeholder="e.g. drama" value={draftFilters.genre} />
-        </div>
+        <details className="advanced-filters">
+          <summary>More filters{activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ''}</summary>
+          <div className="advanced-fields">
+            <div className="field">
+              <label htmlFor="catalog-media-type">Media type</label>
+              <select id="catalog-media-type" onChange={(event) => updateFilter('mediaType', event.target.value)} value={draftFilters.mediaType}>
+                <option value="">All types</option><option value="movie">Movie</option><option value="series">Series</option><option value="documentary">Documentary</option><option value="short">Short</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="catalog-feed-type">Feed type</label>
+              <select id="catalog-feed-type" onChange={(event) => updateFilter('sourceType', event.target.value)} value={draftFilters.sourceType}>
+                <option value="">All feeds</option><option value="movie">Movie feed</option><option value="series">Series feed</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="catalog-content-kind">Content kind</label>
+              <select id="catalog-content-kind" onChange={(event) => updateFilter('contentKind', event.target.value)} value={draftFilters.contentKind}>
+                <option value="">All content</option><option value="standard">Standard</option><option value="documentary">Documentary</option><option value="short">Short</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="catalog-year-from">Year from</label>
+              <input id="catalog-year-from" max="2200" min="1800" onChange={(event) => updateFilter('yearFrom', event.target.value)} type="number" value={draftFilters.yearFrom} />
+            </div>
+            <div className="field">
+              <label htmlFor="catalog-year-to">Year to</label>
+              <input id="catalog-year-to" max="2200" min="1800" onChange={(event) => updateFilter('yearTo', event.target.value)} type="number" value={draftFilters.yearTo} />
+            </div>
+            <div className="field">
+              <label htmlFor="catalog-genre">Genre</label>
+              <input id="catalog-genre" onChange={(event) => updateFilter('genre', event.target.value)} placeholder="e.g. drama" value={draftFilters.genre} />
+            </div>
+          </div>
+        </details>
         <div className="filter-actions">
           <button className="button" type="submit">Apply filters</button>
           <button className="button button-secondary" onClick={() => {

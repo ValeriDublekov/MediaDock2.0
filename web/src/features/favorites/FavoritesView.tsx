@@ -38,7 +38,7 @@ export function FavoritesView() {
     setError(null)
   }
 
-  return <section aria-label="Favorites">
+  return <section aria-label="Favorites" className="media-view">
     <div className="section-toolbar">
       <div className="favorite-filters" role="group" aria-label="Favorite status">
         {(['all', 'to_watch', 'to_download'] as const).map((option) =>

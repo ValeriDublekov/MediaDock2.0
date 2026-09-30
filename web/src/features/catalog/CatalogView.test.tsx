@@ -64,9 +64,11 @@ describe('CatalogView', () => {
     catalogRequest.mockResolvedValue(page([]))
     render(<CatalogView />)
 
+    fireEvent.click(screen.getByText('More filters'))
     fireEvent.change(screen.getByLabelText('Search titles'), { target: { value: 'quiet river' } })
     fireEvent.change(screen.getByLabelText('Media type'), { target: { value: 'series' } })
     fireEvent.change(screen.getByLabelText('Genre'), { target: { value: 'drama' } })
+    expect(screen.getByText('More filters (2 active)')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
 
     expect(await screen.findByText('No titles found')).toBeTruthy()

@@ -56,7 +56,7 @@ function AppContent() {
           <span className="brand-name">MediaDock</span>
         </a>
 
-        <div className="sidebar-label">WORKSPACE</div>
+        <div className="sidebar-label">LIBRARY</div>
         <nav className="primary-nav" aria-label="Main navigation">
           {sections.map((item) => (
             <button
@@ -82,7 +82,6 @@ function AppContent() {
       <main className="main-shell">
         <header className="topbar">
           <div className="breadcrumb">MEDIADOCK <span>/</span> {content.eyebrow}</div>
-          <div className="topbar-tag"><span /> LOCAL WORKSPACE</div>
         </header>
 
         <div className="page-content">
@@ -92,7 +91,6 @@ function AppContent() {
               <h1>{content.title}</h1>
               <p className="page-description">{content.description}</p>
             </div>
-            <div className="edition-mark">MEDIA LIBRARY <span>01</span></div>
           </div>
 
           {section === 'catalog' && <CatalogView />}

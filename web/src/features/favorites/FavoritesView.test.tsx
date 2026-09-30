@@ -30,7 +30,7 @@ it('filters one canonical movie independently by watch and download status', asy
   vi.mocked(getFavorites).mockImplementation(async (query) => response(query.pageSize))
   render(<FavoriteProvider><FavoritesView /></FavoriteProvider>)
 
-  expect(await screen.findByText('Shared Movie')).toBeTruthy()
+  expect(await screen.findByRole('button', { name: 'Shared Movie' })).toBeTruthy()
   expect(screen.getAllByText('Oscar / Catalog')).toHaveLength(1)
   fireEvent.click(screen.getByRole('button', { name: 'Table' }))
   expect(screen.getByRole('columnheader', { name: 'ORIGIN' })).toBeTruthy()
@@ -39,5 +39,5 @@ it('filters one canonical movie independently by watch and download status', asy
   await waitFor(() => expect(getFavorites).toHaveBeenCalledWith({ status: 'to_watch', page: 1, pageSize: 20 }))
   fireEvent.click(screen.getByRole('button', { name: 'To download' }))
   await waitFor(() => expect(getFavorites).toHaveBeenCalledWith({ status: 'to_download', page: 1, pageSize: 20 }))
-  expect(screen.getAllByText('Shared Movie')).toHaveLength(1)
+  expect(screen.getAllByRole('button', { name: 'Shared Movie' })).toHaveLength(1)
 })

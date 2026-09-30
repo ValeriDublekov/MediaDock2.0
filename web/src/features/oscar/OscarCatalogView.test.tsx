@@ -108,12 +108,14 @@ describe('OscarCatalogView', () => {
     filmRequest.mockResolvedValue(page([]))
     render(<OscarCatalogView />)
 
+    fireEvent.click(screen.getByText('More filters'))
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: '  Oppenheimer  ' } })
     fireEvent.change(screen.getByLabelText('Year from'), { target: { value: '2022' } })
     fireEvent.change(screen.getByLabelText('Year to'), { target: { value: '2024' } })
     fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'BEST PICTURE' } })
     fireEvent.change(screen.getByLabelText('Award result'), { target: { value: 'winner' } })
     fireEvent.change(screen.getByLabelText('OMDb status'), { target: { value: 'pending' } })
+    expect(screen.getByText('More filters (5 active)')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
 
     expect(await screen.findByText('No Oscar films found')).toBeTruthy()

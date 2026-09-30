@@ -14,7 +14,11 @@ export function Poster({ src, title, label = 'FILM', className = '' }: PosterPro
     {src && src !== failedSrc ? (
       <img alt={`Poster for ${title}`} loading="lazy" onError={() => setFailedSrc(src)} src={src} />
     ) : (
-      <span aria-hidden="true" className="poster-fallback"><span>{label}</span></span>
+      <span aria-hidden="true" className="poster-fallback">
+        <span className="poster-kicker">{label}</span>
+        <span className="poster-fallback-title">{title}</span>
+        <span className="poster-imprint">MEDIADOCK / FILM LIBRARY</span>
+      </span>
     )}
   </span>
 }

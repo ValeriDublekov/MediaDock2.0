@@ -114,6 +114,7 @@ export function OscarCatalogView() {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selectedFilmId, setSelectedFilmId] = useState<number | null>(null)
+  const activeFilterCount = Object.entries(draftFilters).filter(([key, value]) => key !== 'search' && value !== '').length
 
   useEffect(() => {
     let current = true
@@ -159,8 +160,8 @@ export function OscarCatalogView() {
   }
 
   return (
-    <section aria-label="Oscar catalog">
-      <form className="filter-form oscar-filter-form" onSubmit={applyFilters}>
+    <section aria-label="Oscar catalog" className="media-view">
+      <form className="filter-form oscar-filter-form browse-filters" onSubmit={applyFilters}>
         <div className="field filter-search">
           <label htmlFor="oscar-search">Search films</label>
           <input
@@ -171,43 +172,48 @@ export function OscarCatalogView() {
             value={draftFilters.search}
           />
         </div>
-        <div className="field">
-          <label htmlFor="oscar-year-from">Year from</label>
-          <input id="oscar-year-from" max="2200" min="1800" onChange={(event) => updateFilter('yearFrom', event.target.value)} type="number" value={draftFilters.yearFrom} />
-        </div>
-        <div className="field">
-          <label htmlFor="oscar-year-to">Year to</label>
-          <input id="oscar-year-to" max="2200" min="1800" onChange={(event) => updateFilter('yearTo', event.target.value)} type="number" value={draftFilters.yearTo} />
-        </div>
-        <div className="field">
-          <label htmlFor="oscar-category">Category</label>
-          <select id="oscar-category" onChange={(event) => updateFilter('category', event.target.value)} value={draftFilters.category}>
-            <option value="">All categories</option>
-            <option value="BEST PICTURE">Best picture</option>
-            <option value="DIRECTING">Directing</option>
-            <option value="WRITING (Original Screenplay)">Original screenplay</option>
-            <option value="WRITING (Adapted Screenplay)">Adapted screenplay</option>
-            <option value="CINEMATOGRAPHY">Cinematography</option>
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="oscar-result">Award result</label>
-          <select id="oscar-result" onChange={(event) => updateFilter('result', event.target.value)} value={draftFilters.result}>
-            <option value="">All results</option>
-            <option value="winner">Winners</option>
-            <option value="nominee">Nominees</option>
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="oscar-enrichment-status">OMDb status</label>
-          <select id="oscar-enrichment-status" onChange={(event) => updateFilter('enrichmentStatus', event.target.value)} value={draftFilters.enrichmentStatus}>
-            <option value="">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="enriched">Enriched</option>
-            <option value="not_found">Not found</option>
-            <option value="temporary_error">Temporary error</option>
-          </select>
-        </div>
+        <details className="advanced-filters">
+          <summary>More filters{activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ''}</summary>
+          <div className="advanced-fields">
+            <div className="field">
+              <label htmlFor="oscar-year-from">Year from</label>
+              <input id="oscar-year-from" max="2200" min="1800" onChange={(event) => updateFilter('yearFrom', event.target.value)} type="number" value={draftFilters.yearFrom} />
+            </div>
+            <div className="field">
+              <label htmlFor="oscar-year-to">Year to</label>
+              <input id="oscar-year-to" max="2200" min="1800" onChange={(event) => updateFilter('yearTo', event.target.value)} type="number" value={draftFilters.yearTo} />
+            </div>
+            <div className="field">
+              <label htmlFor="oscar-category">Category</label>
+              <select id="oscar-category" onChange={(event) => updateFilter('category', event.target.value)} value={draftFilters.category}>
+                <option value="">All categories</option>
+                <option value="BEST PICTURE">Best picture</option>
+                <option value="DIRECTING">Directing</option>
+                <option value="WRITING (Original Screenplay)">Original screenplay</option>
+                <option value="WRITING (Adapted Screenplay)">Adapted screenplay</option>
+                <option value="CINEMATOGRAPHY">Cinematography</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="oscar-result">Award result</label>
+              <select id="oscar-result" onChange={(event) => updateFilter('result', event.target.value)} value={draftFilters.result}>
+                <option value="">All results</option>
+                <option value="winner">Winners</option>
+                <option value="nominee">Nominees</option>
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="oscar-enrichment-status">OMDb status</label>
+              <select id="oscar-enrichment-status" onChange={(event) => updateFilter('enrichmentStatus', event.target.value)} value={draftFilters.enrichmentStatus}>
+                <option value="">All statuses</option>
+                <option value="pending">Pending</option>
+                <option value="enriched">Enriched</option>
+                <option value="not_found">Not found</option>
+                <option value="temporary_error">Temporary error</option>
+              </select>
+            </div>
+          </div>
+        </details>
         <div className="filter-actions">
           <button className="button" type="submit">Apply filters</button>
           <button className="button button-secondary" onClick={clearFilters} type="button">Clear</button>

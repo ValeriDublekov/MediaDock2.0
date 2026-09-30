@@ -106,4 +106,14 @@ describe('typed API client', () => {
       message: 'Could not reach the API. Check the server connection and retry.',
     } satisfies Partial<ApiError>)
   })
+
+  it('explains a non-JSON proxy failure without hiding the HTTP status', async () => {
+    const stub = fetchStub(Object.assign(response(502, null), { json: async () => { throw new SyntaxError('HTML response') } }))
+
+    await expect(requestJson('/oscars', {}, stub.fetcher)).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 502,
+      message: 'The local API is unavailable. Check the server connection and retry.',
+    })
+  })
 })

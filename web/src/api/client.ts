@@ -69,7 +69,9 @@ export async function requestJson<T>(
     } catch {
       problem = undefined
     }
-    throw new ApiError(problemMessage(problem), response.status)
+    throw new ApiError(response.status === 502 && !problem
+      ? 'The local API is unavailable. Check the server connection and retry.'
+      : problemMessage(problem), response.status)
   }
 
   if (response.status === 204) return undefined as T
