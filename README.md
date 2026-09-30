@@ -6,13 +6,14 @@ Standalone local MVP using React, .NET, and PostgreSQL. The unauthenticated API 
 
 ## Production status (2026-09-30)
 
-Production is still running from the legacy `MediaDock` repository at commit
-`753bfe03ddaf2e08f25436a24a0c7bfea467dbf7`; the new `MediaDock2.0` repository
-has not been deployed. The legacy repository's `main` candidate
-`08fbef59a22d56ba8f06ed732c6a948aebba3c70` failed its clean-main gate twice in
-integration tests (16 failed, 2 passed of 18) and was not promoted. Do not cut
-over production until the new repository's clean gate passes and the required
-database migration/reset has been explicitly resolved.
+The standalone `MediaDock2.0` repository is deployed from GitHub `main` commit
+`2dd39927d5a0b02d74c9f7f8e3212a8e74c731c8` at
+`/opt/docker/projects/mediadock-next`. The previous monorepo checkout remains
+at `/opt/docker/projects/mediadock-next-legacy-20260930` for rollback. The new
+app uses the separate PostgreSQL database `mediadock2` with the single baseline
+migration `20260930122500_InitialRelationalSchema`; the old `mediadock` database
+and its six-migration history remain intact. Catalog, source, and settings
+tables were empty at cutover.
 
 From the trusted LAN, open `http://<server-LAN-IPv4>:8081/`. The real host
 address is kept in server-only configuration and intentionally omitted from
@@ -22,17 +23,18 @@ interface; PostgreSQL remains loopback-only at `127.0.0.1:5432`. LAN checks for
 the UI, readiness, and catalog returned HTTP 200. Router port-forward and
 non-LAN denial checks remain unverified.
 
-`mediadock-next-deploy.timer` checks GitHub `main` every five minutes. Optional
-success email is not configured on the production host yet. The daily database
-dump timer runs at 03:00 UTC before the existing Restic window. Step 6 dump,
-restore, and Restic verification passed for the earlier daily dump. The Step 7 dump
-`daily-20260930T082555Z.dump` passed `pg_restore -l`, but has not yet been
-confirmed in a later Restic snapshot.
+The API, UI, and catalog returned HTTP 200 after deployment. The API remains
+bound to the trusted LAN interface at port `8081`; PostgreSQL remains
+loopback-only at `127.0.0.1:5432`. The deploy timer is enabled and checks the
+new GitHub `main` every five minutes. Its first poll completed as a no-op on
+the deployed SHA. The pre-migration dump
+`daily-20260930T150707Z.dump` passed `pg_restore -l` and is present in Restic.
+Optional success email is not configured.
 
-The Worker service is installed, but its production timer is not installed or
-enabled, and no scan has run. The checked-in timer is intended for 07:00 and
-18:00 `Europe/Sofia`; Step 8 configuration and operator approval remain
-pending. See the [systemd runbook](deploy/systemd/README.md).
+The Worker timer remains uninstalled and no scan has run. Do not schedule scans
+until the OMDb key/quota and feeds have been reviewed and the operator approves
+a manual run. Router port-forward and non-LAN denial checks remain unverified.
+See the [systemd runbook](deploy/systemd/README.md).
 
 ## Prerequisites
 

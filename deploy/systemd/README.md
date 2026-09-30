@@ -2,22 +2,24 @@
 
 ## Current Production Deployment (2026-09-30)
 
-The production checkout is `/opt/docker/projects/mediadock-next/next` and
-remains deployed at GitHub `main` commit
-`753bfe03ddaf2e08f25436a24a0c7bfea467dbf7`. Current GitHub `main` is
-`08fbef59a22d56ba8f06ed732c6a948aebba3c70`; its staging gate failed twice in
-integration tests (16 failed, 2 passed of 18), so no promotion or migration
-occurred. The root-managed gate marker prevents repeated tests for that SHA.
+The standalone production checkout is `/opt/docker/projects/mediadock-next` at
+GitHub `main` commit `2dd39927d5a0b02d74c9f7f8e3212a8e74c731c8`. The legacy
+monorepo checkout is retained at
+`/opt/docker/projects/mediadock-next-legacy-20260930` for rollback. Production
+uses PostgreSQL database `mediadock2` with baseline migration
+`20260930122500_InitialRelationalSchema`; the original `mediadock` database and
+its six migrations remain intact. The deployment backup
+`daily-20260930T150707Z.dump` passed `pg_restore -l` and is present in Restic.
 The UI is available to trusted LAN clients at
 `http://<server-LAN-IPv4>:8081/`; the actual host address is stored only in
 server configuration. The app has no login. PostgreSQL remains bound to
 `127.0.0.1:5432`.
 
-- `mediadock-next-deploy.timer` checks for a new GitHub `main` commit every five
-	minutes, starting five minutes after boot and then five minutes after each
-	check finishes.
+- `mediadock-next-deploy.timer` is enabled and checks the new GitHub `main`
+	every five minutes after each check finishes; the first post-cutover poll
+	completed as a no-op on the deployed commit.
 - `mediadock-next-backup.timer` is enabled for 03:00 UTC; the existing Restic timer starts at about 03:30 UTC with up to 15 minutes of random delay.
-- Step 6 dump/restore/Restic verification passed. The Step 7 dump `daily-20260930T082555Z.dump` is root-only and passed `pg_restore -l`, but inclusion in a later Restic snapshot is not yet confirmed.
+- The deploy dump is root-only and has been confirmed in the latest Restic snapshot.
 - The Worker service is installed, but `mediadock-worker.timer` is not installed or enabled and no scan has run. Step 8 operator approval remains pending.
 - LAN readiness/UI/catalog checks returned HTTP 200. Router port-forward and non-LAN denial checks remain unverified.
 
@@ -28,7 +30,7 @@ The installation instructions below describe how to provision or operate the uni
 The optional `mediadock-next-firewall.service` reads `/etc/default/mediadock-next-firewall`. Create that root-owned host file with `APP_BIND_ADDRESS`, `APP_PORT`, and `TRUSTED_LAN_CIDR` before enabling the unit; use a specific IPv4 bind and the intended trusted subnet. Keep the real host address and subnet out of Git. The unit limits filtering to the configured API destination and must not be treated as authentication.
 
 These host-side systemd units are for a single Ubuntu host. The production
-Compose project is installed at `/opt/docker/projects/mediadock-next/next` and
+Compose project is installed at `/opt/docker/projects/mediadock-next` and
 uses its ignored `.env` file. The `mediadock` OS account must be able to access
 the Docker socket for the Worker unit; membership in the `docker` group grants
 root-equivalent host access.
@@ -70,17 +72,19 @@ Perform this procedure separately for each environment, only after its owner app
 2. Create a final custom-format PostgreSQL dump with the root-only backup service. Validate it with `pg_restore -l` and verify restoreability in an isolated database. The dump contains the plaintext OMDb key and must remain root-only.
 3. Disable that environment's deployment and Worker timers, stop any active deploy/Worker/API writers, and keep the API stopped for the schema operation.
 4. Use the separately approved database-administration procedure for that environment to provision an empty database or fresh volume. Retain the old volume and verified dump until application checks pass. Do not use `docker compose down -v` as routine cleanup and do not add volume deletion to `deploy.sh`.
-5. Start PostgreSQL from the release containing the new baseline and run the existing one-shot migration profile from the Compose project directory:
+5. Start PostgreSQL and select the validated API image from the release containing the new baseline. Confirm the ignored `.env` selects the approved empty target database (for this production cutover, `POSTGRES_DB=mediadock2`), not the preserved legacy database. Never rely on Compose's default `mediadock-next-api` tag: it may still point to an older release. Run the one-shot migration profile from the Compose project directory with the selected image pinned:
 
 	```sh
 	cd /opt/docker/projects/mediadock-next
-	docker compose --project-name mediadock-next --project-directory "$PWD" --env-file "$PWD/.env" --file "$PWD/compose.yaml" --profile tools run --rm migrate
+	release_sha=<validated-release-sha>
+	docker image inspect "mediadock-next-api:$release_sha" >/dev/null
+	API_IMAGE="mediadock-next-api:$release_sha" docker compose --project-name mediadock-next --project-directory "$PWD" --env-file "$PWD/.env" --file "$PWD/compose.yaml" --profile tools run --rm --no-deps migrate
 	```
 
 6. Verify that `__EFMigrationsHistory` contains `20260930122500_InitialRelationalSchema`, then start the API and check `/health/ready`, `/api/catalog`, and `/api/oscars`. Confirm the empty catalog responses and that provider settings use singleton `id = 1` before enabling any Worker run.
 7. Keep the verified dump and old volume until the API checks and an explicitly approved Worker smoke run succeed. Re-enable only the schedules approved for that environment.
 
-Never point the one-shot migration profile at the old schema as a substitute for this procedure. Persistent production reset was not performed by this code change and still requires separate environment-specific approval.
+Never point the one-shot migration profile at the old schema as a substitute for this procedure. The 2026-09-30 production cutover used a separate empty `mediadock2` database with explicit approval; the original `mediadock` database was not reset. Any future reset requires its own environment-specific approval.
 
 ## Automated deployment
 

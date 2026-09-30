@@ -4,25 +4,22 @@ This guide covers security and operations for this standalone application; see [
 
 ## Current Production Status (2026-09-30)
 
-Production remains at deployed GitHub `main` commit
-`753bfe03ddaf2e08f25436a24a0c7bfea467dbf7`. Current `main` is
-`08fbef59a22d56ba8f06ed732c6a948aebba3c70`, but its staging gate failed twice
-in integration tests (16 failed, 2 passed of 18), so it was not promoted. The
-root-managed gate marker suppresses retries for that SHA until `main` advances
-or an operator clears it. The API listens on the configured specific trusted
-LAN interface at port `8081`; PostgreSQL is loopback-only.
-Readiness, UI, and catalog checks from the LAN returned HTTP 200. The API has
-no authentication, so every allowed LAN client can read and change data. The
-router port-forward review and non-LAN denial test have not been completed; do
-not treat LAN checks as proof of public-network isolation.
+Production runs GitHub `main` commit
+`2dd39927d5a0b02d74c9f7f8e3212a8e74c731c8` from
+`/opt/docker/projects/mediadock-next`. The legacy checkout is retained beside
+it for rollback. The new app uses database `mediadock2` with one baseline
+migration; the original `mediadock` database and six-migration history remain
+unchanged. The pre-migration dump passed `pg_restore -l` and was verified in
+the latest Restic snapshot.
 
-The deployment timer checks GitHub `main` every five minutes. Optional success
-email requires a TLS SMTP relay and root-only netrc credentials; it is not yet
-configured on the production host. The Worker service is installed,
-but its timer is not installed or enabled, and no production scan has run. The
-Step 7 database dump passed `pg_restore -l` but still needs confirmation in a
-later Restic snapshot. See the [systemd runbook](../../deploy/systemd/README.md)
-for the current host state and the remaining operator gates.
+Readiness, UI, and catalog checks returned HTTP 200. The API is bound to the
+specific trusted LAN interface at port `8081`; PostgreSQL remains loopback-only.
+The deploy timer is enabled for the new GitHub `main`. The Worker timer remains
+disabled/uninstalled and no scan has run. The API has no authentication, so
+allowed LAN clients can read and change application data. Router port-forward
+and non-LAN denial checks remain outstanding; do not treat LAN checks as proof
+of public-network isolation. See the
+[systemd runbook](../../deploy/systemd/README.md) for current operations.
 
 ## Trust Boundary
 
