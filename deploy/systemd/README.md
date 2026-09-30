@@ -2,8 +2,9 @@
 
 ## Current Production Deployment (2026-09-30)
 
-The standalone production checkout is `/opt/docker/projects/mediadock-next` at
-GitHub `main` commit `2dd39927d5a0b02d74c9f7f8e3212a8e74c731c8`. The legacy
+The standalone production checkout is `/opt/docker/projects/mediadock-next`,
+first deployed from GitHub `main` commit `2dd39927d5a0b02d74c9f7f8e3212a8e74c731c8`.
+Read `/var/lib/mediadock-deploy/deploy-state` for the live deployed SHA. The legacy
 monorepo checkout is retained at
 `/opt/docker/projects/mediadock-next-legacy-20260930` for rollback. Production
 uses PostgreSQL database `mediadock2` with baseline migration

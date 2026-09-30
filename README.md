@@ -6,14 +6,15 @@ Standalone local MVP using React, .NET, and PostgreSQL. The unauthenticated API 
 
 ## Production status (2026-09-30)
 
-The standalone `MediaDock2.0` repository is deployed from GitHub `main` commit
+The standalone `MediaDock2.0` repository was first deployed from GitHub `main` commit
 `2dd39927d5a0b02d74c9f7f8e3212a8e74c731c8` at
 `/opt/docker/projects/mediadock-next`. The previous monorepo checkout remains
 at `/opt/docker/projects/mediadock-next-legacy-20260930` for rollback. The new
 app uses the separate PostgreSQL database `mediadock2` with the single baseline
 migration `20260930122500_InitialRelationalSchema`; the old `mediadock` database
 and its six-migration history remain intact. Catalog, source, and settings
-tables were empty at cutover.
+tables were empty at cutover. The live deployed SHA is recorded in the
+root-managed `/var/lib/mediadock-deploy/deploy-state` on the server.
 
 From the trusted LAN, open `http://<server-LAN-IPv4>:8081/`. The real host
 address is kept in server-only configuration and intentionally omitted from

@@ -4,9 +4,10 @@ This guide covers security and operations for this standalone application; see [
 
 ## Current Production Status (2026-09-30)
 
-Production runs GitHub `main` commit
+Production was first deployed from GitHub `main` commit
 `2dd39927d5a0b02d74c9f7f8e3212a8e74c731c8` from
-`/opt/docker/projects/mediadock-next`. The legacy checkout is retained beside
+`/opt/docker/projects/mediadock-next`. The live SHA is in the server's root-managed
+`/var/lib/mediadock-deploy/deploy-state`. The legacy checkout is retained beside
 it for rollback. The new app uses database `mediadock2` with one baseline
 migration; the original `mediadock` database and six-migration history remain
 unchanged. The pre-migration dump passed `pg_restore -l` and was verified in
