@@ -1,0 +1,11 @@
+[Unit]
+Description=Check MediaDock 2.0 GitHub deployment every five minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitInactiveSec=5min
+AccuracySec=1s
+Unit=mediadock-next-deploy.service
+
+[Install]
+WantedBy=timers.target
