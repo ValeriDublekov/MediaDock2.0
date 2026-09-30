@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getTitle, getTitleOccurrences, getTitleOscars } from '../../api/client'
 import type { Occurrence, OscarFilm, PageResponse, TitleDetails } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
+import { Poster } from '../../components/Poster'
 import { formatDate, formatWords } from '../../shared/format'
 import { FavoriteControls } from '../favorites/FavoriteControls'
 
@@ -55,7 +56,14 @@ export function TitleDetailsDialog({ titleId, onClose }: TitleDetailsDialogProps
           {!loading && error && <ErrorState message={error} onRetry={() => setAttempt((current) => current + 1)} />}
           {!loading && !error && title && (
             <>
-              {title.plot && <p className="detail-description">{title.plot}</p>}
+              <div className="film-details-intro">
+                <Poster className="detail-poster" label={title.mediaType.slice(0, 3).toUpperCase()} src={title.posterUrl} title={title.title} />
+                <div className="film-details-summary">
+                  <strong>{title.imdbRating === null ? 'Not rated' : `IMDb ${title.imdbRating.toFixed(1)}`}</strong>
+                  <span>{title.genres.join(' · ') || 'Genres unavailable'}</span>
+                  {title.plot && <p className="detail-description">{title.plot}</p>}
+                </div>
+              </div>
               <dl className="detail-facts">
                 <div><dt>Rating</dt><dd>{title.imdbRating?.toFixed(1) ?? 'Not rated'}{title.imdbVotes ? ` / ${title.imdbVotes.toLocaleString()} votes` : ''}</dd></div>
                 <div><dt>Director</dt><dd>{title.director ?? 'Not listed'}</dd></div>

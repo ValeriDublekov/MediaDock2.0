@@ -8,6 +8,8 @@ import type {
 } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
+import { Poster } from '../../components/Poster'
+import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatWords } from '../../shared/format'
 import { OscarFilmDetailsDialog } from './OscarFilmDetailsDialog'
 import { FavoriteControls } from '../favorites/FavoriteControls'
@@ -53,11 +55,7 @@ function OscarRow({ film, onSelect }: { film: OscarFilm; onSelect: (id: number) 
     <tr>
       <td>
         <div className="title-cell">
-          {film.posterUrl ? (
-            <img alt="" className="oscar-list-poster" loading="lazy" src={film.posterUrl} />
-          ) : (
-            <span className="title-stamp oscar-title-stamp" aria-hidden="true">OSC</span>
-          )}
+          <Poster className="poster-small" label="OSC" src={film.posterUrl} title={film.title} />
           <span>
             <button
               aria-label={`View ${film.title} Oscar details`}
@@ -107,6 +105,7 @@ function OscarRow({ film, onSelect }: { film: OscarFilm; onSelect: (id: number) 
 }
 
 export function OscarCatalogView() {
+  const [viewMode, setViewMode] = useState<ViewMode>('posters')
   const [page, setPage] = useState(1)
   const [draftFilters, setDraftFilters] = useState<OscarFilters>(emptyFilters)
   const [appliedFilters, setAppliedFilters] = useState<OscarFilters>(emptyFilters)
@@ -219,7 +218,10 @@ export function OscarCatalogView() {
         <span className="result-count">
           {result ? `${result.totalCount.toLocaleString()} Oscar films` : 'Oscar records'}
         </span>
-        <button className="text-button" onClick={refresh} type="button">Refresh results</button>
+        <div className="toolbar-actions">
+          <ViewModeControl onChange={setViewMode} value={viewMode} />
+          <button className="text-button" onClick={refresh} type="button">Refresh results</button>
+        </div>
       </div>
 
       {loading && <LoadingState label="Loading Oscar catalog" />}
@@ -229,7 +231,26 @@ export function OscarCatalogView() {
       )}
       {!loading && !error && result && result.items.length > 0 && (
         <>
-          <div className="table-wrap">
+          {viewMode === 'posters' ? <div className="poster-grid">
+            {result.items.map((film) => {
+              const wins = film.nominations.filter((nomination) => nomination.isWinner).length
+              return <article className="movie-tile" key={film.id}>
+                <button aria-label={`View ${film.title} Oscar details`} className="poster-action" onClick={() => setSelectedFilmId(film.id)} type="button">
+                  <Poster label="OSC" src={film.posterUrl} title={film.title} />
+                  {wins > 0 && <span className="winner-badge">{wins} {wins === 1 ? 'win' : 'wins'}</span>}
+                </button>
+                <div className="movie-tile-info">
+                  <button className="tile-title" onClick={() => setSelectedFilmId(film.id)} type="button">{film.title}</button>
+                  <div className="tile-meta">{film.filmYear} <span aria-hidden="true">·</span> {film.nominations.length} {film.nominations.length === 1 ? 'nomination' : 'nominations'}</div>
+                  <div className="tile-genres">{film.genres.slice(0, 2).join(' · ') || 'Genres unavailable'}</div>
+                  <div className="tile-footer">
+                    <span className="tile-rating">{film.imdbRating === null ? 'Not rated' : `IMDb ${film.imdbRating.toFixed(1)}`}</span>
+                    <FavoriteControls from="oscar" mediaType={film.mediaType} occurrenceCount={0} titleId={film.titleId} />
+                  </div>
+                </div>
+              </article>
+            })}
+          </div> : <div className="table-wrap">
             <table className="data-table">
               <thead><tr><th>FILM</th><th>CATEGORIES</th><th>RESULT</th><th>IMDB</th><th>OMDB</th><th>FAVORITES</th></tr></thead>
               <tbody>
@@ -238,7 +259,7 @@ export function OscarCatalogView() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div>}
           <Pagination onPageChange={changePage} page={result} />
         </>
       )}

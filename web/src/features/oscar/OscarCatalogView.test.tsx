@@ -94,6 +94,16 @@ describe('OscarCatalogView', () => {
   })
   afterEach(() => cleanup())
 
+  it('shows a win on the poster and retains the table without refetching', async () => {
+    filmRequest.mockResolvedValue(page([film]))
+    render(<OscarCatalogView />)
+
+    expect(await screen.findByText('1 win')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+    expect(screen.getByRole('columnheader', { name: 'OMDB' })).toBeTruthy()
+    expect(filmRequest).toHaveBeenCalledTimes(1)
+  })
+
   it('applies award filters and renders the empty state', async () => {
     filmRequest.mockResolvedValue(page([]))
     render(<OscarCatalogView />)

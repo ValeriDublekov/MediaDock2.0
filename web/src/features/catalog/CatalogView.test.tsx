@@ -36,6 +36,21 @@ describe('CatalogView', () => {
   beforeEach(() => { catalogRequest.mockReset() })
   afterEach(() => cleanup())
 
+  it('switches between posters and table without refetching and replaces broken images', async () => {
+    catalogRequest.mockResolvedValue(page([{ ...title, posterUrl: '/missing-poster.jpg' }]))
+    render(<CatalogView />)
+
+    expect(await screen.findByRole('img', { name: 'Poster for Quiet River' })).toBeTruthy()
+    fireEvent.error(screen.getByRole('img', { name: 'Poster for Quiet River' }))
+    expect(screen.queryByRole('img', { name: 'Poster for Quiet River' })).toBeNull()
+    expect(screen.getByText('SER')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+    expect(screen.getByRole('columnheader', { name: 'LAST SEEN' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
+    expect(screen.getByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
+    expect(catalogRequest).toHaveBeenCalledTimes(1)
+  })
+
   it('requests the next page from the pagination controls', async () => {
     catalogRequest.mockResolvedValue(page([title], 1, 2))
     render(<CatalogView />)

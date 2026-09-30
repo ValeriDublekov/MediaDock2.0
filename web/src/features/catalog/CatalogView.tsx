@@ -3,6 +3,8 @@ import { getCatalog } from '../../api/client'
 import type { CatalogQuery, CatalogTitle, MediaType, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
+import { Poster } from '../../components/Poster'
+import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatDate, formatWords } from '../../shared/format'
 import { TitleDetailsDialog } from './TitleDetailsDialog'
 import { FavoriteControls } from '../favorites/FavoriteControls'
@@ -40,7 +42,7 @@ function CatalogRow({ title, onSelect }: { title: CatalogTitle; onSelect: (id: n
     <tr>
       <td>
         <div className="title-cell">
-          <span className="title-stamp" aria-hidden="true">{title.mediaType.slice(0, 3).toUpperCase()}</span>
+          <Poster className="poster-small" label={title.mediaType.slice(0, 3).toUpperCase()} src={title.posterUrl} title={title.title} />
           <span>
             <button aria-label={`View ${title.title} details`} className="title-link" onClick={() => onSelect(title.id)} type="button">{title.title}</button>
             <span className="subtle-line">{title.year ?? 'Year unknown'} | {title.occurrenceCount} observations</span>
@@ -57,6 +59,7 @@ function CatalogRow({ title, onSelect }: { title: CatalogTitle; onSelect: (id: n
 }
 
 export function CatalogView() {
+  const [viewMode, setViewMode] = useState<ViewMode>('posters')
   const [page, setPage] = useState(1)
   const [draftFilters, setDraftFilters] = useState<CatalogFilters>(emptyFilters)
   const [appliedFilters, setAppliedFilters] = useState<CatalogFilters>(emptyFilters)
@@ -138,7 +141,10 @@ export function CatalogView() {
 
       <div className="section-toolbar">
         <span className="result-count">{result ? `${result.totalCount.toLocaleString()} titles` : 'Catalog records'}</span>
-        <button className="text-button" onClick={() => setAttempt((current) => current + 1)} type="button">Refresh results</button>
+        <div className="toolbar-actions">
+          <ViewModeControl onChange={setViewMode} value={viewMode} />
+          <button className="text-button" onClick={() => setAttempt((current) => current + 1)} type="button">Refresh results</button>
+        </div>
       </div>
 
       {loading && <LoadingState label="Loading catalog" />}
@@ -146,12 +152,27 @@ export function CatalogView() {
       {!loading && !error && result && result.items.length === 0 && <EmptyState title="No titles found" message="Try changing the search or filters, or clear them to browse the full catalog." />}
       {!loading && !error && result && result.items.length > 0 && (
         <>
-          <div className="table-wrap">
+          {viewMode === 'posters' ? <div className="poster-grid">
+            {result.items.map((title) => <article className="movie-tile" key={title.id}>
+              <button aria-label={`View ${title.title} details`} className="poster-action" onClick={() => setSelectedTitleId(title.id)} type="button">
+                <Poster label={title.mediaType.slice(0, 3).toUpperCase()} src={title.posterUrl} title={title.title} />
+              </button>
+              <div className="movie-tile-info">
+                <button className="tile-title" onClick={() => setSelectedTitleId(title.id)} type="button">{title.title}</button>
+                <div className="tile-meta">{title.year ?? 'Year unknown'} <span aria-hidden="true">·</span> {formatWords(title.mediaType)}</div>
+                <div className="tile-genres">{title.genres.slice(0, 2).join(' · ') || 'Genres unavailable'}</div>
+                <div className="tile-footer">
+                  <span className="tile-rating">{title.imdbRating === null ? 'Not rated' : `IMDb ${title.imdbRating.toFixed(1)}`}</span>
+                  <FavoriteControls from="catalog" mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} titleId={title.id} />
+                </div>
+              </div>
+            </article>)}
+          </div> : <div className="table-wrap">
             <table className="data-table">
               <thead><tr><th>TITLE</th><th>TYPE</th><th>IMDB</th><th>GENRES</th><th>LAST SEEN</th><th>FAVORITES</th></tr></thead>
               <tbody>{result.items.map((title) => <CatalogRow key={title.id} onSelect={setSelectedTitleId} title={title} />)}</tbody>
             </table>
-          </div>
+          </div>}
           <Pagination onPageChange={setPage} page={result} />
         </>
       )}

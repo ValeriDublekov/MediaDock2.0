@@ -6,7 +6,15 @@ import { FavoriteProvider } from './FavoriteContext'
 import { FavoritesView } from './FavoritesView'
 
 vi.mock('../../api/client', () => ({ getFavorites: vi.fn() }))
-afterEach(() => cleanup())
+afterEach(() => { cleanup(); vi.mocked(getFavorites).mockReset() })
+
+it('does not report zero movies when the API fails', async () => {
+  vi.mocked(getFavorites).mockRejectedValue(new Error('Service unavailable'))
+  render(<FavoritesView />)
+
+  expect(await screen.findByText('Could not load this view')).toBeTruthy()
+  expect(screen.queryByText('0 movies')).toBeNull()
+})
 
 it('filters one canonical movie independently by watch and download status', async () => {
   const movie: FavoriteMovie = {
@@ -24,6 +32,9 @@ it('filters one canonical movie independently by watch and download status', asy
 
   expect(await screen.findByText('Shared Movie')).toBeTruthy()
   expect(screen.getAllByText('Oscar / Catalog')).toHaveLength(1)
+  fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+  expect(screen.getByRole('columnheader', { name: 'ORIGIN' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
   fireEvent.click(screen.getByRole('button', { name: 'To watch' }))
   await waitFor(() => expect(getFavorites).toHaveBeenCalledWith({ status: 'to_watch', page: 1, pageSize: 20 }))
   fireEvent.click(screen.getByRole('button', { name: 'To download' }))

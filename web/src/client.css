@@ -169,11 +169,60 @@ button:disabled { cursor: not-allowed; }
 .oscar-nomination-copy .oscar-nomination-name, .oscar-nomination-copy .oscar-nomination-detail { color: #7b8780; font-size: 10px; }
 .oscar-nomination-outcome { grid-area: outcome; }
 
+.main-shell { background-image: linear-gradient(rgba(28, 59, 48, 0.012) 1px, transparent 1px), linear-gradient(90deg, rgba(28, 59, 48, 0.012) 1px, transparent 1px); }
+.page-content { padding-top: 36px; }
+.page-heading h1 { font-size: 40px; }
+.page-description { color: #4e6156; font-size: 14px; }
+.title-link, .data-table td { font-size: 13px; }
+.section-toolbar { flex-wrap: wrap; }
+.toolbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.view-mode-control { flex: 0 0 auto; }
+.poster { display: block; width: 100%; aspect-ratio: 2 / 3; overflow: hidden; background: #e0e8df; }
+.poster img, .poster-fallback { display: block; width: 100%; height: 100%; object-fit: cover; }
+.poster-fallback { display: grid; place-items: center; border: 1px solid #c8d3c7; color: #436657; background: linear-gradient(150deg, #e2e9de, #f3eee4); font-family: Georgia, serif; font-size: 16px; letter-spacing: 0; }
+.poster-fallback span { border: 1px solid currentColor; padding: 7px; }
+.poster-small { width: 34px; flex: 0 0 34px; }
+.poster-small .poster-fallback { font-size: 9px; }
+.poster-small .poster-fallback span { padding: 3px; }
+.poster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 22px 16px; border-top: 1px solid #d4ded5; padding-top: 20px; }
+.movie-tile { min-width: 0; }
+.poster-action { position: relative; display: block; width: 100%; border: 0; padding: 0; background: transparent; text-align: left; }
+.winner-badge { position: absolute; right: 8px; bottom: 8px; padding: 5px 8px; color: #fff4d4; background: #624421; font-size: 11px; font-weight: 700; }
+.poster-action .poster { transition: filter 150ms ease; }
+.poster-action:hover .poster { filter: brightness(0.91); }
+.movie-tile-info { padding: 10px 2px 0; }
+.tile-title { display: block; width: 100%; border: 0; padding: 0; color: #18372e; background: transparent; font-family: Georgia, serif; font-size: 17px; line-height: 1.22; text-align: left; overflow-wrap: anywhere; }
+.tile-title:hover { color: #9b4d37; }
+.tile-meta, .tile-genres { margin-top: 5px; color: #52665b; font-size: 12px; line-height: 1.4; }
+.tile-meta span { padding: 0 3px; }
+.tile-genres { min-height: 18px; color: #69786c; }
+.tile-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 10px; border-top: 1px solid #d9e0d7; padding-top: 9px; }
+.tile-rating { color: #875526; font-size: 12px; font-weight: 700; }
+.tile-footer .favorite-controls { margin-left: auto; }
+.movie-tile-info > .favorite-controls { margin-top: 8px; border-top: 1px solid #d9e0d7; padding-top: 8px; }
+.movie-tile .favorite-controls { flex-wrap: wrap; min-width: 0; }
+.film-details-intro { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: start; gap: 22px; }
+.detail-poster { width: 112px; }
+.film-details-summary { display: grid; align-content: start; gap: 9px; min-width: 0; color: #53665a; font-size: 12px; }
+.film-details-summary strong { color: #8a5428; font-size: 15px; }
+.film-details-summary .detail-description { font-size: 13px; }
+button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .poster-action .poster, .button, .nav-item, .data-table tbody tr { transition: none; }
+  .loading-spinner { animation-duration: 2s; }
+}
+
 @media (max-width: 1120px) {
   .filter-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .filter-search { grid-column: span 2; }
   .filter-actions { grid-column: span 3; }
   .oscar-filter-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1440px) and (min-width: 1121px) {
+  .oscar-filter-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .oscar-filter-form .filter-search { grid-column: span 2; }
+  .oscar-filter-form .filter-actions { grid-column: span 3; }
 }
 
 @media (max-width: 850px) {
@@ -189,6 +238,10 @@ button:disabled { cursor: not-allowed; }
 }
 
 @media (max-width: 620px) {
+  .poster-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 12px; }
+  .film-details-intro { grid-template-columns: 80px minmax(0, 1fr); gap: 14px; }
+  .detail-poster { width: 80px; }
+  .page-heading h1 { font-size: 32px; }
   .favorite-filters .button { min-height: 32px; padding: 0 8px; }
   .sidebar { align-items: flex-start; flex-direction: column; gap: 10px; padding: 12px 16px 10px; }
   .primary-nav { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; overflow: visible; }

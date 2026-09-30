@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getOscarFilm, getTitleOccurrences, getTitleOscars } from '../../api/client'
 import type { Occurrence, OscarFilm } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
+import { Poster } from '../../components/Poster'
 import { formatDate, formatWords } from '../../shared/format'
 import { FavoriteControls } from '../favorites/FavoriteControls'
 
@@ -64,11 +65,13 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
           {!loading && error && <ErrorState message={error} onRetry={retry} />}
           {!loading && !error && film && (
             <>
-              <div className="oscar-details-intro">
-                {film.posterUrl && (
-                  <img className="oscar-detail-poster" src={film.posterUrl} alt={`Poster for ${film.title}`} />
-                )}
-                {film.plot && <p className="detail-description">{film.plot}</p>}
+              <div className="film-details-intro">
+                <Poster className="detail-poster" label="OSC" src={film.posterUrl} title={film.title} />
+                <div className="film-details-summary">
+                  <strong>{winnerCount > 0 ? `${winnerCount} ${winnerCount === 1 ? 'Oscar win' : 'Oscar wins'}` : `${film.nominations.length} nominations`}</strong>
+                  <span>{film.imdbRating === null ? 'Not rated' : `IMDb ${film.imdbRating.toFixed(1)}`}</span>
+                  {film.plot && <p className="detail-description">{film.plot}</p>}
+                </div>
               </div>
               <dl className="detail-facts oscar-detail-facts">
                 <div><dt>Award record</dt><dd>{film.nominations.length} nominations, {winnerCount} wins</dd></div>
