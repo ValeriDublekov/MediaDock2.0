@@ -22,6 +22,36 @@ public sealed class IngestionTests
     private const string PartialFeedUrl = "https://feed.rutracker.cc/partial.atom";
 
     [Fact]
+    public async Task AmbiguousHitIsNotPersistedAndAlternateTitleIsBoundedAndAudited()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_title_match_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString()).Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+        db.Sources.Add(new Source { StableKey = "title-match", Name = "Movies", FeedType = "movie", Url = SuccessfulFeedUrl });
+        await db.SaveChangesAsync();
+
+        var handler = new MockProviderHandler(titleMatchScenario: true);
+        using var httpClient = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        var service = CreateService(db, httpClient, new RssFeedTransport(httpClient, new PublicDnsResolver()));
+
+        var first = await service.RunAsync();
+        Assert.Equal(1, first.Summary.TitlesCreated);
+        Assert.Equal(2, first.Summary.OccurrencesCreated);
+        Assert.Equal(5, first.Summary.OmdbRequests);
+        Assert.Equal("tt2222222", (await db.Titles.SingleAsync()).ImdbId);
+        Assert.Contains(await db.ParseLogs.ToListAsync(), log => log.IgnoreReason == "ambiguous_title_match" && log.RetryState == "terminal");
+        Assert.Contains(await db.ParseLogs.ToListAsync(), log => log.Decision != null && log.Decision.Contains("fallback_movie_release_year_within_tolerance"));
+
+        var second = await service.RunAsync();
+        Assert.Equal(0, second.Summary.OmdbRequests);
+        Assert.Equal(5, handler.OmdbRequestCount);
+        Assert.Equal(2, await db.Occurrences.CountAsync());
+    }
+
+    [Fact]
     public async Task ScanIsIdempotentCachesConfirmedNegativeAndContinuesAfterEntryAndProviderFailures()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_test").Build();
@@ -263,7 +293,10 @@ public sealed class IngestionTests
 
     private sealed class MockProviderHandler : HttpMessageHandler
     {
+        private readonly bool _titleMatchScenario;
         private int _temporaryRequests;
+
+        public MockProviderHandler(bool titleMatchScenario = false) => _titleMatchScenario = titleMatchScenario;
 
         public int OmdbRequestCount { get; private set; }
 
@@ -275,7 +308,8 @@ public sealed class IngestionTests
             var uri = request.RequestUri!;
             if (uri.Host == RssFeedTransport.AllowedFeedHost)
             {
-                return Task.FromResult(FeedResponse(uri.AbsolutePath == "/success.atom" ? SuccessfulFeed : PartialFeed));
+                return Task.FromResult(FeedResponse(_titleMatchScenario ? TitleMatchFeed :
+                    uri.AbsolutePath == "/success.atom" ? SuccessfulFeed : PartialFeed));
             }
 
             if (uri.Host != "www.omdbapi.com")
@@ -285,6 +319,19 @@ public sealed class IngestionTests
 
             OmdbRequestCount++;
             var query = ParseQuery(uri.Query);
+            if (_titleMatchScenario)
+            {
+                var payload = query["t"] switch
+                {
+                    "Wrong Film" => MoviePayload("Other Film", "2020", "tt1111111"),
+                    "Right Film" => MoviePayload("Right Film", "2020", "tt2222222"),
+                    "Lone Film" => MoviePayload("Other Film", "2020", "tt1111111"),
+                    "Missing Film" => """{"Response":"False","Error":"Movie not found!"}""",
+                    _ => throw new InvalidOperationException("Unexpected title-match lookup.")
+                };
+                return Task.FromResult(JsonResponse(payload));
+            }
+
             if (query["t"] == "The Matrix")
             {
                 return Task.FromResult(JsonResponse(MoviePayload("The Matrix", "1999", "tt0133093")));
@@ -316,6 +363,15 @@ public sealed class IngestionTests
               <item><title>Unknown Film (2024) [1080p]</title><link>https://rutracker.org/forum/viewtopic.php?t=2</link><guid>unknown-1</guid></item>
             </channel></rss>
             """;
+
+                private static string TitleMatchFeed => """
+                        <?xml version="1.0" encoding="utf-8"?>
+                        <rss version="2.0"><channel>
+                            <item><title>Wrong Film / Right Film (2020) [2024, BDRip]</title><link>https://rutracker.org/forum/viewtopic.php?t=11</link><guid>right-1</guid></item>
+                            <item><title>Lone Film (2020) [1080p]</title><link>https://rutracker.org/forum/viewtopic.php?t=12</link><guid>lone-1</guid></item>
+                              <item><title>Missing Film / Right Film (2020) [1080p]</title><link>https://rutracker.org/forum/viewtopic.php?t=13</link><guid>right-2</guid></item>
+                        </channel></rss>
+                        """;
 
         private static string PartialFeed => """
             <?xml version="1.0" encoding="utf-8"?>

@@ -197,7 +197,7 @@ public sealed class RssIngestionService
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(parsed.Title))
+        if (string.IsNullOrWhiteSpace(parsed.Title) || parsed.Title.Length > 160)
         {
             RecordEntryFailure(
                 source,
@@ -212,21 +212,52 @@ public sealed class RssIngestionService
             return;
         }
 
-        var resolution = await _metadataResolver.ResolveAsync(
-            parsed.Title,
-            parsed.Year,
-            source.FeedType,
-            observedAt,
-            cancellationToken);
-        if (resolution.Status is MetadataLookupStatus.QuotaExceeded or MetadataLookupStatus.RequestBudgetExhausted)
+        var lookupTitles = parsed.Candidates
+            .Select(candidate => candidate.Title)
+            .Prepend(parsed.Title)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(2);
+        MetadataResolution? resolution = null;
+        var fallbackUsed = false;
+        var ambiguousHit = false;
+        var totalAttempts = 0;
+        foreach (var lookupTitle in lookupTitles)
         {
-            progress.OmdbBudgetExhausted = true;
+            fallbackUsed = resolution is not null;
+            resolution = await _metadataResolver.ResolveAsync(
+                lookupTitle,
+                parsed.Year,
+                source.FeedType,
+                observedAt,
+                cancellationToken);
+            progress.CacheHits += resolution.CacheHit ? 1 : 0;
+            progress.OmdbRequests += resolution.HttpAttempts;
+            totalAttempts += resolution.HttpAttempts;
+            if (resolution.Status is MetadataLookupStatus.QuotaExceeded or MetadataLookupStatus.RequestBudgetExhausted)
+            {
+                progress.OmdbBudgetExhausted = true;
+            }
+
+            if (resolution.Status == MetadataLookupStatus.Found && resolution.Metadata is not null &&
+                MatchPolicy.VerifyTitle(parsed, resolution.Metadata.Title).Status == MatchDecisionStatus.Accepted)
+            {
+                break;
+            }
+
+            ambiguousHit |= resolution.Status == MetadataLookupStatus.Found;
+
+            if (resolution.Status != MetadataLookupStatus.ConfirmedNotFound && resolution.Status != MetadataLookupStatus.Found)
+            {
+                break;
+            }
         }
 
-        progress.CacheHits += resolution.CacheHit ? 1 : 0;
-        progress.OmdbRequests += resolution.HttpAttempts;
+        if (resolution is null)
+        {
+            return;
+        }
 
-        if (resolution.Status == MetadataLookupStatus.ConfirmedNotFound)
+        if (resolution.Status == MetadataLookupStatus.ConfirmedNotFound && !ambiguousHit)
         {
             progress.IgnoredEntries++;
             AddLog(
@@ -242,10 +273,19 @@ public sealed class RssIngestionService
                     true,
                     "metadata_not_found",
                     null,
-                    null,
+                    fallbackUsed ? "fallback_not_found" : "not_found",
                     observedAt,
                     "terminal",
-                    resolution.HttpAttempts));
+                    totalAttempts));
+            return;
+        }
+
+        if (ambiguousHit && resolution.Status == MetadataLookupStatus.ConfirmedNotFound)
+        {
+            progress.IgnoredEntries++;
+            AddLog(pendingLogs, progress, CreateLog(
+                source, entry, sourceItemKey, rawTitle, parsed, "found", true,
+                "ambiguous_title_match", null, "fallback_ambiguous", observedAt, "terminal", totalAttempts));
             return;
         }
 
@@ -263,11 +303,21 @@ public sealed class RssIngestionService
                 pendingLogs,
                 observedAt,
                 OmdbStatus(resolution.Status),
-                resolution.HttpAttempts);
+                totalAttempts);
             return;
         }
 
         var metadata = resolution.Metadata;
+        if (MatchPolicy.VerifyTitle(parsed, metadata.Title).Status != MatchDecisionStatus.Accepted)
+        {
+            progress.IgnoredEntries++;
+            AddLog(pendingLogs, progress, CreateLog(
+                source, entry, sourceItemKey, rawTitle, parsed, "found", true,
+                "ambiguous_title_match", null, fallbackUsed ? "fallback_ambiguous" : "ambiguous_title_match",
+                observedAt, "terminal", totalAttempts));
+            return;
+        }
+
         var decision = MatchPolicy.Evaluate(
             source.FeedType,
             metadata.SourceType,
@@ -298,7 +348,7 @@ public sealed class RssIngestionService
                     decision.ReasonCode,
                     observedAt,
                     "terminal",
-                    resolution.HttpAttempts));
+                    totalAttempts));
             return;
         }
 
@@ -325,10 +375,10 @@ public sealed class RssIngestionService
                 false,
                 null,
                 null,
-                decision.ReasonCode,
+                fallbackUsed ? $"fallback_{decision.ReasonCode}" : decision.ReasonCode,
                 observedAt,
                 "resolved",
-                resolution.HttpAttempts));
+                totalAttempts));
     }
 
     private void RecordEntryFailure(
@@ -391,7 +441,15 @@ public sealed class RssIngestionService
             ignored,
             ignoreReason,
             errorMessage,
-            decision,
+            parsed is null ? decision : string.Join('|', new[] { decision, parsed.YearSource switch
+            {
+                "title_parenthesis" => "y_paren",
+                "bracket" => "y_bracket",
+                "standalone" => "y_standalone",
+                "invalid_year_range" => "y_invalid",
+                _ => "y_missing"
+            }, parsed.YearAmbiguous ? "multi" : null }
+                .Where(code => !string.IsNullOrEmpty(code))),
             observedAt,
             retryState,
             attempts,

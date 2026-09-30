@@ -37,10 +37,9 @@ public sealed class MetadataResolver
                 "invalid_lookup");
         }
 
-        var yearSemantics = normalizedSourceType == "series"
-            ? "series_season_year"
-            : "movie_release_year";
-        var cacheKey = CreateCacheKey(normalizedTitle, year, normalizedSourceType, yearSemantics);
+        var yearSemantics = normalizedSourceType == "series" ? "series_title" : "movie_release_year";
+        var lookupYear = normalizedSourceType == "series" ? null : year;
+        var cacheKey = CreateCacheKey(normalizedTitle, lookupYear, normalizedSourceType, yearSemantics);
         var cached = await _cache.GetAsync(cacheKey, cancellationToken);
         if (cached is not null && cached.ExpiresAt > now)
         {
@@ -49,7 +48,7 @@ public sealed class MetadataResolver
 
         var result = await _client.LookupAsync(
             title.Trim(),
-            year,
+            lookupYear,
             normalizedSourceType,
             cancellationToken,
             requestPurpose);
@@ -58,7 +57,7 @@ public sealed class MetadataResolver
             await StoreAsync(
                 cacheKey,
                 normalizedTitle,
-                year,
+                lookupYear,
                 yearSemantics,
                 normalizedSourceType,
                 MetadataLookupStatus.Found,
@@ -72,7 +71,7 @@ public sealed class MetadataResolver
             await StoreAsync(
                 cacheKey,
                 normalizedTitle,
-                year,
+                lookupYear,
                 yearSemantics,
                 normalizedSourceType,
                 MetadataLookupStatus.ConfirmedNotFound,
@@ -130,7 +129,7 @@ public sealed class MetadataResolver
         string sourceType,
         string yearSemantics)
     {
-        var identity = $"v1:{title}:{year?.ToString() ?? ""}:{sourceType}:{yearSemantics}";
+        var identity = $"v2:{title}:{year?.ToString() ?? ""}:{sourceType}:{yearSemantics}";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity))).ToLowerInvariant();
     }
 

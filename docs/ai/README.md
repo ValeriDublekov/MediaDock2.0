@@ -20,6 +20,7 @@ Start here for work in this repository. Use the [local operations runbook](../..
 ## Planned work
 
 - [Improvement plan](IMPROVEMENT_PLAN.md)
+- [UI design plan](UI_DESIGN_PLAN.md)
 - [Oscar catalog plan](OSCAR_CATALOG_PLAN.md)
 - [Oscar web import plan](OSCAR_WEB_IMPORT_PLAN.md)
 - [Personal IMDb ratings plan](IMDB_PERSONAL_RATINGS_PLAN.md)

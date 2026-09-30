@@ -20,6 +20,18 @@ public sealed class RutrackerTitleParserTests
     }
 
     [Fact]
+    public void KeepsOriginalTitleAfterBracketLabel()
+    {
+        var parsed = RutrackerTitleParser.Parse("Локално име [етикет] / Original Title (1999) [2024, BDRip]", "movie");
+
+        Assert.Equal("Original Title", parsed.Title);
+        Assert.Equal(1999, parsed.Year);
+        Assert.Equal("title_parenthesis", parsed.YearSource);
+        Assert.True(parsed.YearAmbiguous);
+        Assert.Contains(parsed.Candidates, candidate => candidate.Title == "Original Title" && candidate.Origin == "alternate");
+    }
+
+    [Fact]
     public void ConfiguredFeedTypeOverridesSeriesMarkers()
     {
         const string rawTitle = "Example / Example Title / Сезон: 1 / Серии: 1-8 из 8 [2026]";
@@ -76,5 +88,34 @@ public sealed class RutrackerTitleParserTests
         Assert.Equal(string.Empty, empty.Title);
         Assert.Null(empty.Year);
         Assert.Contains("empty_raw_title", empty.ReasonCodes);
+    }
+
+    [Theory]
+    [InlineData("Без лица / Face/Off (1997) [1080p]", "movie", "Face/Off", 1997, false)]
+    [InlineData("Локално [етикет] / Original Title (1999) [2024, BDRip]", "movie", "Original Title", 1999, false)]
+    [InlineData("Локално | Original Title [1999, BDRip]", "movie", "Original Title", 1999, false)]
+    [InlineData("2046 [2004, BDRip]", "movie", "2046", 2004, false)]
+    [InlineData("Season of the Witch [2011]", null, "Season of the Witch", 2011, false)]
+    [InlineData("Monarch / Monarch: Legacy of Monsters / S01E02 [2024-2026]", "series", "Monarch", 2024, true)]
+    [InlineData("未来 [2024, BDRip]", "movie", "未来", 2024, false)]
+    [InlineData("Film [Part 2] (2020) / Another Film [2024, BDRip]", "movie", "Film [Part 2]", 2020, false)]
+    [InlineData("Film [Part 2, The Return] (2020) [BDRip]", "movie", "Film [Part 2, The Return]", 2020, false)]
+    public void OfflineTitleCorpus(string raw, string? feedType, string title, int year, bool isSeries)
+    {
+        var parsed = RutrackerTitleParser.Parse(raw, feedType);
+
+        Assert.Equal(title, parsed.Title);
+        Assert.Equal(year, parsed.Year);
+        Assert.Equal(isSeries, parsed.IsSeries);
+        Assert.InRange(parsed.Candidates.Count, 1, 3);
+    }
+
+    [Fact]
+    public void FutureYearBoundaryMovesWithCurrentYear()
+    {
+        var maximum = DateTime.UtcNow.Year + 10;
+
+        Assert.Equal(maximum, RutrackerTitleParser.Parse($"Future Film [{maximum}]", "movie").Year);
+        Assert.Null(RutrackerTitleParser.Parse($"Future Film [{maximum + 1}]", "movie").Year);
     }
 }

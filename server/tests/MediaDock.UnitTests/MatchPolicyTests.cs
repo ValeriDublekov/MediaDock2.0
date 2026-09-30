@@ -1,10 +1,25 @@
 using MediaDock.Application.Matching;
+using MediaDock.Application.Parsing;
 
 namespace MediaDock.UnitTests;
 
 [Trait("Category", "Matching")]
 public sealed class MatchPolicyTests
 {
+    [Theory]
+    [InlineData("Без лица / Face/Off (1997)", "Face / Off", MatchDecisionStatus.Accepted)]
+    [InlineData("Wrong Film / Right Film (2020)", "Right Film", MatchDecisionStatus.Accepted)]
+    [InlineData("Wrong Film (2020)", "Other Film", MatchDecisionStatus.Ambiguous)]
+    [InlineData("Непреводим (2020)", "Untranslated", MatchDecisionStatus.Ambiguous)]
+    [InlineData("Film 2 (2020)", "Film 3", MatchDecisionStatus.Ambiguous)]
+    public void VerifiesIdentityAcrossCandidatesWithoutDiscardingNumbers(
+        string raw, string resolved, MatchDecisionStatus expected)
+    {
+        var decision = MatchPolicy.VerifyTitle(RutrackerTitleParser.Parse(raw, "movie"), resolved);
+
+        Assert.Equal(expected, decision.Status);
+    }
+
     [Theory]
     [InlineData(2024, 2024, MatchDecisionStatus.Accepted, MatchReasonCodes.MovieReleaseYearWithinTolerance)]
     [InlineData(2024, 2023, MatchDecisionStatus.Accepted, MatchReasonCodes.MovieReleaseYearWithinTolerance)]
@@ -163,5 +178,14 @@ public sealed class MatchPolicyTests
         Assert.Equal(2012, range.EndYear);
         Assert.True(range.Contains(2012));
         Assert.False(range.Contains(2013));
+    }
+
+    [Fact]
+    public void BroadcastYearBoundaryMatchesParserBoundary()
+    {
+        var maximum = DateTime.UtcNow.Year + 10;
+
+        Assert.NotNull(BroadcastRange.Parse(maximum.ToString()));
+        Assert.Null(BroadcastRange.Parse((maximum + 1).ToString()));
     }
 }

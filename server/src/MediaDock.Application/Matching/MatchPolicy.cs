@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
+using MediaDock.Application.Parsing;
 
 namespace MediaDock.Application.Matching;
 
@@ -31,7 +33,7 @@ public sealed record MediaClassification(SourceType SourceType, ContentKind Cont
 public sealed record BroadcastRange(int StartYear, int? EndYear, string Raw)
 {
     private const int MinimumYear = 1888;
-    private const int MaximumYear = 2035;
+    private static int MaximumYear => DateTime.UtcNow.Year + 10;
 
     private static readonly Regex RangePattern = new(
         @"^\s*(?<start>\d{4})(?<range>\s*[-–—]\s*(?<end>\d{4}|present|current|ongoing)?)?\s*$",
@@ -99,6 +101,29 @@ public static class MatchReasonCodes
 
 public static class MatchPolicy
 {
+    public static MatchDecision VerifyTitle(ParsedRutrackerTitle parsed, string resolvedTitle)
+    {
+        var resolved = NormalizeIdentityTitle(resolvedTitle);
+        if (resolved.Length == 0)
+        {
+            return new MatchDecision(MatchDecisionStatus.Ambiguous, "ambiguous_title_match");
+        }
+
+        var candidates = parsed.Candidates.Count > 0
+            ? parsed.Candidates.Select(candidate => candidate.Title)
+            : [parsed.Title];
+        return candidates.Any(candidate => NormalizeIdentityTitle(candidate) == resolved)
+            ? new MatchDecision(MatchDecisionStatus.Accepted, "title_match")
+            : new MatchDecision(MatchDecisionStatus.Ambiguous, "ambiguous_title_match");
+    }
+
+    private static string NormalizeIdentityTitle(string title)
+    {
+        var normalized = title.Normalize(NormalizationForm.FormKC).ToLowerInvariant();
+        return string.Join(' ', Regex.Matches(normalized, @"[\p{L}\p{N}]+")
+            .Select(match => match.Value));
+    }
+
     public static SourceType NormalizeSourceType(string? value) => value?.Trim().ToLowerInvariant() switch
     {
         "movie" => SourceType.Movie,

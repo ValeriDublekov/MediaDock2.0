@@ -8,12 +8,19 @@ public sealed record ParsedRutrackerTitle(
     string NormalizedTitle,
     int? Year,
     bool IsSeries,
-    IReadOnlyList<string> ReasonCodes);
+    IReadOnlyList<string> ReasonCodes)
+{
+    public IReadOnlyList<TitleCandidate> Candidates { get; init; } = [];
+    public string YearSource { get; init; } = "missing";
+    public bool YearAmbiguous { get; init; }
+}
+
+public sealed record TitleCandidate(string Title, string Origin);
 
 public static class RutrackerTitleParser
 {
     private const int MinimumYear = 1888;
-    private const int MaximumYear = 2035;
+    private static int MaximumYear => DateTime.UtcNow.Year + 10;
     private const RegexOptions IgnoreCase = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
 
     private static readonly Regex LeadingCategory = new(@"^\[.*?\]\s*", RegexOptions.CultureInvariant);
@@ -24,15 +31,19 @@ public static class RutrackerTitleParser
         @"\[\s*(?<year>\d{4})(?:\s*[-–—]\s*\d{4})?(?!\s*[pPiI])\b",
         RegexOptions.CultureInvariant);
     private static readonly Regex ParenthesizedYear = new(
-        @"\b\((?<year>\d{4})(?:\s*[-–—]\s*\d{4})?\)",
+        @"\((?<year>\d{4})(?:\s*[-–—]\s*\d{4})?\)",
         RegexOptions.CultureInvariant);
     private static readonly Regex StandaloneYear = new(
-        @"\b(?<year>188[89]|189\d|19\d{2}|20[0-3]\d)\b(?!\s*[pPiI])",
+        @"\b(?<year>\d{4})\b(?!\s*[pPiI])",
         RegexOptions.CultureInvariant);
     private static readonly Regex OutOfRangeYear = new(
         @"(?:\[|\()\s*(?<year>\d{4})(?!\s*[pPiI])",
         RegexOptions.CultureInvariant);
-    private static readonly Regex TitleSeparator = new(@"\s+/\s*|\s*/\s+", RegexOptions.CultureInvariant);
+    private static readonly Regex TitleSeparator = new(@"\s+[/|]\s*|\s*[/|]\s+", RegexOptions.CultureInvariant);
+    private static readonly Regex BracketSection = new(@"\[[^\]]*\]", RegexOptions.CultureInvariant);
+    private static readonly Regex TechnicalBracket = new(
+        @"\b(?:\d{3,4}p|bdrip|brrip|webrip|web[- .]?dl|dvdrip|hdrip|uhd|x26[45]|h\.?26[45])\b",
+        IgnoreCase);
     private static readonly Regex TrailingParenthesis = new(@"\s*(\([^)]*\))$", RegexOptions.CultureInvariant);
     private static readonly Regex Whitespace = new(@"\s+", RegexOptions.CultureInvariant);
     private static readonly Regex TrailingSeriesMarker = new(
@@ -86,6 +97,25 @@ public static class RutrackerTitleParser
             .Select(part => part.Trim(' ', '-'))
             .Where(part => part.Length > 0)
             .ToArray();
+        var candidates = parts
+            .Where(part => !StandaloneSeriesMarker.IsMatch(part))
+            .Select((part, index) => new TitleCandidate(CleanupTitlePart(part, !string.Equals(feedType, "series", StringComparison.OrdinalIgnoreCase)),
+                index == 0 ? "leading" : "alternate"))
+            .Where(candidate => candidate.Title.Length is > 0 and <= 160)
+            .DistinctBy(candidate => candidate.Title, StringComparer.OrdinalIgnoreCase)
+            .Take(3)
+            .ToArray();
+
+        ParsedRutrackerTitle Result(string selected, bool series, IReadOnlyList<string> reasons) =>
+            CreateResult(selected, year, series, reasons) with
+            {
+                Candidates = candidates,
+                YearSource = yearReason == "valid_year_extracted"
+                    ? ParenthesizedYear.IsMatch(clean) ? "title_parenthesis" : BracketYear.IsMatch(clean) ? "bracket" : "standalone"
+                    : yearReason,
+                YearAmbiguous = Regex.Matches(clean, @"(?<!\d)(?:18|19|20)\d{2}(?!\d)")
+                    .Select(match => match.Value).Distinct().Skip(1).Any()
+            };
 
         string title;
         bool isSeries;
@@ -97,7 +127,7 @@ public static class RutrackerTitleParser
             isSeries = false;
             typeReason = "feed_type_authoritative_movie";
             var reasons = CreateReasons(yearReason, titleReason, typeReason, title);
-            return CreateResult(title, year, isSeries, reasons);
+            return Result(title, isSeries, reasons);
         }
 
         if (string.Equals(normalizedFeedType, "series", StringComparison.OrdinalIgnoreCase))
@@ -106,13 +136,13 @@ public static class RutrackerTitleParser
             isSeries = true;
             typeReason = "feed_type_authoritative_series";
             var reasons = CreateReasons(yearReason, titleReason, typeReason, title);
-            return CreateResult(title, year, isSeries, reasons);
+            return Result(title, isSeries, reasons);
         }
 
         isSeries = SeriesMarker.IsMatch(clean);
         (title, var inferredTitleReason) = SelectTitle(parts, removeSeriesMarkers: isSeries);
         typeReason = isSeries ? "series_inferred_from_markers" : null;
-        return CreateResult(title, year, isSeries, CreateReasons(yearReason, inferredTitleReason, typeReason, title));
+        return Result(title, isSeries, CreateReasons(yearReason, inferredTitleReason, typeReason, title));
     }
 
     private static ParsedRutrackerTitle Empty(string reason) =>
@@ -152,13 +182,13 @@ public static class RutrackerTitleParser
 
     private static (int? Year, string Reason) ExtractYear(string title)
     {
-        var match = BracketYear.Match(title);
+        var match = ParenthesizedYear.Match(title);
         if (match.Success)
         {
             return ValidateYear(match.Groups["year"].Value);
         }
 
-        match = ParenthesizedYear.Match(title);
+        match = BracketYear.Match(title);
         if (match.Success)
         {
             return ValidateYear(match.Groups["year"].Value);
@@ -187,8 +217,13 @@ public static class RutrackerTitleParser
 
     private static string ExtractTitleSection(string title)
     {
-        var bracketIndex = title.IndexOf('[', StringComparison.Ordinal);
-        var titleSection = (bracketIndex < 0 ? title : title[..bracketIndex]).Trim();
+        var titleSection = BracketSection.Replace(title, match =>
+            TechnicalBracket.IsMatch(match.Value) ||
+            Regex.IsMatch(match.Value, @"^\[\s*\d{4}(?:\s*[-–—]\s*\d{4})?(?:\s*[,\]])", RegexOptions.CultureInvariant) ||
+            Regex.IsMatch(title[(match.Index + match.Length)..], @"^\s+[/|]\s*", RegexOptions.CultureInvariant)
+                ? " "
+                : match.Value).Trim();
+        titleSection = Whitespace.Replace(titleSection, " ");
         var trailingParenthesis = TrailingParenthesis.Match(titleSection);
         if (trailingParenthesis.Success && IsMetadataParenthesis(trailingParenthesis.Groups[1].Value))
         {
@@ -257,6 +292,7 @@ public static class RutrackerTitleParser
     private static string CleanupTitlePart(string part, bool removeSeriesMarkers)
     {
         var cleaned = Whitespace.Replace(part, " ").Trim(' ', '-');
+        cleaned = ParenthesizedYear.Replace(cleaned, string.Empty).Trim(' ', '-');
         var trailingParenthesis = TrailingParenthesis.Match(cleaned);
         if (trailingParenthesis.Success && IsMetadataParenthesis(trailingParenthesis.Groups[1].Value))
         {
