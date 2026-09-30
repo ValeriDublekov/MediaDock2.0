@@ -72,11 +72,11 @@ Perform this procedure separately for each environment, only after its owner app
 2. Create a final custom-format PostgreSQL dump with the root-only backup service. Validate it with `pg_restore -l` and verify restoreability in an isolated database. The dump contains the plaintext OMDb key and must remain root-only.
 3. Disable that environment's deployment and Worker timers, stop any active deploy/Worker/API writers, and keep the API stopped for the schema operation.
 4. Use the separately approved database-administration procedure for that environment to provision an empty database or fresh volume. Retain the old volume and verified dump until application checks pass. Do not use `docker compose down -v` as routine cleanup and do not add volume deletion to `deploy.sh`.
-5. Start PostgreSQL and select the validated API image from the release containing the new baseline. Confirm the ignored `.env` selects the approved empty target database (for this production cutover, `POSTGRES_DB=mediadock2`), not the preserved legacy database. Never rely on Compose's default `mediadock-next-api` tag: it may still point to an older release. Run the one-shot migration profile from the Compose project directory with the selected image pinned:
+5. Start PostgreSQL and select the validated API image from the release containing the new baseline. Confirm the ignored `.env` selects the approved empty target database (for this production cutover, `POSTGRES_DB=mediadock2`), not the preserved legacy database. Never rely on Compose's default `mediadock-next-api` tag: it may still point to an older release. Replace `YOUR_VALIDATED_RELEASE_SHA` with the full validated release SHA and run the one-shot migration profile from the Compose project directory with that image pinned:
 
 	```sh
 	cd /opt/docker/projects/mediadock-next
-	release_sha=<validated-release-sha>
+	release_sha=YOUR_VALIDATED_RELEASE_SHA
 	docker image inspect "mediadock-next-api:$release_sha" >/dev/null
 	API_IMAGE="mediadock-next-api:$release_sha" docker compose --project-name mediadock-next --project-directory "$PWD" --env-file "$PWD/.env" --file "$PWD/compose.yaml" --profile tools run --rm --no-deps migrate
 	```
