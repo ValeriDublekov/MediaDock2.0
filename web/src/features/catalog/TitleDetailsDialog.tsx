@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { getTitle, getTitleOccurrences } from '../../api/client'
-import type { Occurrence, PageResponse, TitleDetails } from '../../api/types'
+import { getTitle, getTitleOccurrences, getTitleOscars } from '../../api/client'
+import type { Occurrence, OscarFilm, PageResponse, TitleDetails } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate, formatWords } from '../../shared/format'
+import { FavoriteControls } from '../favorites/FavoriteControls'
 
 interface TitleDetailsDialogProps {
   titleId: number
@@ -12,6 +13,7 @@ interface TitleDetailsDialogProps {
 export function TitleDetailsDialog({ titleId, onClose }: TitleDetailsDialogProps) {
   const [title, setTitle] = useState<TitleDetails | null>(null)
   const [occurrences, setOccurrences] = useState<PageResponse<Occurrence> | null>(null)
+  const [oscars, setOscars] = useState<OscarFilm[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -20,11 +22,12 @@ export function TitleDetailsDialog({ titleId, onClose }: TitleDetailsDialogProps
     let current = true
     setLoading(true)
     setError(null)
-    Promise.all([getTitle(titleId), getTitleOccurrences(titleId, { page: 1, pageSize: 5 })])
-      .then(([details, page]) => {
+    Promise.all([getTitle(titleId), getTitleOccurrences(titleId, { page: 1, pageSize: 5 }), getTitleOscars(titleId)])
+      .then(([details, page, awards]) => {
         if (!current) return
         setTitle(details)
         setOccurrences(page)
+        setOscars(awards)
       })
       .catch((requestError: unknown) => {
         if (current) setError(requestError instanceof Error ? requestError.message : 'The title request failed.')
@@ -61,8 +64,15 @@ export function TitleDetailsDialog({ titleId, onClose }: TitleDetailsDialogProps
                 <div><dt>Countries</dt><dd>{title.countries.join(', ') || 'Not tagged'}</dd></div>
                 <div><dt>First seen</dt><dd>{formatDate(title.firstSeenAt)}</dd></div>
               </dl>
+              <FavoriteControls from={oscars.length ? 'oscar' : 'catalog'} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} titleId={titleId} />
+              {oscars.length > 0 && <section><div className="section-title-row"><h2>Oscar</h2></div>
+                {oscars.map((film) => <div className="favorite-award" key={film.id}>
+                  <strong>{film.title} ({film.filmYear})</strong>
+                  {film.nominations.map((nomination) => <span key={nomination.id}>{nomination.category}: {nomination.isWinner ? 'Winner' : 'Nominee'} · {nomination.nominees}</span>)}
+                </div>)}
+              </section>}
               <div>
-                <div className="section-title-row"><div><h2>Feed observations</h2><p>Most recently seen occurrences</p></div></div>
+                <div className="section-title-row"><div><h2>Torrent sources</h2><p>Most recently seen occurrences</p></div></div>
                 {occurrences?.items.length ? (
                   <div className="occurrence-list">{occurrences.items.map((item) => <OccurrenceRow item={item} key={item.id} />)}</div>
                 ) : (

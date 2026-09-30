@@ -47,6 +47,8 @@ sequenceDiagram
 
 The [catalog view](../../web/src/features/catalog/CatalogView.tsx) builds the query and calls `getCatalog`. The [API client](../../web/src/api/client.ts) serializes query values, prefixes `/api`, and calls `fetch`; its TypeScript contracts live in [api/types.ts](../../web/src/api/types.ts). On the server, [API startup](../../server/src/MediaDock.Api/Program.cs) registers `ICatalogApiService` and maps routes from [CatalogEndpoints](../../server/src/MediaDock.Api/Catalog/CatalogEndpoints.cs). The endpoint delegates to [CatalogApiService](../../server/src/MediaDock.Api/Catalog/CatalogApiService.cs), which filters, counts, orders, pages, and projects EF queries over the Infrastructure [DbContext](../../server/src/MediaDock.Infrastructure/Persistence/MediaDockDbContext.cs). The HTTP query and response DTOs are in [CatalogContracts](../../server/src/MediaDock.Api/Catalog/CatalogContracts.cs).
 
+Favorites follow the same direct API-to-EF pattern: [FavoriteApiService](../../server/src/MediaDock.Api/Favorites/FavoriteApiService.cs) owns filtering, page projection, source-checked atomic additions and independent marker updates. [FavoriteProvider](../../web/src/features/favorites/FavoriteContext.tsx) shares current favorites between catalogs, dialogs and the favorites screen; title detail requests separately load Oscar records and torrent occurrences by canonical `TitleId`.
+
 For catalog behavior, start with the API endpoint, contract, or service that owns the change. Keep the current query there unless the code gains a real shared use case; do not add an Application abstraction just to make the layers look uniform.
 
 ## Worker Ingestion Flow

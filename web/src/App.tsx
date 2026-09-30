@@ -2,15 +2,18 @@ import { useState } from 'react'
 import { CatalogView } from './features/catalog/CatalogView'
 import { HistoryView } from './features/history/HistoryView'
 import { OscarCatalogView } from './features/oscar/OscarCatalogView'
+import { FavoriteProvider } from './features/favorites/FavoriteContext'
+import { FavoritesView } from './features/favorites/FavoritesView'
 import { SourceSettingsView } from './features/sources/SourceSettingsView'
 
-type Section = 'catalog' | 'oscar' | 'sources' | 'history'
+type Section = 'catalog' | 'oscar' | 'favorites' | 'sources' | 'history'
 
 const sections: { id: Section; number: string; label: string }[] = [
   { id: 'catalog', number: '01', label: 'Catalog' },
   { id: 'oscar', number: '02', label: 'Oscar catalog' },
-  { id: 'sources', number: '03', label: 'Configuration' },
-  { id: 'history', number: '04', label: 'Scan history' },
+  { id: 'favorites', number: '03', label: 'Favorites' },
+  { id: 'sources', number: '04', label: 'Configuration' },
+  { id: 'history', number: '05', label: 'Scan history' },
 ]
 
 const sectionContent: Record<Section, { eyebrow: string; title: string; description: string }> = {
@@ -24,6 +27,11 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
     title: 'Oscar catalog',
     description: 'Browse nominated films, award outcomes, and available metadata.',
   },
+  favorites: {
+    eyebrow: 'MY MOVIES',
+    title: 'Favorites',
+    description: 'Movies saved from the catalog and Oscar awards.',
+  },
   sources: {
     eyebrow: 'CONFIGURATION',
     title: 'Configuration',
@@ -36,7 +44,7 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
   },
 }
 
-function App() {
+function AppContent() {
   const [section, setSection] = useState<Section>('catalog')
   const content = sectionContent[section]
 
@@ -89,12 +97,17 @@ function App() {
 
           {section === 'catalog' && <CatalogView />}
           {section === 'oscar' && <OscarCatalogView />}
+          {section === 'favorites' && <FavoritesView />}
           {section === 'sources' && <SourceSettingsView />}
           {section === 'history' && <HistoryView />}
         </div>
       </main>
     </div>
   )
+}
+
+function App() {
+  return <FavoriteProvider><AppContent /></FavoriteProvider>
 }
 
 export default App

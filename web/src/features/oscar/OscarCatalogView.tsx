@@ -10,6 +10,7 @@ import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { formatWords } from '../../shared/format'
 import { OscarFilmDetailsDialog } from './OscarFilmDetailsDialog'
+import { FavoriteControls } from '../favorites/FavoriteControls'
 
 interface OscarFilters {
   search: string
@@ -100,6 +101,7 @@ function OscarRow({ film, onSelect }: { film: OscarFilm; onSelect: (id: number) 
           {film.enrichmentAttemptCount} {film.enrichmentAttemptCount === 1 ? 'attempt' : 'attempts'}
         </span>
       </td>
+      <td><FavoriteControls from="oscar" mediaType={film.mediaType} occurrenceCount={0} titleId={film.titleId} /></td>
     </tr>
   )
 }
@@ -229,7 +231,7 @@ export function OscarCatalogView() {
         <>
           <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th>FILM</th><th>CATEGORIES</th><th>RESULT</th><th>IMDB</th><th>OMDB</th></tr></thead>
+              <thead><tr><th>FILM</th><th>CATEGORIES</th><th>RESULT</th><th>IMDB</th><th>OMDB</th><th>FAVORITES</th></tr></thead>
               <tbody>
                 {result.items.map((film) => (
                   <OscarRow film={film} key={film.id} onSelect={setSelectedFilmId} />

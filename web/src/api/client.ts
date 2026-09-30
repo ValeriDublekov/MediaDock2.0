@@ -1,6 +1,7 @@
 import type {
   CatalogQuery,
   CatalogTitle,
+  FavoriteMovie,
   OscarCatalogQuery,
   OscarFilm,
   Occurrence,
@@ -101,6 +102,26 @@ export function getOscarFilms(query: OscarCatalogQuery, fetcher?: typeof fetch) 
 
 export function getOscarFilm(id: number, fetcher?: typeof fetch) {
   return requestJson<OscarFilm>(`/oscars/${id}`, {}, fetcher)
+}
+
+export function getTitleOscars(id: number, fetcher?: typeof fetch) {
+  return requestJson<OscarFilm[]>(`/titles/${id}/oscars`, {}, fetcher)
+}
+
+export function getFavorites(query: { status?: 'all' | 'to_watch' | 'to_download'; page: number; pageSize: number }, fetcher?: typeof fetch) {
+  return requestJson<PageResponse<FavoriteMovie>>(withQuery('/favorites', query), {}, fetcher)
+}
+
+export function addFavorite(titleId: number, from: 'oscar' | 'catalog', fetcher?: typeof fetch) {
+  return requestJson<FavoriteMovie>('/favorites', { method: 'POST', body: JSON.stringify({ titleId, from }) }, fetcher)
+}
+
+export function updateFavorite(titleId: number, input: { toWatch?: boolean; toDownload?: boolean }, fetcher?: typeof fetch) {
+  return requestJson<FavoriteMovie>(`/favorites/${titleId}`, { method: 'PATCH', body: JSON.stringify(input) }, fetcher)
+}
+
+export function removeFavorite(titleId: number, fetcher?: typeof fetch) {
+  return requestJson<void>(`/favorites/${titleId}`, { method: 'DELETE' }, fetcher)
 }
 
 export function getTitle(id: number, fetcher?: typeof fetch) {

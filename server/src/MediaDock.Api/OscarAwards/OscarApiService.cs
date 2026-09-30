@@ -13,6 +13,7 @@ internal interface IOscarApiService
         CancellationToken cancellationToken);
 
     Task<OscarFilmResponse> GetOscarFilmAsync(long id, CancellationToken cancellationToken);
+    Task<IReadOnlyList<OscarFilmResponse>> GetByTitleAsync(long titleId, CancellationToken cancellationToken);
 }
 
 internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiService
@@ -94,6 +95,20 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
         return film is null
             ? throw new ApiNotFoundException("Oscar film not found.")
             : ToResponse(film);
+    }
+
+    public async Task<IReadOnlyList<OscarFilmResponse>> GetByTitleAsync(long titleId, CancellationToken cancellationToken)
+    {
+        if (!await dbContext.Titles.AnyAsync(title => title.Id == titleId, cancellationToken))
+            throw new ApiNotFoundException("Title not found.");
+
+        var films = await dbContext.OscarFilms.AsNoTracking()
+            .Where(film => film.TitleId == titleId)
+            .Include(film => film.Title)
+            .Include(film => film.Nominations)
+            .OrderBy(film => film.Id)
+            .ToListAsync(cancellationToken);
+        return films.Select(ToResponse).ToArray();
     }
 
     private static OscarFilmResponse ToResponse(OscarFilm film) => new(

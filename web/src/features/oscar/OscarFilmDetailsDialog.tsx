@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { getOscarFilm } from '../../api/client'
-import type { OscarFilm } from '../../api/types'
+import { getOscarFilm, getTitleOccurrences, getTitleOscars } from '../../api/client'
+import type { Occurrence, OscarFilm } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate, formatWords } from '../../shared/format'
+import { FavoriteControls } from '../favorites/FavoriteControls'
 
 interface OscarFilmDetailsDialogProps {
   filmId: number
@@ -11,6 +12,8 @@ interface OscarFilmDetailsDialogProps {
 
 export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDialogProps) {
   const [film, setFilm] = useState<OscarFilm | null>(null)
+  const [related, setRelated] = useState<OscarFilm[]>([])
+  const [occurrences, setOccurrences] = useState<Occurrence[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -19,7 +22,12 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
   useEffect(() => {
     let current = true
     getOscarFilm(filmId)
-      .then((response) => { if (current) setFilm(response) })
+      .then(async (response) => {
+        const [awards, sources] = await Promise.all([
+          getTitleOscars(response.titleId), getTitleOccurrences(response.titleId, { page: 1, pageSize: 5 }),
+        ])
+        if (current) { setFilm(response); setRelated(awards); setOccurrences(sources.items) }
+      })
       .catch((requestError: unknown) => {
         if (current) setError(requestError instanceof Error ? requestError.message : 'The Oscar film request failed.')
       })
@@ -78,6 +86,16 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
                 <div><dt>Box office</dt><dd>{film.boxOffice ?? 'Not listed'}</dd></div>
                 {film.lastEnrichmentError && <div><dt>Last error</dt><dd>{film.lastEnrichmentError}</dd></div>}
               </dl>
+              <FavoriteControls from="oscar" mediaType={film.mediaType} occurrenceCount={occurrences.length} titleId={film.titleId} />
+              {related.filter((item) => item.id !== film.id).map((item) => <section key={item.id}>
+                <h2>{item.title} ({item.filmYear})</h2>
+                {item.nominations.map((nomination) => <p key={nomination.id}>{nomination.category}: {nomination.isWinner ? 'Winner' : 'Nominee'}</p>)}
+              </section>)}
+              <section><div className="section-title-row"><h2>Torrent sources</h2></div>
+                {occurrences.length ? occurrences.map((item) => <div className="occurrence-row" key={item.id}>
+                  <strong>{item.sourceName}</strong><a href={item.torrentUrl} rel="noreferrer" target="_blank">Open source</a>
+                </div>) : <EmptyState title="No torrent sources" message="No torrent occurrence has been observed for this film." />}
+              </section>
 
               <section>
                 <div className="section-title-row">

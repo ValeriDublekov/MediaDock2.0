@@ -235,3 +235,23 @@ export interface ScanRunQuery {
   status?: ScanRun['status']
   trigger?: ScanRun['trigger']
 }
+
+export interface FavoriteMovie {
+  titleId: number
+  title: string
+  year: number | null
+  mediaType: MediaType
+  imdbRating: number | null
+  posterUrl: string | null
+  toWatch: boolean
+  toDownload: boolean
+  addedFromOscar: boolean
+  addedFromCatalog: boolean
+  createdAt: string
+  updatedAt: string
+  oscarFilmCount: number
+  nominationCount: number
+  winCount: number
+  occurrenceCount: number
+  lastSeenAt: string | null
+}

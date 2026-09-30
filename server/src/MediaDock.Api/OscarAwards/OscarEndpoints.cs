@@ -34,6 +34,13 @@ internal static class OscarEndpoints
             .Produces<OscarFilmResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
+        app.MapGet("/api/titles/{titleId:long}/oscars", async Task<Ok<IReadOnlyList<OscarFilmResponse>>> (
+            long titleId, IOscarApiService oscarService, CancellationToken cancellationToken) =>
+            TypedResults.Ok(await oscarService.GetByTitleAsync(titleId, cancellationToken)))
+            .WithName("GetTitleOscars")
+            .WithSummary("List all Oscar records and nominations for one title.")
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         return app;
     }
 }

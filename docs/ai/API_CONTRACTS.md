@@ -11,6 +11,11 @@ This document describes the API in `server/`. Routes are registered in [Program.
 | `GET /api/catalog` | [CatalogQuery](../../server/src/MediaDock.Api/Catalog/CatalogContracts.cs) | `200 PageResponse<CatalogTitleResponse>` | `400 ValidationProblemDetails` for invalid query values. |
 | `GET /api/oscars` | [OscarCatalogQuery](../../server/src/MediaDock.Api/OscarAwards/OscarContracts.cs) | `200 PageResponse<OscarFilmResponse>` | `400 ValidationProblemDetails` for invalid query values or a reversed film-year range. |
 | `GET /api/oscars/{id:long}` | Route `id` | `200 OscarFilmResponse` with all selected-category nominations and linked title metadata | `404 ProblemDetails` when the Oscar film does not exist. |
+| `GET /api/titles/{titleId:long}/oscars` | Canonical title ID | `200 OscarFilmResponse[]` for all linked Oscar records and nominations, or an empty array | `404 ProblemDetails` when the title does not exist. |
+| `GET /api/favorites` | `status=all|to_watch|to_download`, `page`, `pageSize` | `200 PageResponse<FavoriteMovieResponse>` | `400 ValidationProblemDetails` for invalid query values. |
+| `POST /api/favorites` | `titleId`, `from=oscar|catalog` | `200 FavoriteMovieResponse` | `400 ValidationProblemDetails`; `404 ProblemDetails` if the movie or requested source is absent. |
+| `PATCH /api/favorites/{titleId:long}` | Optional `toWatch`, `toDownload` booleans (at least one) | `200 FavoriteMovieResponse` | `400 ValidationProblemDetails` for empty input or enabling download without an occurrence; `404 ProblemDetails` if not a favorite. |
+| `DELETE /api/favorites/{titleId:long}` | Canonical title ID | `204`, also for absent favorites | None declared. |
 | `GET /api/titles/{id:long}` | Route `id` | `200 TitleDetailsResponse` | `404 ProblemDetails` when the title does not exist. |
 | `GET /api/titles/{id:long}/occurrences` | Route `id`, [OccurrencesQuery](../../server/src/MediaDock.Api/Catalog/CatalogContracts.cs) | `200 PageResponse<OccurrenceResponse>` | `400 ValidationProblemDetails`; `404 ProblemDetails` when the title does not exist. |
 | `GET /api/sources` | None | `200 IReadOnlyList<SourceResponse>`, ordered by `Name` then `Id` | None declared. |
@@ -68,6 +73,9 @@ Nullable response fields are marked `?`; collection fields are returned as lists
 | `ProviderSettingsResponse` | `OmdbApiKeyConfigured`, `OmdbDailyRequestLimit`, `OscarEnrichmentMaxFilmsPerRun`, `OscarEnrichmentMaxRequestsPerDay`, `UpdatedAt?`; does not include the key. |
 | `ParseLogResponse` | `Id`, `SourceId?`, `SourceName?`, `SourceItemKey?`, `RawTitle`, `FeedName`, `ParsedSuccessfully`, `ParsedTitle?`, `ParsedYear?`, `OmdbStatus`, `Ignored`, `IgnoreReason?`, `ErrorMessage?`, `Decision?`, `ProcessedAt`, `RetryState`, `AttemptCount`, `LastAttemptAt?`, `FeedType?`, `SourcePublishedAt?`, `ObservedAt?`, `EventKind?` |
 | `ScanRunResponse` | `Id`, `StartedAt`, `FinishedAt?`, `Status`, `Trigger`, `FeedsProcessed`, `EntriesSeen`, `TitlesCreated`, `OccurrencesCreated`, `CacheHits`, `OmdbRequests`, `IgnoredEntries`, `ErrorCount`, `ErrorSummary` |
+| `FavoriteMovieResponse` | `TitleId`, `Title`, `Year?`, `MediaType`, `ImdbRating?`, `PosterUrl?`, `ToWatch`, `ToDownload`, `AddedFromOscar`, `AddedFromCatalog`, `CreatedAt`, `UpdatedAt`, `OscarFilmCount`, `NominationCount`, `WinCount`, `OccurrenceCount`, `LastSeenAt?` |
+
+Favorites are one shared local list with no user identity. Only movies with the selected source record can be added. Repeated additions from the same source preserve manually disabled markers; a new source sets only its own default marker. Status filtering happens before pagination; results order by `UpdatedAt DESC, TitleId DESC`. The response summarizes occurrences rather than embedding torrent URLs; fetch details through the title endpoints. The API is unauthenticated and must remain within the documented loopback/LAN firewall boundary.
 
 When no settings row exists, `GET /api/settings` returns empty exclusion arrays, zero thresholds, and `UpdatedAt = null`. Writes create or update the singleton row with `id = 1`; concurrent first initialization resolves to that row.
 When no settings row exists, `GET /api/settings/providers/omdb` returns `OmdbApiKeyConfigured = false` and zero limits.

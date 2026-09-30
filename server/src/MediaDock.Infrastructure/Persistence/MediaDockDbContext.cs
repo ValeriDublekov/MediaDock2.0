@@ -21,6 +21,7 @@ public sealed class MediaDockDbContext : DbContext
     public DbSet<OscarFilm> OscarFilms => Set<OscarFilm>();
     public DbSet<OscarNomination> OscarNominations => Set<OscarNomination>();
     public DbSet<OscarEnrichmentRun> OscarEnrichmentRuns => Set<OscarEnrichmentRun>();
+    public DbSet<FavoriteMovie> FavoriteMovies => Set<FavoriteMovie>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

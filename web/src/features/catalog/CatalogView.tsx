@@ -5,6 +5,7 @@ import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { formatDate, formatWords } from '../../shared/format'
 import { TitleDetailsDialog } from './TitleDetailsDialog'
+import { FavoriteControls } from '../favorites/FavoriteControls'
 
 interface CatalogFilters {
   search: string
@@ -50,6 +51,7 @@ function CatalogRow({ title, onSelect }: { title: CatalogTitle; onSelect: (id: n
       <td className="rating-value">{title.imdbRating === null ? 'Not rated' : title.imdbRating.toFixed(1)}</td>
       <td>{title.genres.slice(0, 2).join(', ') || 'Not tagged'}</td>
       <td>{formatDate(title.lastSeenAt)}</td>
+      <td><FavoriteControls from="catalog" mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} titleId={title.id} /></td>
     </tr>
   )
 }
@@ -146,7 +148,7 @@ export function CatalogView() {
         <>
           <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th>TITLE</th><th>TYPE</th><th>IMDB</th><th>GENRES</th><th>LAST SEEN</th></tr></thead>
+              <thead><tr><th>TITLE</th><th>TYPE</th><th>IMDB</th><th>GENRES</th><th>LAST SEEN</th><th>FAVORITES</th></tr></thead>
               <tbody>{result.items.map((title) => <CatalogRow key={title.id} onSelect={setSelectedTitleId} title={title} />)}</tbody>
             </table>
           </div>

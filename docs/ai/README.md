@@ -21,6 +21,7 @@ Start here for work in this repository. Use the [local operations runbook](../..
 
 - [Improvement plan](IMPROVEMENT_PLAN.md)
 - [Oscar catalog plan](OSCAR_CATALOG_PLAN.md)
+- [Oscar web import plan](OSCAR_WEB_IMPORT_PLAN.md)
 - [Personal IMDb ratings plan](IMDB_PERSONAL_RATINGS_PLAN.md)
 - [Database model review](DATABASE_MODEL_REVIEW.md)
 - [Torrent title recognition plan](TORRENT_TITLE_RECOGNITION_PLAN.md)
