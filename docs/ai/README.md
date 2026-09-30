@@ -19,5 +19,9 @@ Start here for work in this repository. Use the [local operations runbook](../..
 
 ## Planned work
 
+- [Improvement plan](IMPROVEMENT_PLAN.md)
 - [Oscar catalog plan](OSCAR_CATALOG_PLAN.md)
+- [Personal IMDb ratings plan](IMDB_PERSONAL_RATINGS_PLAN.md)
 - [Database model review](DATABASE_MODEL_REVIEW.md)
+- [Torrent title recognition plan](TORRENT_TITLE_RECOGNITION_PLAN.md)
+- [Favorite movies plan](FAVORITE_MOVIES_PLAN.md)
