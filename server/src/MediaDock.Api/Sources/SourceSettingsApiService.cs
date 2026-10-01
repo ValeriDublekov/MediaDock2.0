@@ -69,16 +69,20 @@ internal sealed class SourceSettingsApiService(MediaDockDbContext dbContext) : I
         var existing = await dbContext.Sources.FirstOrDefaultAsync(source => source.Url == url, cancellationToken);
         if (existing is not null)
         {
-            if (existing.FeedType != profile.Id)
-            {
-                throw new ApiConflictException("This URL is already assigned to another profile.");
-            }
-
             if (existing.IsEnabled)
             {
+                if (existing.FeedType != profile.Id)
+                {
+                    throw new ApiConflictException("This URL is already assigned to another profile.");
+                }
+
                 throw new ApiConflictException("This URL is already configured in the profile.");
             }
 
+            // A removed URL is retained for occurrence/parse-log history. Reusing it
+            // from another profile is the supported way to repair a misclassified feed.
+            existing.FeedType = profile.Id;
+            existing.Name = profile.Name;
             existing.IsEnabled = true;
             await dbContext.SaveChangesAsync(cancellationToken);
             return new SourceUrlResponse(existing.Id, existing.Url);

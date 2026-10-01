@@ -225,11 +225,20 @@ public sealed class CatalogApiTests
             $"/api/sources/series_complete/urls/{secondComplete.Id}");
         Assert.Equal(HttpStatusCode.NoContent, removeUrlResponse.StatusCode);
 
+        using var moveRemovedUrlResponse = await client.PostAsJsonAsync(
+            "/api/sources/series_ongoing/urls",
+            new SourceUrlRequest { Url = "https://feed.rutracker.cc/complete-extra.atom" });
+        Assert.Equal(HttpStatusCode.Created, moveRemovedUrlResponse.StatusCode);
+        Assert.Equal(secondComplete.Id,
+            (await moveRemovedUrlResponse.Content.ReadFromJsonAsync<SourceUrlResponse>())?.Id);
+
         using var groupedSourcesResponse = await client.GetAsync("/api/sources");
         var groupedProfiles = await groupedSourcesResponse.Content.ReadFromJsonAsync<List<SourceProfileResponse>>();
         Assert.NotNull(groupedProfiles);
         Assert.Equal("https://feed.rutracker.cc/complete-replaced.atom", Assert.Single(groupedProfiles[1].Urls).Url);
-        Assert.Equal("https://feed.rutracker.cc/ongoing.atom", Assert.Single(groupedProfiles[2].Urls).Url);
+        Assert.Equal(
+            new[] { "https://feed.rutracker.cc/complete-extra.atom", "https://feed.rutracker.cc/ongoing.atom" },
+            groupedProfiles[2].Urls.Select(url => url.Url).OrderBy(url => url));
 
         using var settingsResponse = await client.GetAsync("/api/settings");
         var defaultSettings = await settingsResponse.Content.ReadFromJsonAsync<SettingsResponse>();
