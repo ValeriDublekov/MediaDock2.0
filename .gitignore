@@ -1,4 +1,5 @@
 .env
+.server-access.sshconfig
 .vs/
 **/bin/
 **/obj/

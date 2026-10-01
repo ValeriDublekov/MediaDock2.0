@@ -15,7 +15,7 @@ Start here for work in this repository. Use the [local operations runbook](../..
 | Persistence | [Data contracts](DATA_CONTRACTS.md) for entities, schema, and invariants; [Architecture](ARCHITECTURE.md) for persistence flows. |
 | Worker | [Architecture](ARCHITECTURE.md) for worker startup and ingestion flow; [Implementation status](IMPLEMENTATION_STATUS.md) for shipped capabilities and limits. |
 | Tests | [Testing](TESTING.md) for scoped commands, test categories, and required dependencies. |
-| Operations | [Security and operations](SECURITY_AND_OPERATIONS.md) for runtime boundaries and operational constraints; the [local runbook](../../README.md) for executable setup and maintenance instructions. |
+| Operations | [Server access](SERVER_ACCESS.md) for the local SSH profile and session workflow; [Security and operations](SECURITY_AND_OPERATIONS.md) for runtime boundaries; the [local runbook](../../README.md) for setup and maintenance. |
 
 ## Planned work
 
