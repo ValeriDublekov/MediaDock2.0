@@ -305,6 +305,7 @@ internal sealed class BackgroundJobDispatcher(
         {
             feedsProcessed = progress.FeedsProcessed,
             entriesSeen = progress.EntriesSeen,
+            knownEntriesSkipped = progress.KnownEntriesSkipped,
             titlesCreated = progress.TitlesCreated,
             occurrencesCreated = progress.OccurrencesCreated,
             cacheHits = progress.CacheHits,
@@ -317,6 +318,7 @@ internal sealed class BackgroundJobDispatcher(
             progress.Source,
             progress.FeedsProcessed,
             progress.EntriesSeen,
+            progress.KnownEntriesSkipped,
             progress.TitlesCreated,
             progress.OccurrencesCreated,
             progress.CacheHits,

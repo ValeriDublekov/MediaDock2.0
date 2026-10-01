@@ -186,7 +186,7 @@ public sealed class CatalogApiTests
         {
             StableKey = "series-feed",
             Name = "Series",
-            FeedType = "series",
+            FeedType = "series_ongoing",
             Url = "https://feed.rutracker.cc/series.atom"
         });
         Assert.Equal(HttpStatusCode.Created, createdSourceResponse.StatusCode);

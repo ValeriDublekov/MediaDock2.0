@@ -124,6 +124,7 @@ internal sealed class OperationalHistoryApiService(MediaDockDbContext dbContext)
                 run.Trigger,
                 run.FeedsProcessed,
                 run.EntriesSeen,
+                run.KnownEntriesSkipped,
                 run.TitlesCreated,
                 run.OccurrencesCreated,
                 run.CacheHits,

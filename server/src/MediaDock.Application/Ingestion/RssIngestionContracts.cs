@@ -5,6 +5,23 @@ namespace MediaDock.Application.Ingestion;
 
 public sealed record IngestionSource(long Id, string StableKey, string Name, string FeedType, string Url);
 
+public static class RssFeedTypes
+{
+    public const string Movie = "movie";
+    public const string CompleteSeason = "series_complete";
+    public const string OngoingSeries = "series_ongoing";
+
+    public static bool IsSeries(string? feedType) => feedType?.Trim().ToLowerInvariant() is
+        "series" or CompleteSeason or OngoingSeries;
+
+    public static string MetadataSourceType(string? feedType) => feedType?.Trim().ToLowerInvariant() switch
+    {
+        Movie => Movie,
+        "series" or CompleteSeason or OngoingSeries => "series",
+        _ => throw new ArgumentOutOfRangeException(nameof(feedType), "Unsupported RSS feed type.")
+    };
+}
+
 public sealed record IngestionMatchSettings(string[] ExcludedCountries, string[] ExcludedGenres);
 
 public sealed record IngestionFeedItem(
@@ -41,6 +58,7 @@ public sealed record IngestionRunSummary(
     string Status,
     int FeedsProcessed,
     int EntriesSeen,
+    int KnownEntriesSkipped,
     int TitlesCreated,
     int OccurrencesCreated,
     int CacheHits,
@@ -58,6 +76,7 @@ public sealed record IngestionProgressUpdate(
     string? Source,
     int FeedsProcessed,
     int EntriesSeen,
+    int KnownEntriesSkipped,
     int TitlesCreated,
     int OccurrencesCreated,
     int CacheHits,
@@ -85,9 +104,25 @@ public interface IRssIngestionRepository
         IngestionSource source,
         IngestionFeedItem feedItem,
         string sourceItemKey,
+        string itemFingerprint,
         ParsedRutrackerTitle parsed,
         MetadataDetails metadata,
         DateTimeOffset observedAt,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> TrySkipProcessedItemAsync(
+        IngestionSource source,
+        IngestionFeedItem feedItem,
+        string sourceItemKey,
+        string itemFingerprint,
+        DateTimeOffset observedAt,
+        CancellationToken cancellationToken = default);
+
+    Task MarkTerminalItemAsync(
+        long sourceId,
+        string sourceItemKey,
+        string itemFingerprint,
+        DateTimeOffset processedAt,
         CancellationToken cancellationToken = default);
 
     Task AddParseLogsAsync(

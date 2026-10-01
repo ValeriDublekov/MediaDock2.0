@@ -82,6 +82,19 @@ describe('SourceSettingsView', () => {
     expect(screen.getByText('Commit date (UTC) 2026-10-01')).toBeTruthy()
   })
 
+  it('offers separate modes for movies and the two series feed types', async () => {
+    render(<SourceSettingsView />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add source' }))
+    const feedType = screen.getByLabelText('Feed type') as HTMLSelectElement
+
+    expect(Array.from(feedType.options).map((option) => option.textContent)).toEqual([
+      'Movies',
+      'Complete seasons',
+      'Ongoing episodes',
+    ])
+  })
+
   it('keeps the saved key write-only and clears a replacement after saving', async () => {
     render(<SourceSettingsView />)
 

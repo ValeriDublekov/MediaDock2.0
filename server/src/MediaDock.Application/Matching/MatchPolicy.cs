@@ -127,7 +127,7 @@ public static class MatchPolicy
     public static SourceType NormalizeSourceType(string? value) => value?.Trim().ToLowerInvariant() switch
     {
         "movie" => SourceType.Movie,
-        "series" => SourceType.Series,
+        "series" or "series_complete" or "series_ongoing" => SourceType.Series,
         _ => SourceType.Unknown
     };
 

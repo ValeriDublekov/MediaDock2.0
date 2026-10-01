@@ -78,6 +78,22 @@ public sealed class MatchPolicyTests
             Assert.Equal(MatchDecisionStatus.Accepted, decision.Status));
     }
 
+    [Theory]
+    [InlineData("series_complete")]
+    [InlineData("series_ongoing")]
+    public void SeriesFeedModesTreatFeedYearAsSeasonYear(string feedType)
+    {
+        var decision = MatchPolicy.Evaluate(
+            expectedSourceType: feedType,
+            actualSourceType: "series",
+            sourceYear: null,
+            resolvedYear: 2023,
+            broadcastRange: BroadcastRange.Parse("2023-2025"));
+
+        Assert.Equal(MatchDecisionStatus.Accepted, decision.Status);
+        Assert.Equal(MatchReasonCodes.SeriesSeasonYearUnknown, decision.ReasonCode);
+    }
+
     [Fact]
     public void UnknownTypeIsAmbiguousAndKnownMismatchIsRejected()
     {

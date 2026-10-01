@@ -1,5 +1,8 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
+using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
 using MediaDock.Application.Matching;
@@ -15,6 +18,7 @@ public sealed class RssIngestionService
     private const int MaximumParseLogsPerRun = 1000;
     private const int MaximumErrorSummaries = 50;
     private const int MaximumFeedSizeBytes = 4 * 1024 * 1024;
+    private const int ItemFingerprintVersion = 2;
 
     private static readonly Regex SensitiveValue = new(
         @"\b(api_?key|key)(\s*[=:]\s*)[^\s&]+",
@@ -188,6 +192,19 @@ public sealed class RssIngestionService
             return;
         }
 
+        var itemFingerprint = CreateItemFingerprint(source, entry, settings);
+        if (await _repository.TrySkipProcessedItemAsync(
+            source,
+            entry,
+                sourceItemKey,
+                itemFingerprint,
+                observedAt,
+                cancellationToken))
+        {
+            progress.KnownEntriesSkipped++;
+            return;
+        }
+
         ParsedRutrackerTitle parsed;
         try
         {
@@ -238,7 +255,7 @@ public sealed class RssIngestionService
             resolution = await _metadataResolver.ResolveAsync(
                 lookupTitle,
                 parsed.Year,
-                source.FeedType,
+                RssFeedTypes.MetadataSourceType(source.FeedType),
                 observedAt,
                 cancellationToken);
             progress.CacheHits += resolution.CacheHit ? 1 : 0;
@@ -270,6 +287,8 @@ public sealed class RssIngestionService
 
         if (resolution.Status == MetadataLookupStatus.ConfirmedNotFound && !ambiguousHit)
         {
+            await _repository.MarkTerminalItemAsync(
+                source.Id, sourceItemKey, itemFingerprint, observedAt, cancellationToken);
             progress.IgnoredEntries++;
             AddLog(
                 pendingLogs,
@@ -293,6 +312,8 @@ public sealed class RssIngestionService
 
         if (ambiguousHit && resolution.Status == MetadataLookupStatus.ConfirmedNotFound)
         {
+            await _repository.MarkTerminalItemAsync(
+                source.Id, sourceItemKey, itemFingerprint, observedAt, cancellationToken);
             progress.IgnoredEntries++;
             AddLog(pendingLogs, progress, CreateLog(
                 source, entry, sourceItemKey, rawTitle, parsed, "found", true,
@@ -321,6 +342,8 @@ public sealed class RssIngestionService
         var metadata = resolution.Metadata;
         if (MatchPolicy.VerifyTitle(parsed, metadata.Title).Status != MatchDecisionStatus.Accepted)
         {
+            await _repository.MarkTerminalItemAsync(
+                source.Id, sourceItemKey, itemFingerprint, observedAt, cancellationToken);
             progress.IgnoredEntries++;
             AddLog(pendingLogs, progress, CreateLog(
                 source, entry, sourceItemKey, rawTitle, parsed, "found", true,
@@ -333,7 +356,7 @@ public sealed class RssIngestionService
             source.FeedType,
             metadata.SourceType,
             metadata.MediaType,
-            parsed.Year,
+            RssFeedTypes.IsSeries(source.FeedType) ? null : parsed.Year,
             metadata.Year,
             metadata.BroadcastRange,
             metadata.Countries,
@@ -342,6 +365,8 @@ public sealed class RssIngestionService
             settings.ExcludedGenres);
         if (decision.Status != MatchDecisionStatus.Accepted)
         {
+            await _repository.MarkTerminalItemAsync(
+                source.Id, sourceItemKey, itemFingerprint, observedAt, cancellationToken);
             progress.IgnoredEntries++;
             AddLog(
                 pendingLogs,
@@ -367,6 +392,7 @@ public sealed class RssIngestionService
             source,
             entry,
             sourceItemKey,
+            itemFingerprint,
             parsed,
             metadata,
             observedAt,
@@ -452,14 +478,15 @@ public sealed class RssIngestionService
             ignored,
             ignoreReason,
             errorMessage,
-            parsed is null ? decision : string.Join('|', new[] { decision, parsed.YearSource switch
-            {
-                "title_parenthesis" => "y_paren",
-                "bracket" => "y_bracket",
-                "standalone" => "y_standalone",
-                "invalid_year_range" => "y_invalid",
-                _ => "y_missing"
-            }, parsed.YearAmbiguous ? "multi" : null }
+            parsed is null ? decision : string.Join('|', new[] { decision,
+                RssFeedTypes.IsSeries(source.FeedType) && parsed.Year is not null ? "y_season" : parsed.YearSource switch
+                {
+                    "title_parenthesis" => "y_paren",
+                    "bracket" => "y_bracket",
+                    "standalone" => "y_standalone",
+                    "invalid_year_range" => "y_invalid",
+                    _ => "y_missing"
+                }, parsed.YearAmbiguous ? "multi" : null }
                 .Where(code => !string.IsNullOrEmpty(code))),
             observedAt,
             retryState,
@@ -613,6 +640,7 @@ public sealed class RssIngestionService
                 progress.CurrentSource,
                 progress.FeedsProcessed,
                 progress.EntriesSeen,
+                progress.KnownEntriesSkipped,
                 progress.TitlesCreated,
                 progress.OccurrencesCreated,
                 progress.CacheHits,
@@ -630,6 +658,7 @@ public sealed class RssIngestionService
             status,
             progress.FeedsProcessed,
             progress.EntriesSeen,
+            progress.KnownEntriesSkipped,
             progress.TitlesCreated,
             progress.OccurrencesCreated,
             progress.CacheHits,
@@ -652,12 +681,31 @@ public sealed class RssIngestionService
         return sanitized.Length <= maximumLength ? sanitized : sanitized[..maximumLength];
     }
 
+    private static string CreateItemFingerprint(
+        IngestionSource source,
+        IngestionFeedItem entry,
+        IngestionMatchSettings settings)
+    {
+        var input = JsonSerializer.Serialize(new
+        {
+            Version = ItemFingerprintVersion,
+            source.FeedType,
+            entry.Title,
+            entry.TorrentUrl,
+            entry.PublishedAt,
+            ExcludedCountries = settings.ExcludedCountries.OrderBy(value => value, StringComparer.OrdinalIgnoreCase),
+            ExcludedGenres = settings.ExcludedGenres.OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+        });
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(input))).ToLowerInvariant();
+    }
+
     private sealed class RunProgress
     {
         public long RunId { get; init; }
         public string? CurrentSource { get; set; }
         public int FeedsProcessed { get; set; }
         public int EntriesSeen { get; set; }
+        public int KnownEntriesSkipped { get; set; }
         public int TitlesCreated { get; set; }
         public int OccurrencesCreated { get; set; }
         public int CacheHits { get; set; }

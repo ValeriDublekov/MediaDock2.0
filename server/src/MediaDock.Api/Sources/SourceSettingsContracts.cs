@@ -20,7 +20,7 @@ public sealed record CreateSourceRequest
     [Required, MaxLength(200)]
     public string Name { get; init; } = string.Empty;
 
-    [Required, RegularExpression("^(movie|series)$")]
+    [Required, RegularExpression("^(movie|series_complete|series_ongoing)$")]
     public string FeedType { get; init; } = string.Empty;
 
     [Required, Url, MaxLength(2048)]
@@ -38,7 +38,7 @@ public sealed record UpdateSourceRequest
     [Required, MaxLength(200)]
     public string Name { get; init; } = string.Empty;
 
-    [Required, RegularExpression("^(movie|series)$")]
+    [Required, RegularExpression("^(movie|series_complete|series_ongoing)$")]
     public string FeedType { get; init; } = string.Empty;
 
     [Required, Url, MaxLength(2048)]

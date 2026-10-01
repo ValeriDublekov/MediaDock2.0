@@ -63,7 +63,9 @@ internal sealed class SourceConfiguration : IEntityTypeConfiguration<Source>
     public void Configure(EntityTypeBuilder<Source> builder)
     {
         builder.ToTable("sources", table =>
-            table.HasCheckConstraint("ck_sources_feed_type", "feed_type IN ('movie', 'series')"));
+            table.HasCheckConstraint(
+                "ck_sources_feed_type",
+                "feed_type IN ('movie', 'series_complete', 'series_ongoing')"));
         builder.HasKey(entity => entity.Id).HasName("pk_sources");
         builder.HasAlternateKey(entity => entity.StableKey).HasName("ak_sources_stable_key");
         builder.Property(entity => entity.Id).UseIdentityByDefaultColumn().HasColumnName("id");
@@ -111,5 +113,33 @@ internal sealed class OccurrenceConfiguration : IEntityTypeConfiguration<Occurre
             .HasConstraintName("fk_occurrences_sources_source_id");
         builder.HasIndex(entity => new { entity.TitleId, entity.LastSeenAt })
             .HasDatabaseName("ix_occurrences_title_id_last_seen_at");
+    }
+}
+
+internal sealed class RssItemProcessingStateConfiguration : IEntityTypeConfiguration<RssItemProcessingState>
+{
+    public void Configure(EntityTypeBuilder<RssItemProcessingState> builder)
+    {
+        builder.ToTable("rss_item_states", table =>
+        {
+            table.HasCheckConstraint("ck_rss_item_states_disposition", "disposition IN ('resolved', 'terminal')");
+            table.HasCheckConstraint(
+                "ck_rss_item_states_expiry",
+                "disposition = 'resolved' OR (disposition = 'terminal' AND expires_at IS NOT NULL)");
+        });
+        builder.HasKey(entity => new { entity.SourceId, entity.SourceItemKey })
+            .HasName("pk_rss_item_states");
+        builder.Property(entity => entity.SourceId).HasColumnName("source_id");
+        builder.Property(entity => entity.SourceItemKey).HasColumnName("source_item_key").IsRequired();
+        builder.Property(entity => entity.Fingerprint).HasColumnName("fingerprint").HasMaxLength(64).IsRequired();
+        builder.Property(entity => entity.Disposition).HasColumnName("disposition").HasMaxLength(16).IsRequired();
+        builder.Property(entity => entity.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(entity => entity.ExpiresAt).HasColumnName("expires_at");
+        builder.HasOne<Source>()
+            .WithMany()
+            .HasForeignKey(entity => entity.SourceId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_rss_item_states_sources_source_id");
+        builder.HasIndex(entity => entity.ExpiresAt).HasDatabaseName("ix_rss_item_states_expires_at");
     }
 }

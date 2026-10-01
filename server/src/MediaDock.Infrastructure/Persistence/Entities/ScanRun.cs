@@ -9,6 +9,7 @@ public sealed class ScanRun
     public string Trigger { get; set; } = string.Empty;
     public int FeedsProcessed { get; set; }
     public int EntriesSeen { get; set; }
+    public int KnownEntriesSkipped { get; set; }
     public int TitlesCreated { get; set; }
     public int OccurrencesCreated { get; set; }
     public int CacheHits { get; set; }

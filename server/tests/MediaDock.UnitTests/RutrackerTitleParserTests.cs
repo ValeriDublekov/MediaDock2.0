@@ -47,6 +47,18 @@ public sealed class RutrackerTitleParserTests
         Assert.Contains("feed_type_authoritative_series", series.ReasonCodes);
     }
 
+    [Theory]
+    [InlineData("series_complete", "Silo / Season 7 / Episodes 7 of 9 [2026]")]
+    [InlineData("series_ongoing", "Silo S07E07 [2026]")]
+    public void SeriesSeasonMarkersDoNotBecomePartOfTheShowTitle(string feedType, string rawTitle)
+    {
+        var parsed = RutrackerTitleParser.Parse(rawTitle, feedType);
+
+        Assert.Equal("Silo", parsed.Title);
+        Assert.Equal(2026, parsed.Year);
+        Assert.True(parsed.IsSeries);
+    }
+
     [Fact]
     public void UnknownFeedInfersSeriesFromExplicitMarkerWithoutSubstringFalsePositives()
     {

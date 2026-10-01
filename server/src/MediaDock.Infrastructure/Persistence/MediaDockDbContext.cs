@@ -13,6 +13,7 @@ public sealed class MediaDockDbContext : DbContext
     public DbSet<Title> Titles => Set<Title>();
     public DbSet<Source> Sources => Set<Source>();
     public DbSet<Occurrence> Occurrences => Set<Occurrence>();
+    public DbSet<RssItemProcessingState> RssItemStates => Set<RssItemProcessingState>();
     public DbSet<ScanRun> ScanRuns => Set<ScanRun>();
     public DbSet<ParseLog> ParseLogs => Set<ParseLog>();
     public DbSet<AppSetting> Settings => Set<AppSetting>();

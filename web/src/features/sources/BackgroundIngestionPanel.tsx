@@ -228,6 +228,7 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
                 {job.jobType === 'rss_scan' && <>
                   <div><dt>FEEDS</dt><dd>{counter(summary, 'feedsProcessed', 'FeedsProcessed')}</dd></div>
                   <div><dt>ENTRIES</dt><dd>{counter(summary, 'entriesSeen', 'EntriesSeen')}</dd></div>
+                  <div><dt>KNOWN SKIPPED</dt><dd>{counter(summary, 'knownEntriesSkipped', 'KnownEntriesSkipped')}</dd></div>
                   <div><dt>OMDb REQUESTS</dt><dd>{counter(summary, 'omdbRequests', 'OmdbRequests')}</dd></div>
                   <div><dt>CACHE HITS</dt><dd>{counter(summary, 'cacheHits', 'CacheHits')}</dd></div>
                   <div><dt>ADDED TITLES</dt><dd>{counter(summary, 'titlesCreated', 'TitlesCreated')}</dd></div>

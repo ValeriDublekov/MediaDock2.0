@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { createSource, getProviderSettings, getSettings, getSources, getVersion, updateProviderSettings, updateSettings, updateSource } from '../../api/client'
-import type { ProviderSettings, ProviderSettingsInput, Settings, SettingsInput, Source, SourceInput, SystemVersion } from '../../api/types'
+import type { FeedType, ProviderSettings, ProviderSettingsInput, Settings, SettingsInput, Source, SourceInput, SystemVersion } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate } from '../../shared/format'
 import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
@@ -52,6 +52,14 @@ function providerSettingsToDraft(settings: ProviderSettings): ProviderSettingsDr
 
 function splitValues(value: string): string[] {
   return value.split(',').map((part) => part.trim()).filter(Boolean)
+}
+
+function feedTypeLabel(feedType: FeedType): string {
+  switch (feedType) {
+    case 'movie': return 'Movies'
+    case 'series_complete': return 'Complete seasons'
+    case 'series_ongoing': return 'Ongoing episodes'
+  }
 }
 
 export function SourceSettingsView({ onOpenHistory = () => {} }: {
@@ -212,7 +220,7 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
             {sources.map((source) => (
               <div className="source-row" key={source.id}>
                 <div><span className="source-name">{source.name}</span><span className="source-url" title={source.url}>{source.url}</span></div>
-                <span className="source-key source-kind">{source.feedType} feed</span>
+                <span className="source-key source-kind">{feedTypeLabel(source.feedType)}</span>
                 <span className={`state-pill${source.isEnabled ? '' : ' is-muted'}`}>{source.isEnabled ? 'Enabled' : 'Disabled'}</span>
                 <button aria-label={`Edit ${source.name}`} className="text-button source-action" onClick={() => editSource(source)} type="button">Edit</button>
               </div>
@@ -226,7 +234,7 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
             <div className="form-grid">
               <div className="field"><label htmlFor="source-name">Name</label><input id="source-name" maxLength={200} onChange={(event) => updateSourceField('name', event.target.value)} required value={sourceDraft.name} /></div>
               <div className="field"><label htmlFor="source-key">Stable key</label><input id="source-key" maxLength={100} onChange={(event) => updateSourceField('stableKey', event.target.value)} pattern="[a-z0-9][a-z0-9._-]{0,99}" required value={sourceDraft.stableKey} /></div>
-              <div className="field"><label htmlFor="source-feed-type">Feed type</label><select id="source-feed-type" onChange={(event) => updateSourceField('feedType', event.target.value as 'movie' | 'series')} value={sourceDraft.feedType}><option value="movie">Movie</option><option value="series">Series</option></select></div>
+              <div className="field"><label htmlFor="source-feed-type">Feed type</label><select id="source-feed-type" onChange={(event) => updateSourceField('feedType', event.target.value as SourceInput['feedType'])} value={sourceDraft.feedType}><option value="movie">Movies</option><option value="series_complete">Complete seasons</option><option value="series_ongoing">Ongoing episodes</option></select></div>
               <div className="field"><label htmlFor="source-url">Feed URL</label><input id="source-url" maxLength={2048} onChange={(event) => updateSourceField('url', event.target.value)} required type="url" value={sourceDraft.url} /></div>
             </div>
             <label className="checkbox-field"><input checked={sourceDraft.isEnabled} onChange={(event) => updateSourceField('isEnabled', event.target.checked)} type="checkbox" />Enabled for ingestion</label>

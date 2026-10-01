@@ -24,6 +24,7 @@ internal sealed class ScanRunConfiguration : IEntityTypeConfiguration<ScanRun>
         builder.Property(entity => entity.Trigger).HasColumnName("trigger").HasMaxLength(16).IsRequired();
         builder.Property(entity => entity.FeedsProcessed).HasColumnName("feeds_processed");
         builder.Property(entity => entity.EntriesSeen).HasColumnName("entries_seen");
+        builder.Property(entity => entity.KnownEntriesSkipped).HasColumnName("known_entries_skipped");
         builder.Property(entity => entity.TitlesCreated).HasColumnName("titles_created");
         builder.Property(entity => entity.OccurrencesCreated).HasColumnName("occurrences_created");
         builder.Property(entity => entity.CacheHits).HasColumnName("cache_hits");

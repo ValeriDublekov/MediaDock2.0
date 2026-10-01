@@ -55,6 +55,7 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         IngestionSource source,
         IngestionFeedItem feedItem,
         string sourceItemKey,
+        string itemFingerprint,
         ParsedRutrackerTitle parsed,
         MetadataDetails metadata,
         DateTimeOffset observedAt,
@@ -63,13 +64,13 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         try
         {
             return await UpsertCatalogItemOnceAsync(
-                source, feedItem, sourceItemKey, parsed, metadata, observedAt, cancellationToken);
+                source, feedItem, sourceItemKey, itemFingerprint, parsed, metadata, observedAt, cancellationToken);
         }
         catch (DbUpdateException exception) when (IsImdbIdentityUniqueViolation(exception))
         {
             dbContext.ChangeTracker.Clear();
             return await UpsertCatalogItemOnceAsync(
-                source, feedItem, sourceItemKey, parsed, metadata, observedAt, cancellationToken);
+                source, feedItem, sourceItemKey, itemFingerprint, parsed, metadata, observedAt, cancellationToken);
         }
     }
 
@@ -77,6 +78,7 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         IngestionSource source,
         IngestionFeedItem feedItem,
         string sourceItemKey,
+        string itemFingerprint,
         ParsedRutrackerTitle parsed,
         MetadataDetails metadata,
         DateTimeOffset observedAt,
@@ -137,6 +139,12 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
             occurrence.ObservedAt = observedAt;
             occurrence.LastSeenAt = observedAt;
 
+            var itemState = await GetOrCreateItemStateAsync(source.Id, sourceItemKey, cancellationToken);
+            itemState.Fingerprint = itemFingerprint;
+            itemState.Disposition = "resolved";
+            itemState.UpdatedAt = observedAt;
+            itemState.ExpiresAt = null;
+
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return new IngestionUpsertResult(titleCreated, occurrenceCreated);
@@ -148,6 +156,112 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
             throw;
         }
     }
+
+    public async Task<bool> TrySkipProcessedItemAsync(
+        IngestionSource source,
+        IngestionFeedItem feedItem,
+        string sourceItemKey,
+        string itemFingerprint,
+        DateTimeOffset observedAt,
+        CancellationToken cancellationToken = default)
+    {
+        var sourceId = source.Id;
+        var state = await dbContext.RssItemStates.SingleOrDefaultAsync(
+            value => value.SourceId == sourceId && value.SourceItemKey == sourceItemKey,
+            cancellationToken);
+        if (state is null)
+        {
+            var occurrence = await dbContext.Occurrences
+                .Include(value => value.Title)
+                .SingleOrDefaultAsync(
+                    value => value.SourceId == sourceId && value.SourceItemKey == sourceItemKey,
+                    cancellationToken);
+            if (occurrence is not null && IsSameLegacyOccurrence(occurrence, source, feedItem))
+            {
+                state = new RssItemProcessingState
+                {
+                    SourceId = sourceId,
+                    SourceItemKey = sourceItemKey,
+                    Fingerprint = itemFingerprint,
+                    Disposition = "resolved",
+                    UpdatedAt = observedAt,
+                    ExpiresAt = observedAt.AddDays(2)
+                };
+                dbContext.RssItemStates.Add(state);
+                UpdateSeenAt(occurrence, observedAt);
+                await dbContext.SaveChangesAsync(cancellationToken);
+                return true;
+            }
+
+            var previousLog = await dbContext.ParseLogs.AsNoTracking()
+                .Where(value => value.SourceId == sourceId && value.SourceItemKey == sourceItemKey)
+                .OrderByDescending(value => value.ProcessedAt)
+                .ThenByDescending(value => value.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (previousLog is null || previousLog.RetryState != "terminal" ||
+                previousLog.RawTitle != feedItem.Title || previousLog.FeedType != source.FeedType ||
+                previousLog.SourcePublishedAt != feedItem.PublishedAt ||
+                previousLog.ProcessedAt.AddDays(2) <= observedAt)
+            {
+                return false;
+            }
+
+            state = new RssItemProcessingState
+            {
+                SourceId = sourceId,
+                SourceItemKey = sourceItemKey,
+                Fingerprint = itemFingerprint,
+                Disposition = "terminal",
+                UpdatedAt = previousLog.ProcessedAt,
+                ExpiresAt = previousLog.ProcessedAt.AddDays(2)
+            };
+            dbContext.RssItemStates.Add(state);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+
+        if (state.Fingerprint != itemFingerprint || state.ExpiresAt <= observedAt)
+        {
+            return false;
+        }
+
+        if (state.Disposition == "resolved")
+        {
+            var occurrence = await dbContext.Occurrences
+                .Include(value => value.Title)
+                .SingleOrDefaultAsync(
+                    value => value.SourceId == sourceId && value.SourceItemKey == sourceItemKey,
+                    cancellationToken);
+            if (occurrence is null)
+            {
+                dbContext.RssItemStates.Remove(state);
+                await dbContext.SaveChangesAsync(cancellationToken);
+                return false;
+            }
+
+            UpdateSeenAt(occurrence, observedAt);
+        }
+
+        state.UpdatedAt = observedAt;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task MarkTerminalItemAsync(
+        long sourceId,
+        string sourceItemKey,
+        string itemFingerprint,
+        DateTimeOffset processedAt,
+        CancellationToken cancellationToken = default)
+    {
+        var state = await GetOrCreateItemStateAsync(sourceId, sourceItemKey, cancellationToken);
+        state.Fingerprint = itemFingerprint;
+        state.Disposition = "terminal";
+        state.UpdatedAt = processedAt;
+        state.ExpiresAt = processedAt.AddDays(2);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
 
     public async Task AddParseLogsAsync(
         long scanRunId,
@@ -196,6 +310,7 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         run.FinishedAt = summary.FinishedAt;
         run.FeedsProcessed = summary.FeedsProcessed;
         run.EntriesSeen = summary.EntriesSeen;
+        run.KnownEntriesSkipped = summary.KnownEntriesSkipped;
         run.TitlesCreated = summary.TitlesCreated;
         run.OccurrencesCreated = summary.OccurrencesCreated;
         run.CacheHits = summary.CacheHits;
@@ -204,6 +319,40 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         run.ErrorCount = summary.ErrorCount;
         run.ErrorSummary = summary.ErrorSummary.ToArray();
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<RssItemProcessingState> GetOrCreateItemStateAsync(
+        long sourceId,
+        string sourceItemKey,
+        CancellationToken cancellationToken)
+    {
+        var state = await dbContext.RssItemStates.SingleOrDefaultAsync(
+            value => value.SourceId == sourceId && value.SourceItemKey == sourceItemKey,
+            cancellationToken);
+        if (state is not null)
+        {
+            return state;
+        }
+
+        state = new RssItemProcessingState { SourceId = sourceId, SourceItemKey = sourceItemKey };
+        dbContext.RssItemStates.Add(state);
+        return state;
+    }
+
+    private static bool IsSameLegacyOccurrence(
+        Occurrence occurrence,
+        IngestionSource source,
+        IngestionFeedItem feedItem) =>
+        occurrence.RawTitle == feedItem.Title &&
+        occurrence.TorrentUrl == feedItem.TorrentUrl &&
+        occurrence.SourcePublishedAt == feedItem.PublishedAt &&
+        occurrence.FeedType == source.FeedType;
+
+    private static void UpdateSeenAt(Occurrence occurrence, DateTimeOffset observedAt)
+    {
+        occurrence.LastSeenAt = observedAt;
+        occurrence.ObservedAt = observedAt;
+        occurrence.Title.LastSeenAt = observedAt;
     }
 
     private static bool IsImdbIdentityUniqueViolation(DbUpdateException exception) =>

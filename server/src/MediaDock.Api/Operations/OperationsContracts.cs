@@ -79,6 +79,7 @@ public sealed record ScanRunResponse(
     string Trigger,
     int FeedsProcessed,
     int EntriesSeen,
+    int KnownEntriesSkipped,
     int TitlesCreated,
     int OccurrencesCreated,
     int CacheHits,

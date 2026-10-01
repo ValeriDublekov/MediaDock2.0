@@ -99,7 +99,7 @@ public static class RutrackerTitleParser
             .ToArray();
         var candidates = parts
             .Where(part => !StandaloneSeriesMarker.IsMatch(part))
-            .Select((part, index) => new TitleCandidate(CleanupTitlePart(part, !string.Equals(feedType, "series", StringComparison.OrdinalIgnoreCase)),
+            .Select((part, index) => new TitleCandidate(CleanupTitlePart(part, removeSeriesMarkers: true),
                 index == 0 ? "leading" : "alternate"))
             .Where(candidate => candidate.Title.Length is > 0 and <= 160)
             .DistinctBy(candidate => candidate.Title, StringComparer.OrdinalIgnoreCase)
@@ -130,9 +130,12 @@ public static class RutrackerTitleParser
             return Result(title, isSeries, reasons);
         }
 
-        if (string.Equals(normalizedFeedType, "series", StringComparison.OrdinalIgnoreCase))
+        if (normalizedFeedType is not null &&
+            (string.Equals(normalizedFeedType, "series", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(normalizedFeedType, "series_complete", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(normalizedFeedType, "series_ongoing", StringComparison.OrdinalIgnoreCase)))
         {
-            (title, var titleReason) = SelectTitle(parts, removeSeriesMarkers: false);
+            (title, var titleReason) = SelectTitle(parts, removeSeriesMarkers: true);
             isSeries = true;
             typeReason = "feed_type_authoritative_series";
             var reasons = CreateReasons(yearReason, titleReason, typeReason, title);

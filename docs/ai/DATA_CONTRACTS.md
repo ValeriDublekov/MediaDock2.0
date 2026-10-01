@@ -11,9 +11,10 @@ Entity tables with `Id` use generated `bigint` primary keys; `omdb_daily_usage` 
 | Table | Entity and stored fields |
 | --- | --- |
 | `titles` | [`Title`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Title.cs): `Id`, `TitleText`, `NormalizedTitle`, `Year`, `MediaType`, `SourceType`, `ContentKind`, `BroadcastRangeStartYear`, `BroadcastRangeEndYear`, `BroadcastRangeRaw`, `ImdbId`, `ImdbRating`, `ImdbVotes`, `Metascore`, `Genres`, `Countries`, `Director`, `Plot`, `PosterUrl`, `Runtime`, `Awards`, `BoxOffice`, `FirstSeenAt`, `LastSeenAt`, `UpdatedAt`. |
-| `sources` | [`Source`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Source.cs): `Id`, `StableKey`, `Name`, `FeedType`, `Url`, `IsEnabled`. |
+| `sources` | [`Source`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Source.cs): `Id`, `StableKey`, `Name`, `FeedType` (`movie`, `series_complete`, or `series_ongoing`), `Url`, `IsEnabled`. |
+| `rss_item_states` | [`RssItemProcessingState`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/RssItemProcessingState.cs): source/item key, input fingerprint, `resolved` or `terminal` disposition, update time, and optional expiry. New resolved items are skipped indefinitely; legacy resolved entries adopted on first scan expire after two days; terminal decisions expire after two days. |
 | `occurrences` | [`Occurrence`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Occurrence.cs): `Id`, `TitleId`, `SourceId`, `SourceItemKey`, `FeedEntryId`, `TorrentUrl`, `RawTitle`, `SourceFeedName`, `FeedType`, `SourcePublishedAt`, `ObservedAt`, `Quality`, `RipType`, `FirstSeenAt`, `LastSeenAt`. |
-| `scan_runs` | [`ScanRun`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/ScanRun.cs): `Id`, `StartedAt`, `FinishedAt`, `Status`, `Trigger`, `FeedsProcessed`, `EntriesSeen`, `TitlesCreated`, `OccurrencesCreated`, `CacheHits`, `OmdbRequests`, `IgnoredEntries`, `ErrorCount`, `ErrorSummary`. |
+| `scan_runs` | [`ScanRun`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/ScanRun.cs): `Id`, `StartedAt`, `FinishedAt`, `Status`, `Trigger`, `FeedsProcessed`, `EntriesSeen`, `KnownEntriesSkipped`, `TitlesCreated`, `OccurrencesCreated`, `CacheHits`, `OmdbRequests`, `IgnoredEntries`, `ErrorCount`, `ErrorSummary`. |
 | `parse_logs` | [`ParseLog`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/ParseLog.cs): `Id`, `ScanRunId?`, `SourceId`, `SourceItemKey`, `RawTitle`, `FeedName`, `ParsedSuccessfully`, `ParsedTitle`, `ParsedYear`, `OmdbStatus`, `Ignored`, `IgnoreReason`, `ErrorMessage`, `Decision`, `ProcessedAt`, `RetryState`, `AttemptCount`, `LastAttemptAt`, `FeedType`, `SourcePublishedAt`, `ObservedAt`, `EventKind`. Existing rows keep `ScanRunId = NULL`; new rows link to their scan. |
 | `background_jobs` | [`BackgroundJob`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/BackgroundJob.cs): `Id`, `JobType`, `Trigger`, `Status`, enqueue/start/finish times, `ScheduledSlotUtc?`, `ScanRunId?`, stage/source/progress time, safe `ErrorCode` and `ResultSummary`, upload filename/content type/bytes. Terminal jobs clear upload bytes; credentials and host paths are never stored. |
 | `background_job_events` | [`BackgroundJobEvent`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/BackgroundJobEvent.cs): `Id`, `JobId`, `OccurredAt`, `Level`, `EventCode`, bounded safe `Message`, optional structured `DataJson`. |
@@ -36,6 +37,7 @@ Background jobs and events use generated `bigint` primary keys; scheduler state 
 | --- | --- | --- |
 | `ak_sources_stable_key` | `sources.stable_key` | Stable source identity. |
 | `ak_occurrences_source_id_source_item_key` | `occurrences.source_id`, `occurrences.source_item_key` | One occurrence identity per source. |
+| `pk_rss_item_states` | `rss_item_states.source_id`, `rss_item_states.source_item_key` | One fingerprinted processing state per feed item. |
 | `ak_metadata_cache_cache_key` | `metadata_cache.cache_key` | One metadata-cache row per resolver key. |
 | `ux_titles_imdb_id` | `titles.imdb_id` (partial: non-null and nonblank) | One canonical title per normalized IMDb ID. |
 | `ux_oscar_films_stable_key` | `oscar_films.stable_key` | One Oscar candidate per IMDb ID, or normalized title/year fallback. |
@@ -48,11 +50,14 @@ IMDb IDs are trimmed and lowercased at CSV and OMDb boundaries; blank values bec
 
 `settings` is a singleton row with `CHECK (id = 1)`. The API-hosted dispatcher reads only key `1`; first creation uses that explicit key and retries a concurrent primary-key winner. There is no lowest-ID convention.
 
+`rss_item_states.source_id` references `sources.id` with `RESTRICT`; `ix_rss_item_states_expires_at` supports expiry maintenance.
+
 Foreign keys include `occurrences.title_id -> titles.id`, `occurrences.source_id -> sources.id`, nullable `parse_logs.source_id -> sources.id`, nullable `parse_logs.scan_run_id -> scan_runs.id`, nullable `background_jobs.scan_run_id -> scan_runs.id`, `background_job_events.job_id -> background_jobs.id`, `oscar_films.title_id -> titles.id`, and `oscar_nominations.oscar_film_id -> oscar_films.id`. They use `RESTRICT` except job events, which cascade when a job is deleted. Other non-unique indexes include `ix_titles_normalized_title_year_media_type`, `ix_occurrences_title_id_last_seen_at`, `ix_scan_runs_started_at`, `ix_parse_logs_processed_at`, `IX_parse_logs_source_id`, `ix_background_jobs_status_enqueued_at`, `ix_background_job_events_job_id_id`, `ix_metadata_cache_expires_at`, `ix_oscar_films_film_year`, and `ix_oscar_nominations_category_ceremony`.
 
 Database check constraints enforce:
 
-- `ck_sources_feed_type` restricts `sources.feed_type` to `movie` or `series`.
+- `ck_sources_feed_type` restricts `sources.feed_type` to `movie`, `series_complete`, or `series_ongoing`; both series modes are treated as OMDb `series` and source years are treated as season/episode years, not show premiere years.
+- `ck_rss_item_states_disposition` restricts item state to `resolved` or `terminal`; `ck_rss_item_states_expiry` requires terminal decisions to have an expiry and permits temporary expiry on adopted legacy resolved entries.
 - `ck_titles_media_type` restricts `titles.media_type` to `movie`, `series`, `documentary`, or `short`; `ck_titles_source_type` restricts nullable `source_type` to `movie` or `series`; `ck_titles_content_kind` restricts nullable `content_kind` to `standard`, `documentary`, or `short`.
 - `ck_titles_seen_range` requires `titles.first_seen_at` and `titles.last_seen_at` to be both null or both set with `first_seen_at <= last_seen_at`; these fields represent torrent observations, not Oscar import or metadata enrichment. `ck_occurrences_seen_range` requires `occurrences.first_seen_at <= occurrences.last_seen_at`.
 - `ck_scan_runs_status` restricts `scan_runs.status` to `running`, `succeeded`, `partial`, or `failed`; `ck_scan_runs_trigger` restricts `trigger` to `schedule`, `manual`, or `local`.
@@ -72,6 +77,8 @@ Database check constraints enforce:
 The schema does not define an optimistic concurrency token. The unique IMDb key is database-enforced, while title/year matching remains a guarded application fallback and is intentionally non-unique.
 
 ## Idempotency And Transactions
+
+RSS item processing uses `rss_item_states`, keyed by source and `SourceItemIdentity`, separately from `metadata_cache`. Its SHA-256 fingerprint covers the raw title, torrent URL, publication timestamp, feed mode, parser version, and matching exclusions. New resolved items skip metadata lookup indefinitely while refreshing occurrence/title `LastSeenAt`; terminal decisions expire after two days. At rollout, unchanged prior occurrences and recent terminal logs are adopted for two days, then retried under the current parser. A changed fingerprint is reprocessed. `scan_runs.known_entries_skipped` distinguishes these skips from entries ignored by matching; `entries_seen` remains all feed entries read, and `omdb_requests` counts actual HTTP attempts.
 
 [`OscarDatasetImporter`](../../server/src/MediaDock.Infrastructure/OscarAwards/OscarDatasetImporter.cs) reads compact comma-separated exports or the original tab-separated Kaggle file and filters to `Year > yearAfter` plus exactly `BEST PICTURE`, `DIRECTING`, `WRITING (Original Screenplay)`, `WRITING (Adapted Screenplay)`, and `CINEMATOGRAPHY`. It normalizes IMDb IDs, matches `titles` by IMDb ID first, then uses normalized title/year only when the IDs do not conflict; otherwise it creates a distinct title placeholder. Oscar-only placeholders have null `FirstSeenAt`/`LastSeenAt`. Re-import preserves populated title metadata and enrichment status, upserts film and nomination rows in one transaction, and never creates `occurrences` or contacts OMDb. Nomination identity includes ceremony, category, film, nominee IDs (or name fallback), nominees, and `Detail` so separate source nominations remain distinct.
 

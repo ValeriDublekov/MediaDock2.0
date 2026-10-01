@@ -112,12 +112,12 @@ function ScanRunTable({ items }: { items: ScanRun[] }) {
   return (
     <div className="table-wrap">
       <table className="data-table">
-        <thead><tr><th>STARTED</th><th>STATUS</th><th>TRIGGER</th><th>FEEDS</th><th>ENTRIES</th><th>ADDED</th><th>ISSUES</th></tr></thead>
+        <thead><tr><th>STARTED</th><th>STATUS</th><th>TRIGGER</th><th>FEEDS</th><th>ENTRIES</th><th>KNOWN SKIPPED</th><th>ADDED</th><th>ISSUES</th></tr></thead>
         <tbody>{items.map((run) => (
           <tr key={run.id}>
             <td>{formatDate(run.startedAt)}<span className="subtle-line">Finished {formatDate(run.finishedAt)}</span></td>
             <td><span className={`state-pill${run.status === 'failed' || run.status === 'partial' ? ' is-muted' : ''}`}>{formatWords(run.status)}</span></td>
-            <td>{formatWords(run.trigger)}</td><td>{run.feedsProcessed}</td><td>{run.entriesSeen}</td>
+            <td>{formatWords(run.trigger)}</td><td>{run.feedsProcessed}</td><td>{run.entriesSeen}</td><td>{run.knownEntriesSkipped}</td>
             <td>{run.titlesCreated} titles<span className="subtle-line">{run.occurrencesCreated} observations</span></td>
             <td>{run.errorCount ? run.errorSummary.join('; ') || `${run.errorCount} issues` : 'None'}</td>
           </tr>

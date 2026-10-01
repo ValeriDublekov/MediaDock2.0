@@ -118,11 +118,15 @@ public sealed class IngestionTests
         Assert.NotNull(matrixFirstSeenAt);
         Assert.NotNull((await db.Titles.SingleAsync(title => title.ImdbId == "tt0133093")).LastSeenAt);
 
+        await db.RssItemStates.ExecuteDeleteAsync();
+        db.ChangeTracker.Clear();
         var repeated = await service.RunAsync();
         Assert.Equal("succeeded", repeated.Summary.Status);
         Assert.Equal(0, repeated.Summary.TitlesCreated);
         Assert.Equal(0, repeated.Summary.OccurrencesCreated);
-        Assert.Equal(2, repeated.Summary.CacheHits);
+        Assert.Equal(2, repeated.Summary.KnownEntriesSkipped);
+        Assert.Equal(0, repeated.Summary.CacheHits);
+        Assert.Equal(0, repeated.Summary.OmdbRequests);
         Assert.Equal(3, handler.OmdbRequestCount);
         Assert.Equal(1, await db.Titles.CountAsync());
         Assert.Equal(1, await db.Occurrences.CountAsync());
@@ -158,6 +162,43 @@ public sealed class IngestionTests
         Assert.Contains(logs, log => log.OmdbStatus == "provider_error");
         Assert.All(logs, log => Assert.True(log.RawTitle.Length <= 1000));
         Assert.DoesNotContain(logs, log => log.RawTitle.Contains(FakeApiKey, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task OngoingSeriesUsesSeriesLookupAndDoesNotMatchSeasonYearToPremiereYear()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_series_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString()).Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+        db.Sources.Add(new Source
+        {
+            StableKey = "silo-ongoing",
+            Name = "Silo ongoing episodes",
+            FeedType = "series_ongoing",
+            Url = "https://feed.rutracker.cc/silo.atom"
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new MockProviderHandler(seriesScenario: true);
+        using var httpClient = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        var service = CreateService(db, httpClient, new RssFeedTransport(httpClient, new PublicDnsResolver()));
+
+        var result = await service.RunAsync();
+
+        Assert.Equal("succeeded", result.Summary.Status);
+        Assert.Equal(1, result.Summary.OmdbRequests);
+        Assert.Equal(1, result.Summary.OccurrencesCreated);
+        var title = await db.Titles.SingleAsync();
+        Assert.Equal("Silo", title.TitleText);
+        Assert.Equal("series", title.SourceType);
+        Assert.Equal("series", title.MediaType);
+        Assert.Equal(2023, title.Year);
+        var log = await db.ParseLogs.SingleAsync();
+        Assert.Contains("series_season_year_unknown", log.Decision);
+        Assert.Contains("y_season", log.Decision);
     }
 
     [Fact]
@@ -205,6 +246,7 @@ public sealed class IngestionTests
             sourceInfo,
             feedItem,
             SourceItemIdentity.From(feedItem.FeedEntryId, feedItem.TorrentUrl),
+            "integration-test-fingerprint",
             RutrackerTitleParser.Parse(feedItem.Title, "movie"),
             CreateMetadata("Shared Film", 2020, "TT22222222"),
             now);
@@ -261,6 +303,7 @@ public sealed class IngestionTests
                 sourceInfo,
                 feedItem,
                 SourceItemIdentity.From(feedItem.FeedEntryId, feedItem.TorrentUrl),
+                $"fingerprint-{index}",
                 parsed,
                 CreateMetadata("Shared Film", 2020, index == 1 ? "TT33333333" : "tt33333333"),
                 now);
@@ -294,9 +337,14 @@ public sealed class IngestionTests
     private sealed class MockProviderHandler : HttpMessageHandler
     {
         private readonly bool _titleMatchScenario;
+        private readonly bool _seriesScenario;
         private int _temporaryRequests;
 
-        public MockProviderHandler(bool titleMatchScenario = false) => _titleMatchScenario = titleMatchScenario;
+        public MockProviderHandler(bool titleMatchScenario = false, bool seriesScenario = false)
+        {
+            _titleMatchScenario = titleMatchScenario;
+            _seriesScenario = seriesScenario;
+        }
 
         public int OmdbRequestCount { get; private set; }
 
@@ -308,7 +356,7 @@ public sealed class IngestionTests
             var uri = request.RequestUri!;
             if (uri.Host == RssFeedTransport.AllowedFeedHost)
             {
-                return Task.FromResult(FeedResponse(_titleMatchScenario ? TitleMatchFeed :
+                return Task.FromResult(FeedResponse(_seriesScenario ? SiloFeed : _titleMatchScenario ? TitleMatchFeed :
                     uri.AbsolutePath == "/success.atom" ? SuccessfulFeed : PartialFeed));
             }
 
@@ -319,6 +367,16 @@ public sealed class IngestionTests
 
             OmdbRequestCount++;
             var query = ParseQuery(uri.Query);
+            if (_seriesScenario)
+            {
+                if (query["t"] != "Silo" || query["type"] != "series" || query.ContainsKey("y"))
+                {
+                    throw new InvalidOperationException("Series lookup must omit season year and use series type.");
+                }
+
+                return Task.FromResult(JsonResponse(SeriesPayload("Silo", "2023-2025", "tt8111088")));
+            }
+
             if (_titleMatchScenario)
             {
                 var payload = query["t"] switch
@@ -364,6 +422,13 @@ public sealed class IngestionTests
             </channel></rss>
             """;
 
+                private static string SiloFeed => """
+                        <?xml version="1.0" encoding="utf-8"?>
+                        <rss version="2.0"><channel>
+                            <item><title>Silo S07E07 [2026]</title><link>https://rutracker.org/forum/viewtopic.php?t=7</link><guid>silo-s07e07</guid></item>
+                        </channel></rss>
+                        """;
+
                 private static string TitleMatchFeed => """
                         <?xml version="1.0" encoding="utf-8"?>
                         <rss version="2.0"><channel>
@@ -399,6 +464,27 @@ public sealed class IngestionTests
                 Plot = "Example plot",
                 Poster = "https://example.test/poster.jpg",
                 Runtime = "120 min",
+                Awards = "None",
+                BoxOffice = "$100"
+            });
+
+        private static string SeriesPayload(string title, string year, string imdbId) =>
+            JsonSerializer.Serialize(new
+            {
+                Response = "True",
+                Title = title,
+                Year = year,
+                imdbID = imdbId,
+                Type = "series",
+                imdbRating = "8.7",
+                imdbVotes = "1,234",
+                Metascore = "73",
+                Genre = "Drama",
+                Country = "USA",
+                Director = "Example Director",
+                Plot = "Example plot",
+                Poster = "https://example.test/poster.jpg",
+                Runtime = "60 min",
                 Awards = "None",
                 BoxOffice = "$100"
             });

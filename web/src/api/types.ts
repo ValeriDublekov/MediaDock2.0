@@ -7,14 +7,15 @@ export interface PageResponse<T> {
 }
 
 export type MediaType = 'movie' | 'series' | 'documentary' | 'short'
-export type FeedType = 'movie' | 'series'
+export type MediaSourceType = 'movie' | 'series'
+export type FeedType = 'movie' | 'series_complete' | 'series_ongoing'
 
 export interface CatalogTitle {
   id: number
   title: string
   year: number | null
   mediaType: MediaType
-  sourceType: FeedType | null
+  sourceType: MediaSourceType | null
   contentKind: string | null
   imdbRating: number | null
   posterUrl: string | null
@@ -185,6 +186,7 @@ export interface ScanRun {
   trigger: 'schedule' | 'manual' | 'local'
   feedsProcessed: number
   entriesSeen: number
+  knownEntriesSkipped: number
   titlesCreated: number
   occurrencesCreated: number
   cacheHits: number
@@ -199,7 +201,7 @@ export interface CatalogQuery {
   pageSize: number
   search?: string
   mediaType?: MediaType
-  sourceType?: FeedType
+  sourceType?: MediaSourceType
   contentKind?: 'standard' | 'documentary' | 'short'
   yearFrom?: number
   yearTo?: number
