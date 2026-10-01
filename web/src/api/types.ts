@@ -139,6 +139,16 @@ export interface ProviderSettings {
   updatedAt: string | null
 }
 
+export interface OmdbDailyUsage {
+  utcDate: string
+  totalRequests: number
+  rssRequests: number
+  oscarRequests: number
+  dailyRequestLimitReached: boolean
+  providerQuotaExceeded: boolean
+  lastErrorCode: string | null
+}
+
 export interface ProviderSettingsInput {
   omdbApiKey: string | null
   clearOmdbApiKey: boolean

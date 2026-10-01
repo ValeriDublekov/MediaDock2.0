@@ -491,6 +491,17 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("utc_date");
 
+                    b.Property<string>("LastErrorCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("last_error_code");
+
+                    b.Property<bool>("DailyRequestLimitReached")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("daily_request_limit_reached");
+
                     b.Property<int>("OscarRequests")
                         .HasColumnType("integer")
                         .HasColumnName("oscar_requests");

@@ -108,6 +108,17 @@ internal static class SourceSettingsEndpoints
             .WithSummary("Get OMDb settings without exposing the API key.")
             .Produces<ProviderSettingsResponse>(StatusCodes.Status200OK);
 
+        app.MapGet("/api/settings/providers/omdb/usage", async Task<Ok<IReadOnlyList<OmdbDailyUsageResponse>>> (
+            ISourceSettingsApiService service,
+            CancellationToken cancellationToken) =>
+        {
+            var usage = await service.GetOmdbDailyUsageAsync(cancellationToken);
+            return TypedResults.Ok(usage);
+        })
+            .WithName("GetOmdbDailyUsage")
+            .WithSummary("Get the last 30 UTC days of OMDb request usage and safe error codes.")
+            .Produces<IReadOnlyList<OmdbDailyUsageResponse>>(StatusCodes.Status200OK);
+
         app.MapPut("/api/settings/providers/omdb", async Task<Ok<ProviderSettingsResponse>> (
             UpdateProviderSettingsRequest request,
             ISourceSettingsApiService service,

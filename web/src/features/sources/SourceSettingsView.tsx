@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { addSourceUrl, getProviderSettings, getSettings, getSources, getVersion, removeSourceUrl, replaceSourceUrl, updateProviderSettings, updateSettings } from '../../api/client'
-import type { FeedType, ProviderSettings, ProviderSettingsInput, Settings, SettingsInput, SourceProfile, SourceUrl, SystemVersion } from '../../api/types'
+import { addSourceUrl, getOmdbDailyUsage, getProviderSettings, getSettings, getSources, getVersion, removeSourceUrl, replaceSourceUrl, updateProviderSettings, updateSettings } from '../../api/client'
+import type { FeedType, OmdbDailyUsage, ProviderSettings, ProviderSettingsInput, Settings, SettingsInput, SourceProfile, SourceUrl, SystemVersion } from '../../api/types'
 import { ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate } from '../../shared/format'
 import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
@@ -60,6 +60,7 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>(emptySettings)
   const [providerSettings, setProviderSettings] = useState<ProviderSettings | null>(null)
+  const [omdbUsage, setOmdbUsage] = useState<OmdbDailyUsage[]>([])
   const [systemVersion, setSystemVersion] = useState<SystemVersion | null>(null)
   const [providerDraft, setProviderDraft] = useState<ProviderSettingsDraft>(emptyProviderSettings)
   const [sourceDraft, setSourceDraft] = useState('')
@@ -84,14 +85,15 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
     let current = true
     setLoading(true)
     setLoadError(null)
-    Promise.all([getSources(), getSettings(), getProviderSettings(), getVersion().catch(() => null)])
-      .then(([sourceList, applicationSettings, omdbSettings, applicationVersion]) => {
+    Promise.all([getSources(), getSettings(), getProviderSettings(), getOmdbDailyUsage(), getVersion().catch(() => null)])
+      .then(([sourceList, applicationSettings, omdbSettings, usage, applicationVersion]) => {
         if (!current) return
         setSourceProfiles(sourceList)
         setSettings(applicationSettings)
         setSettingsDraft(settingsToDraft(applicationSettings))
         setProviderSettings(omdbSettings)
         setProviderDraft(providerSettingsToDraft(omdbSettings))
+        setOmdbUsage(usage)
         setSystemVersion(applicationVersion)
       })
       .catch((requestError: unknown) => {
@@ -338,6 +340,39 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
             {providerSaved && <p className="form-message" role="status">Provider settings saved.</p>}
             <div className="form-actions"><button className="button" disabled={savingProvider} type="submit">{savingProvider ? 'Saving...' : 'Save provider settings'}</button></div>
           </form>
+          <div aria-label="OMDb daily request history" className="usage-history">
+            <h3>Daily request history</h3>
+            <p className="section-caption">Last 30 UTC days. Counts are reserved HTTP attempts and may include a request interrupted before sending.</p>
+            {omdbUsage.length === 0 ? (
+              <p className="section-caption">No requests recorded in the last 30 days.</p>
+            ) : (
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead><tr><th scope="col">Date (UTC)</th><th scope="col">Total</th><th scope="col">RSS</th><th scope="col">Oscar</th><th scope="col">Status</th></tr></thead>
+                  <tbody>
+                    {omdbUsage.map((usage) => {
+                      const status = usage.providerQuotaExceeded
+                        ? 'OMDb quota exceeded; blocked for day'
+                        : usage.dailyRequestLimitReached
+                          ? 'Daily limit reached; blocked for day'
+                          : usage.lastErrorCode
+                            ? `Last error: ${usage.lastErrorCode.replaceAll('_', ' ')}`
+                            : 'No error'
+                      return (
+                        <tr key={usage.utcDate}>
+                          <td>{usage.utcDate}</td>
+                          <td>{usage.totalRequests}</td>
+                          <td>{usage.rssRequests}</td>
+                          <td>{usage.oscarRequests}</td>
+                          <td>{status}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </section>
       </div>
       <section aria-labelledby="system-version-heading" className="management-section">

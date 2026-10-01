@@ -33,6 +33,8 @@ internal interface ISourceSettingsApiService
 
     Task<ProviderSettingsResponse> GetProviderSettingsAsync(CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<OmdbDailyUsageResponse>> GetOmdbDailyUsageAsync(CancellationToken cancellationToken);
+
     Task<ProviderSettingsResponse> UpdateProviderSettingsAsync(
         UpdateProviderSettingsRequest request,
         CancellationToken cancellationToken);
@@ -200,6 +202,26 @@ internal sealed class SourceSettingsApiService(MediaDockDbContext dbContext) : I
             .SingleOrDefaultAsync(cancellationToken);
 
         return settings ?? new ProviderSettingsResponse(false, 0, 0, 0, null);
+    }
+
+    public async Task<IReadOnlyList<OmdbDailyUsageResponse>> GetOmdbDailyUsageAsync(
+        CancellationToken cancellationToken)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var firstDay = today.AddDays(-29);
+        return await dbContext.OmdbDailyUsage
+            .AsNoTracking()
+            .Where(usage => usage.UtcDate >= firstDay && usage.UtcDate <= today)
+            .OrderByDescending(usage => usage.UtcDate)
+            .Select(usage => new OmdbDailyUsageResponse(
+                usage.UtcDate,
+                usage.TotalRequests,
+                usage.TotalRequests - usage.OscarRequests,
+                usage.OscarRequests,
+                usage.DailyRequestLimitReached,
+                usage.ProviderQuotaExceeded,
+                usage.LastErrorCode))
+            .ToArrayAsync(cancellationToken);
     }
 
     public async Task<ProviderSettingsResponse> UpdateProviderSettingsAsync(

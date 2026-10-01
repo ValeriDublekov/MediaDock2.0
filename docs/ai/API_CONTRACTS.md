@@ -26,6 +26,7 @@ This document describes the API in `server/`. Routes are registered in [Program.
 | `GET /api/settings` | None | `200 SettingsResponse` | None declared. |
 | `PUT /api/settings` | [UpdateSettingsRequest](../../server/src/MediaDock.Api/Sources/SourceSettingsContracts.cs) | `200 SettingsResponse` | `400 ValidationProblemDetails`. |
 | `GET /api/settings/providers/omdb` | None | `200 ProviderSettingsResponse`; returns `OmdbApiKeyConfigured` and limits, never the key | None declared. |
+| `GET /api/settings/providers/omdb/usage` | None | `200 OmdbDailyUsageResponse[]` for usage rows in the last 30 UTC days, newest first; returns aggregate counts and safe error codes only | None declared. |
 | `PUT /api/settings/providers/omdb` | [UpdateProviderSettingsRequest](../../server/src/MediaDock.Api/Sources/SourceSettingsContracts.cs) | `200 ProviderSettingsResponse` | `400 ValidationProblemDetails`; unauthenticated LAN-trusted write. |
 | `GET /api/background-jobs/active` | None | `200 BackgroundJobResponse` or `204` when no job is queued/running | None declared. |
 | `POST /api/background-jobs/scans` | Empty body | `202 BackgroundJobAcceptedResponse` with job ID and status URL | `409 ProblemDetails` with `activeJobId` and `activeJobStatusUrl` if an RSS scan is already queued/running. |
@@ -80,6 +81,7 @@ Nullable response fields are marked `?`; collection fields are returned as lists
 | `SourceUrlResponse` | `Id`, `Url` |
 | `SettingsResponse` | `ExcludedGenres`, `ExcludedCountries`, `MinMovieRating`, `MinSeriesRating`, `MinImdbVotes`, `UpdatedAt?` |
 | `ProviderSettingsResponse` | `OmdbApiKeyConfigured`, `OmdbDailyRequestLimit`, `OscarEnrichmentMaxFilmsPerRun`, `OscarEnrichmentMaxRequestsPerDay`, `UpdatedAt?`; does not include the key. |
+| `OmdbDailyUsageResponse` | `UtcDate`, `TotalRequests`, `RssRequests`, `OscarRequests`, `DailyRequestLimitReached`, `ProviderQuotaExceeded`, `LastErrorCode?`; counts are conservative reservations and can include an attempt interrupted before sending. |
 | `ParseLogResponse` | `Id`, `SourceId?`, `SourceName?`, `SourceItemKey?`, `RawTitle`, `FeedName`, `ParsedSuccessfully`, `ParsedTitle?`, `ParsedYear?`, `OmdbStatus`, `Ignored`, `IgnoreReason?`, `ErrorMessage?`, `Decision?`, `ProcessedAt`, `RetryState`, `AttemptCount`, `LastAttemptAt?`, `FeedType?`, `SourcePublishedAt?`, `ObservedAt?`, `EventKind?` |
 | `ScanRunResponse` | `Id`, `StartedAt`, `FinishedAt?`, `Status`, `Trigger`, `FeedsProcessed`, `EntriesSeen`, `KnownEntriesSkipped`, `TitlesCreated`, `OccurrencesCreated`, `CacheHits`, `OmdbRequests` (actual HTTP attempts), `IgnoredEntries`, `ErrorCount`, `ErrorSummary` |
 | `BackgroundJobResponse` | `Id`, `JobType`, `Trigger`, `Status`, `EnqueuedAt`, `StartedAt?`, `FinishedAt?`, `CurrentStage?`, `CurrentSource?`, `ProgressUpdatedAt?`, `ErrorCode?`, `ResultSummary?`, `ScanRunId?`, `InputFileName?`; never contains CSV bytes, credentials, stack traces, or provider URLs. |

@@ -131,57 +131,88 @@ public sealed class OmdbClient : IOmdbClient
                 timeoutSource.Token);
             if (response.StatusCode == HttpStatusCode.TooManyRequests)
             {
-                await MarkProviderQuotaExceededAsync(utcDate, cancellationToken);
-                return new MetadataLookupResult(MetadataLookupStatus.QuotaExceeded, HttpAttempts: 1, ErrorCode: "quota_exceeded");
+                return await RecordProviderErrorAsync(
+                    utcDate,
+                    new MetadataLookupResult(MetadataLookupStatus.QuotaExceeded, HttpAttempts: 1, ErrorCode: "quota_exceeded"),
+                    cancellationToken);
             }
 
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             {
-                return new MetadataLookupResult(MetadataLookupStatus.AuthenticationFailure, HttpAttempts: 1, ErrorCode: "authentication_failed");
+                return await RecordProviderErrorAsync(
+                    utcDate,
+                    new MetadataLookupResult(MetadataLookupStatus.AuthenticationFailure, HttpAttempts: 1, ErrorCode: "authentication_failed"),
+                    cancellationToken);
             }
 
             if ((int)response.StatusCode is < 200 or >= 300)
             {
-                return new MetadataLookupResult(MetadataLookupStatus.ProviderFailure, HttpAttempts: 1, ErrorCode: "http_error");
+                return await RecordProviderErrorAsync(
+                    utcDate,
+                    new MetadataLookupResult(MetadataLookupStatus.ProviderFailure, HttpAttempts: 1, ErrorCode: "http_error"),
+                    cancellationToken);
             }
 
             var body = await ReadBoundedAsync(response.Content, timeoutSource.Token);
             var result = ParseResponse(body);
-            if (result.Status == MetadataLookupStatus.QuotaExceeded)
-            {
-                await MarkProviderQuotaExceededAsync(utcDate, cancellationToken);
-            }
-
-            return result;
+            return await RecordProviderErrorAsync(utcDate, result, cancellationToken);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return new MetadataLookupResult(MetadataLookupStatus.TransportFailure, HttpAttempts: 1, ErrorCode: "timeout");
+            return await RecordProviderErrorAsync(
+                utcDate,
+                new MetadataLookupResult(MetadataLookupStatus.TransportFailure, HttpAttempts: 1, ErrorCode: "timeout"),
+                cancellationToken);
         }
         catch (HttpRequestException)
         {
-            return new MetadataLookupResult(MetadataLookupStatus.TransportFailure, HttpAttempts: 1, ErrorCode: "transport_error");
+            return await RecordProviderErrorAsync(
+                utcDate,
+                new MetadataLookupResult(MetadataLookupStatus.TransportFailure, HttpAttempts: 1, ErrorCode: "transport_error"),
+                cancellationToken);
         }
         catch (IOException)
         {
-            return new MetadataLookupResult(MetadataLookupStatus.TransportFailure, HttpAttempts: 1, ErrorCode: "transport_error");
+            return await RecordProviderErrorAsync(
+                utcDate,
+                new MetadataLookupResult(MetadataLookupStatus.TransportFailure, HttpAttempts: 1, ErrorCode: "transport_error"),
+                cancellationToken);
         }
         catch (JsonException)
         {
-            return new MetadataLookupResult(MetadataLookupStatus.ProviderFailure, HttpAttempts: 1, ErrorCode: "invalid_response");
+            return await RecordProviderErrorAsync(
+                utcDate,
+                new MetadataLookupResult(MetadataLookupStatus.ProviderFailure, HttpAttempts: 1, ErrorCode: "invalid_response"),
+                cancellationToken);
         }
         catch (InvalidDataException)
         {
-            return new MetadataLookupResult(MetadataLookupStatus.ProviderFailure, HttpAttempts: 1, ErrorCode: "response_too_large");
+            return await RecordProviderErrorAsync(
+                utcDate,
+                new MetadataLookupResult(MetadataLookupStatus.ProviderFailure, HttpAttempts: 1, ErrorCode: "response_too_large"),
+                cancellationToken);
         }
     }
 
-    private async Task MarkProviderQuotaExceededAsync(DateOnly utcDate, CancellationToken cancellationToken)
+    private async Task<MetadataLookupResult> RecordProviderErrorAsync(
+        DateOnly utcDate,
+        MetadataLookupResult result,
+        CancellationToken cancellationToken)
     {
-        if (_requestBudget is not null)
+        if (_requestBudget is not null
+            && result.Status is not (MetadataLookupStatus.Found
+                or MetadataLookupStatus.ConfirmedNotFound
+                or MetadataLookupStatus.InvalidRequest
+                or MetadataLookupStatus.RequestBudgetExhausted))
         {
-            await _requestBudget.MarkProviderQuotaExceededAsync(utcDate, cancellationToken);
+            await _requestBudget.RecordProviderErrorAsync(
+                utcDate,
+                result.ErrorCode ?? "provider_error",
+                result.Status == MetadataLookupStatus.QuotaExceeded,
+                cancellationToken);
         }
+
+        return result;
     }
 
     private async Task<byte[]> ReadBoundedAsync(HttpContent content, CancellationToken cancellationToken)

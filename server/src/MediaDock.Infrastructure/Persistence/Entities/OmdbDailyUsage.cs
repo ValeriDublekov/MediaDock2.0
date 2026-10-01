@@ -6,4 +6,6 @@ public sealed class OmdbDailyUsage
     public int TotalRequests { get; set; }
     public int OscarRequests { get; set; }
     public bool ProviderQuotaExceeded { get; set; }
+    public bool DailyRequestLimitReached { get; set; }
+    public string? LastErrorCode { get; set; }
 }

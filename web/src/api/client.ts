@@ -5,6 +5,7 @@ import type {
   BackgroundJobAccepted,
   BackgroundJobEvents,
   FavoriteMovie,
+  OmdbDailyUsage,
   OscarCatalogQuery,
   OscarFilm,
   Occurrence,
@@ -177,6 +178,10 @@ export function updateSettings(input: SettingsInput, fetcher?: typeof fetch) {
 
 export function getProviderSettings(fetcher?: typeof fetch) {
   return requestJson<ProviderSettings>('/settings/providers/omdb', {}, fetcher)
+}
+
+export function getOmdbDailyUsage(fetcher?: typeof fetch) {
+  return requestJson<OmdbDailyUsage[]>('/settings/providers/omdb/usage', {}, fetcher)
 }
 
 export function getVersion(fetcher?: typeof fetch) {

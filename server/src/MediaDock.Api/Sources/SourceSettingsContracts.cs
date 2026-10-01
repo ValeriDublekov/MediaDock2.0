@@ -54,6 +54,16 @@ public sealed record ProviderSettingsResponse(
     int OscarEnrichmentMaxRequestsPerDay,
     DateTimeOffset? UpdatedAt);
 
+/// <summary>One UTC day's OMDb request usage and most recent safe provider error code.</summary>
+public sealed record OmdbDailyUsageResponse(
+    DateOnly UtcDate,
+    int TotalRequests,
+    int RssRequests,
+    int OscarRequests,
+    bool DailyRequestLimitReached,
+    bool ProviderQuotaExceeded,
+    string? LastErrorCode);
+
 /// <summary>Validated payload for replacing OMDb provider settings.</summary>
 public sealed record UpdateProviderSettingsRequest
 {

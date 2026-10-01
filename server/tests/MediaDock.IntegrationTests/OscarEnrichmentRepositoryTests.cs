@@ -42,6 +42,9 @@ public sealed class OscarEnrichmentRepositoryTests
             var usage = await db.OmdbDailyUsage.SingleAsync(row => row.UtcDate == dayOne);
             Assert.Equal(6, usage.TotalRequests);
             Assert.InRange(usage.OscarRequests, 0, 2);
+            Assert.True(usage.DailyRequestLimitReached);
+            Assert.False(await new PostgresOmdbRequestBudget(db)
+                .TryReserveAsync(dayOne, OmdbRequestPurpose.RssIngestion, 6, 2));
         }
 
         var dayTwo = dayOne.AddDays(1);
@@ -61,12 +64,14 @@ public sealed class OscarEnrichmentRepositoryTests
         var dayThree = dayTwo.AddDays(1);
         var budget = new PostgresOmdbRequestBudget(resultDb);
         Assert.True(await budget.TryReserveAsync(dayThree, OmdbRequestPurpose.RssIngestion, 10, 5));
-        await budget.MarkProviderQuotaExceededAsync(dayThree);
+        await budget.RecordProviderErrorAsync(dayThree, "quota_exceeded", providerQuotaExceeded: true);
         Assert.False(await budget.TryReserveAsync(dayThree, OmdbRequestPurpose.OscarEnrichment, 10, 5));
         var quotaUsage = await resultDb.OmdbDailyUsage.SingleAsync(row => row.UtcDate == dayThree);
         Assert.Equal(1, quotaUsage.TotalRequests);
         Assert.Equal(0, quotaUsage.OscarRequests);
         Assert.True(quotaUsage.ProviderQuotaExceeded);
+        Assert.Equal("quota_exceeded", quotaUsage.LastErrorCode);
+        Assert.False(await budget.TryReserveAsync(dayThree, OmdbRequestPurpose.RssIngestion, 10, 5));
     }
 
     [Fact]

@@ -272,6 +272,36 @@ public sealed class CatalogApiTests
         Assert.NotNull(defaultProviderSettings);
         Assert.False(defaultProviderSettings.OmdbApiKeyConfigured);
 
+        var currentUtcDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        db.OmdbDailyUsage.AddRange(
+            new OmdbDailyUsage
+            {
+                UtcDate = currentUtcDate,
+                TotalRequests = 12,
+                OscarRequests = 3,
+                DailyRequestLimitReached = true,
+                ProviderQuotaExceeded = true,
+                LastErrorCode = "quota_exceeded"
+            },
+            new OmdbDailyUsage
+            {
+                UtcDate = currentUtcDate.AddDays(-40),
+                TotalRequests = 1
+            });
+        await db.SaveChangesAsync();
+
+        using var omdbUsageResponse = await client.GetAsync("/api/settings/providers/omdb/usage");
+        var omdbUsage = await omdbUsageResponse.Content.ReadFromJsonAsync<List<OmdbDailyUsageResponse>>();
+        Assert.NotNull(omdbUsage);
+        var currentUsage = Assert.Single(omdbUsage);
+        Assert.Equal(currentUtcDate, currentUsage.UtcDate);
+        Assert.Equal(12, currentUsage.TotalRequests);
+        Assert.Equal(9, currentUsage.RssRequests);
+        Assert.Equal(3, currentUsage.OscarRequests);
+        Assert.True(currentUsage.DailyRequestLimitReached);
+        Assert.True(currentUsage.ProviderQuotaExceeded);
+        Assert.Equal("quota_exceeded", currentUsage.LastErrorCode);
+
         using var invalidProviderSettingsResponse = await client.PutAsJsonAsync(
             "/api/settings/providers/omdb",
             new UpdateProviderSettingsRequest

@@ -19,5 +19,12 @@ internal sealed class OmdbDailyUsageConfiguration : IEntityTypeConfiguration<Omd
             .HasColumnName("provider_quota_exceeded")
             .HasDefaultValue(false)
             .IsRequired();
+        builder.Property(entity => entity.DailyRequestLimitReached)
+            .HasColumnName("daily_request_limit_reached")
+            .HasDefaultValue(false)
+            .IsRequired();
+        builder.Property(entity => entity.LastErrorCode)
+            .HasColumnName("last_error_code")
+            .HasMaxLength(64);
     }
 }

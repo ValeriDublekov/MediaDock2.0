@@ -7,6 +7,7 @@ import {
   getActiveBackgroundJob,
   getBackgroundJob,
   getBackgroundJobEvents,
+  getOmdbDailyUsage,
   getProviderSettings,
   getSettings,
   getSources,
@@ -16,7 +17,7 @@ import {
   updateProviderSettings,
   updateSettings,
 } from '../../api/client'
-import type { ProviderSettings, Settings, SourceProfile, SystemVersion } from '../../api/types'
+import type { OmdbDailyUsage, ProviderSettings, Settings, SourceProfile, SystemVersion } from '../../api/types'
 import { SourceSettingsView } from './SourceSettingsView'
 
 vi.mock('../../api/client', () => ({
@@ -26,6 +27,7 @@ vi.mock('../../api/client', () => ({
   getActiveBackgroundJob: vi.fn(),
   getBackgroundJob: vi.fn(),
   getBackgroundJobEvents: vi.fn(),
+  getOmdbDailyUsage: vi.fn(),
   getProviderSettings: vi.fn(),
   getSettings: vi.fn(),
   getSources: vi.fn(),
@@ -58,6 +60,7 @@ describe('SourceSettingsView', () => {
     vi.mocked(getActiveBackgroundJob).mockReset().mockResolvedValue(null)
     vi.mocked(getBackgroundJob).mockReset()
     vi.mocked(getBackgroundJobEvents).mockReset().mockResolvedValue({ items: [], nextAfterId: 0 })
+    vi.mocked(getOmdbDailyUsage).mockReset().mockResolvedValue([])
     vi.mocked(getProviderSettings).mockReset().mockResolvedValue(providerSettings)
     vi.mocked(getSettings).mockReset().mockResolvedValue({
       excludedGenres: [],
@@ -87,6 +90,24 @@ describe('SourceSettingsView', () => {
     expect(await screen.findByText('Version 2026.10.01+abc1234')).toBeTruthy()
     expect(screen.getByText('Commit 0123456789ab')).toBeTruthy()
     expect(screen.getByText('Commit date (UTC) 2026-10-01 12:30:00')).toBeTruthy()
+  })
+
+  it('shows per-day OMDb counts and why that day was blocked', async () => {
+    vi.mocked(getOmdbDailyUsage).mockResolvedValue([{
+      utcDate: '2026-10-01',
+      totalRequests: 12,
+      rssRequests: 9,
+      oscarRequests: 3,
+      dailyRequestLimitReached: true,
+      providerQuotaExceeded: true,
+      lastErrorCode: 'quota_exceeded',
+    } satisfies OmdbDailyUsage])
+
+    render(<SourceSettingsView />)
+
+    expect(await screen.findByText('2026-10-01')).toBeTruthy()
+    expect(screen.getByText('OMDb quota exceeded; blocked for day')).toBeTruthy()
+    expect(screen.getByText('Last 30 UTC days. Counts are reserved HTTP attempts and may include a request interrupted before sending.')).toBeTruthy()
   })
 
   it('keeps the saved key write-only and clears a replacement after saving', async () => {

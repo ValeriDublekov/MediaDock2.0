@@ -80,8 +80,10 @@ public interface IOmdbRequestBudget
         int oscarDailyRequestLimit,
         CancellationToken cancellationToken = default);
 
-    Task MarkProviderQuotaExceededAsync(
+    Task RecordProviderErrorAsync(
         DateOnly utcDate,
+        string errorCode,
+        bool providerQuotaExceeded,
         CancellationToken cancellationToken = default);
 }
 
