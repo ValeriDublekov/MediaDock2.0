@@ -102,6 +102,15 @@ API bind after startup. It records the deployed SHA in
 the Worker service account, while its state files remain root-managed. Gate and
 deployment logs under `/var/log` are root-only.
 
+After a successful deployment, the runner refreshes its root-owned installed
+copy from the validated staging worktree, so future changes to `deploy.sh` take
+effect automatically. Existing hosts need this one-time runner refresh because
+an older installed copy cannot update itself. From the production checkout:
+
+```sh
+sudo install -o root -g root -m 0750 deploy/deploy.sh /usr/local/sbin/mediadock-next-deploy
+```
+
 After a new version passes the staging gate, database backup, migration, and
 readiness check, the deploy script can send a success email over SMTP. A run
 with no new commit sends no email. Configure the non-secret settings in

@@ -11,6 +11,7 @@ state_file="$state_dir/deploy-state"
 failure_marker="$state_dir/deploy-failed"
 gate_failure_file="$state_dir/gate-failed"
 log_file=/var/log/mediadock-next-deploy.log
+installed_deploy_script=/usr/local/sbin/mediadock-next-deploy
 firewall_config=/etc/default/mediadock-next-firewall
 github_url=https://github.com/ValeriDublekov/MediaDock2.0.git
 branch=main
@@ -387,6 +388,14 @@ printf 'pre_migration_dump=%s\n' "$latest_dump" >> "$state_tmp"
 install -o root -g mediadock -m 0640 "$state_tmp" "$state_file"
 rm -f -- "$state_tmp"
 rm -f -- "$failure_marker"
+
+if install -o root -g root -m 0750 "$staging_dir/deploy/deploy.sh" "$installed_deploy_script"; then
+    printf '%s deployment runner updated from %s\n' \
+        "$(date --iso-8601=seconds)" "$target_sha" | tee -a "$log_file"
+else
+    printf '%s deployment succeeded but runner update failed\n' \
+        "$(date --iso-8601=seconds)" | tee -a "$log_file" >&2
+fi
 
 printf '%s deployment succeeded; deployed_sha=%s previous_sha=%s api_image=%s\n' \
     "$(date --iso-8601=seconds)" "$target_sha" "$previous_sha" "$api_image" | tee -a "$log_file"
