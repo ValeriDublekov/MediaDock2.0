@@ -255,3 +255,9 @@ export interface FavoriteMovie {
   occurrenceCount: number
   lastSeenAt: string | null
 }
+
+export interface SystemVersion {
+  version: string
+  commitSha: string
+  commitDateUtc: string | null
+}

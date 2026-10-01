@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { createSource, getProviderSettings, getSettings, getSources, updateProviderSettings, updateSettings, updateSource } from '../../api/client'
-import type { ProviderSettings, ProviderSettingsInput, Settings, SettingsInput, Source, SourceInput } from '../../api/types'
+import { createSource, getProviderSettings, getSettings, getSources, getVersion, updateProviderSettings, updateSettings, updateSource } from '../../api/client'
+import type { ProviderSettings, ProviderSettingsInput, Settings, SettingsInput, Source, SourceInput, SystemVersion } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate } from '../../shared/format'
 
@@ -58,6 +58,7 @@ export function SourceSettingsView() {
   const [settings, setSettings] = useState<Settings | null>(null)
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>(emptySettings)
   const [providerSettings, setProviderSettings] = useState<ProviderSettings | null>(null)
+  const [systemVersion, setSystemVersion] = useState<SystemVersion | null>(null)
   const [providerDraft, setProviderDraft] = useState<ProviderSettingsDraft>(emptyProviderSettings)
   const [sourceDraft, setSourceDraft] = useState<SourceInput>(emptySource)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -79,14 +80,15 @@ export function SourceSettingsView() {
     let current = true
     setLoading(true)
     setLoadError(null)
-    Promise.all([getSources(), getSettings(), getProviderSettings()])
-      .then(([sourceList, applicationSettings, omdbSettings]) => {
+    Promise.all([getSources(), getSettings(), getProviderSettings(), getVersion().catch(() => null)])
+      .then(([sourceList, applicationSettings, omdbSettings, applicationVersion]) => {
         if (!current) return
         setSources(sourceList)
         setSettings(applicationSettings)
         setSettingsDraft(settingsToDraft(applicationSettings))
         setProviderSettings(omdbSettings)
         setProviderDraft(providerSettingsToDraft(omdbSettings))
+        setSystemVersion(applicationVersion)
       })
       .catch((requestError: unknown) => {
         if (current) setLoadError(requestError instanceof Error ? requestError.message : 'Could not load source settings.')
@@ -309,6 +311,16 @@ export function SourceSettingsView() {
           </form>
         </section>
       </div>
+      <section aria-labelledby="system-version-heading" className="management-section">
+        <h2 id="system-version-heading">System version</h2>
+        {systemVersion ? (
+          <>
+            <p className="section-caption">Version {systemVersion.version}</p>
+            <p className="section-caption">Commit {systemVersion.commitSha.slice(0, 12)}</p>
+            {systemVersion.commitDateUtc && <p className="section-caption">Commit date (UTC) {systemVersion.commitDateUtc.slice(0, 10)}</p>}
+          </>
+        ) : <p className="section-caption">Version unavailable</p>}
+      </section>
       <p className="trust-note">The API key is stored in the local database and never returned by the API. Settings writes are unauthenticated and use the local HTTP connection, so keep MediaDock on a trusted LAN and protect database backups.</p>
     </section>
   )

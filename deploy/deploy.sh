@@ -46,7 +46,7 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
-for command_name in curl docker flock git install ip runuser stat systemctl; do
+for command_name in curl docker flock git install ip python3 runuser stat systemctl; do
     if ! command -v "$command_name" >/dev/null 2>&1; then
         printf 'Required command not found: %s\n' "$command_name" >&2
         exit 1
@@ -310,7 +310,13 @@ if [[ ! "$resolved_db" =~ ^127\.0\.0\.1:[0-9]+$ ]]; then
     printf 'The PostgreSQL host bind is not loopback-only: %s\n' "$resolved_db" >&2
     exit 1
 fi
+commit_timestamp="$(runuser -u mediadock -- git -C "$staging_dir" show -s --format=%cI "$target_sha")"
+commit_timestamp_utc="$(date --utc --date="$commit_timestamp" '+%Y-%m-%dT%H:%M:%SZ')"
+commit_date_utc="${commit_timestamp_utc:0:10}"
+build_version="${commit_date_utc//-/.}+${target_sha:0:7}"
 env API_IMAGE="$api_image" WORKER_IMAGE="$worker_image" \
+    MEDIADOCK_VERSION="$build_version" MEDIADOCK_COMMIT_SHA="$target_sha" \
+    MEDIADOCK_COMMIT_DATE_UTC="$commit_timestamp_utc" \
     docker compose "${compose_args[@]}" build api worker
 
 backup_started_at="$(date +%s)"
@@ -351,6 +357,19 @@ systemctl restart mediadock-next-firewall.service
 health_url="http://$APP_BIND_ADDRESS:$APP_PORT/health/ready"
 curl --fail --silent --show-error --retry 30 --retry-all-errors --retry-delay 2 --max-time 10 \
     "$health_url" -o /dev/null
+version_url="http://$APP_BIND_ADDRESS:$APP_PORT/api/version"
+version_response="$(curl --fail --silent --show-error "$version_url")"
+if ! python3 -c '
+import json
+import sys
+
+version = json.load(sys.stdin)
+matches_target = version.get("commitSha") == sys.argv[1] and version.get("version") == sys.argv[2]
+sys.exit(0 if matches_target else 1)
+' "$target_sha" "$build_version" <<< "$version_response"; then
+    printf 'The deployed API version does not match target commit %s.\n' "$target_sha" >&2
+    exit 1
+fi
 resolved_api="$(env API_IMAGE="$api_image" WORKER_IMAGE="$worker_image" docker compose "${compose_args[@]}" port api 8080)"
 if [[ "$resolved_api" != "$APP_BIND_ADDRESS:$APP_PORT" ]]; then
     printf 'The deployed API bind is unexpected: %s\n' "$resolved_api" >&2

@@ -5,6 +5,7 @@ using MediaDock.Api.Middleware;
 using MediaDock.Api.OscarAwards;
 using MediaDock.Api.Operations;
 using MediaDock.Api.Sources;
+using MediaDock.Api.Versioning;
 using MediaDock.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -54,6 +55,7 @@ app.MapFavoriteEndpoints();
 app.MapOscarEndpoints();
 app.MapSourceSettingsEndpoints();
 app.MapOperationalHistoryEndpoints();
+app.MapVersionEndpoints();
 
 if (app.Environment.IsProduction())
 {

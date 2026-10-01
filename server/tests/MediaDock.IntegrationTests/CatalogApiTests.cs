@@ -5,6 +5,7 @@ using MediaDock.Api.Common;
 using MediaDock.Api.Health;
 using MediaDock.Api.Operations;
 using MediaDock.Api.Sources;
+using MediaDock.Api.Versioning;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.AspNetCore.Hosting;
@@ -31,8 +32,21 @@ public sealed class CatalogApiTests
         await using var db = new MediaDockDbContext(dbOptions);
         await db.Database.MigrateAsync();
 
-        using var factory = new ApiFactory(connectionString);
+        using var factory = new ApiFactory(connectionString, new Dictionary<string, string?>
+        {
+            ["MediaDock:Version"] = "2026.10.01+abc1234",
+            ["MediaDock:CommitSha"] = "0123456789abcdef0123456789abcdef01234567",
+            ["MediaDock:CommitDateUtc"] = "2026-10-01T12:30:00Z"
+        });
         using var client = factory.CreateClient();
+
+        using var versionResponse = await client.GetAsync("/api/version");
+        Assert.Equal(HttpStatusCode.OK, versionResponse.StatusCode);
+        Assert.Equal(new VersionResponse(
+            "2026.10.01+abc1234",
+            "0123456789abcdef0123456789abcdef01234567",
+            new DateTimeOffset(2026, 10, 1, 12, 30, 0, TimeSpan.Zero)),
+            await versionResponse.Content.ReadFromJsonAsync<VersionResponse>());
 
         using var liveResponse = await client.GetAsync("/health/live");
         Assert.Equal(HttpStatusCode.OK, liveResponse.StatusCode);
@@ -331,15 +345,28 @@ public sealed class CatalogApiTests
         LastSeenAt = lastSeenAt
     };
 
-    private sealed class ApiFactory(string connectionString) : WebApplicationFactory<Program>
+    private sealed class ApiFactory(
+        string connectionString,
+        IReadOnlyDictionary<string, string?>? buildMetadata = null) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.ConfigureAppConfiguration((_, configuration) =>
-                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                var values = new Dictionary<string, string?>
                 {
                     ["ConnectionStrings:MediaDock"] = connectionString
-                }));
+                };
+                if (buildMetadata is not null)
+                {
+                    foreach (var (key, value) in buildMetadata)
+                    {
+                        values[key] = value;
+                    }
+                }
+
+                configuration.AddInMemoryCollection(values);
+            });
         }
     }
 }

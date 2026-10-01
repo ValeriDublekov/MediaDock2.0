@@ -17,7 +17,13 @@ RUN dotnet publish server/src/MediaDock.Worker/MediaDock.Worker.csproj --configu
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
 WORKDIR /app
 COPY --from=build /app/api/ ./
+ARG MEDIADOCK_VERSION=local
+ARG MEDIADOCK_COMMIT_SHA=unknown
+ARG MEDIADOCK_COMMIT_DATE_UTC=unknown
 ENV ASPNETCORE_HTTP_PORTS=8080
+ENV MediaDock__Version=$MEDIADOCK_VERSION \
+    MediaDock__CommitSha=$MEDIADOCK_COMMIT_SHA \
+    MediaDock__CommitDateUtc=$MEDIADOCK_COMMIT_DATE_UTC
 EXPOSE 8080
 USER $APP_UID
 ENTRYPOINT ["dotnet", "MediaDock.Api.dll"]
@@ -25,5 +31,11 @@ ENTRYPOINT ["dotnet", "MediaDock.Api.dll"]
 FROM mcr.microsoft.com/dotnet/runtime:10.0 AS worker
 WORKDIR /app
 COPY --from=build /app/worker/ ./
+ARG MEDIADOCK_VERSION=local
+ARG MEDIADOCK_COMMIT_SHA=unknown
+ARG MEDIADOCK_COMMIT_DATE_UTC=unknown
+ENV MediaDock__Version=$MEDIADOCK_VERSION \
+    MediaDock__CommitSha=$MEDIADOCK_COMMIT_SHA \
+    MediaDock__CommitDateUtc=$MEDIADOCK_COMMIT_DATE_UTC
 USER $APP_UID
 ENTRYPOINT ["dotnet", "MediaDock.Worker.dll"]

@@ -16,6 +16,7 @@ import type {
   SettingsInput,
   Source,
   SourceInput,
+  SystemVersion,
   TitleDetails,
 } from './types'
 
@@ -160,6 +161,10 @@ export function updateSettings(input: SettingsInput, fetcher?: typeof fetch) {
 
 export function getProviderSettings(fetcher?: typeof fetch) {
   return requestJson<ProviderSettings>('/settings/providers/omdb', {}, fetcher)
+}
+
+export function getVersion(fetcher?: typeof fetch) {
+  return requestJson<SystemVersion>('/version', {}, fetcher)
 }
 
 export function updateProviderSettings(input: ProviderSettingsInput, fetcher?: typeof fetch) {

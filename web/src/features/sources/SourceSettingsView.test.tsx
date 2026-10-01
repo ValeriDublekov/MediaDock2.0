@@ -5,11 +5,12 @@ import {
   getProviderSettings,
   getSettings,
   getSources,
+  getVersion,
   updateProviderSettings,
   updateSettings,
   updateSource,
 } from '../../api/client'
-import type { ProviderSettings, Settings } from '../../api/types'
+import type { ProviderSettings, Settings, SystemVersion } from '../../api/types'
 import { SourceSettingsView } from './SourceSettingsView'
 
 vi.mock('../../api/client', () => ({
@@ -17,6 +18,7 @@ vi.mock('../../api/client', () => ({
   getProviderSettings: vi.fn(),
   getSettings: vi.fn(),
   getSources: vi.fn(),
+  getVersion: vi.fn(),
   updateProviderSettings: vi.fn(),
   updateSettings: vi.fn(),
   updateSource: vi.fn(),
@@ -28,6 +30,12 @@ const providerSettings: ProviderSettings = {
   oscarEnrichmentMaxFilmsPerRun: 0,
   oscarEnrichmentMaxRequestsPerDay: 0,
   updatedAt: null,
+}
+
+const systemVersion: SystemVersion = {
+  version: '2026.10.01+abc1234',
+  commitSha: '0123456789abcdef0123456789abcdef01234567',
+  commitDateUtc: '2026-10-01T12:30:00+00:00',
 }
 
 describe('SourceSettingsView', () => {
@@ -43,12 +51,21 @@ describe('SourceSettingsView', () => {
       updatedAt: null,
     } satisfies Settings)
     vi.mocked(getSources).mockReset().mockResolvedValue([])
+    vi.mocked(getVersion).mockReset().mockResolvedValue(systemVersion)
     vi.mocked(updateProviderSettings).mockReset().mockResolvedValue(providerSettings)
     vi.mocked(updateSettings).mockReset()
     vi.mocked(updateSource).mockReset()
   })
 
   afterEach(() => cleanup())
+
+  it('shows the deployed system version and source commit', async () => {
+    render(<SourceSettingsView />)
+
+    expect(await screen.findByText('Version 2026.10.01+abc1234')).toBeTruthy()
+    expect(screen.getByText('Commit 0123456789ab')).toBeTruthy()
+    expect(screen.getByText('Commit date (UTC) 2026-10-01')).toBeTruthy()
+  })
 
   it('keeps the saved key write-only and clears a replacement after saving', async () => {
     render(<SourceSettingsView />)
