@@ -5,7 +5,7 @@
 
 ## Цел
 
-RSS ingestion-ът и свързаното с него Oscar enrichment да се изпълняват само като вътрешна server логика в `MediaDock.Api`. Операторът да може да поиска ръчно сканиране от UI/API, а API процесът да създава автоматични заявки по график. И двата входа подават задача към една и съща постоянна опашка и един и същ изпълнител.
+RSS ingestion-ът, Oscar enrichment-ът и dataset import-ът да се изпълняват само като вътрешна server логика в `MediaDock.Api`. Операторът може да поиска отделно RSS сканиране или Oscar enrichment от UI/API; графикът създава само RSS заявки. Всички задачи минават през една постоянна опашка и един изпълнител.
 
 Не трябва да останат самостоятелен `MediaDock.Worker` executable, отделен Compose service/image, CLI команда или systemd timer, чрез които сканирането може да се стартира извън API проекта. Спрян API означава, че няма изпълнение на ingestion и няма scheduler.
 
@@ -113,7 +113,7 @@ flowchart LR
 ### 1. Премести composition и lock
 
 - Изнеси registration-а от legacy Worker composition в Infrastructure extension; реализирано в [IngestionServiceCollectionExtensions](../../server/src/MediaDock.Infrastructure/Ingestion/IngestionServiceCollectionExtensions.cs). API settings се зареждат scoped per job.
-- Премести `PostgresAdvisoryScanLock` от `MediaDock.Worker.Locking` в `MediaDock.Infrastructure` ingestion/persistence зона. Запази текущия PostgreSQL lock key и теста за конкуренция; актуализирай namespace и references. Lock lease трябва да се държи през целия RSS + optional Oscar enrichment job, не само при enqueue.
+- Премести `PostgresAdvisoryScanLock` от `MediaDock.Worker.Locking` в `MediaDock.Infrastructure` ingestion/persistence зона. Запази текущия PostgreSQL lock key и теста за конкуренция; актуализирай namespace и references. Lock lease трябва да се държи през целия RSS, Oscar enrichment или import job, не само при enqueue.
 - Credentials и limits продължават да се четат от `settings` в БД при началото на scan. Никога не ги включвай в job payload, response, events, logger scopes или error text.
 - За CSV import добави application-level orchestration contract, ако е нужен за DI/testability; `OscarDatasetImporter` остава Infrastructure implementation. Client подава bytes чрез API upload, а не произволен host path.
 
@@ -123,7 +123,7 @@ flowchart LR
 - Същият service loop изпълнява scheduler check и job dequeue, или делегира scheduler calculation на вътрешен клас, но само един dispatcher изпълнява handlers.
 - HTTP producer-ите само валидират и вкарват job в БД. Никога не създавай fire-and-forget `Task.Run`, не пази чакащите заявки само в памет и не стартирай child process/container.
 - За dequeue използвай кратка PostgreSQL транзакция с row lock (`FOR UPDATE SKIP LOCKED`) и атомарна промяна `queued -> running`. Дръж транзакцията само за claim; не дръж row lock през целия scan. Advisory lock защитава дългата операция.
-- След claim пусни съответния handler: `rss_scan` изпълнява `RssIngestionService` и при активни limits Oscar enrichment след RSS, както сега; `oscar_import` изпълнява importer-а със записаните upload bytes и `year-after` параметъра.
+- След claim пусни съответния handler: `rss_scan` изпълнява само `RssIngestionService`; `oscar_enrichment` изпълнява `OscarEnrichmentService` отделно; `oscar_import` изпълнява importer-а със записаните upload bytes и `year-after` параметъра.
 - `RssIngestionService` трябва да може да публикува структурирани progress callbacks/events (source започна/завърши, RSS entries обработени, текущ stage, safe warnings) и да получи cancellation token. Не излъчвай event за всеки parse entry; parse подробностите идват през филтрирания `parse_logs` endpoint.
 - Записвай напредъка периодично и при значими граници, не само на края. Поддържай counters, `current_source`, timestamps и event rows консистентни. Грешките се преобразуват до кратки safe codes; подробните технически данни остават само в server logs след redaction.
 - Пази глобалния advisory lock от момента преди claim до terminal update на job. Ако lock е зает, не променяй job status и не маркирай заявката като failed; изчакай и опитай отново с кратък backoff.
@@ -146,6 +146,7 @@ flowchart LR
 | --- | --- |
 | `GET /api/background-jobs/active` | Връща текущия queued/running job или `204 No Content`; UI го използва при зареждане/refresh, за да възстанови наблюдението. |
 | `POST /api/background-jobs/scans` | Заявява ръчен RSS scan; връща `202 Accepted`, job ID и URL за status. Връща `409 ProblemDetails` с активния job ID при конфликт. |
+| `POST /api/background-jobs/oscar-enrichment` | Заявява отделен ръчен Oscar metadata enrichment; връща `202 Accepted` и job ID. Връща `409 ProblemDetails`, ако такъв job вече е активен. |
 | `POST /api/background-jobs/oscar-import` | `multipart/form-data` upload плюс валидиран optional `yearAfter`; проверява празен/прекалено голям файл и връща `202`. Bytes и job се записват в една DB операция; endpoint-ът не приема host path. |
 | `GET /api/background-jobs/{id}` | Връща статус, trigger/type, enqueue/start/finish времена, stage/progress, summary, safe error code и свързан `scanRunId`. |
 | `GET /api/background-jobs/{id}/events?afterId=&pageSize=` | Cursor paging на safe events; задава разумен максимален page size и стабилен ред по event ID. |
@@ -156,7 +157,7 @@ flowchart LR
 
 ## Web UI
 
-- Добави към съществуващата Configuration/Settings view отделна секция **Ingestion**, с кратък текущ статус и бутон **Start scan**.
+- Добави към съществуващата Configuration/Settings view отделна секция **Ingestion**, с кратък текущ статус и отделни бутони за RSS scan и Oscar enrichment.
 - Деактивирай бутона при известен `queued`/`running` RSS job. След натискане използвай confirmation dialog с предупреждение, че scan-ът чете емисии и може да изпраща OMDb заявки според текущите лимити; това не е auth boundary.
 - Покажи modal/drawer за job status: queued/running/terminal badge, enqueue/start time, текущ source/stage, feed/entry counters, OMDb attempts/cache hits, последни safe event-и и крайно summary. Добави линк към съществуващия scan history/parse log за пълния резултат.
 - При зареждане Settings UI вика `/api/background-jobs/active`; клиентът poll-ва status и cursor events през ~2 секунди само докато job е активен, спира polling при terminal state или затваряне на modal; при повторно отваряне първо чете server state. Network error дава retry action без да изпраща нов job.

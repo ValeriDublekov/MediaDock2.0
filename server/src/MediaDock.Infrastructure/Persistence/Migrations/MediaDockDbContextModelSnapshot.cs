@@ -188,10 +188,15 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_background_jobs");
 
-                    b.HasIndex("JobType")
+                    b.HasIndex("JobType", "ux_background_jobs_active_rss_scan")
                         .IsUnique()
                         .HasDatabaseName("ux_background_jobs_active_rss_scan")
                         .HasFilter("job_type = 'rss_scan' AND status IN ('queued', 'running')");
+
+                    b.HasIndex("JobType", "ux_background_jobs_active_oscar_enrichment")
+                        .IsUnique()
+                        .HasDatabaseName("ux_background_jobs_active_oscar_enrichment")
+                        .HasFilter("job_type = 'oscar_enrichment' AND status IN ('queued', 'running')");
 
                     b.HasIndex("ScanRunId")
                         .IsUnique()
@@ -208,7 +213,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.ToTable("background_jobs", null, t =>
                         {
-                            t.HasCheckConstraint("ck_background_jobs_input_type", "(job_type = 'oscar_import' AND (input_bytes IS NOT NULL OR status IN ('succeeded', 'partial', 'failed'))) OR (job_type = 'rss_scan' AND input_bytes IS NULL)");
+                            t.HasCheckConstraint("ck_background_jobs_input_type", "(job_type = 'oscar_import' AND (input_bytes IS NOT NULL OR status IN ('succeeded', 'partial', 'failed'))) OR (job_type IN ('rss_scan', 'oscar_enrichment') AND input_bytes IS NULL)");
 
                             t.HasCheckConstraint("ck_background_jobs_lifecycle", "(status = 'queued' AND started_at IS NULL AND finished_at IS NULL) OR (status = 'running' AND started_at IS NOT NULL AND finished_at IS NULL) OR (status IN ('succeeded', 'partial', 'failed') AND started_at IS NOT NULL AND finished_at IS NOT NULL)");
 
@@ -216,9 +221,9 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_background_jobs_trigger", "trigger IN ('manual', 'schedule')");
 
-                            t.HasCheckConstraint("ck_background_jobs_type", "job_type IN ('rss_scan', 'oscar_import')");
+                            t.HasCheckConstraint("ck_background_jobs_type", "job_type IN ('rss_scan', 'oscar_import', 'oscar_enrichment')");
 
-                            t.HasCheckConstraint("ck_background_jobs_type_trigger", "(job_type = 'rss_scan' AND trigger IN ('manual', 'schedule')) OR (job_type = 'oscar_import' AND trigger = 'manual')");
+                            t.HasCheckConstraint("ck_background_jobs_type_trigger", "(job_type = 'rss_scan' AND trigger IN ('manual', 'schedule')) OR (job_type IN ('oscar_import', 'oscar_enrichment') AND trigger = 'manual')");
                         });
                 });
 

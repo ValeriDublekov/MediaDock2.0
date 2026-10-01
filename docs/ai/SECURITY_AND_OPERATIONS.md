@@ -54,7 +54,7 @@ from `background_jobs`; it is the only executor. Manual producers return after
 durable enqueue. The scheduler creates slots at 07:00 and 18:00 in
 `Europe/Sofia`, coalescing downtime into at most one catch-up job. The
 PostgreSQL advisory lock spans claim through terminal job state and serializes
-RSS, optional Oscar enrichment, and CSV import. A job interrupted by shutdown
+RSS, separate Oscar enrichment, and CSV import. A job interrupted by shutdown
 or crash is marked failed with the safe code `interrupted` after restart; it is
 not retried automatically. CSV upload bytes are bounded, persisted for queued
 work, omitted from responses, and erased at terminal state.

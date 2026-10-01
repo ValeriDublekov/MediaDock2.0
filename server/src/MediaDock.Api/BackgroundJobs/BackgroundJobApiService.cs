@@ -145,6 +145,51 @@ internal sealed class BackgroundJobApiService(
         }
     }
 
+    public async Task<EnqueuedBackgroundJob> EnqueueOscarEnrichmentAsync(CancellationToken cancellationToken)
+    {
+        var active = await dbContext.BackgroundJobs.AsNoTracking()
+            .Where(job => job.JobType == "oscar_enrichment" && (job.Status == "queued" || job.Status == "running"))
+            .OrderByDescending(job => job.EnqueuedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (active is not null)
+        {
+            return new EnqueuedBackgroundJob(ToResponse(active), false);
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var job = new BackgroundJob
+        {
+            JobType = "oscar_enrichment",
+            Trigger = "manual",
+            Status = "queued",
+            EnqueuedAt = now,
+            CurrentStage = "queued"
+        };
+        job.Events.Add(new BackgroundJobEvent
+        {
+            OccurredAt = now,
+            Level = "information",
+            EventCode = "job_queued",
+            Message = "Oscar enrichment queued."
+        });
+        dbContext.BackgroundJobs.Add(job);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return new EnqueuedBackgroundJob(ToResponse(job), true);
+        }
+        catch (DbUpdateException exception) when (IsActiveOscarEnrichmentConflict(exception))
+        {
+            dbContext.ChangeTracker.Clear();
+            var existing = await dbContext.BackgroundJobs.AsNoTracking()
+                .Where(item => item.JobType == "oscar_enrichment" && (item.Status == "queued" || item.Status == "running"))
+                .OrderByDescending(item => item.EnqueuedAt)
+                .SingleAsync(cancellationToken);
+            return new EnqueuedBackgroundJob(ToResponse(existing), false);
+        }
+    }
+
     public async Task<BackgroundJobResponse> EnqueueOscarImportAsync(
         OscarImportForm form,
         CancellationToken cancellationToken)
@@ -279,5 +324,12 @@ internal sealed class BackgroundJobApiService(
         {
             SqlState: PostgresErrorCodes.UniqueViolation,
             ConstraintName: "ux_background_jobs_active_rss_scan"
+        };
+
+    private static bool IsActiveOscarEnrichmentConflict(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "ux_background_jobs_active_oscar_enrichment"
         };
 }

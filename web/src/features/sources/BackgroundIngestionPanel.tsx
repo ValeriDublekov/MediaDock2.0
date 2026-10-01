@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   ApiError,
   enqueueManualScan,
+  enqueueOscarEnrichment,
   enqueueOscarImport,
   getActiveBackgroundJob,
   getBackgroundJob,
@@ -26,7 +27,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function progressSummary(job: BackgroundJob): Record<string, unknown> {
   const rss = job.resultSummary?.rss
-  return isRecord(rss) ? rss : job.resultSummary ?? {}
+  if (isRecord(rss)) return rss
+  const enrichment = job.resultSummary?.summary
+  return isRecord(enrichment) ? enrichment : job.resultSummary ?? {}
+}
+
+function jobLabel(job: BackgroundJob): string {
+  if (job.jobType === 'rss_scan') return 'RSS scan'
+  if (job.jobType === 'oscar_enrichment') return 'Oscar film metadata'
+  return 'Oscar dataset import'
 }
 
 function counter(summary: Record<string, unknown>, camelName: string, pascalName: string): string {
@@ -164,16 +173,37 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
     }
   }
 
+  async function startOscarEnrichment() {
+    if (!window.confirm('Start Oscar film metadata extraction? It may send OMDb requests within the saved limits.')) return
+    setBusy(true)
+    setError(null)
+    try {
+      const accepted = await enqueueOscarEnrichment()
+      await showJob(accepted.id)
+    } catch (requestError: unknown) {
+      if (requestError instanceof ApiError && requestError.status === 409) {
+        const activeJob = await getActiveBackgroundJob().catch(() => null)
+        if (activeJob?.jobType === 'oscar_enrichment') await showJob(activeJob.id)
+      }
+      setError(requestError instanceof Error ? requestError.message : 'Could not queue Oscar enrichment.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const summary = job ? progressSummary(job) : {}
   const active = isActive(job)
 
   return (
     <section aria-labelledby="ingestion-heading" className="management-section ingestion-section">
       <div className="section-title-row">
-        <div><h2 id="ingestion-heading">Ingestion</h2><p>RSS scanning and Oscar dataset import</p></div>
+        <div><h2 id="ingestion-heading">Ingestion</h2><p>RSS parsing and Oscar film metadata</p></div>
         <div className="form-actions">
           <button className="button" disabled={busy || (job?.jobType === 'rss_scan' && active)} onClick={() => { void startScan() }} type="button">
             {busy ? 'Working...' : 'Start scan'}
+          </button>
+          <button className="button button-secondary" disabled={busy || (job?.jobType === 'oscar_enrichment' && active)} onClick={() => { void startOscarEnrichment() }} type="button">
+            Enrich Oscar films
           </button>
           {job && <button className="button button-secondary" onClick={() => { void showJob(job.id) }} type="button">View job</button>}
         </div>
@@ -184,7 +214,7 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
       {job && (
         <div className="ingestion-current">
           <span className={`state-pill is-${job.status}`}>{formatWords(job.status)}</span>
-          <span>{job.jobType === 'rss_scan' ? 'RSS scan' : job.inputFileName ?? 'Oscar import'}</span>
+          <span>{job.jobType === 'oscar_import' ? job.inputFileName ?? 'Oscar import' : jobLabel(job)}</span>
           <span className="section-caption">{job.currentStage ? formatWords(job.currentStage) : formatWords(job.trigger)}</span>
           {job.currentSource && <span className="section-caption">{job.currentSource}</span>}
           {job.errorCode && <span className="form-error">{formatWords(job.errorCode)}</span>}
@@ -210,7 +240,7 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
           <section aria-labelledby="background-job-title" aria-modal="true" className="detail-dialog background-job-dialog" onKeyDown={(event) => { if (event.key === 'Escape') setDialogOpen(false) }} role="dialog" tabIndex={-1}>
             <header className="detail-header">
               <div>
-                <h2 id="background-job-title">{job.jobType === 'rss_scan' ? 'RSS scan' : 'Oscar dataset import'}</h2>
+                <h2 id="background-job-title">{jobLabel(job)}</h2>
                 <p className="detail-meta">Job #{job.id} · {formatWords(job.trigger)}</p>
               </div>
               <button aria-label="Close job details" className="button button-secondary" onClick={() => setDialogOpen(false)} type="button">Close</button>
@@ -233,6 +263,13 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
                   <div><dt>CACHE HITS</dt><dd>{counter(summary, 'cacheHits', 'CacheHits')}</dd></div>
                   <div><dt>ADDED TITLES</dt><dd>{counter(summary, 'titlesCreated', 'TitlesCreated')}</dd></div>
                   <div><dt>OBSERVATIONS</dt><dd>{counter(summary, 'occurrencesCreated', 'OccurrencesCreated')}</dd></div>
+                </>}
+                {job.jobType === 'oscar_enrichment' && <>
+                  <div><dt>ELIGIBLE FILMS</dt><dd>{counter(summary, 'eligibleFilms', 'EligibleFilms')}</dd></div>
+                  <div><dt>ATTEMPTED FILMS</dt><dd>{counter(summary, 'attemptedFilms', 'AttemptedFilms')}</dd></div>
+                  <div><dt>ENRICHED</dt><dd>{counter(summary, 'enrichedFilms', 'EnrichedFilms')}</dd></div>
+                  <div><dt>OMDb REQUESTS</dt><dd>{counter(summary, 'httpAttempts', 'HttpAttempts')}</dd></div>
+                  <div><dt>CACHE HITS</dt><dd>{counter(summary, 'cacheHits', 'CacheHits')}</dd></div>
                 </>}
                 {job.errorCode && <div><dt>ERROR</dt><dd>{formatWords(job.errorCode)}</dd></div>}
               </dl>

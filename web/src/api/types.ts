@@ -272,7 +272,7 @@ export type BackgroundJobStatus = 'queued' | 'running' | 'succeeded' | 'partial'
 
 export interface BackgroundJob {
   id: number
-  jobType: 'rss_scan' | 'oscar_import'
+  jobType: 'rss_scan' | 'oscar_import' | 'oscar_enrichment'
   trigger: 'manual' | 'schedule'
   status: BackgroundJobStatus
   enqueuedAt: string

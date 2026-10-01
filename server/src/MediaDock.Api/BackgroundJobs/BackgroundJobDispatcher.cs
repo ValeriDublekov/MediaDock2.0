@@ -177,46 +177,30 @@ internal sealed class BackgroundJobDispatcher(
                 return;
             }
 
-            var maximumOscarFilmsPerRun = await LoadProviderSettingsAsync(services, dbContext, stoppingToken);
+            if (job.JobType == "oscar_enrichment")
+            {
+                await ExecuteOscarEnrichmentAsync(services, dbContext, job, stoppingToken);
+                return;
+            }
+
+            await LoadProviderSettingsAsync(services, dbContext, requireOscarEnrichment: false, stoppingToken);
             var ingestion = services.GetRequiredService<RssIngestionService>();
             var result = await ingestion.RunAsync(
                 job.Trigger,
                 stoppingToken,
                 (progress, token) => SaveIngestionProgressAsync(dbContext, job, progress, token));
 
-            object? oscarSummary = null;
             var overallStatus = result.Summary.Status switch
             {
                 "failed" => "failed",
                 "partial" => "partial",
                 _ => "succeeded"
             };
-            if (maximumOscarFilmsPerRun > 0)
-            {
-                await SetStageAsync(dbContext, job, "oscar_enrichment", "Oscar enrichment started.", stoppingToken);
-                var enrichment = await services.GetRequiredService<OscarEnrichmentService>()
-                    .RunAsync(maximumOscarFilmsPerRun, job.Trigger, stoppingToken);
-                oscarSummary = new
-                {
-                    enrichment.RunId,
-                    enrichment.Status,
-                    enrichment.Summary
-                };
-                if (enrichment.Status != OscarEnrichmentRunStatuses.Succeeded && overallStatus == "succeeded")
-                {
-                    overallStatus = "partial";
-                }
-            }
-            else
-            {
-                oscarSummary = new { status = "skipped", reason = "disabled" };
-            }
-
             await CompleteJobAsync(
                 dbContext,
                 job,
                 overallStatus,
-                new { scanRunId = result.RunId, rss = result.Summary, oscarEnrichment = oscarSummary },
+                new { scanRunId = result.RunId, rss = result.Summary },
                 null,
                 CancellationToken.None);
         }
@@ -246,6 +230,7 @@ internal sealed class BackgroundJobDispatcher(
     private async Task<int> LoadProviderSettingsAsync(
         IServiceProvider services,
         MediaDockDbContext dbContext,
+        bool requireOscarEnrichment,
         CancellationToken cancellationToken)
     {
         var settings = await dbContext.Settings.AsNoTracking()
@@ -258,9 +243,14 @@ internal sealed class BackgroundJobDispatcher(
                 item.OscarEnrichmentMaxRequestsPerDay
             })
             .SingleOrDefaultAsync(cancellationToken);
+        if (requireOscarEnrichment && (settings is null || settings.OscarEnrichmentMaxFilmsPerRun <= 0))
+        {
+            return 0;
+        }
+
         if (settings is null || string.IsNullOrWhiteSpace(settings.OmdbApiKey)
             || settings.OmdbDailyRequestLimit <= 0
-            || (settings.OscarEnrichmentMaxFilmsPerRun > 0 && settings.OscarEnrichmentMaxRequestsPerDay <= 0))
+            || (requireOscarEnrichment && settings.OscarEnrichmentMaxRequestsPerDay <= 0))
         {
             throw new InvalidOperationException("Provider settings are missing or invalid.");
         }
@@ -270,6 +260,42 @@ internal sealed class BackgroundJobDispatcher(
             settings.OmdbDailyRequestLimit,
             settings.OscarEnrichmentMaxRequestsPerDay);
         return settings.OscarEnrichmentMaxFilmsPerRun;
+    }
+
+    private async Task ExecuteOscarEnrichmentAsync(
+        IServiceProvider services,
+        MediaDockDbContext dbContext,
+        BackgroundJob job,
+        CancellationToken cancellationToken)
+    {
+        var maximumFilms = await LoadProviderSettingsAsync(
+            services,
+            dbContext,
+            requireOscarEnrichment: true,
+            cancellationToken);
+        if (maximumFilms <= 0)
+        {
+            await CompleteJobAsync(
+                dbContext,
+                job,
+                "succeeded",
+                new { status = "skipped", reason = "disabled" },
+                null,
+                CancellationToken.None);
+            return;
+        }
+
+        await SetStageAsync(dbContext, job, "oscar_enrichment", "Oscar enrichment started.", cancellationToken);
+        var enrichment = await services.GetRequiredService<OscarEnrichmentService>()
+            .RunAsync(maximumFilms, job.Trigger, cancellationToken);
+        var status = enrichment.Status == OscarEnrichmentRunStatuses.Succeeded ? "succeeded" : "partial";
+        await CompleteJobAsync(
+            dbContext,
+            job,
+            status,
+            new { enrichment.RunId, enrichment.Status, enrichment.Summary },
+            null,
+            CancellationToken.None);
     }
 
     private async Task ExecuteOscarImportAsync(

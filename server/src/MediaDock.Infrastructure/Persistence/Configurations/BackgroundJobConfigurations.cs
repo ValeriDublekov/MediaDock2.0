@@ -10,12 +10,12 @@ internal sealed class BackgroundJobConfiguration : IEntityTypeConfiguration<Back
     {
         builder.ToTable("background_jobs", table =>
         {
-            table.HasCheckConstraint("ck_background_jobs_type", "job_type IN ('rss_scan', 'oscar_import')");
+            table.HasCheckConstraint("ck_background_jobs_type", "job_type IN ('rss_scan', 'oscar_import', 'oscar_enrichment')");
             table.HasCheckConstraint("ck_background_jobs_trigger", "trigger IN ('manual', 'schedule')");
             table.HasCheckConstraint("ck_background_jobs_status", "status IN ('queued', 'running', 'succeeded', 'partial', 'failed')");
             table.HasCheckConstraint(
                 "ck_background_jobs_type_trigger",
-                "(job_type = 'rss_scan' AND trigger IN ('manual', 'schedule')) OR (job_type = 'oscar_import' AND trigger = 'manual')");
+                "(job_type = 'rss_scan' AND trigger IN ('manual', 'schedule')) OR (job_type IN ('oscar_import', 'oscar_enrichment') AND trigger = 'manual')");
             table.HasCheckConstraint(
                 "ck_background_jobs_lifecycle",
                 "(status = 'queued' AND started_at IS NULL AND finished_at IS NULL) OR "
@@ -24,7 +24,7 @@ internal sealed class BackgroundJobConfiguration : IEntityTypeConfiguration<Back
             table.HasCheckConstraint(
                 "ck_background_jobs_input_type",
                 "(job_type = 'oscar_import' AND (input_bytes IS NOT NULL OR status IN ('succeeded', 'partial', 'failed'))) OR "
-                + "(job_type = 'rss_scan' AND input_bytes IS NULL)");
+                + "(job_type IN ('rss_scan', 'oscar_enrichment') AND input_bytes IS NULL)");
         });
         builder.HasKey(entity => entity.Id).HasName("pk_background_jobs");
         builder.Property(entity => entity.Id).UseIdentityByDefaultColumn().HasColumnName("id");
@@ -59,10 +59,14 @@ internal sealed class BackgroundJobConfiguration : IEntityTypeConfiguration<Back
             .IsUnique()
             .HasFilter("scan_run_id IS NOT NULL")
             .HasDatabaseName("ux_background_jobs_scan_run_id");
-        builder.HasIndex(entity => entity.JobType)
+        builder.HasIndex(entity => entity.JobType, "ux_background_jobs_active_rss_scan")
             .IsUnique()
             .HasFilter("job_type = 'rss_scan' AND status IN ('queued', 'running')")
             .HasDatabaseName("ux_background_jobs_active_rss_scan");
+        builder.HasIndex(entity => entity.JobType, "ux_background_jobs_active_oscar_enrichment")
+            .IsUnique()
+            .HasFilter("job_type = 'oscar_enrichment' AND status IN ('queued', 'running')")
+            .HasDatabaseName("ux_background_jobs_active_oscar_enrichment");
     }
 }
 

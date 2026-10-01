@@ -30,6 +30,7 @@ This document describes the API in `server/`. Routes are registered in [Program.
 | `PUT /api/settings/providers/omdb` | [UpdateProviderSettingsRequest](../../server/src/MediaDock.Api/Sources/SourceSettingsContracts.cs) | `200 ProviderSettingsResponse` | `400 ValidationProblemDetails`; unauthenticated LAN-trusted write. |
 | `GET /api/background-jobs/active` | None | `200 BackgroundJobResponse` or `204` when no job is queued/running | None declared. |
 | `POST /api/background-jobs/scans` | Empty body | `202 BackgroundJobAcceptedResponse` with job ID and status URL | `409 ProblemDetails` with `activeJobId` and `activeJobStatusUrl` if an RSS scan is already queued/running. |
+| `POST /api/background-jobs/oscar-enrichment` | Empty body | `202 BackgroundJobAcceptedResponse` with job ID and status URL | `409 ProblemDetails` if an Oscar enrichment job is already queued/running. |
 | `POST /api/background-jobs/oscar-import` | Multipart `File` (CSV/TSV) and optional `YearAfter` | `202 BackgroundJobAcceptedResponse` | `400 ValidationProblemDetails` for empty/oversized file, unsupported filename/content type, or invalid year. Client paths are not accepted. |
 | `GET /api/background-jobs/{id:long}` | Job ID | `200 BackgroundJobResponse` with lifecycle, progress, safe summary/error code, and optional `scanRunId` | `404 ProblemDetails` for unknown ID. |
 | `GET /api/background-jobs/{id:long}/events` | `afterId` (default 0), `pageSize` (default 50, max 100) | `200 BackgroundJobEventsResponse` ordered by event ID | `400 ValidationProblemDetails`; `404 ProblemDetails` for unknown job. |
@@ -38,6 +39,8 @@ This document describes the API in `server/`. Routes are registered in [Program.
 | `GET /openapi/v1.json` | None | OpenAPI document in Development only | `MapOpenApi` is registered only in Development. |
 
 The endpoint mappings and response metadata are in [CatalogEndpoints.cs](../../server/src/MediaDock.Api/Catalog/CatalogEndpoints.cs), [OscarEndpoints.cs](../../server/src/MediaDock.Api/OscarAwards/OscarEndpoints.cs), [SourceSettingsEndpoints.cs](../../server/src/MediaDock.Api/Sources/SourceSettingsEndpoints.cs), [OperationalHistoryEndpoints.cs](../../server/src/MediaDock.Api/Operations/OperationalHistoryEndpoints.cs), [BackgroundJobEndpoints.cs](../../server/src/MediaDock.Api/BackgroundJobs/BackgroundJobEndpoints.cs), and [HealthEndpoints.cs](../../server/src/MediaDock.Api/Health/HealthEndpoints.cs). Background-job API coverage is in [BackgroundJobApiTests.cs](../../server/tests/MediaDock.IntegrationTests/BackgroundJobApiTests.cs) and [BackgroundJobExecutionTests.cs](../../server/tests/MediaDock.IntegrationTests/BackgroundJobExecutionTests.cs).
+
+Background job types are `rss_scan` (manual or scheduled), `oscar_enrichment` (manual), and `oscar_import` (manual). RSS scans do not run Oscar enrichment as a follow-up operation.
 
 ## Queries And Validation
 

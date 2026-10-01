@@ -54,12 +54,12 @@ For catalog behavior, start with the API endpoint, contract, or service that own
 
 ```mermaid
 flowchart TD
-    ui["Configuration UI"] -->|"manual scan / CSV upload"| routes["BackgroundJobEndpoints"]
+    ui["Configuration UI"] -->|"RSS scan / Oscar enrichment / CSV upload"| routes["BackgroundJobEndpoints"]
     scheduler["BackgroundJobDispatcher scheduler"] -->|"07:00 / 18:00 Europe/Sofia"| queue[("background_jobs")]
     routes -->|"durable enqueue"| queue
     queue -->|"atomic claim: FOR UPDATE SKIP LOCKED"| dispatcher["BackgroundJobDispatcher"]
     dispatcher --> lock["PostgresAdvisoryScanLock"]
-    lock --> handler["RSS scan / Oscar import handler"]
+    lock --> handler["RSS scan / Oscar enrichment / import handler"]
     handler --> app["Application use cases"]
     app --> infra["Infrastructure adapters"]
     infra --> db[("PostgreSQL")]
@@ -85,12 +85,12 @@ deterministic across DST. One partial unique index prevents more than one
 queued/running RSS job, while a unique slot index makes schedule enqueue
 idempotent.
 
-The RSS handler loads the OMDb key and limits from the singleton `settings` row
+The RSS handler loads the OMDb key and shared limit from the singleton `settings` row
 inside the job scope; credentials never enter job payloads or API responses.
 `RssIngestionService` reports stage/source/counter snapshots at feed boundaries
 and periodically during processing. New parse logs store their `scan_run_id`;
-older rows remain unassociated. Optional Oscar enrichment follows RSS under
-the same lock and resolver/cache/budget. CSV uploads are bounded bytes stored
+older rows remain unassociated. Oscar enrichment is a separate manual job using
+the same lock and resolver/cache/shared budget. CSV uploads are bounded bytes stored
 with the queued import; the importer parses them without a host path and clears
 the bytes at terminal state.
 
@@ -99,7 +99,7 @@ the bytes at terminal state.
 [PostgresAdvisoryScanLock](../../server/src/MediaDock.Infrastructure/Ingestion/PostgresAdvisoryScanLock.cs)
 uses PostgreSQL session-level `pg_try_advisory_lock` and releases it with
 `pg_advisory_unlock` when the async lease is disposed. The dispatcher holds the
-lease across queue claim, RSS plus optional Oscar enrichment, or Oscar import.
+lease across queue claim and one RSS scan, Oscar enrichment, or Oscar import.
 If another cooperating runner holds the same lock, the job remains queued for
 a later poll. The lock does not serialize ordinary API writes or migrations.
 

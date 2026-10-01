@@ -41,6 +41,30 @@ internal static class BackgroundJobEndpoints
             .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
+        app.MapPost("/api/background-jobs/oscar-enrichment", async (BackgroundJobApiService service, CancellationToken token) =>
+        {
+            var result = await service.EnqueueOscarEnrichmentAsync(token);
+            if (!result.Accepted)
+            {
+                var problem = new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Title = "Oscar enrichment is already queued or running.",
+                    Detail = "Wait for the active Oscar enrichment job to finish before requesting another."
+                };
+                problem.Extensions["activeJobId"] = result.Job.Id;
+                problem.Extensions["activeJobStatusUrl"] = $"/api/background-jobs/{result.Job.Id}";
+                return Results.Conflict(problem);
+            }
+
+            var statusUrl = $"/api/background-jobs/{result.Job.Id}";
+            return Results.Accepted(statusUrl, new BackgroundJobAcceptedResponse(result.Job.Id, result.Job.Status, statusUrl));
+        })
+            .WithName("EnqueueOscarEnrichment")
+            .WithSummary("Queue a manual Oscar film metadata enrichment run.")
+            .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
         app.MapPost("/api/background-jobs/oscar-import", async (
             [FromForm] OscarImportForm form,
             BackgroundJobApiService service,

@@ -90,12 +90,14 @@ Invoke-WebRequest http://127.0.0.1:8080/
 ## Background ingestion
 
 The API owns one PostgreSQL-backed queue and one hosted dispatcher. Use
-**Configuration > Ingestion > Start scan** for a manual RSS scan. The API
+**Configuration > Ingestion > Start scan** for RSS parsing and
+**Enrich Oscar films** for a separate Oscar metadata run. The API
 queues additional scans daily at 07:00 and 18:00 in `Europe/Sofia`; missed
 slots coalesce to at most one catch-up job. Jobs survive browser close and API
 restarts. A PostgreSQL advisory lock serializes RSS scans, Oscar enrichment,
-and dataset imports. Migration-only startup applies schema changes and exits
-before the hosted dispatcher starts.
+and dataset imports. RSS scans do not start Oscar enrichment automatically.
+Migration-only startup applies schema changes and exits before the hosted
+dispatcher starts.
 
 Configure the OMDb key, confirmed shared daily quota, Oscar per-run cap, and
 Oscar daily cap in Configuration. RSS and Oscar attempts share the UTC-day
