@@ -24,24 +24,33 @@ public sealed class OscarDatasetImporter(MediaDockDbContext dbContext)
         string path,
         int yearAfter = 1980,
         CancellationToken cancellationToken = default)
+        => await ImportAsync(OscarCsvDatasetReader.Read(path, yearAfter, cancellationToken), cancellationToken);
+
+    public async Task<OscarImportSummary> ImportAsync(
+        byte[] content,
+        int yearAfter = 1980,
+        CancellationToken cancellationToken = default)
+        => await ImportAsync(OscarCsvDatasetReader.Read(content, yearAfter, cancellationToken), cancellationToken);
+
+    private async Task<OscarImportSummary> ImportAsync(
+        OscarCsvReadResult dataset,
+        CancellationToken cancellationToken)
     {
         try
         {
-            return await ImportOnceAsync(path, yearAfter, cancellationToken);
+            return await ImportOnceAsync(dataset, cancellationToken);
         }
         catch (DbUpdateException exception) when (IsImdbIdentityUniqueViolation(exception))
         {
             dbContext.ChangeTracker.Clear();
-            return await ImportOnceAsync(path, yearAfter, cancellationToken);
+            return await ImportOnceAsync(dataset, cancellationToken);
         }
     }
 
     private async Task<OscarImportSummary> ImportOnceAsync(
-        string path,
-        int yearAfter,
+        OscarCsvReadResult dataset,
         CancellationToken cancellationToken)
     {
-        var dataset = OscarCsvDatasetReader.Read(path, yearAfter, cancellationToken);
         if (dataset.Rows.Count == 0)
         {
             return CreateSummary(dataset, 0, 0, 0, 0);

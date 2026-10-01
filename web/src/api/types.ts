@@ -261,3 +261,42 @@ export interface SystemVersion {
   commitSha: string
   commitDateUtc: string | null
 }
+
+export type BackgroundJobStatus = 'queued' | 'running' | 'succeeded' | 'partial' | 'failed'
+
+export interface BackgroundJob {
+  id: number
+  jobType: 'rss_scan' | 'oscar_import'
+  trigger: 'manual' | 'schedule'
+  status: BackgroundJobStatus
+  enqueuedAt: string
+  startedAt: string | null
+  finishedAt: string | null
+  currentStage: string | null
+  currentSource: string | null
+  progressUpdatedAt: string | null
+  errorCode: string | null
+  resultSummary: Record<string, unknown> | null
+  scanRunId: number | null
+  inputFileName: string | null
+}
+
+export interface BackgroundJobAccepted {
+  id: number
+  status: BackgroundJobStatus
+  statusUrl: string
+}
+
+export interface BackgroundJobEvent {
+  id: number
+  occurredAt: string
+  level: 'information' | 'warning' | 'error'
+  eventCode: string
+  message: string
+  data: Record<string, unknown> | null
+}
+
+export interface BackgroundJobEvents {
+  items: BackgroundJobEvent[]
+  nextAfterId: number
+}

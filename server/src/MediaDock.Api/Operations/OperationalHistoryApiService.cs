@@ -30,6 +30,11 @@ internal sealed class OperationalHistoryApiService(MediaDockDbContext dbContext)
             logs = logs.Where(log => log.SourceId == sourceId);
         }
 
+        if (query.ScanRunId is { } scanRunId)
+        {
+            logs = logs.Where(log => log.ScanRunId == scanRunId);
+        }
+
         if (query.ParsedSuccessfully is { } parsedSuccessfully)
         {
             logs = logs.Where(log => log.ParsedSuccessfully == parsedSuccessfully);
@@ -61,6 +66,7 @@ internal sealed class OperationalHistoryApiService(MediaDockDbContext dbContext)
             .Take(pageSize)
             .Select(log => new ParseLogResponse(
                 log.Id,
+                log.ScanRunId,
                 log.SourceId,
                 log.Source == null ? null : log.Source.Name,
                 log.SourceItemKey,

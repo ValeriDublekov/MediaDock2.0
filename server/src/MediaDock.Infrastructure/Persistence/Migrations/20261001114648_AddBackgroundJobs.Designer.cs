@@ -3,6 +3,7 @@ using System;
 using MediaDock.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MediaDock.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(MediaDockDbContext))]
-    partial class MediaDockDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261001114648_AddBackgroundJobs")]
+    partial class AddBackgroundJobs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -208,7 +211,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.ToTable("background_jobs", null, t =>
                         {
-                            t.HasCheckConstraint("ck_background_jobs_input_type", "(job_type = 'oscar_import' AND (input_bytes IS NOT NULL OR status IN ('succeeded', 'partial', 'failed'))) OR (job_type = 'rss_scan' AND input_bytes IS NULL)");
+                            t.HasCheckConstraint("ck_background_jobs_input_type", "(job_type = 'oscar_import' AND input_bytes IS NOT NULL) OR (job_type = 'rss_scan' AND input_bytes IS NULL)");
 
                             t.HasCheckConstraint("ck_background_jobs_lifecycle", "(status = 'queued' AND started_at IS NULL AND finished_at IS NULL) OR (status = 'running' AND started_at IS NOT NULL AND finished_at IS NULL) OR (status IN ('succeeded', 'partial', 'failed') AND started_at IS NOT NULL AND finished_at IS NOT NULL)");
 
@@ -855,10 +858,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("retry_state");
 
-                    b.Property<long?>("ScanRunId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("scan_run_id");
-
                     b.Property<long?>("SourceId")
                         .HasColumnType("bigint")
                         .HasColumnName("source_id");
@@ -876,8 +875,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ProcessedAt")
                         .HasDatabaseName("ix_parse_logs_processed_at");
-
-                    b.HasIndex("ScanRunId");
 
                     b.HasIndex("SourceId")
                         .HasDatabaseName("IX_parse_logs_source_id");
@@ -1247,12 +1244,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.ParseLog", b =>
                 {
-                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.ScanRun", null)
-                        .WithMany()
-                        .HasForeignKey("ScanRunId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_parse_logs_scan_runs_scan_run_id");
-
                     b.HasOne("MediaDock.Infrastructure.Persistence.Entities.Source", "Source")
                         .WithMany("ParseLogs")
                         .HasForeignKey("SourceId")

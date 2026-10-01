@@ -119,11 +119,10 @@ pushd "$APP_ROOT" >/dev/null
 run_logged compose-build env \
     POSTGRES_PASSWORD=validation-only \
     API_IMAGE="mediadock-next-api:validation-$APP_TAG" \
-    WORKER_IMAGE="mediadock-next-worker:validation-$APP_TAG" \
     docker compose \
         --project-directory "$APP_ROOT" \
         --env-file /dev/null \
         --project-name mediadock-next-validation \
         --file "$APP_ROOT/compose.yaml" \
-        build api worker
+        build api
     popd >/dev/null

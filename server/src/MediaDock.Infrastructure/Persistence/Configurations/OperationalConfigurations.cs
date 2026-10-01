@@ -50,6 +50,7 @@ internal sealed class ParseLogConfiguration : IEntityTypeConfiguration<ParseLog>
         builder.HasKey(entity => entity.Id).HasName("pk_parse_logs");
         builder.Property(entity => entity.Id).UseIdentityByDefaultColumn().HasColumnName("id");
         builder.Property(entity => entity.SourceId).HasColumnName("source_id");
+        builder.Property(entity => entity.ScanRunId).HasColumnName("scan_run_id");
         builder.Property(entity => entity.SourceItemKey).HasColumnName("source_item_key");
         builder.Property(entity => entity.RawTitle).HasColumnName("raw_title").IsRequired();
         builder.Property(entity => entity.FeedName).HasColumnName("feed_name").IsRequired();
@@ -74,6 +75,11 @@ internal sealed class ParseLogConfiguration : IEntityTypeConfiguration<ParseLog>
             .HasForeignKey(entity => entity.SourceId)
             .OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("fk_parse_logs_sources_source_id");
+        builder.HasOne<ScanRun>()
+            .WithMany()
+            .HasForeignKey(entity => entity.ScanRunId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_parse_logs_scan_runs_scan_run_id");
         builder.HasIndex(entity => entity.SourceId).HasDatabaseName("IX_parse_logs_source_id");
         builder.HasIndex(entity => entity.ProcessedAt).HasDatabaseName("ix_parse_logs_processed_at");
     }

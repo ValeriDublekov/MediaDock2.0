@@ -39,7 +39,8 @@ public sealed class RssIngestionService
 
     public async Task<IngestionRunResult> RunAsync(
         string trigger = "manual",
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Func<IngestionProgressUpdate, CancellationToken, Task>? reportProgress = null)
     {
         if (trigger is not ("schedule" or "manual" or "local"))
         {
@@ -48,8 +49,9 @@ public sealed class RssIngestionService
 
         var startedAt = _timeProvider.GetUtcNow();
         var runId = await _repository.StartRunAsync(trigger, startedAt, cancellationToken);
-        var progress = new RunProgress();
+        var progress = new RunProgress { RunId = runId };
         var pendingLogs = new List<IngestionParseLog>();
+        await ReportProgressAsync("started", progress, reportProgress, cancellationToken);
 
         try
         {
@@ -57,6 +59,8 @@ public sealed class RssIngestionService
             var settings = await _repository.GetMatchSettingsAsync(cancellationToken);
             foreach (var source in sources)
             {
+                progress.CurrentSource = BoundText(source.Name, 200);
+                await ReportProgressAsync("source_started", progress, reportProgress, cancellationToken);
                 try
                 {
                     var body = await _feedTransport.FetchAsync(source.Url, cancellationToken);
@@ -66,6 +70,11 @@ public sealed class RssIngestionService
                     {
                         progress.EntriesSeen++;
                         await ProcessEntryAsync(source, entry, settings, progress, pendingLogs, cancellationToken);
+                        if (progress.EntriesSeen % 25 == 0)
+                        {
+                            await ReportProgressAsync("processing_entries", progress, reportProgress, cancellationToken);
+                        }
+
                         if (progress.OmdbBudgetExhausted)
                         {
                             break;
@@ -106,6 +115,7 @@ public sealed class RssIngestionService
                 }
 
                 await FlushLogsAsync(pendingLogs, progress, cancellationToken);
+                await ReportProgressAsync("source_completed", progress, reportProgress, cancellationToken);
                 if (progress.OmdbBudgetExhausted)
                 {
                     break;
@@ -133,6 +143,7 @@ public sealed class RssIngestionService
         var summary = BuildSummary(progress, _timeProvider.GetUtcNow(), status);
         await FlushLogsAsync(pendingLogs, progress, cancellationToken);
         await _repository.CompleteRunAsync(runId, summary, cancellationToken);
+        await ReportProgressAsync("completed", progress, reportProgress, cancellationToken);
         return new IngestionRunResult(runId, summary);
     }
 
@@ -579,9 +590,36 @@ public sealed class RssIngestionService
             return;
         }
 
-        await _repository.AddParseLogsAsync(pendingLogs, cancellationToken);
+        await _repository.AddParseLogsAsync(progress.RunId, pendingLogs, cancellationToken);
         progress.ParseLogsWritten += pendingLogs.Count;
         pendingLogs.Clear();
+    }
+
+    private async Task ReportProgressAsync(
+        string stage,
+        RunProgress progress,
+        Func<IngestionProgressUpdate, CancellationToken, Task>? reportProgress,
+        CancellationToken cancellationToken)
+    {
+        if (reportProgress is null)
+        {
+            return;
+        }
+
+        await reportProgress(
+            new IngestionProgressUpdate(
+                progress.RunId,
+                stage,
+                progress.CurrentSource,
+                progress.FeedsProcessed,
+                progress.EntriesSeen,
+                progress.TitlesCreated,
+                progress.OccurrencesCreated,
+                progress.CacheHits,
+                progress.OmdbRequests,
+                progress.IgnoredEntries,
+                progress.ErrorCount),
+            cancellationToken);
     }
 
     private static IngestionRunSummary BuildSummary(
@@ -616,6 +654,8 @@ public sealed class RssIngestionService
 
     private sealed class RunProgress
     {
+        public long RunId { get; init; }
+        public string? CurrentSource { get; set; }
         public int FeedsProcessed { get; set; }
         public int EntriesSeen { get; set; }
         public int TitlesCreated { get; set; }

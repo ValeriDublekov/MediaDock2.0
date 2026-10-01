@@ -14,6 +14,9 @@ public sealed record ParseLogQuery
     [Range(1L, long.MaxValue)]
     public long? SourceId { get; init; }
 
+    [Range(1L, long.MaxValue)]
+    public long? ScanRunId { get; init; }
+
     public bool? ParsedSuccessfully { get; init; }
 
     public bool? Ignored { get; init; }
@@ -44,6 +47,7 @@ public sealed record ScanRunQuery
 /// <summary>One parse-log entry returned from history.</summary>
 public sealed record ParseLogResponse(
     long Id,
+    long? ScanRunId,
     long? SourceId,
     string? SourceName,
     string? SourceItemKey,

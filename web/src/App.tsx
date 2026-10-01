@@ -46,6 +46,7 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
 
 function AppContent() {
   const [section, setSection] = useState<Section>('catalog')
+  const [historyScanRunId, setHistoryScanRunId] = useState<number | null>(null)
   const content = sectionContent[section]
 
   return (
@@ -63,7 +64,7 @@ function AppContent() {
               aria-current={section === item.id ? 'page' : undefined}
               className={`nav-item${section === item.id ? ' is-active' : ''}`}
               key={item.id}
-              onClick={() => setSection(item.id)}
+              onClick={() => { setHistoryScanRunId(null); setSection(item.id) }}
               type="button"
             >
               <span className="nav-number">{item.number}</span>
@@ -96,8 +97,8 @@ function AppContent() {
           {section === 'catalog' && <CatalogView />}
           {section === 'oscar' && <OscarCatalogView />}
           {section === 'favorites' && <FavoritesView />}
-          {section === 'sources' && <SourceSettingsView />}
-          {section === 'history' && <HistoryView />}
+          {section === 'sources' && <SourceSettingsView onOpenHistory={(scanRunId) => { setHistoryScanRunId(scanRunId); setSection('history') }} />}
+          {section === 'history' && <HistoryView scanRunId={historyScanRunId} onClearScanRun={() => setHistoryScanRunId(null)} />}
         </div>
       </main>
     </div>

@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { ApiError, getCatalog, getOscarFilm, getOscarFilms, getProviderSettings, requestJson, updateProviderSettings } from './client'
+import {
+  ApiError,
+  enqueueManualScan,
+  enqueueOscarImport,
+  getActiveBackgroundJob,
+  getBackgroundJobEvents,
+  getCatalog,
+  getOscarFilm,
+  getOscarFilms,
+  getProviderSettings,
+  requestJson,
+  updateProviderSettings,
+} from './client'
 import type { CatalogTitle, OscarFilm, PageResponse, ProviderSettings, ProviderSettingsInput } from './types'
 
 function response(status: number, value: unknown): Response {
@@ -82,6 +94,40 @@ describe('typed API client', () => {
     expect(String(stub.calls[0]?.input)).toBe('/api/settings/providers/omdb')
     expect(stub.calls[1]?.init?.method).toBe('PUT')
     expect(JSON.parse(String(stub.calls[1]?.init?.body))).toEqual(input)
+  })
+
+  it('queues a scan and fetches job events with a cursor', async () => {
+    const queued = { id: 7, status: 'queued', statusUrl: '/api/background-jobs/7' }
+    const stub = fetchStub(response(202, queued))
+
+    await enqueueManualScan(stub.fetcher)
+    await getBackgroundJobEvents(7, { afterId: 12, pageSize: 25 }, stub.fetcher)
+
+    expect(stub.calls[0]?.init?.method).toBe('POST')
+    const eventsUrl = new URL(String(stub.calls[1]?.input), 'http://localhost')
+    expect(eventsUrl.pathname).toBe('/api/background-jobs/7/events')
+    expect(eventsUrl.searchParams.get('afterId')).toBe('12')
+    expect(eventsUrl.searchParams.get('pageSize')).toBe('25')
+  })
+
+  it('sends Oscar files as multipart without setting a boundary-less content type', async () => {
+    const stub = fetchStub(response(202, { id: 9, status: 'queued', statusUrl: '/api/background-jobs/9' }))
+    const file = new File(['csv contents'], 'awards.csv', { type: 'text/csv' })
+
+    await enqueueOscarImport(file, 1980, stub.fetcher)
+
+    const init = stub.calls[0]?.init
+    const body = init?.body
+    expect(init?.method).toBe('POST')
+    expect(body).toBeInstanceOf(FormData)
+    expect(new Headers(init?.headers).has('Content-Type')).toBe(false)
+    expect((body as FormData).get('YearAfter')).toBe('1980')
+    expect((body as FormData).get('File')).toBe(file)
+  })
+
+  it('treats an empty active-job response as no active job', async () => {
+    const stub = fetchStub(response(204, undefined))
+    await expect(getActiveBackgroundJob(stub.fetcher)).resolves.toBeNull()
   })
 
   it('surfaces ProblemDetails validation errors with their HTTP status', async () => {

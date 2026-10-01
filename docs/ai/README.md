@@ -13,11 +13,11 @@ Start here for work in this repository. Use the [local operations runbook](../..
 | Frontend | [Architecture](ARCHITECTURE.md) for the web/API boundary and request flow; [Testing](TESTING.md) for frontend tests and commands. |
 | API | [API contracts](API_CONTRACTS.md) for routes, DTOs, validation, and errors; [Architecture](ARCHITECTURE.md) for cross-layer flows. |
 | Persistence | [Data contracts](DATA_CONTRACTS.md) for entities, schema, and invariants; [Architecture](ARCHITECTURE.md) for persistence flows. |
-| Worker | [Architecture](ARCHITECTURE.md) for worker startup and ingestion flow; [Implementation status](IMPLEMENTATION_STATUS.md) for shipped capabilities and limits. |
+| Background ingestion | [Architecture](ARCHITECTURE.md) for the API-hosted queue, dispatcher, and scheduler; [API contracts](API_CONTRACTS.md) for job routes; [Implementation status](IMPLEMENTATION_STATUS.md) for source and production rollout status. |
 | Tests | [Testing](TESTING.md) for scoped commands, test categories, and required dependencies. |
 | Operations | [Server access](SERVER_ACCESS.md) for the local SSH profile and session workflow; [Security and operations](SECURITY_AND_OPERATIONS.md) for runtime boundaries; the [local runbook](../../README.md) for setup and maintenance. |
 
-## Planned work
+## Plans And Implementation Notes
 
 - [Improvement plan](IMPROVEMENT_PLAN.md)
 - [UI design plan](UI_DESIGN_PLAN.md)
@@ -27,3 +27,4 @@ Start here for work in this repository. Use the [local operations runbook](../..
 - [Database model review](DATABASE_MODEL_REVIEW.md)
 - [Torrent title recognition plan](TORRENT_TITLE_RECOGNITION_PLAN.md)
 - [Favorite movies plan](FAVORITE_MOVIES_PLAN.md)
+- [Server-hosted background ingestion](BACKGROUND_INGESTION_PLAN.md) (implemented in source; production rollout pending)

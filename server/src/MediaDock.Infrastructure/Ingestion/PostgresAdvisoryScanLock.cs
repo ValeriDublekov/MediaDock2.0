@@ -3,7 +3,7 @@ using MediaDock.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
-namespace MediaDock.Worker.Locking;
+namespace MediaDock.Infrastructure.Ingestion;
 
 public sealed class PostgresAdvisoryScanLock(MediaDockDbContext dbContext)
 {

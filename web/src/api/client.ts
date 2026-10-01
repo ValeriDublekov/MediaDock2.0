@@ -1,6 +1,9 @@
 import type {
   CatalogQuery,
   CatalogTitle,
+  BackgroundJob,
+  BackgroundJobAccepted,
+  BackgroundJobEvents,
   FavoriteMovie,
   OscarCatalogQuery,
   OscarFilm,
@@ -181,4 +184,31 @@ export function getScanRuns(query: ScanRunQuery, fetcher?: typeof fetch) {
 
 export function getParseLogs(query: ParseLogQuery, fetcher?: typeof fetch) {
   return requestJson<PageResponse<ParseLog>>(withQuery('/parse-logs', query), {}, fetcher)
+}
+
+export async function getActiveBackgroundJob(fetcher?: typeof fetch) {
+  return (await requestJson<BackgroundJob | null>('/background-jobs/active', {}, fetcher)) ?? null
+}
+
+export function getBackgroundJob(id: number, fetcher?: typeof fetch) {
+  return requestJson<BackgroundJob>(`/background-jobs/${id}`, {}, fetcher)
+}
+
+export function getBackgroundJobEvents(
+  id: number,
+  query: { afterId: number; pageSize: number },
+  fetcher?: typeof fetch,
+) {
+  return requestJson<BackgroundJobEvents>(withQuery(`/background-jobs/${id}/events`, query), {}, fetcher)
+}
+
+export function enqueueManualScan(fetcher?: typeof fetch) {
+  return requestJson<BackgroundJobAccepted>('/background-jobs/scans', { method: 'POST' }, fetcher)
+}
+
+export function enqueueOscarImport(file: File, yearAfter: number, fetcher?: typeof fetch) {
+  const body = new FormData()
+  body.append('File', file)
+  body.append('YearAfter', String(yearAfter))
+  return requestJson<BackgroundJobAccepted>('/background-jobs/oscar-import', { method: 'POST', body }, fetcher)
 }

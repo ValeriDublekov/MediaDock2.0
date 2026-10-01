@@ -1,16 +1,16 @@
+using MediaDock.Infrastructure.Ingestion;
 using MediaDock.Infrastructure.Persistence;
-using MediaDock.Worker.Locking;
 using Microsoft.EntityFrameworkCore;
 
 namespace MediaDock.IntegrationTests;
 
-[Trait("Category", "Worker")]
-public sealed class WorkerConcurrencyTests
+[Trait("Category", "Infrastructure")]
+public sealed class AdvisoryLockTests
 {
     [Fact]
     public async Task PostgreSqlAdvisoryLockPreventsConcurrentScansAndAllowsTheNextRun()
     {
-        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_worker_test").Build();
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_advisory_lock_test").Build();
         await postgres.StartAsync();
 
         var options = new DbContextOptionsBuilder<MediaDockDbContext>()

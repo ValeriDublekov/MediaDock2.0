@@ -231,14 +231,8 @@ if [[ ! "$previous_sha" =~ ^[[:xdigit:]]{40}$ ]]; then
     exit 1
 fi
 if [[ ! -f "$state_file" ]]; then
-    current_worker_image="mediadock-next-worker:${current_api_sha:0:12}"
-    if ! docker image inspect "$current_worker_image" >/dev/null 2>&1; then
-        printf 'The Worker image matching the running API SHA is unavailable.\n' >&2
-        exit 1
-    fi
-    docker image tag "$current_worker_image" "mediadock-next-worker:$current_api_sha"
     state_tmp="$(mktemp "${state_file}.XXXXXX")"
-    printf 'deployed_sha=%s\napi_image=mediadock-next-api:%s\nworker_image=mediadock-next-worker:%s\nprevious_sha=%s\nupdated_at=%s\npre_migration_dump=\n' "$current_api_sha" "$current_api_sha" "$current_api_sha" "$current_api_sha" "$(date --iso-8601=seconds)" > "$state_tmp"
+    printf 'deployed_sha=%s\napi_image=mediadock-next-api:%s\nprevious_sha=%s\nupdated_at=%s\npre_migration_dump=\n' "$current_api_sha" "$current_api_sha" "$current_api_sha" "$(date --iso-8601=seconds)" > "$state_tmp"
     install -o root -g mediadock -m 0640 "$state_tmp" "$state_file"
     rm -f -- "$state_tmp"
 fi
@@ -304,7 +298,6 @@ fi
 runuser -u mediadock -- git -C "$app_root" merge --ff-only "$target_sha"
 
 api_image="mediadock-next-api:$target_sha"
-worker_image="mediadock-next-worker:$target_sha"
 compose_args=(--project-name mediadock-next --env-file "$app_dir/.env" --file "$app_dir/compose.yaml")
 resolved_db="$(docker compose "${compose_args[@]}" port db 5432)"
 if [[ ! "$resolved_db" =~ ^127\.0\.0\.1:[0-9]+$ ]]; then
@@ -315,10 +308,10 @@ commit_timestamp="$(runuser -u mediadock -- git -C "$staging_dir" show -s --form
 commit_timestamp_utc="$(date --utc --date="$commit_timestamp" '+%Y-%m-%dT%H:%M:%SZ')"
 commit_date_utc="${commit_timestamp_utc:0:10}"
 build_version="${commit_date_utc//-/.}+${target_sha:0:7}"
-env API_IMAGE="$api_image" WORKER_IMAGE="$worker_image" \
+env API_IMAGE="$api_image" \
     MEDIADOCK_VERSION="$build_version" MEDIADOCK_COMMIT_SHA="$target_sha" \
     MEDIADOCK_COMMIT_DATE_UTC="$commit_timestamp_utc" \
-    docker compose "${compose_args[@]}" build api worker
+    docker compose "${compose_args[@]}" build api
 
 backup_started_at="$(date +%s)"
 systemctl start mediadock-next-backup.service
@@ -341,17 +334,23 @@ docker run --rm --mount "type=bind,source=$latest_dump,target=/backup.dump,reado
     postgres:17-alpine pg_restore -l /backup.dump > /dev/null
 printf '%s pre-migration dump=%s target_sha=%s\n' \
     "$(date --iso-8601=seconds)" "$latest_dump" "$target_sha" | tee -a "$log_file"
+systemctl disable --now mediadock-worker.timer 2>/dev/null || true
+systemctl stop mediadock-worker.service 2>/dev/null || true
+if systemctl is-active --quiet mediadock-worker.timer || systemctl is-active --quiet mediadock-worker.service; then
+    printf 'A legacy Worker unit is still active; refusing the API-hosted ingestion cutover.\n' >&2
+    exit 1
+fi
 marker_tmp="$(mktemp "${failure_marker}.XXXXXX")"
 printf 'target_sha=%s\nprevious_sha=%s\npre_migration_dump=%s\ncreated_at=%s\n' \
     "$target_sha" "$previous_sha" "$latest_dump" "$(date --iso-8601=seconds)" > "$marker_tmp"
 install -o root -g mediadock -m 0640 "$marker_tmp" "$failure_marker"
 rm -f -- "$marker_tmp"
 
-env API_IMAGE="$api_image" WORKER_IMAGE="$worker_image" \
+env API_IMAGE="$api_image" \
     docker compose "${compose_args[@]}" stop api
-env API_IMAGE="$api_image" WORKER_IMAGE="$worker_image" \
+env API_IMAGE="$api_image" \
     docker compose "${compose_args[@]}" --profile tools run --rm migrate
-env API_IMAGE="$api_image" WORKER_IMAGE="$worker_image" \
+env API_IMAGE="$api_image" \
     docker compose "${compose_args[@]}" up -d --no-build api
 systemctl restart mediadock-next-firewall.service
 
@@ -371,7 +370,7 @@ sys.exit(0 if matches_target else 1)
     printf 'The deployed API version does not match target commit %s.\n' "$target_sha" >&2
     exit 1
 fi
-resolved_api="$(env API_IMAGE="$api_image" WORKER_IMAGE="$worker_image" docker compose "${compose_args[@]}" port api 8080)"
+resolved_api="$(env API_IMAGE="$api_image" docker compose "${compose_args[@]}" port api 8080)"
 if [[ "$resolved_api" != "$APP_BIND_ADDRESS:$APP_PORT" ]]; then
     printf 'The deployed API bind is unexpected: %s\n' "$resolved_api" >&2
     exit 1
@@ -382,8 +381,8 @@ if [[ "$(stat -c '%U:%G %a' "$state_dir")" != root:mediadock\ 750 ]]; then
     exit 1
 fi
 state_tmp="$(mktemp "${state_file}.XXXXXX")"
-printf 'deployed_sha=%s\napi_image=%s\nworker_image=%s\nprevious_sha=%s\nupdated_at=%s\n' \
-    "$target_sha" "$api_image" "$worker_image" "$previous_sha" "$(date --iso-8601=seconds)" > "$state_tmp"
+printf 'deployed_sha=%s\napi_image=%s\nprevious_sha=%s\nupdated_at=%s\n' \
+    "$target_sha" "$api_image" "$previous_sha" "$(date --iso-8601=seconds)" > "$state_tmp"
 printf 'pre_migration_dump=%s\n' "$latest_dump" >> "$state_tmp"
 install -o root -g mediadock -m 0640 "$state_tmp" "$state_file"
 rm -f -- "$state_tmp"

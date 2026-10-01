@@ -2,6 +2,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createSource,
+  enqueueManualScan,
+  enqueueOscarImport,
+  getActiveBackgroundJob,
+  getBackgroundJob,
+  getBackgroundJobEvents,
   getProviderSettings,
   getSettings,
   getSources,
@@ -15,6 +20,11 @@ import { SourceSettingsView } from './SourceSettingsView'
 
 vi.mock('../../api/client', () => ({
   createSource: vi.fn(),
+  enqueueManualScan: vi.fn(),
+  enqueueOscarImport: vi.fn(),
+  getActiveBackgroundJob: vi.fn(),
+  getBackgroundJob: vi.fn(),
+  getBackgroundJobEvents: vi.fn(),
   getProviderSettings: vi.fn(),
   getSettings: vi.fn(),
   getSources: vi.fn(),
@@ -41,6 +51,11 @@ const systemVersion: SystemVersion = {
 describe('SourceSettingsView', () => {
   beforeEach(() => {
     vi.mocked(createSource).mockReset()
+    vi.mocked(enqueueManualScan).mockReset()
+    vi.mocked(enqueueOscarImport).mockReset()
+    vi.mocked(getActiveBackgroundJob).mockReset().mockResolvedValue(null)
+    vi.mocked(getBackgroundJob).mockReset()
+    vi.mocked(getBackgroundJobEvents).mockReset().mockResolvedValue({ items: [], nextAfterId: 0 })
     vi.mocked(getProviderSettings).mockReset().mockResolvedValue(providerSettings)
     vi.mocked(getSettings).mockReset().mockResolvedValue({
       excludedGenres: [],

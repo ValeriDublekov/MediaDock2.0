@@ -150,6 +150,7 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
     }
 
     public async Task AddParseLogsAsync(
+        long scanRunId,
         IReadOnlyCollection<IngestionParseLog> logs,
         CancellationToken cancellationToken = default)
     {
@@ -161,6 +162,7 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         dbContext.ParseLogs.AddRange(logs.Select(log => new ParseLog
         {
             SourceId = log.SourceId,
+            ScanRunId = scanRunId,
             SourceItemKey = log.SourceItemKey,
             RawTitle = log.RawTitle,
             FeedName = log.FeedName,

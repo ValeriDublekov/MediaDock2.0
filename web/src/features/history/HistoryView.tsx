@@ -7,8 +7,11 @@ import { formatDate, formatWords } from '../../shared/format'
 
 type HistoryTab = 'scans' | 'parses'
 
-export function HistoryView() {
-  const [tab, setTab] = useState<HistoryTab>('scans')
+export function HistoryView({ scanRunId = null, onClearScanRun }: {
+  scanRunId?: number | null
+  onClearScanRun?: () => void
+} = {}) {
+  const [tab, setTab] = useState<HistoryTab>(() => scanRunId === null ? 'scans' : 'parses')
   const [page, setPage] = useState(1)
   const [scanStatus, setScanStatus] = useState('')
   const [scanTrigger, setScanTrigger] = useState('')
@@ -37,6 +40,7 @@ export function HistoryView() {
         pageSize: 20,
         ...(retryState ? { retryState: retryState as 'retryable' | 'terminal' | 'resolved' } : {}),
         ...(search ? { search } : {}),
+        ...(scanRunId === null ? {} : { scanRunId }),
       })
 
     request
@@ -50,7 +54,7 @@ export function HistoryView() {
       })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
-  }, [tab, page, scanStatus, scanTrigger, retryState, search, attempt])
+  }, [tab, page, scanStatus, scanTrigger, retryState, search, scanRunId, attempt])
 
   function changeTab(nextTab: HistoryTab) {
     setTab(nextTab)
@@ -85,6 +89,8 @@ export function HistoryView() {
           </form>
         )}
       </div>
+
+      {scanRunId !== null && <p className="history-scan-scope">Parse entries for scan #{scanRunId}<button className="text-button" onClick={onClearScanRun} type="button">Show all parse entries</button></p>}
 
       {loading && <LoadingState label={tab === 'scans' ? 'Loading scan history' : 'Loading parse history'} />}
       {!loading && error && <ErrorState message={error} onRetry={() => setAttempt((current) => current + 1)} />}

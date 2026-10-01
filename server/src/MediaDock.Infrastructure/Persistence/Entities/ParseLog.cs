@@ -4,6 +4,7 @@ public sealed class ParseLog
 {
     public long Id { get; set; }
     public long? SourceId { get; set; }
+    public long? ScanRunId { get; set; }
     public string? SourceItemKey { get; set; }
     public string RawTitle { get; set; } = string.Empty;
     public string FeedName { get; set; } = string.Empty;

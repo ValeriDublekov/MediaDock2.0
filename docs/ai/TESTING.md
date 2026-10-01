@@ -12,7 +12,7 @@ The .NET unit tests and web tests do not require PostgreSQL, Docker, RSS sources
 
 ## Restore and Build
 
-Run server commands from the repository root. The [solution](../../server/MediaDock.sln) includes the API, Application, Infrastructure, Worker, and both test projects.
+Run server commands from the repository root. The [solution](../../server/MediaDock.sln) includes the API, Application, Infrastructure, and both test projects.
 
 ```powershell
 dotnet restore server/MediaDock.sln
@@ -28,7 +28,7 @@ npm run test
 npm run build
 ```
 
-The [web package scripts](../../web/package.json) define `lint` as Oxlint, `test` as Vitest with jsdom, and `build` as TypeScript project build followed by Vite build. The web tests use mocked API calls, so they need no running API or database; see the [API client tests](../../web/src/api/client.test.ts), [catalog view tests](../../web/src/features/catalog/CatalogView.test.tsx), and [configuration view test](../../web/src/features/sources/SourceSettingsView.test.tsx).
+The [web package scripts](../../web/package.json) define `lint` as Oxlint, `test` as Vitest with jsdom, and `build` as TypeScript project build followed by Vite build. The web tests use mocked API calls, so they need no running API or database; see the [API client tests](../../web/src/api/client.test.ts), [catalog view tests](../../web/src/features/catalog/CatalogView.test.tsx), [configuration view test](../../web/src/features/sources/SourceSettingsView.test.tsx), and [ingestion panel tests](../../web/src/features/sources/BackgroundIngestionPanel.test.tsx).
 
 ## .NET Unit Tests
 
@@ -57,14 +57,15 @@ Run from the repository root after solution restore. These tests require Docker 
 | --- | --- |
 | `Persistence` | Applies migrations and checks schema/occurrence uniqueness in [PersistenceTests](../../server/tests/MediaDock.IntegrationTests/PersistenceTests.cs); Oscar tests also verify import/enrichment persistence and the separate run-audit lifecycle in [OscarDatasetImporterTests](../../server/tests/MediaDock.IntegrationTests/OscarDatasetImporterTests.cs) and [OscarEnrichmentRepositoryTests](../../server/tests/MediaDock.IntegrationTests/OscarEnrichmentRepositoryTests.cs). |
 | `Ingestion` | Checks idempotency, metadata caching, and partial failures against PostgreSQL. [IngestionTests](../../server/tests/MediaDock.IntegrationTests/IngestionTests.cs) supplies inline RSS/XML and OMDb/JSON responses through `MockProviderHandler` and a synthetic API key; it does not call either service. |
-| `Worker` | Checks PostgreSQL advisory-lock coordination with separate contexts in [WorkerConcurrencyTests](../../server/tests/MediaDock.IntegrationTests/WorkerConcurrencyTests.cs). |
-| `Api` | Exercises the in-process API with `WebApplicationFactory`, a disposable PostgreSQL database, and inline seeded rows; provider settings coverage verifies database persistence, key redaction, and invalid limit combinations in [CatalogApiTests](../../server/tests/MediaDock.IntegrationTests/CatalogApiTests.cs). |
+| `Infrastructure` | Checks PostgreSQL advisory-lock coordination with separate contexts in [AdvisoryLockTests](../../server/tests/MediaDock.IntegrationTests/AdvisoryLockTests.cs). |
+| `Api` | Exercises the in-process API with `WebApplicationFactory` and disposable PostgreSQL; background-job producer, duplicate conflict, event cursor, and upload persistence are covered in [BackgroundJobApiTests](../../server/tests/MediaDock.IntegrationTests/BackgroundJobApiTests.cs). |
+| `Background jobs` | [BackgroundJobSchedulerTests](../../server/tests/MediaDock.IntegrationTests/BackgroundJobSchedulerTests.cs) cover Sofia DST and catch-up boundaries; [BackgroundJobExecutionTests](../../server/tests/MediaDock.IntegrationTests/BackgroundJobExecutionTests.cs) executes a queued import through the real API-hosted dispatcher and verifies payload cleanup. |
 
 ```powershell
 dotnet test server/tests/MediaDock.IntegrationTests/MediaDock.IntegrationTests.csproj --no-restore
 dotnet test server/tests/MediaDock.IntegrationTests/MediaDock.IntegrationTests.csproj --no-restore --filter "Category=Persistence"
 dotnet test server/tests/MediaDock.IntegrationTests/MediaDock.IntegrationTests.csproj --no-restore --filter "Category=Ingestion"
-dotnet test server/tests/MediaDock.IntegrationTests/MediaDock.IntegrationTests.csproj --no-restore --filter "Category=Worker"
+dotnet test server/tests/MediaDock.IntegrationTests/MediaDock.IntegrationTests.csproj --no-restore --filter "Category=Infrastructure"
 dotnet test server/tests/MediaDock.IntegrationTests/MediaDock.IntegrationTests.csproj --no-restore --filter "Category=Api"
 ```
 
@@ -72,8 +73,8 @@ Both .NET test projects also contain an untagged `UnitTest1.Test1` placeholder; 
 
 ## External Services
 
-Do not test ingestion by running a Worker scan against live RSS feeds or OMDb. RSS transport tests inject fake HTTP and DNS handlers, and ingestion integration tests intercept both providers with local fixtures. A manual Worker run is an operational scan, not a test; keep verification within the isolated tests described above.
+Do not test ingestion by running a scan against live RSS feeds or OMDb. RSS transport tests inject fake HTTP and DNS handlers, and ingestion integration tests intercept both providers with local fixtures. A manual API scan is an operational request, not a test; keep verification within the isolated tests described above.
 
 Oscar automated tests use inline CSV data, PostgreSQL Testcontainers, and stubbed OMDb responses. Final operator acceptance still requires an externally obtained Oscar dataset and the API key's confirmed daily quota; neither dataset files nor live credentials belong in the repository or routine test suite.
 
-`OscarApiTests.FavoritesMergeOriginsAndKeepIndependentMarkersWhenTorrentAppears` applies the additive migration to disposable PostgreSQL and checks source validation, status filters, later torrent availability, parallel additions, manually disabled markers, Oscar lookup and idempotent deletion. The web Oscar catalog tests cover favorite defaults, unavailable torrent actions and failed marker updates with mocked API requests. Run migrations only in an isolated/staging database before the normal deployment gate; routine tests do not migrate production data or start the Worker.
+`OscarApiTests.FavoritesMergeOriginsAndKeepIndependentMarkersWhenTorrentAppears` applies additive migrations to disposable PostgreSQL and checks source validation, status filters, later torrent availability, parallel additions, manually disabled markers, Oscar lookup and idempotent deletion. The web Oscar catalog tests cover favorite defaults, unavailable torrent actions and failed marker updates with mocked API requests. Run migrations only in an isolated/staging database before the normal deployment gate; routine tests never migrate production data or contact live RSS/OMDb providers.

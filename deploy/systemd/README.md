@@ -21,7 +21,7 @@ server configuration. The app has no login. PostgreSQL remains bound to
 	completed as a no-op on the deployed commit.
 - `mediadock-next-backup.timer` is enabled for 03:00 UTC; the existing Restic timer starts at about 03:30 UTC with up to 15 minutes of random delay.
 - The deploy dump is root-only and has been confirmed in the latest Restic snapshot.
-- The Worker service is installed, but `mediadock-worker.timer` is not installed or enabled and no scan has run. Step 8 operator approval remains pending.
+- This host still runs the pre-background-jobs release. The legacy Worker service is installed, its timer is not installed or enabled, and no scan has run. The repository's API-hosted ingestion migrations have not been deployed.
 - LAN readiness/UI/catalog checks returned HTTP 200. Router port-forward and non-LAN denial checks remain unverified.
 
 The installation instructions below describe how to provision or operate the units; this status block records the verified production state.
@@ -33,8 +33,8 @@ The optional `mediadock-next-firewall.service` reads `/etc/default/mediadock-nex
 These host-side systemd units are for a single Ubuntu host. The production
 Compose project is installed at `/opt/docker/projects/mediadock-next` and
 uses its ignored `.env` file. The `mediadock` OS account must be able to access
-the Docker socket for the Worker unit; membership in the `docker` group grants
-root-equivalent host access.
+the Docker socket for the deployment gate and Testcontainers; membership in the
+`docker` group grants root-equivalent host access.
 
 ## Database dump
 
@@ -71,7 +71,7 @@ Perform this procedure separately for each environment, only after its owner app
 
 1. Confirm that no required data will be lost or that required data has a reviewed export/import path. Record the target environment and approval; do not infer approval from a successful build or deployment gate.
 2. Create a final custom-format PostgreSQL dump with the root-only backup service. Validate it with `pg_restore -l` and verify restoreability in an isolated database. The dump contains the plaintext OMDb key and must remain root-only.
-3. Disable that environment's deployment and Worker timers, stop any active deploy/Worker/API writers, and keep the API stopped for the schema operation.
+3. Disable that environment's deployment timer, stop active deploy/API writers, and explicitly disable/stop any legacy Worker timer/service before the schema operation.
 4. Use the separately approved database-administration procedure for that environment to provision an empty database or fresh volume. Retain the old volume and verified dump until application checks pass. Do not use `docker compose down -v` as routine cleanup and do not add volume deletion to `deploy.sh`.
 5. Start PostgreSQL and select the validated API image from the release containing the new baseline. Confirm the ignored `.env` selects the approved empty target database (for this production cutover, `POSTGRES_DB=mediadock2`), not the preserved legacy database. Never rely on Compose's default `mediadock-next-api` tag: it may still point to an older release. Replace `YOUR_VALIDATED_RELEASE_SHA` with the full validated release SHA and run the one-shot migration profile from the Compose project directory with that image pinned:
 
@@ -82,8 +82,8 @@ Perform this procedure separately for each environment, only after its owner app
 	API_IMAGE="mediadock-next-api:$release_sha" docker compose --project-name mediadock-next --project-directory "$PWD" --env-file "$PWD/.env" --file "$PWD/compose.yaml" --profile tools run --rm --no-deps migrate
 	```
 
-6. Verify that `__EFMigrationsHistory` contains `20260930122500_InitialRelationalSchema`, then start the API and check `/health/ready`, `/api/catalog`, and `/api/oscars`. Confirm the empty catalog responses and that provider settings use singleton `id = 1` before enabling any Worker run.
-7. Keep the verified dump and old volume until the API checks and an explicitly approved Worker smoke run succeed. Re-enable only the schedules approved for that environment.
+6. Verify that `__EFMigrationsHistory` contains the approved migrations, then start the API and check `/health/ready`, `/api/catalog`, and `/api/oscars`. Confirm provider settings use singleton `id = 1` and the scheduler checkpoint is initialized without an immediate historical catch-up.
+7. Keep the verified dump and old volume until API checks and an explicitly approved manual job succeed. Scan scheduling is now API-hosted; do not reinstall a Worker service or timer.
 
 Never point the one-shot migration profile at the old schema as a substitute for this procedure. The 2026-09-30 production cutover used a separate empty `mediadock2` database with explicit approval; the original `mediadock` database was not reset. Any future reset requires its own environment-specific approval.
 
@@ -99,7 +99,7 @@ required on the host to parse that response. It creates and validates a database
 before the migration command, and checks `/health/ready` plus the configured
 API bind after startup. It records the deployed SHA in
 `/var/lib/mediadock-deploy`; that directory is root-owned and group-readable by
-the Worker service account, while its state files remain root-managed. Gate and
+the deployment account, while its state files remain root-managed. Gate and
 deployment logs under `/var/log` are root-only.
 
 After a successful deployment, the runner refreshes its root-owned installed
@@ -150,20 +150,19 @@ sudo rm -f /var/lib/mediadock-deploy/gate-failed
 sudo systemctl start mediadock-next-deploy.service
 ```
 
-The deployment unit and Worker share
-`/var/lib/mediadock-deploy/mediadock-next-operation.lock`; the persistent lock survives
-reboots, and a Worker run is skipped while deployment holds it. Immediately
+The deployment runner uses
+`/var/lib/mediadock-deploy/mediadock-next-operation.lock` to serialize deployment
+operations across reboots. Immediately
 before stopping the API, deployment writes `/var/lib/mediadock-deploy/deploy-failed`
 with the target SHA, last-good SHA, and exact validated dump path. A failed
-migration leaves this marker in place; later deployments and Worker runs refuse
-to proceed until an operator restores and verifies the previous state.
+migration leaves this marker in place; later deployments refuse to proceed
+until an operator restores and verifies the previous state.
 
 For a new host, install the files and host-only bind configuration, but keep
 the timer disabled until the clean-main gate and unit validation have passed:
 
 ```sh
 sudo install -o root -g root -m 0750 deploy/deploy.sh /usr/local/sbin/mediadock-next-deploy
-sudo install -o root -g root -m 0755 deploy/worker-run.sh /usr/local/sbin/mediadock-next-worker
 sudo install -o root -g root -m 0644 deploy/systemd/mediadock-next-deploy.service /etc/systemd/system/mediadock-next-deploy.service
 sudo install -o root -g root -m 0644 deploy/systemd/mediadock-next-deploy.timer /etc/systemd/system/mediadock-next-deploy.timer
 sudo install -o root -g root -m 0600 deploy/systemd/mediadock-next-deploy.env.example /etc/default/mediadock-next-deploy
@@ -183,7 +182,7 @@ sudo systemctl show mediadock-next-deploy.service --property=Result --value
 sudo systemctl status --no-pager mediadock-next-deploy.service
 ```
 
-For a failed migration or health check, disable deployment and Worker schedules,
+For a failed migration or health check, disable deployment and any legacy Worker schedules,
 preserve the logs, and do not start an older API until the pre-migration schema
 has been restored. The deployment log records the dump path; the last successful
 `deploy-state` remains unchanged until recovery. The failure marker records the
@@ -204,7 +203,7 @@ sudo docker cp "$dump" mediadock-next-db-1:/tmp/mediadock-rollback.dump
 sudo docker exec -u 0 mediadock-next-db-1 chmod 0644 /tmp/mediadock-rollback.dump
 sudo "${compose[@]}" exec -T db sh -c 'dropdb -U "$POSTGRES_USER" "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB" && pg_restore --exit-on-error -U "$POSTGRES_USER" -d "$POSTGRES_DB" /tmp/mediadock-rollback.dump'
 sudo docker exec -u 0 mediadock-next-db-1 rm -f /tmp/mediadock-rollback.dump
-sudo env API_IMAGE="mediadock-next-api:$previous_sha" WORKER_IMAGE="mediadock-next-worker:$previous_sha" "${compose[@]}" up -d --no-build api
+sudo env API_IMAGE="mediadock-next-api:$previous_sha" "${compose[@]}" up -d --no-build api
 api_address=$(sudo awk -F= '$1 == "APP_BIND_ADDRESS" { print $2; exit }' /etc/default/mediadock-next-deploy)
 api_port=$(sudo awk -F= '$1 == "APP_PORT" { print $2; exit }' /etc/default/mediadock-next-deploy)
 curl --fail --silent --show-error "http://$api_address:$api_port/health/ready"
@@ -222,53 +221,36 @@ timer be enabled:
 sudo systemctl enable --now mediadock-next-deploy.timer
 ```
 
-The Worker timer runs at 07:00 and 18:00 in `Europe/Sofia`. `Persistent=true`
-requests one catch-up activation when the host or timer was down across one or
-more scheduled times. systemd coalesces the missed activations into at most one
-immediate run; it does not replay each missed day. PostgreSQL advisory locking
-also prevents a manual one-shot scan from overlapping the scheduled run.
+## API-Hosted Ingestion Cutover
 
-After a successful deployment and only after the operator has configured the
-OMDb key and confirmed quota, enabled desired feeds, and approved scheduled
-scans, install the Worker wrapper and service. Do not install or enable its
-timer before those Step 8 conditions are met:
+The new API release owns the scan schedule: 07:00 and 18:00 in
+`Europe/Sofia`, with one coalesced catch-up slot after downtime. Do not install
+a Worker wrapper, service, or timer. Before the first deployment of a release
+containing background-job migrations, inspect the live `deploy-state`, verify a
+fresh database dump and migration state, and confirm whether legacy units are
+installed or active. The deployment script also stops/disables those legacy
+units after its pre-migration backup and refuses to proceed while either is
+active.
 
-```sh
-sudo install -o root -g root -m 0755 deploy/worker-run.sh /usr/local/sbin/mediadock-next-worker
-sudo install -o root -g root -m 0644 deploy/systemd/mediadock-worker.service /etc/systemd/system/mediadock-worker.service
-sudo systemctl daemon-reload
-```
-
-Only after that acceptance, install and enable the schedule:
+On the production host, verify and stop the legacy units before starting the
+cutover:
 
 ```sh
-sudo install -o root -g root -m 0644 deploy/systemd/mediadock-worker.timer /etc/systemd/system/mediadock-worker.timer
-sudo systemctl daemon-reload
-sudo systemctl enable --now mediadock-worker.timer
+systemctl is-enabled mediadock-worker.timer || true
+systemctl is-active mediadock-worker.service || true
+sudo systemctl disable --now mediadock-worker.timer 2>/dev/null || true
+sudo systemctl stop mediadock-worker.service 2>/dev/null || true
+systemctl is-active mediadock-worker.timer mediadock-worker.service
 ```
 
-Verify both schedules with:
+After the backup and migration, verify `/health/ready`, the deployed
+`/api/version`, job endpoints, and the scheduler checkpoint. On first scheduler
+activation there must be no immediate catch-up for a slot before activation.
+Configure the OMDb key/confirmed quota and enabled feeds, then start one
+operator-approved manual scan from Configuration. Before declaring rollout
+complete, observe a scheduled 07:00 or 18:00 slot and exercise restart recovery
+in staging. Keep the backup and rollback image until acceptance passes.
 
-```sh
-systemctl list-timers mediadock-next-backup.timer homeserver-restic-backup.timer mediadock-worker.timer
-```
-
-To run an intentional production manual scan after Step 8 approval, use the
-same wrapper so it shares the deployment lock:
-
-```sh
-sudo runuser -u mediadock -g docker -- /usr/local/sbin/mediadock-next-worker manual
-```
-
-The systemd service uses the wrapper's default `schedule` trigger. Both paths
-run RSS first, then optional Oscar enrichment within the same database lock.
-Configure the OMDb key and confirmed shared
-daily quota in the web UI before running the Worker; it reads those values and
-the Oscar limits from PostgreSQL on each invocation. Existing environment
-variables for these values are no longer used. Oscar enrichment is enabled
-when both its per-run film limit and daily HTTP cap are positive. The shared
-total and Oscar count are persisted by UTC day in PostgreSQL; fallback
-requests and retries each consume a slot, while cache hits do not. The Oscar
-maximum is not reserved from RSS usage. Check the timer with
-`systemctl list-timers mediadock-worker.timer` and service output with
-`journalctl -u mediadock-worker.service`.
+Production rollback remains an operator action: restore the exact validated
+pre-migration dump and start the last-good API image using the failure-marker
+procedure above. Do not start an older API against a migrated schema.

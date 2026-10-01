@@ -52,6 +52,19 @@ public sealed record IngestionRunSummary(
 
 public sealed record IngestionRunResult(long RunId, IngestionRunSummary Summary);
 
+public sealed record IngestionProgressUpdate(
+    long ScanRunId,
+    string Stage,
+    string? Source,
+    int FeedsProcessed,
+    int EntriesSeen,
+    int TitlesCreated,
+    int OccurrencesCreated,
+    int CacheHits,
+    int OmdbRequests,
+    int IgnoredEntries,
+    int ErrorCount);
+
 public interface IRssFeedTransport
 {
     Task<byte[]> FetchAsync(string url, CancellationToken cancellationToken = default);
@@ -78,6 +91,7 @@ public interface IRssIngestionRepository
         CancellationToken cancellationToken = default);
 
     Task AddParseLogsAsync(
+        long scanRunId,
         IReadOnlyCollection<IngestionParseLog> logs,
         CancellationToken cancellationToken = default);
 

@@ -3,6 +3,7 @@ import { createSource, getProviderSettings, getSettings, getSources, getVersion,
 import type { ProviderSettings, ProviderSettingsInput, Settings, SettingsInput, Source, SourceInput, SystemVersion } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate } from '../../shared/format'
+import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
 
 interface SettingsDraft {
   excludedGenres: string
@@ -53,7 +54,9 @@ function splitValues(value: string): string[] {
   return value.split(',').map((part) => part.trim()).filter(Boolean)
 }
 
-export function SourceSettingsView() {
+export function SourceSettingsView({ onOpenHistory = () => {} }: {
+  onOpenHistory?: (scanRunId: number | null) => void
+} = {}) {
   const [sources, setSources] = useState<Source[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>(emptySettings)
@@ -236,6 +239,8 @@ export function SourceSettingsView() {
         )}
       </div>
 
+      <BackgroundIngestionPanel onOpenHistory={onOpenHistory} />
+
       <div className="management-grid">
         <section aria-labelledby="matching-settings-heading">
           <h2 id="matching-settings-heading">Matching settings</h2>
@@ -257,7 +262,7 @@ export function SourceSettingsView() {
 
         <section aria-labelledby="provider-settings-heading">
           <h2 id="provider-settings-heading">OMDb provider</h2>
-          <p className="section-caption">Credentials and request limits used by the one-shot Worker.</p>
+          <p className="section-caption">Credentials and request limits used by API-hosted ingestion jobs.</p>
           <form className="settings-form" onSubmit={saveProviderSettings}>
             <div className="field">
               <label htmlFor="omdb-api-key">OMDb API key</label>

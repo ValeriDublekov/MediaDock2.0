@@ -65,6 +65,32 @@ internal static class OscarCsvDatasetReader
         };
         parser.SetDelimiters(DetectDelimiter(path));
 
+        return Read(parser, yearAfter, cancellationToken);
+    }
+
+    public static OscarCsvReadResult Read(
+        byte[] content,
+        int yearAfter,
+        CancellationToken cancellationToken)
+    {
+        using var stream = new MemoryStream(content, writable: false);
+        using var parser = new TextFieldParser(stream, Encoding.UTF8, detectEncoding: true)
+        {
+            TextFieldType = FieldType.Delimited,
+            HasFieldsEnclosedInQuotes = true,
+            TrimWhiteSpace = false
+        };
+        var firstLine = Encoding.UTF8.GetString(content).Split(['\r', '\n'], 2)[0];
+        parser.SetDelimiters(DetectDelimiterFromHeader(firstLine));
+
+        return Read(parser, yearAfter, cancellationToken);
+    }
+
+    private static OscarCsvReadResult Read(
+        TextFieldParser parser,
+        int yearAfter,
+        CancellationToken cancellationToken)
+    {
         var rawHeaders = parser.ReadFields()
             ?? throw new InvalidDataException("Oscar dataset has no header row.");
         var headers = rawHeaders.Select(header => header.Trim().TrimStart('\uFEFF')).ToArray();
@@ -156,7 +182,11 @@ internal static class OscarCsvDatasetReader
     private static string DetectDelimiter(string path)
     {
         using var reader = new StreamReader(path, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
-        var header = reader.ReadLine() ?? string.Empty;
+        return DetectDelimiterFromHeader(reader.ReadLine() ?? string.Empty);
+    }
+
+    private static string DetectDelimiterFromHeader(string header)
+    {
         return header.Count(character => character == '\t') > header.Count(character => character == ',')
             ? "\t"
             : ",";

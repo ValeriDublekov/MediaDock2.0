@@ -58,24 +58,5 @@ services:
       - tools
     restart: "no"
 
-  worker:
-    image: ${WORKER_IMAGE:-mediadock-next-worker}
-    build:
-      context: .
-      dockerfile: server/Dockerfile
-      target: worker
-      args:
-        MEDIADOCK_VERSION: ${MEDIADOCK_VERSION:-local}
-        MEDIADOCK_COMMIT_SHA: ${MEDIADOCK_COMMIT_SHA:-unknown}
-        MEDIADOCK_COMMIT_DATE_UTC: ${MEDIADOCK_COMMIT_DATE_UTC:-unknown}
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      ConnectionStrings__MediaDock: "Host=db;Port=5432;Database=${POSTGRES_DB:-mediadock};Username=${POSTGRES_USER:-mediadock};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env or the host environment}"
-    profiles:
-      - worker
-    restart: "no"
-
 volumes:
   postgres_data:
