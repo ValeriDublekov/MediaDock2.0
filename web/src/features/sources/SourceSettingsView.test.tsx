@@ -86,7 +86,7 @@ describe('SourceSettingsView', () => {
 
     expect(await screen.findByText('Version 2026.10.01+abc1234')).toBeTruthy()
     expect(screen.getByText('Commit 0123456789ab')).toBeTruthy()
-    expect(screen.getByText('Commit date (UTC) 2026-10-01')).toBeTruthy()
+    expect(screen.getByText('Commit date (UTC) 2026-10-01 12:30:00')).toBeTruthy()
   })
 
   it('keeps the saved key write-only and clears a replacement after saving', async () => {

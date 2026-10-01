@@ -346,7 +346,7 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
           <>
             <p className="section-caption">Version {systemVersion.version}</p>
             <p className="section-caption">Commit {systemVersion.commitSha.slice(0, 12)}</p>
-            {systemVersion.commitDateUtc && <p className="section-caption">Commit date (UTC) {systemVersion.commitDateUtc.slice(0, 10)}</p>}
+            {systemVersion.commitDateUtc && <p className="section-caption">Commit date (UTC) {systemVersion.commitDateUtc.slice(0, 19).replace('T', ' ')}</p>}
           </>
         ) : <p className="section-caption">Version unavailable</p>}
       </section>
