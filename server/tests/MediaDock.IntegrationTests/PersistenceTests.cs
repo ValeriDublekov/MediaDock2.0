@@ -21,7 +21,7 @@ public sealed class PersistenceTests
         await db.Database.MigrateAsync();
 
         var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
-        Assert.Single(appliedMigrations);
+        Assert.Contains("20260930122500_InitialRelationalSchema", appliedMigrations);
 
         await db.Database.OpenConnectionAsync();
         await using (var command = db.Database.GetDbConnection().CreateCommand())
