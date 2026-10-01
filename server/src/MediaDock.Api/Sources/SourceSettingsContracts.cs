@@ -2,49 +2,20 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MediaDock.Api.Sources;
 
-/// <summary>Source configuration returned by the API.</summary>
-public sealed record SourceResponse(
-    long Id,
-    string StableKey,
+/// <summary>One fixed system profile and its configured RSS URLs.</summary>
+public sealed record SourceProfileResponse(
+    string Id,
     string Name,
-    string FeedType,
-    string Url,
-    bool IsEnabled);
+    IReadOnlyList<SourceUrlResponse> Urls);
 
-/// <summary>Validated payload for adding a feed source.</summary>
-public sealed record CreateSourceRequest
+/// <summary>One configured RSS URL. Profile identity is supplied by the route.</summary>
+public sealed record SourceUrlResponse(long Id, string Url);
+
+/// <summary>Validated payload for adding or replacing a profile URL.</summary>
+public sealed record SourceUrlRequest
 {
-    [Required, MaxLength(100), RegularExpression("^[a-z0-9][a-z0-9._-]{0,99}$")]
-    public string StableKey { get; init; } = string.Empty;
-
-    [Required, MaxLength(200)]
-    public string Name { get; init; } = string.Empty;
-
-    [Required, RegularExpression("^(movie|series_complete|series_ongoing)$")]
-    public string FeedType { get; init; } = string.Empty;
-
     [Required, Url, MaxLength(2048)]
     public string Url { get; init; } = string.Empty;
-
-    public bool IsEnabled { get; init; } = true;
-}
-
-/// <summary>Validated payload for replacing a feed source's configuration.</summary>
-public sealed record UpdateSourceRequest
-{
-    [Required, MaxLength(100), RegularExpression("^[a-z0-9][a-z0-9._-]{0,99}$")]
-    public string StableKey { get; init; } = string.Empty;
-
-    [Required, MaxLength(200)]
-    public string Name { get; init; } = string.Empty;
-
-    [Required, RegularExpression("^(movie|series_complete|series_ongoing)$")]
-    public string FeedType { get; init; } = string.Empty;
-
-    [Required, Url, MaxLength(2048)]
-    public string Url { get; init; } = string.Empty;
-
-    public bool IsEnabled { get; init; }
 }
 
 /// <summary>Application matching settings returned by the API.</summary>

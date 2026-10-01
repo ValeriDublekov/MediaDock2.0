@@ -37,7 +37,7 @@ public sealed class RutrackerTitleParserTests
         const string rawTitle = "Example / Example Title / Сезон: 1 / Серии: 1-8 из 8 [2026]";
 
         var movie = RutrackerTitleParser.Parse(rawTitle, "movie");
-        var series = RutrackerTitleParser.Parse(rawTitle, "series");
+        var series = RutrackerTitleParser.Parse(rawTitle, "series_ongoing");
 
         Assert.Equal("Example", movie.Title);
         Assert.False(movie.IsSeries);
@@ -57,6 +57,20 @@ public sealed class RutrackerTitleParserTests
         Assert.Equal("Silo", parsed.Title);
         Assert.Equal(2026, parsed.Year);
         Assert.True(parsed.IsSeries);
+    }
+
+    [Fact]
+    public void SeriesProfilesUseDifferentSeasonAndEpisodeMarkerRules()
+    {
+        var completeSeason = RutrackerTitleParser.Parse("Silo Season 7 [2026]", "series_complete");
+        var completeEpisode = RutrackerTitleParser.Parse("Silo S07E07 [2026]", "series_complete");
+        var ongoingSeason = RutrackerTitleParser.Parse("Silo Season 7 [2026]", "series_ongoing");
+        var ongoingEpisode = RutrackerTitleParser.Parse("Silo S07E07 [2026]", "series_ongoing");
+
+        Assert.Equal("Silo", completeSeason.Title);
+        Assert.NotEqual("Silo", completeEpisode.Title);
+        Assert.NotEqual("Silo", ongoingSeason.Title);
+        Assert.Equal("Silo", ongoingEpisode.Title);
     }
 
     [Fact]
@@ -108,7 +122,7 @@ public sealed class RutrackerTitleParserTests
     [InlineData("Локално | Original Title [1999, BDRip]", "movie", "Original Title", 1999, false)]
     [InlineData("2046 [2004, BDRip]", "movie", "2046", 2004, false)]
     [InlineData("Season of the Witch [2011]", null, "Season of the Witch", 2011, false)]
-    [InlineData("Monarch / Monarch: Legacy of Monsters / S01E02 [2024-2026]", "series", "Monarch", 2024, true)]
+    [InlineData("Monarch / Monarch: Legacy of Monsters / S01E02 [2024-2026]", "series_ongoing", "Monarch", 2024, true)]
     [InlineData("未来 [2024, BDRip]", "movie", "未来", 2024, false)]
     [InlineData("Film [Part 2] (2020) / Another Film [2024, BDRip]", "movie", "Film [Part 2]", 2020, false)]
     [InlineData("Film [Part 2, The Return] (2020) [BDRip]", "movie", "Film [Part 2, The Return]", 2020, false)]

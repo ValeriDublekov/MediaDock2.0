@@ -32,35 +32,31 @@ Accept: application/json
 
 ###
 
-GET {{MediaDock.Api_HostAddress}}/api/sources/{{sourceId}}
+GET {{MediaDock.Api_HostAddress}}/api/sources
 Accept: application/json
 
 ###
 
 # Source and settings writes are unauthenticated and assume trusted LAN access only.
-POST {{MediaDock.Api_HostAddress}}/api/sources
+POST {{MediaDock.Api_HostAddress}}/api/sources/movie/urls
 Content-Type: application/json
 
 {
-	"stableKey": "movies-main",
-	"name": "Movies",
-	"feedType": "movie",
-	"url": "https://feed.rutracker.cc/movies.atom",
-	"isEnabled": true
+	"url": "https://feed.rutracker.cc/movies.atom"
 }
 
 ###
 
-PUT {{MediaDock.Api_HostAddress}}/api/sources/{{sourceId}}
+PUT {{MediaDock.Api_HostAddress}}/api/sources/movie/urls/{{sourceId}}
 Content-Type: application/json
 
 {
-	"stableKey": "movies-main",
-	"name": "Movies",
-	"feedType": "movie",
-	"url": "https://feed.rutracker.cc/movies.atom",
-	"isEnabled": true
+	"url": "https://feed.rutracker.cc/movies.atom"
 }
+
+###
+
+DELETE {{MediaDock.Api_HostAddress}}/api/sources/movie/urls/{{sourceId}}
 
 ###
 

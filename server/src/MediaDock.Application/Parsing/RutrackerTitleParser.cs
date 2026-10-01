@@ -49,6 +49,12 @@ public static class RutrackerTitleParser
     private static readonly Regex TrailingSeriesMarker = new(
         @"[\s,.-]+(?:s\d{1,2}(?:e\d{1,2})?|seasons?\s*\d+|episodes?\b|сери[яи]\b|сезон\b).*$",
         IgnoreCase);
+    private static readonly Regex TrailingCompleteSeasonMarker = new(
+        @"[\s,.-]+(?:(?:s\d{1,2}(?:\s*-\s*s?\d{1,2})?|seasons?\s*\d+(?:\s*-\s*\d+)?|сезоны?:?\s*\d+(?:\s*-\s*\d+)?)\b|episodes?\s*\d+(?:\s*-\s*\d+)?(?:\s+of\s+\d+)?|сери[яи]:?\s*\d+(?:\s*-\s*\d+)?(?:\s+из\s+\d+)?)(?:\s+.*)?$",
+        IgnoreCase);
+    private static readonly Regex TrailingOngoingEpisodeMarker = new(
+        @"[\s,.-]+(?:(?:s\d{1,2}\s*e\d{1,2}(?:\s*-\s*e?\d{1,2})?)\b|episodes?\s*\d+(?:\s*-\s*\d+)?(?:\s+of\s+\d+)?|сери[яи]:?\s*\d+(?:\s*-\s*\d+)?(?:\s+из\s+\d+)?)(?:\s+.*)?$",
+        IgnoreCase);
     private static readonly Regex StandaloneSeriesMarker = new(
         @"^(?:сезоны?:?\s*\d+|сери[яи]:?\s*\d+|seasons?\s*\d+|episodes?\s*\d+|s\d{1,2}(?:e\d{1,2})?)\b",
         IgnoreCase);
@@ -97,9 +103,11 @@ public static class RutrackerTitleParser
             .Select(part => part.Trim(' ', '-'))
             .Where(part => part.Length > 0)
             .ToArray();
+        var normalizedFeedType = feedType?.Trim();
         var candidates = parts
             .Where(part => !StandaloneSeriesMarker.IsMatch(part))
-            .Select((part, index) => new TitleCandidate(CleanupTitlePart(part, removeSeriesMarkers: true),
+            .Select((part, index) => new TitleCandidate(
+                CleanupTitlePart(part, removeSeriesMarkers: true, feedType: normalizedFeedType),
                 index == 0 ? "leading" : "alternate"))
             .Where(candidate => candidate.Title.Length is > 0 and <= 160)
             .DistinctBy(candidate => candidate.Title, StringComparer.OrdinalIgnoreCase)
@@ -120,10 +128,9 @@ public static class RutrackerTitleParser
         string title;
         bool isSeries;
         string? typeReason;
-        var normalizedFeedType = feedType?.Trim();
         if (string.Equals(normalizedFeedType, "movie", StringComparison.OrdinalIgnoreCase))
         {
-            (title, var titleReason) = SelectTitle(parts, removeSeriesMarkers: true);
+            (title, var titleReason) = SelectTitle(parts, removeSeriesMarkers: true, feedType: normalizedFeedType);
             isSeries = false;
             typeReason = "feed_type_authoritative_movie";
             var reasons = CreateReasons(yearReason, titleReason, typeReason, title);
@@ -131,11 +138,10 @@ public static class RutrackerTitleParser
         }
 
         if (normalizedFeedType is not null &&
-            (string.Equals(normalizedFeedType, "series", StringComparison.OrdinalIgnoreCase) ||
-             string.Equals(normalizedFeedType, "series_complete", StringComparison.OrdinalIgnoreCase) ||
+            (string.Equals(normalizedFeedType, "series_complete", StringComparison.OrdinalIgnoreCase) ||
              string.Equals(normalizedFeedType, "series_ongoing", StringComparison.OrdinalIgnoreCase)))
         {
-            (title, var titleReason) = SelectTitle(parts, removeSeriesMarkers: true);
+            (title, var titleReason) = SelectTitle(parts, removeSeriesMarkers: true, feedType: normalizedFeedType);
             isSeries = true;
             typeReason = "feed_type_authoritative_series";
             var reasons = CreateReasons(yearReason, titleReason, typeReason, title);
@@ -143,7 +149,10 @@ public static class RutrackerTitleParser
         }
 
         isSeries = SeriesMarker.IsMatch(clean);
-        (title, var inferredTitleReason) = SelectTitle(parts, removeSeriesMarkers: isSeries);
+        (title, var inferredTitleReason) = SelectTitle(
+            parts,
+            removeSeriesMarkers: isSeries,
+            feedType: normalizedFeedType);
         typeReason = isSeries ? "series_inferred_from_markers" : null;
         return Result(title, isSeries, CreateReasons(yearReason, inferredTitleReason, typeReason, title));
     }
@@ -256,11 +265,14 @@ public static class RutrackerTitleParser
                SeriesMetadata.IsMatch(text);
     }
 
-    private static (string Title, string? Reason) SelectTitle(string[] parts, bool removeSeriesMarkers)
+    private static (string Title, string? Reason) SelectTitle(
+        string[] parts,
+        bool removeSeriesMarkers,
+        string? feedType)
     {
         var candidates = parts
             .Where(part => !StandaloneSeriesMarker.IsMatch(part))
-            .Select(part => CleanupTitlePart(part, removeSeriesMarkers))
+            .Select(part => CleanupTitlePart(part, removeSeriesMarkers, feedType))
             .Where(part => part.Length > 0)
             .ToArray();
 
@@ -292,7 +304,7 @@ public static class RutrackerTitleParser
             : (first, "numeric_candidate_selected");
     }
 
-    private static string CleanupTitlePart(string part, bool removeSeriesMarkers)
+    private static string CleanupTitlePart(string part, bool removeSeriesMarkers, string? feedType)
     {
         var cleaned = Whitespace.Replace(part, " ").Trim(' ', '-');
         cleaned = ParenthesizedYear.Replace(cleaned, string.Empty).Trim(' ', '-');
@@ -304,7 +316,13 @@ public static class RutrackerTitleParser
 
         if (removeSeriesMarkers)
         {
-            cleaned = TrailingSeriesMarker.Replace(cleaned, string.Empty).Trim(' ', '-', ',', '.');
+            var releaseMarker = feedType switch
+            {
+                "series_complete" => TrailingCompleteSeasonMarker,
+                "series_ongoing" => TrailingOngoingEpisodeMarker,
+                _ => TrailingSeriesMarker
+            };
+            cleaned = releaseMarker.Replace(cleaned, string.Empty).Trim(' ', '-', ',', '.');
         }
 
         return cleaned;

@@ -8,6 +8,80 @@ public sealed class PersistenceTests
 {
     [Fact]
     [Trait("Category", "Persistence")]
+    public async Task SystemSourceProfileMigrationPreservesUrlsAndMapsLegacySeriesToOngoing()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_source_profiles_migration_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync("20261001115421_AllowBackgroundJobPayloadCleanup");
+
+        db.Sources.AddRange(
+            new Source
+            {
+                StableKey = "movie-old",
+                Name = "My movies",
+                FeedType = "movie",
+                Url = "https://feed.rutracker.cc/movie.atom",
+                IsEnabled = false
+            },
+            new Source
+            {
+                StableKey = "legacy-series",
+                Name = "Legacy series",
+                FeedType = "series",
+                Url = "https://feed.rutracker.cc/legacy.atom",
+                IsEnabled = false
+            });
+        await db.SaveChangesAsync();
+        await db.Database.MigrateAsync("20261001134646_AddRssItemProcessingStates");
+        db.ChangeTracker.Clear();
+
+        db.Sources.AddRange(
+            new Source
+            {
+                StableKey = "complete-old",
+                Name = "My season packs",
+                FeedType = "series_complete",
+                Url = "https://feed.rutracker.cc/complete.atom",
+                IsEnabled = false
+            },
+            new Source
+            {
+                StableKey = "ongoing-old",
+                Name = "My episodes",
+                FeedType = "series_ongoing",
+                Url = "https://feed.rutracker.cc/ongoing.atom",
+                IsEnabled = false
+            });
+        await db.SaveChangesAsync();
+
+        var expectedUrls = await db.Sources.AsNoTracking()
+            .ToDictionaryAsync(source => source.StableKey, source => source.Url);
+        await db.Database.MigrateAsync();
+        db.ChangeTracker.Clear();
+
+        var migratedSources = await db.Sources.AsNoTracking().ToListAsync();
+        Assert.Equal(expectedUrls, migratedSources.ToDictionary(source => source.StableKey, source => source.Url));
+        Assert.Equal("series_ongoing", migratedSources.Single(source => source.StableKey == "legacy-series").FeedType);
+        Assert.All(migratedSources, source => Assert.True(source.IsEnabled));
+        Assert.Equal(
+            new[] { "Complete seasons", "Movies", "Ongoing episodes", "Ongoing episodes" },
+            migratedSources.Select(source => source.Name).OrderBy(name => name));
+        await AssertRejectedAsync(db, new Source
+        {
+            StableKey = "invalid-profile",
+            Name = "Invalid",
+            FeedType = "series",
+            Url = "https://feed.rutracker.cc/invalid.atom"
+        });
+    }
+
+    [Fact]
+    [Trait("Category", "Persistence")]
     public async Task MigrationCreatesSchemaAndOccurrenceIdentityIsUnique()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_test").Build();

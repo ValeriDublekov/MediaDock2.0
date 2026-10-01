@@ -167,50 +167,69 @@ public sealed class CatalogApiTests
         Assert.Equal("Movies", Assert.Single(occurrences.Items).SourceName);
 
         using var sourcesResponse = await client.GetAsync("/api/sources");
-        var sources = await sourcesResponse.Content.ReadFromJsonAsync<List<SourceResponse>>();
-        Assert.NotNull(sources);
-        Assert.Equal("movies-main", Assert.Single(sources).StableKey);
+        var profiles = await sourcesResponse.Content.ReadFromJsonAsync<List<SourceProfileResponse>>();
+        Assert.NotNull(profiles);
+        Assert.Equal(new[] { "movie", "series_complete", "series_ongoing" }, profiles.Select(profile => profile.Id));
+        Assert.Equal("Movies", profiles[0].Name);
+        Assert.Equal("https://feed.rutracker.cc/movies.atom", Assert.Single(profiles[0].Urls).Url);
 
-        using var updateSourceResponse = await client.PutAsJsonAsync($"/api/sources/{source.Id}", new UpdateSourceRequest
-        {
-            StableKey = "movies-main",
-            Name = "Main Movies",
-            FeedType = "movie",
-            Url = "https://feed.rutracker.cc/movies.atom",
-            IsEnabled = false
-        });
-        Assert.Equal(HttpStatusCode.OK, updateSourceResponse.StatusCode);
-        Assert.Equal("Main Movies", (await updateSourceResponse.Content.ReadFromJsonAsync<SourceResponse>())?.Name);
+        using var firstCompleteResponse = await client.PostAsJsonAsync(
+            "/api/sources/series_complete/urls",
+            new { Url = "https://feed.rutracker.cc/complete.atom", FeedType = "movie", Name = "Injected name" });
+        Assert.Equal(HttpStatusCode.Created, firstCompleteResponse.StatusCode);
+        var firstComplete = await firstCompleteResponse.Content.ReadFromJsonAsync<SourceUrlResponse>();
+        Assert.NotNull(firstComplete);
 
-        using var createdSourceResponse = await client.PostAsJsonAsync("/api/sources", new CreateSourceRequest
-        {
-            StableKey = "series-feed",
-            Name = "Series",
-            FeedType = "series_ongoing",
-            Url = "https://feed.rutracker.cc/series.atom"
-        });
-        Assert.Equal(HttpStatusCode.Created, createdSourceResponse.StatusCode);
-        Assert.NotNull(createdSourceResponse.Headers.Location);
+        using var secondCompleteResponse = await client.PostAsJsonAsync(
+            "/api/sources/series_complete/urls",
+            new SourceUrlRequest { Url = "https://feed.rutracker.cc/complete-extra.atom" });
+        Assert.Equal(HttpStatusCode.Created, secondCompleteResponse.StatusCode);
+        var secondComplete = await secondCompleteResponse.Content.ReadFromJsonAsync<SourceUrlResponse>();
+        Assert.NotNull(secondComplete);
 
-        using var invalidSourceResponse = await client.PostAsJsonAsync("/api/sources", new CreateSourceRequest
-        {
-            StableKey = "unsafe-feed",
-            Name = "Unsafe",
-            FeedType = "movie",
-            Url = "https://example.test/feed.atom"
-        });
-        Assert.Equal(HttpStatusCode.BadRequest, invalidSourceResponse.StatusCode);
-        Assert.NotNull(await invalidSourceResponse.Content.ReadFromJsonAsync<ValidationProblemDetails>());
+        using var ongoingResponse = await client.PostAsJsonAsync(
+            "/api/sources/series_ongoing/urls",
+            new SourceUrlRequest { Url = "https://feed.rutracker.cc/ongoing.atom" });
+        Assert.Equal(HttpStatusCode.Created, ongoingResponse.StatusCode);
 
-        using var duplicateSourceResponse = await client.PostAsJsonAsync("/api/sources", new CreateSourceRequest
-        {
-            StableKey = "movies-main",
-            Name = "Duplicate",
-            FeedType = "movie",
-            Url = "https://feed.rutracker.cc/movies.atom"
-        });
-        Assert.Equal(HttpStatusCode.Conflict, duplicateSourceResponse.StatusCode);
-        Assert.NotNull(await duplicateSourceResponse.Content.ReadFromJsonAsync<ProblemDetails>());
+        using var replaceCompleteResponse = await client.PutAsJsonAsync(
+            $"/api/sources/series_complete/urls/{firstComplete.Id}",
+            new { Url = "https://feed.rutracker.cc/complete-replaced.atom", FeedType = "movie" });
+        Assert.Equal(HttpStatusCode.OK, replaceCompleteResponse.StatusCode);
+        Assert.Equal(
+            "https://feed.rutracker.cc/complete-replaced.atom",
+            (await replaceCompleteResponse.Content.ReadFromJsonAsync<SourceUrlResponse>())?.Url);
+
+        using var wrongProfileResponse = await client.PutAsJsonAsync(
+            $"/api/sources/movie/urls/{firstComplete.Id}",
+            new SourceUrlRequest { Url = "https://feed.rutracker.cc/should-not-move.atom" });
+        Assert.Equal(HttpStatusCode.NotFound, wrongProfileResponse.StatusCode);
+
+        using var invalidProfileResponse = await client.PostAsJsonAsync(
+            "/api/sources/series/urls",
+            new SourceUrlRequest { Url = "https://feed.rutracker.cc/invalid-profile.atom" });
+        Assert.Equal(HttpStatusCode.BadRequest, invalidProfileResponse.StatusCode);
+
+        using var invalidUrlResponse = await client.PostAsJsonAsync(
+            "/api/sources/movie/urls",
+            new SourceUrlRequest { Url = "https://example.test/feed.atom" });
+        Assert.Equal(HttpStatusCode.BadRequest, invalidUrlResponse.StatusCode);
+        Assert.NotNull(await invalidUrlResponse.Content.ReadFromJsonAsync<ValidationProblemDetails>());
+
+        using var duplicateUrlResponse = await client.PostAsJsonAsync(
+            "/api/sources/movie/urls",
+            new SourceUrlRequest { Url = "https://feed.rutracker.cc/movies.atom" });
+        Assert.Equal(HttpStatusCode.Conflict, duplicateUrlResponse.StatusCode);
+
+        using var removeUrlResponse = await client.DeleteAsync(
+            $"/api/sources/series_complete/urls/{secondComplete.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, removeUrlResponse.StatusCode);
+
+        using var groupedSourcesResponse = await client.GetAsync("/api/sources");
+        var groupedProfiles = await groupedSourcesResponse.Content.ReadFromJsonAsync<List<SourceProfileResponse>>();
+        Assert.NotNull(groupedProfiles);
+        Assert.Equal("https://feed.rutracker.cc/complete-replaced.atom", Assert.Single(groupedProfiles[1].Urls).Url);
+        Assert.Equal("https://feed.rutracker.cc/ongoing.atom", Assert.Single(groupedProfiles[2].Urls).Url);
 
         using var settingsResponse = await client.GetAsync("/api/settings");
         var defaultSettings = await settingsResponse.Content.ReadFromJsonAsync<SettingsResponse>();

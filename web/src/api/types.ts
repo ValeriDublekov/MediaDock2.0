@@ -103,21 +103,15 @@ export interface Occurrence {
   lastSeenAt: string
 }
 
-export interface Source {
+export interface SourceUrl {
   id: number
-  stableKey: string
-  name: string
-  feedType: FeedType
   url: string
-  isEnabled: boolean
 }
 
-export interface SourceInput {
-  stableKey: string
+export interface SourceProfile {
+  id: FeedType
   name: string
-  feedType: FeedType
-  url: string
-  isEnabled: boolean
+  urls: SourceUrl[]
 }
 
 export interface Settings {

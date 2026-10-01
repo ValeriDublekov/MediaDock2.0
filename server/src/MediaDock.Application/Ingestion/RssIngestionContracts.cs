@@ -3,7 +3,7 @@ using MediaDock.Application.Parsing;
 
 namespace MediaDock.Application.Ingestion;
 
-public sealed record IngestionSource(long Id, string StableKey, string Name, string FeedType, string Url);
+public sealed record IngestionSource(long Id, string Name, string FeedType, string Url);
 
 public static class RssFeedTypes
 {
@@ -11,13 +11,24 @@ public static class RssFeedTypes
     public const string CompleteSeason = "series_complete";
     public const string OngoingSeries = "series_ongoing";
 
+    public static IReadOnlyList<RssFeedProfile> Profiles { get; } = Array.AsReadOnly(new[]
+    {
+        new RssFeedProfile(Movie, "Movies"),
+        new RssFeedProfile(CompleteSeason, "Complete seasons"),
+        new RssFeedProfile(OngoingSeries, "Ongoing episodes")
+    });
+
+    public static string ProfileName(string feedType) =>
+        Profiles.FirstOrDefault(profile => profile.Id == feedType)?.Name
+        ?? throw new ArgumentOutOfRangeException(nameof(feedType), "Unsupported RSS feed type.");
+
     public static bool IsSeries(string? feedType) => feedType?.Trim().ToLowerInvariant() is
-        "series" or CompleteSeason or OngoingSeries;
+        CompleteSeason or OngoingSeries;
 
     public static string MetadataSourceType(string? feedType) => feedType?.Trim().ToLowerInvariant() switch
     {
         Movie => Movie,
-        "series" or CompleteSeason or OngoingSeries => "series",
+        CompleteSeason or OngoingSeries => "series",
         _ => throw new ArgumentOutOfRangeException(nameof(feedType), "Unsupported RSS feed type.")
     };
 }
@@ -153,3 +164,5 @@ public static class SourceItemIdentity
         throw new ArgumentException("A feed entry ID or torrent URL is required.", nameof(feedEntryId));
     }
 }
+
+public sealed record RssFeedProfile(string Id, string Name);

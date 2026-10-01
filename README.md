@@ -75,7 +75,7 @@ docker compose -f compose.yaml up --build -d api
 
 The UI is at `http://127.0.0.1:8080/`; readiness is `http://127.0.0.1:8080/health/ready`, and the catalog API is `http://127.0.0.1:8080/api/catalog`. `APP_BIND_ADDRESS` defaults to `127.0.0.1`. For a LAN deployment, bind to that host's specific trusted IPv4 address and use a matching `DOCKER-USER` allowlist with a deny rule for other sources. Keep those host-specific values in a root-owned host configuration file, not in Git. Do not use a wildcard bind or expose the API through a proxy. PostgreSQL's host port remains bound to `127.0.0.1` and defaults to `5432` (override with `POSTGRES_PORT`). The existing `postgres_data` volume is retained across container stops and recreation.
 
-Schema changes are checked in as EF Core migrations under `server/src/MediaDock.Infrastructure/Persistence/Migrations/`. The API does not migrate on startup; run the one-shot `migrate` service after adding a migration and before starting the API.
+Schema changes are checked in as EF Core migrations under `server/src/MediaDock.Infrastructure/Persistence/Migrations/`. The API does not migrate on startup; run the one-shot `migrate` service after adding a migration and before starting the API. For the system-source-profile migration, create and validate a fresh database backup first. After the API is ready, verify `GET /api/sources` returns exactly the fixed `movie`, `series_complete`, and `series_ongoing` profiles and that each pre-migration URL appears under its expected profile; legacy `series` URLs belong under `series_ongoing`.
 
 ## Health and logs
 

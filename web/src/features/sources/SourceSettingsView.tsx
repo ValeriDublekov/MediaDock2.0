@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { createSource, getProviderSettings, getSettings, getSources, getVersion, updateProviderSettings, updateSettings, updateSource } from '../../api/client'
-import type { FeedType, ProviderSettings, ProviderSettingsInput, Settings, SettingsInput, Source, SourceInput, SystemVersion } from '../../api/types'
-import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
+import { addSourceUrl, getProviderSettings, getSettings, getSources, getVersion, removeSourceUrl, replaceSourceUrl, updateProviderSettings, updateSettings } from '../../api/client'
+import type { FeedType, ProviderSettings, ProviderSettingsInput, Settings, SettingsInput, SourceProfile, SourceUrl, SystemVersion } from '../../api/types'
+import { ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate } from '../../shared/format'
 import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
 
@@ -21,7 +21,6 @@ interface ProviderSettingsDraft {
   oscarEnrichmentMaxRequestsPerDay: string
 }
 
-const emptySource: SourceInput = { stableKey: '', name: '', feedType: 'movie', url: '', isEnabled: true }
 const emptySettings: SettingsDraft = { excludedGenres: '', excludedCountries: '', minMovieRating: '0', minSeriesRating: '0', minImdbVotes: '0' }
 const emptyProviderSettings: ProviderSettingsDraft = {
   omdbApiKey: '',
@@ -54,25 +53,19 @@ function splitValues(value: string): string[] {
   return value.split(',').map((part) => part.trim()).filter(Boolean)
 }
 
-function feedTypeLabel(feedType: FeedType): string {
-  switch (feedType) {
-    case 'movie': return 'Movies'
-    case 'series_complete': return 'Complete seasons'
-    case 'series_ongoing': return 'Ongoing episodes'
-  }
-}
-
 export function SourceSettingsView({ onOpenHistory = () => {} }: {
   onOpenHistory?: (scanRunId: number | null) => void
 } = {}) {
-  const [sources, setSources] = useState<Source[]>([])
+  const [sourceProfiles, setSourceProfiles] = useState<SourceProfile[]>([])
   const [settings, setSettings] = useState<Settings | null>(null)
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>(emptySettings)
   const [providerSettings, setProviderSettings] = useState<ProviderSettings | null>(null)
   const [systemVersion, setSystemVersion] = useState<SystemVersion | null>(null)
   const [providerDraft, setProviderDraft] = useState<ProviderSettingsDraft>(emptyProviderSettings)
-  const [sourceDraft, setSourceDraft] = useState<SourceInput>(emptySource)
+  const [sourceDraft, setSourceDraft] = useState('')
+  const [editingProfileId, setEditingProfileId] = useState<FeedType>('movie')
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [removingId, setRemovingId] = useState<number | null>(null)
   const [showSourceForm, setShowSourceForm] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -94,7 +87,7 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
     Promise.all([getSources(), getSettings(), getProviderSettings(), getVersion().catch(() => null)])
       .then(([sourceList, applicationSettings, omdbSettings, applicationVersion]) => {
         if (!current) return
-        setSources(sourceList)
+        setSourceProfiles(sourceList)
         setSettings(applicationSettings)
         setSettingsDraft(settingsToDraft(applicationSettings))
         setProviderSettings(omdbSettings)
@@ -108,17 +101,19 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
     return () => { current = false }
   }, [loadAttempt])
 
-  function startNewSource() {
+  function startNewSource(profileId: FeedType) {
     setEditingId(null)
-    setSourceDraft({ ...emptySource })
+    setEditingProfileId(profileId)
+    setSourceDraft('')
     setSourceError(null)
     setSourceSaved(false)
     setShowSourceForm(true)
   }
 
-  function editSource(source: Source) {
+  function editSource(profileId: FeedType, source: SourceUrl) {
     setEditingId(source.id)
-    setSourceDraft({ stableKey: source.stableKey, name: source.name, feedType: source.feedType, url: source.url, isEnabled: source.isEnabled })
+    setEditingProfileId(profileId)
+    setSourceDraft(source.url)
     setSourceError(null)
     setSourceSaved(false)
     setShowSourceForm(true)
@@ -130,19 +125,40 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
     setSourceError(null)
     setSourceSaved(false)
     try {
-      const saved = editingId === null ? await createSource(sourceDraft) : await updateSource(editingId, sourceDraft)
-      setSources((current) => {
-        const updated = editingId === null ? [...current, saved] : current.map((source) => source.id === saved.id ? saved : source)
-        return updated.sort((left, right) => left.name.localeCompare(right.name))
-      })
+      const saved = editingId === null
+        ? await addSourceUrl(editingProfileId, sourceDraft)
+        : await replaceSourceUrl(editingProfileId, editingId, sourceDraft)
+      setSourceProfiles((current) => current.map((profile) => profile.id !== editingProfileId ? profile : {
+        ...profile,
+        urls: editingId === null
+          ? [...profile.urls, saved]
+          : profile.urls.map((source) => source.id === saved.id ? saved : source),
+      }))
       setShowSourceForm(false)
-      setSourceDraft({ ...emptySource })
+      setSourceDraft('')
       setEditingId(null)
       setSourceSaved(true)
     } catch (requestError) {
       setSourceError(requestError instanceof Error ? requestError.message : 'Could not save this source.')
     } finally {
       setSavingSource(false)
+    }
+  }
+
+  async function removeSource(profileId: FeedType, source: SourceUrl) {
+    setRemovingId(source.id)
+    setSourceError(null)
+    setSourceSaved(false)
+    try {
+      await removeSourceUrl(profileId, source.id)
+      setSourceProfiles((current) => current.map((profile) => profile.id === profileId
+        ? { ...profile, urls: profile.urls.filter((item) => item.id !== source.id) }
+        : profile))
+      setSourceSaved(true)
+    } catch (requestError) {
+      setSourceError(requestError instanceof Error ? requestError.message : 'Could not remove this URL.')
+    } finally {
+      setRemovingId(null)
     }
   }
 
@@ -194,10 +210,6 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
     }
   }
 
-  function updateSourceField<K extends keyof SourceInput>(key: K, value: SourceInput[K]) {
-    setSourceDraft((current) => ({ ...current, [key]: value }))
-  }
-
   function updateSettingsField<K extends keyof SettingsDraft>(key: K, value: SettingsDraft[K]) {
     setSettingsDraft((current) => ({ ...current, [key]: value }))
   }
@@ -209,38 +221,42 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
     <section aria-label="Sources and settings">
       <div className="management-section">
         <div className="section-title-row">
-          <div><h2>Feed sources</h2><p>Configured endpoints for the catalog importer</p></div>
-          <button className="button" onClick={startNewSource} type="button">Add source</button>
+          <div><h2>RSS profiles</h2><p>Feed URLs are fixed to their system profile.</p></div>
         </div>
-        {sourceSaved && <p className="form-message" role="status">Source saved.</p>}
-        {sources.length === 0 ? (
-          <EmptyState title="No sources configured" message="Add a feed source to begin collecting catalog entries." />
-        ) : (
-          <div className="source-list">
-            {sources.map((source) => (
-              <div className="source-row" key={source.id}>
-                <div><span className="source-name">{source.name}</span><span className="source-url" title={source.url}>{source.url}</span></div>
-                <span className="source-key source-kind">{feedTypeLabel(source.feedType)}</span>
-                <span className={`state-pill${source.isEnabled ? '' : ' is-muted'}`}>{source.isEnabled ? 'Enabled' : 'Disabled'}</span>
-                <button aria-label={`Edit ${source.name}`} className="text-button source-action" onClick={() => editSource(source)} type="button">Edit</button>
+        {sourceSaved && <p className="form-message" role="status">Feed URL saved.</p>}
+        {sourceError && <p className="form-error" role="alert">{sourceError}</p>}
+        {sourceProfiles.map((profile) => (
+          <section aria-label={`${profile.name} profile`} className="source-profile" key={profile.id}>
+            <div className="source-profile-heading">
+              <h3>{profile.name}</h3>
+              <button className="button button-secondary" onClick={() => startNewSource(profile.id)} type="button">Add URL</button>
+            </div>
+            {profile.urls.length === 0 ? (
+              <p className="section-caption">No URLs configured.</p>
+            ) : (
+              <div className="source-list">
+                {profile.urls.map((source) => (
+                  <div className="source-row" key={source.id}>
+                    <span className="source-url" title={source.url}>{source.url}</span>
+                    <div className="source-actions">
+                      <button aria-label={`Replace ${source.url}`} className="text-button" onClick={() => editSource(profile.id, source)} type="button">Replace</button>
+                      <button aria-label={`Remove ${source.url}`} className="text-button" disabled={removingId === source.id} onClick={() => removeSource(profile.id, source)} type="button">Remove</button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
+          </section>
+        ))}
 
         {showSourceForm && (
           <form className="source-form" onSubmit={saveSource}>
-            <div className="section-title-row"><div><h2>{editingId === null ? 'New source' : 'Edit source'}</h2><p>Source URLs are validated by the API before saving.</p></div></div>
+            <div className="section-title-row"><div><h3>{editingId === null ? 'Add RSS URL' : 'Replace RSS URL'}</h3><p>{sourceProfiles.find(profile => profile.id === editingProfileId)?.name}</p></div></div>
             <div className="form-grid">
-              <div className="field"><label htmlFor="source-name">Name</label><input id="source-name" maxLength={200} onChange={(event) => updateSourceField('name', event.target.value)} required value={sourceDraft.name} /></div>
-              <div className="field"><label htmlFor="source-key">Stable key</label><input id="source-key" maxLength={100} onChange={(event) => updateSourceField('stableKey', event.target.value)} pattern="[a-z0-9][a-z0-9._-]{0,99}" required value={sourceDraft.stableKey} /></div>
-              <div className="field"><label htmlFor="source-feed-type">Feed type</label><select id="source-feed-type" onChange={(event) => updateSourceField('feedType', event.target.value as SourceInput['feedType'])} value={sourceDraft.feedType}><option value="movie">Movies</option><option value="series_complete">Complete seasons</option><option value="series_ongoing">Ongoing episodes</option></select></div>
-              <div className="field"><label htmlFor="source-url">Feed URL</label><input id="source-url" maxLength={2048} onChange={(event) => updateSourceField('url', event.target.value)} required type="url" value={sourceDraft.url} /></div>
+              <div className="field"><label htmlFor="source-url">Feed URL</label><input id="source-url" maxLength={2048} onChange={(event) => setSourceDraft(event.target.value)} required type="url" value={sourceDraft} /></div>
             </div>
-            <label className="checkbox-field"><input checked={sourceDraft.isEnabled} onChange={(event) => updateSourceField('isEnabled', event.target.checked)} type="checkbox" />Enabled for ingestion</label>
-            {sourceError && <p className="form-error" role="alert">{sourceError}</p>}
             <div className="form-actions">
-              <button className="button" disabled={savingSource} type="submit">{savingSource ? 'Saving...' : 'Save source'}</button>
+              <button className="button" disabled={savingSource} type="submit">{savingSource ? 'Saving...' : 'Save URL'}</button>
               <button className="button button-secondary" onClick={() => setShowSourceForm(false)} type="button">Cancel</button>
             </div>
           </form>

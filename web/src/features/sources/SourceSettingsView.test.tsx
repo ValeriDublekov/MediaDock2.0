@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  createSource,
+  addSourceUrl,
   enqueueManualScan,
   enqueueOscarImport,
   getActiveBackgroundJob,
@@ -11,15 +11,16 @@ import {
   getSettings,
   getSources,
   getVersion,
+  removeSourceUrl,
+  replaceSourceUrl,
   updateProviderSettings,
   updateSettings,
-  updateSource,
 } from '../../api/client'
-import type { ProviderSettings, Settings, SystemVersion } from '../../api/types'
+import type { ProviderSettings, Settings, SourceProfile, SystemVersion } from '../../api/types'
 import { SourceSettingsView } from './SourceSettingsView'
 
 vi.mock('../../api/client', () => ({
-  createSource: vi.fn(),
+  addSourceUrl: vi.fn(),
   enqueueManualScan: vi.fn(),
   enqueueOscarImport: vi.fn(),
   getActiveBackgroundJob: vi.fn(),
@@ -29,9 +30,10 @@ vi.mock('../../api/client', () => ({
   getSettings: vi.fn(),
   getSources: vi.fn(),
   getVersion: vi.fn(),
+  removeSourceUrl: vi.fn(),
+  replaceSourceUrl: vi.fn(),
   updateProviderSettings: vi.fn(),
   updateSettings: vi.fn(),
-  updateSource: vi.fn(),
 }))
 
 const providerSettings: ProviderSettings = {
@@ -50,7 +52,7 @@ const systemVersion: SystemVersion = {
 
 describe('SourceSettingsView', () => {
   beforeEach(() => {
-    vi.mocked(createSource).mockReset()
+    vi.mocked(addSourceUrl).mockReset()
     vi.mocked(enqueueManualScan).mockReset()
     vi.mocked(enqueueOscarImport).mockReset()
     vi.mocked(getActiveBackgroundJob).mockReset().mockResolvedValue(null)
@@ -65,11 +67,16 @@ describe('SourceSettingsView', () => {
       minImdbVotes: 0,
       updatedAt: null,
     } satisfies Settings)
-    vi.mocked(getSources).mockReset().mockResolvedValue([])
+    vi.mocked(getSources).mockReset().mockResolvedValue([
+      { id: 'movie', name: 'Movies', urls: [] },
+      { id: 'series_complete', name: 'Complete seasons', urls: [] },
+      { id: 'series_ongoing', name: 'Ongoing episodes', urls: [] },
+    ] satisfies SourceProfile[])
     vi.mocked(getVersion).mockReset().mockResolvedValue(systemVersion)
     vi.mocked(updateProviderSettings).mockReset().mockResolvedValue(providerSettings)
     vi.mocked(updateSettings).mockReset()
-    vi.mocked(updateSource).mockReset()
+    vi.mocked(removeSourceUrl).mockReset()
+    vi.mocked(replaceSourceUrl).mockReset()
   })
 
   afterEach(() => cleanup())
@@ -80,19 +87,6 @@ describe('SourceSettingsView', () => {
     expect(await screen.findByText('Version 2026.10.01+abc1234')).toBeTruthy()
     expect(screen.getByText('Commit 0123456789ab')).toBeTruthy()
     expect(screen.getByText('Commit date (UTC) 2026-10-01')).toBeTruthy()
-  })
-
-  it('offers separate modes for movies and the two series feed types', async () => {
-    render(<SourceSettingsView />)
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Add source' }))
-    const feedType = screen.getByLabelText('Feed type') as HTMLSelectElement
-
-    expect(Array.from(feedType.options).map((option) => option.textContent)).toEqual([
-      'Movies',
-      'Complete seasons',
-      'Ongoing episodes',
-    ])
   })
 
   it('keeps the saved key write-only and clears a replacement after saving', async () => {

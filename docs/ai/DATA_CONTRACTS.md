@@ -11,7 +11,7 @@ Entity tables with `Id` use generated `bigint` primary keys; `omdb_daily_usage` 
 | Table | Entity and stored fields |
 | --- | --- |
 | `titles` | [`Title`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Title.cs): `Id`, `TitleText`, `NormalizedTitle`, `Year`, `MediaType`, `SourceType`, `ContentKind`, `BroadcastRangeStartYear`, `BroadcastRangeEndYear`, `BroadcastRangeRaw`, `ImdbId`, `ImdbRating`, `ImdbVotes`, `Metascore`, `Genres`, `Countries`, `Director`, `Plot`, `PosterUrl`, `Runtime`, `Awards`, `BoxOffice`, `FirstSeenAt`, `LastSeenAt`, `UpdatedAt`. |
-| `sources` | [`Source`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Source.cs): `Id`, `StableKey`, `Name`, `FeedType` (`movie`, `series_complete`, or `series_ongoing`), `Url`, `IsEnabled`. |
+| `sources` | [`Source`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Source.cs): `Id`, generated internal `StableKey`, fixed-label `Name`, `FeedType` (`movie`, `series_complete`, or `series_ongoing`), `Url`, `IsEnabled`. Each row is one RSS URL attached to a system profile; the API does not expose the internal key or accept a profile type in the request body. |
 | `rss_item_states` | [`RssItemProcessingState`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/RssItemProcessingState.cs): source/item key, input fingerprint, `resolved` or `terminal` disposition, update time, and optional expiry. New resolved items are skipped indefinitely; legacy resolved entries adopted on first scan expire after two days; terminal decisions expire after two days. |
 | `occurrences` | [`Occurrence`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Occurrence.cs): `Id`, `TitleId`, `SourceId`, `SourceItemKey`, `FeedEntryId`, `TorrentUrl`, `RawTitle`, `SourceFeedName`, `FeedType`, `SourcePublishedAt`, `ObservedAt`, `Quality`, `RipType`, `FirstSeenAt`, `LastSeenAt`. |
 | `scan_runs` | [`ScanRun`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/ScanRun.cs): `Id`, `StartedAt`, `FinishedAt`, `Status`, `Trigger`, `FeedsProcessed`, `EntriesSeen`, `KnownEntriesSkipped`, `TitlesCreated`, `OccurrencesCreated`, `CacheHits`, `OmdbRequests`, `IgnoredEntries`, `ErrorCount`, `ErrorSummary`. |
@@ -73,6 +73,8 @@ Database check constraints enforce:
 - `ck_parse_logs_retry_state` restricts `parse_logs.retry_state` to `retryable`, `terminal`, or `resolved`; `ck_parse_logs_attempt_count` requires `attempt_count >= 0`.
 - `ck_metadata_cache_status` restricts status to `found` or `confirmed_not_found`; `ck_metadata_cache_expiry` requires `expires_at > fetched_at`.
 - `ck_omdb_daily_usage_counts` requires non-negative counts and `oscar_requests <= total_requests`.
+
+The `SystemSourceProfiles` migration preserves each RSS URL, replaces stored source names with fixed profile labels, activates configured URL rows, and maps any legacy `series` values in sources, occurrences, or parse logs to `series_ongoing`. Removing a URL through the API disables its `sources` row rather than deleting it because occurrences, parse logs, and RSS item states retain its ID.
 
 The schema does not define an optimistic concurrency token. The unique IMDb key is database-enforced, while title/year matching remains a guarded application fallback and is intentionally non-unique.
 

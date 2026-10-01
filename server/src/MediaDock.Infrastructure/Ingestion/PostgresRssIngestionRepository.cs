@@ -12,18 +12,24 @@ namespace MediaDock.Infrastructure.Ingestion;
 public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext) : IRssIngestionRepository
 {
     public async Task<IReadOnlyList<IngestionSource>> GetEnabledSourcesAsync(
-        CancellationToken cancellationToken = default) =>
-        await dbContext.Sources
+        CancellationToken cancellationToken = default)
+    {
+        var sources = await dbContext.Sources
             .AsNoTracking()
             .Where(source => source.IsEnabled)
-            .OrderBy(source => source.StableKey)
+            .OrderBy(source => source.FeedType)
+            .ThenBy(source => source.Id)
+            .Select(source => new { source.Id, source.FeedType, source.Url })
+            .ToListAsync(cancellationToken);
+
+        return sources
             .Select(source => new IngestionSource(
                 source.Id,
-                source.StableKey,
-                source.Name,
+                RssFeedTypes.ProfileName(source.FeedType),
                 source.FeedType,
                 source.Url))
-            .ToListAsync(cancellationToken);
+            .ToArray();
+    }
 
     public async Task<IngestionMatchSettings> GetMatchSettingsAsync(
         CancellationToken cancellationToken = default)

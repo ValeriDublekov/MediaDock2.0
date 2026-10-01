@@ -17,8 +17,9 @@ import type {
   ScanRunQuery,
   Settings,
   SettingsInput,
-  Source,
-  SourceInput,
+  FeedType,
+  SourceProfile,
+  SourceUrl,
   SystemVersion,
   TitleDetails,
 } from './types'
@@ -143,15 +144,27 @@ export function getTitleOccurrences(
 }
 
 export function getSources(fetcher?: typeof fetch) {
-  return requestJson<Source[]>('/sources', {}, fetcher)
+  return requestJson<SourceProfile[]>('/sources', {}, fetcher)
 }
 
-export function createSource(input: SourceInput, fetcher?: typeof fetch) {
-  return requestJson<Source>('/sources', { method: 'POST', body: JSON.stringify(input) }, fetcher)
+export function addSourceUrl(profileId: FeedType, url: string, fetcher?: typeof fetch) {
+  return requestJson<SourceUrl>(
+    `/sources/${encodeURIComponent(profileId)}/urls`,
+    { method: 'POST', body: JSON.stringify({ url }) },
+    fetcher,
+  )
 }
 
-export function updateSource(id: number, input: SourceInput, fetcher?: typeof fetch) {
-  return requestJson<Source>(`/sources/${id}`, { method: 'PUT', body: JSON.stringify(input) }, fetcher)
+export function replaceSourceUrl(profileId: FeedType, id: number, url: string, fetcher?: typeof fetch) {
+  return requestJson<SourceUrl>(
+    `/sources/${encodeURIComponent(profileId)}/urls/${id}`,
+    { method: 'PUT', body: JSON.stringify({ url }) },
+    fetcher,
+  )
+}
+
+export function removeSourceUrl(profileId: FeedType, id: number, fetcher?: typeof fetch) {
+  return requestJson<void>(`/sources/${encodeURIComponent(profileId)}/urls/${id}`, { method: 'DELETE' }, fetcher)
 }
 
 export function getSettings(fetcher?: typeof fetch) {

@@ -1,4 +1,5 @@
 using MediaDock.Api.Middleware;
+using MediaDock.Application.Ingestion;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using MediaDock.Infrastructure.Rss;
@@ -9,16 +10,20 @@ namespace MediaDock.Api.Sources;
 
 internal interface ISourceSettingsApiService
 {
-    Task<IReadOnlyList<SourceResponse>> GetSourcesAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<SourceProfileResponse>> GetSourceProfilesAsync(CancellationToken cancellationToken);
 
-    Task<SourceResponse> GetSourceAsync(long id, CancellationToken cancellationToken);
-
-    Task<SourceResponse> CreateSourceAsync(CreateSourceRequest request, CancellationToken cancellationToken);
-
-    Task<SourceResponse> UpdateSourceAsync(
-        long id,
-        UpdateSourceRequest request,
+    Task<SourceUrlResponse> AddSourceUrlAsync(
+        string profileId,
+        SourceUrlRequest request,
         CancellationToken cancellationToken);
+
+    Task<SourceUrlResponse> ReplaceSourceUrlAsync(
+        string profileId,
+        long id,
+        SourceUrlRequest request,
+        CancellationToken cancellationToken);
+
+    Task RemoveSourceUrlAsync(string profileId, long id, CancellationToken cancellationToken);
 
     Task<SettingsResponse> GetSettingsAsync(CancellationToken cancellationToken);
 
@@ -35,80 +40,97 @@ internal interface ISourceSettingsApiService
 
 internal sealed class SourceSettingsApiService(MediaDockDbContext dbContext) : ISourceSettingsApiService
 {
-    public async Task<IReadOnlyList<SourceResponse>> GetSourcesAsync(CancellationToken cancellationToken) =>
-        await dbContext.Sources
+    public async Task<IReadOnlyList<SourceProfileResponse>> GetSourceProfilesAsync(CancellationToken cancellationToken)
+    {
+        var sources = await dbContext.Sources
             .AsNoTracking()
-            .OrderBy(source => source.Name)
-            .ThenBy(source => source.Id)
-            .Select(source => ToResponse(source))
+            .Where(source => source.IsEnabled)
+            .OrderBy(source => source.Id)
+            .Select(source => new SourceProfileUrl(source.Id, source.FeedType, source.Url))
             .ToListAsync(cancellationToken);
 
-    public async Task<SourceResponse> GetSourceAsync(long id, CancellationToken cancellationToken)
-    {
-        var source = await dbContext.Sources
-            .AsNoTracking()
-            .Where(entity => entity.Id == id)
-            .Select(entity => new SourceResponse(
-                entity.Id,
-                entity.StableKey,
-                entity.Name,
-                entity.FeedType,
-                entity.Url,
-                entity.IsEnabled))
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return source ?? throw new ApiNotFoundException("Source not found.");
+        return RssFeedTypes.Profiles
+            .Select(profile => new SourceProfileResponse(
+                profile.Id,
+                profile.Name,
+                sources.Where(source => source.FeedType == profile.Id)
+                    .Select(source => new SourceUrlResponse(source.Id, source.Url))
+                    .ToArray()))
+            .ToArray();
     }
 
-    public async Task<SourceResponse> CreateSourceAsync(
-        CreateSourceRequest request,
+    public async Task<SourceUrlResponse> AddSourceUrlAsync(
+        string profileId,
+        SourceUrlRequest request,
         CancellationToken cancellationToken)
     {
-        ValidateFeedUrl(request.Url);
-
-        var stableKey = request.StableKey.Trim();
-        if (await dbContext.Sources.AnyAsync(source => source.StableKey == stableKey, cancellationToken))
+        var profile = GetProfile(profileId);
+        var url = ValidateFeedUrl(request.Url);
+        var existing = await dbContext.Sources.FirstOrDefaultAsync(source => source.Url == url, cancellationToken);
+        if (existing is not null)
         {
-            throw new ApiConflictException("A source with this stable key already exists.");
+            if (existing.FeedType != profile.Id)
+            {
+                throw new ApiConflictException("This URL is already assigned to another profile.");
+            }
+
+            if (existing.IsEnabled)
+            {
+                throw new ApiConflictException("This URL is already configured in the profile.");
+            }
+
+            existing.IsEnabled = true;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return new SourceUrlResponse(existing.Id, existing.Url);
         }
 
         var source = new Source
         {
-            StableKey = stableKey,
-            Name = request.Name.Trim(),
-            FeedType = request.FeedType.Trim(),
-            Url = request.Url.Trim(),
-            IsEnabled = request.IsEnabled
+            StableKey = $"{profile.Id}-{Guid.NewGuid():N}",
+            Name = profile.Name,
+            FeedType = profile.Id,
+            Url = url,
+            IsEnabled = true
         };
         dbContext.Sources.Add(source);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return ToResponse(source);
+        return new SourceUrlResponse(source.Id, source.Url);
     }
 
-    public async Task<SourceResponse> UpdateSourceAsync(
+    public async Task<SourceUrlResponse> ReplaceSourceUrlAsync(
+        string profileId,
         long id,
-        UpdateSourceRequest request,
+        SourceUrlRequest request,
         CancellationToken cancellationToken)
     {
-        ValidateFeedUrl(request.Url);
-
-        var source = await dbContext.Sources.FirstOrDefaultAsync(entity => entity.Id == id, cancellationToken)
-            ?? throw new ApiNotFoundException("Source not found.");
-        var stableKey = request.StableKey.Trim();
+        var profile = GetProfile(profileId);
+        var url = ValidateFeedUrl(request.Url);
+        var source = await dbContext.Sources.FirstOrDefaultAsync(
+            entity => entity.Id == id && entity.FeedType == profile.Id && entity.IsEnabled,
+            cancellationToken)
+            ?? throw new ApiNotFoundException("RSS URL not found in this profile.");
         if (await dbContext.Sources.AnyAsync(
-                entity => entity.Id != id && entity.StableKey == stableKey,
+                entity => entity.Id != id && entity.Url == url && entity.IsEnabled,
                 cancellationToken))
         {
-            throw new ApiConflictException("A source with this stable key already exists.");
+            throw new ApiConflictException("This URL is already configured.");
         }
 
-        source.StableKey = stableKey;
-        source.Name = request.Name.Trim();
-        source.FeedType = request.FeedType.Trim();
-        source.Url = request.Url.Trim();
-        source.IsEnabled = request.IsEnabled;
+        source.Url = url;
         await dbContext.SaveChangesAsync(cancellationToken);
-        return ToResponse(source);
+        return new SourceUrlResponse(source.Id, source.Url);
+    }
+
+    public async Task RemoveSourceUrlAsync(string profileId, long id, CancellationToken cancellationToken)
+    {
+        var profile = GetProfile(profileId);
+        var source = await dbContext.Sources.FirstOrDefaultAsync(
+            entity => entity.Id == id && entity.FeedType == profile.Id && entity.IsEnabled,
+            cancellationToken)
+            ?? throw new ApiNotFoundException("RSS URL not found in this profile.");
+
+        source.IsEnabled = false;
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<SettingsResponse> GetSettingsAsync(CancellationToken cancellationToken)
@@ -230,11 +252,19 @@ internal sealed class SourceSettingsApiService(MediaDockDbContext dbContext) : I
         return ToProviderSettingsResponse(settings);
     }
 
-    private static void ValidateFeedUrl(string url)
+    private static RssFeedProfile GetProfile(string profileId) =>
+        RssFeedTypes.Profiles.FirstOrDefault(profile => profile.Id == profileId)
+        ?? throw new ApiValidationException(new Dictionary<string, string[]>
+        {
+            ["profileId"] = ["Unknown RSS profile."]
+        });
+
+    private static string ValidateFeedUrl(string url)
     {
-        if (url.Length <= 2048
-            && !url.Any(char.IsWhiteSpace)
-            && Uri.TryCreate(url, UriKind.Absolute, out var uri)
+        var trimmedUrl = url.Trim();
+        if (trimmedUrl.Length <= 2048
+            && !trimmedUrl.Any(char.IsWhiteSpace)
+            && Uri.TryCreate(trimmedUrl, UriKind.Absolute, out var uri)
             && string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
             && string.IsNullOrEmpty(uri.UserInfo)
             && string.Equals(
@@ -242,13 +272,12 @@ internal sealed class SourceSettingsApiService(MediaDockDbContext dbContext) : I
                 RssFeedTransport.AllowedFeedHost,
                 StringComparison.OrdinalIgnoreCase))
         {
-            return;
+            return trimmedUrl;
         }
 
         throw new ApiValidationException(new Dictionary<string, string[]>
         {
-            [nameof(CreateSourceRequest.Url)] =
-            ["Feed URLs must use HTTPS on the configured feed host."]
+            [nameof(SourceUrlRequest.Url)] = ["Feed URLs must use HTTPS on the configured feed host."]
         });
     }
 
@@ -271,13 +300,7 @@ internal sealed class SourceSettingsApiService(MediaDockDbContext dbContext) : I
             .ToArray();
     }
 
-    private static SourceResponse ToResponse(Source source) => new(
-        source.Id,
-        source.StableKey,
-        source.Name,
-        source.FeedType,
-        source.Url,
-        source.IsEnabled);
+    private sealed record SourceProfileUrl(long Id, string FeedType, string Url);
 
     private static ProviderSettingsResponse ToProviderSettingsResponse(AppSetting settings) => new(
         !string.IsNullOrWhiteSpace(settings.OmdbApiKey),

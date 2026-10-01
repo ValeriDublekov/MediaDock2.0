@@ -164,8 +164,12 @@ public sealed class IngestionTests
         Assert.DoesNotContain(logs, log => log.RawTitle.Contains(FakeApiKey, StringComparison.Ordinal));
     }
 
-    [Fact]
-    public async Task OngoingSeriesUsesSeriesLookupAndDoesNotMatchSeasonYearToPremiereYear()
+    [Theory]
+    [InlineData("series_ongoing", "Silo S07E07 [2026]")]
+    [InlineData("series_complete", "Silo / Season 7 / Episodes 1-10 of 10 [2026]")]
+    public async Task SeriesProfilesUseSeriesLookupAndDoNotMatchSeasonYearToPremiereYear(
+        string feedType,
+        string releaseTitle)
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_series_test").Build();
         await postgres.StartAsync();
@@ -175,14 +179,14 @@ public sealed class IngestionTests
         await db.Database.MigrateAsync();
         db.Sources.Add(new Source
         {
-            StableKey = "silo-ongoing",
-            Name = "Silo ongoing episodes",
-            FeedType = "series_ongoing",
+            StableKey = "silo-profile",
+            Name = RssFeedTypes.ProfileName(feedType),
+            FeedType = feedType,
             Url = "https://feed.rutracker.cc/silo.atom"
         });
         await db.SaveChangesAsync();
 
-        var handler = new MockProviderHandler(seriesScenario: true);
+        var handler = new MockProviderHandler(seriesScenario: true, seriesFeedTitle: releaseTitle);
         using var httpClient = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
         var service = CreateService(db, httpClient, new RssFeedTransport(httpClient, new PublicDnsResolver()));
 
@@ -236,7 +240,11 @@ public sealed class IngestionTests
         db.Titles.Add(existingTitle);
         await db.SaveChangesAsync();
 
-        var sourceInfo = new IngestionSource(source.Id, source.StableKey, source.Name, source.FeedType, source.Url);
+        var sourceInfo = new IngestionSource(
+            source.Id,
+            RssFeedTypes.ProfileName(source.FeedType),
+            source.FeedType,
+            source.Url);
         var feedItem = new IngestionFeedItem(
             "Shared Film (2020)",
             "identity-conflict",
@@ -289,7 +297,7 @@ public sealed class IngestionTests
             .AddInterceptors(barrier)
             .Options;
         var now = new DateTimeOffset(2026, 9, 30, 0, 0, 0, TimeSpan.Zero);
-        var sourceInfo = new IngestionSource(sourceId, "movies-concurrent", "Movies", "movie", SuccessfulFeedUrl);
+        var sourceInfo = new IngestionSource(sourceId, "Movies", "movie", SuccessfulFeedUrl);
         var parsed = RutrackerTitleParser.Parse("Shared Film (2020)", "movie");
         var results = await Task.WhenAll(Enumerable.Range(1, 2).Select(async index =>
         {
@@ -338,12 +346,17 @@ public sealed class IngestionTests
     {
         private readonly bool _titleMatchScenario;
         private readonly bool _seriesScenario;
+        private readonly string _seriesFeedTitle;
         private int _temporaryRequests;
 
-        public MockProviderHandler(bool titleMatchScenario = false, bool seriesScenario = false)
+        public MockProviderHandler(
+            bool titleMatchScenario = false,
+            bool seriesScenario = false,
+            string seriesFeedTitle = "Silo S07E07 [2026]")
         {
             _titleMatchScenario = titleMatchScenario;
             _seriesScenario = seriesScenario;
+            _seriesFeedTitle = seriesFeedTitle;
         }
 
         public int OmdbRequestCount { get; private set; }
@@ -356,7 +369,7 @@ public sealed class IngestionTests
             var uri = request.RequestUri!;
             if (uri.Host == RssFeedTransport.AllowedFeedHost)
             {
-                return Task.FromResult(FeedResponse(_seriesScenario ? SiloFeed : _titleMatchScenario ? TitleMatchFeed :
+                return Task.FromResult(FeedResponse(_seriesScenario ? SeriesFeed(_seriesFeedTitle) : _titleMatchScenario ? TitleMatchFeed :
                     uri.AbsolutePath == "/success.atom" ? SuccessfulFeed : PartialFeed));
             }
 
@@ -392,6 +405,11 @@ public sealed class IngestionTests
 
             if (query["t"] == "The Matrix")
             {
+                if (query["type"] != "movie" || query.GetValueOrDefault("y") != "1999")
+                {
+                    throw new InvalidOperationException("Movie lookup must use its release year and movie type.");
+                }
+
                 return Task.FromResult(JsonResponse(MoviePayload("The Matrix", "1999", "tt0133093")));
             }
 
@@ -422,10 +440,10 @@ public sealed class IngestionTests
             </channel></rss>
             """;
 
-                private static string SiloFeed => """
+                private static string SeriesFeed(string title) => $"""
                         <?xml version="1.0" encoding="utf-8"?>
                         <rss version="2.0"><channel>
-                            <item><title>Silo S07E07 [2026]</title><link>https://rutracker.org/forum/viewtopic.php?t=7</link><guid>silo-s07e07</guid></item>
+                            <item><title>{title}</title><link>https://rutracker.org/forum/viewtopic.php?t=7</link><guid>silo-s07e07</guid></item>
                         </channel></rss>
                         """;
 

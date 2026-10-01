@@ -19,10 +19,10 @@ This document describes the API in `server/`. Routes are registered in [Program.
 | `DELETE /api/favorites/{titleId:long}` | Canonical title ID | `204`, also for absent favorites | None declared. |
 | `GET /api/titles/{id:long}` | Route `id` | `200 TitleDetailsResponse` | `404 ProblemDetails` when the title does not exist. |
 | `GET /api/titles/{id:long}/occurrences` | Route `id`, [OccurrencesQuery](../../server/src/MediaDock.Api/Catalog/CatalogContracts.cs) | `200 PageResponse<OccurrenceResponse>` | `400 ValidationProblemDetails`; `404 ProblemDetails` when the title does not exist. |
-| `GET /api/sources` | None | `200 IReadOnlyList<SourceResponse>`, ordered by `Name` then `Id` | None declared. |
-| `GET /api/sources/{id:long}` | Route `id` | `200 SourceResponse` | `404 ProblemDetails` when the source does not exist. |
-| `POST /api/sources` | [CreateSourceRequest](../../server/src/MediaDock.Api/Sources/SourceSettingsContracts.cs) | `201 SourceResponse`, with `Location: /api/sources/{id}` | `400 ValidationProblemDetails`; `409 ProblemDetails` for an existing stable key. |
-| `PUT /api/sources/{id:long}` | Route `id`, [UpdateSourceRequest](../../server/src/MediaDock.Api/Sources/SourceSettingsContracts.cs) | `200 SourceResponse` | `400 ValidationProblemDetails`; `404 ProblemDetails`; `409 ProblemDetails` for an existing stable key. |
+| `GET /api/sources` | None | `200 IReadOnlyList<SourceProfileResponse>` in fixed `movie`, `series_complete`, `series_ongoing` order, each with its configured URLs | None declared. |
+| `POST /api/sources/{profileId}/urls` | Route profile ID, [SourceUrlRequest](../../server/src/MediaDock.Api/Sources/SourceSettingsContracts.cs) | `201 SourceUrlResponse` | `400 ValidationProblemDetails` for an unknown profile or invalid URL; `409 ProblemDetails` for a URL already assigned/configured. |
+| `PUT /api/sources/{profileId}/urls/{id:long}` | Route profile ID and URL ID, [SourceUrlRequest](../../server/src/MediaDock.Api/Sources/SourceSettingsContracts.cs) | `200 SourceUrlResponse` | `400 ValidationProblemDetails` for an unknown profile or invalid URL; `404 ProblemDetails` when the URL is not active in that profile; `409 ProblemDetails` for a duplicate URL. |
+| `DELETE /api/sources/{profileId}/urls/{id:long}` | Route profile ID and URL ID | `204` | `400 ValidationProblemDetails` for an unknown profile; `404 ProblemDetails` when the URL is not active in that profile. The row is disabled to retain occurrence/history foreign keys. |
 | `GET /api/settings` | None | `200 SettingsResponse` | None declared. |
 | `PUT /api/settings` | [UpdateSettingsRequest](../../server/src/MediaDock.Api/Sources/SourceSettingsContracts.cs) | `200 SettingsResponse` | `400 ValidationProblemDetails`. |
 | `GET /api/settings/providers/omdb` | None | `200 ProviderSettingsResponse`; returns `OmdbApiKeyConfigured` and limits, never the key | None declared. |
@@ -56,10 +56,11 @@ Catalog titles with occurrences sort by `LastSeenAt` descending, then `Id` desce
 
 | DTO | Fields and validation |
 | --- | --- |
-| `CreateSourceRequest` | `StableKey` is required, max 100, and matches `^[a-z0-9][a-z0-9._-]{0,99}$`; `Name` is required, max 200; `FeedType` is `movie`, `series_complete`, or `series_ongoing`; both series modes query OMDb as `series`, while feed mode records whether releases are complete seasons or ongoing episodes. Season/episode years are not compared to the show's broadcast range. `Url` is required, `[Url]`, max 2048; `IsEnabled` defaults to `true`. In addition to `[Url]`, the service accepts only whitespace-free absolute HTTPS URLs without user-info on `feed.rutracker.cc`. Text inputs are trimmed before persistence. |
-| `UpdateSourceRequest` | Same `StableKey`, `Name`, `FeedType`, and `Url` validation as create; `IsEnabled` is a `bool` with no initializer (an omitted JSON value therefore defaults to `false`). The request replaces the source configuration. |
+| `SourceUrlRequest` | `Url` is required, `[Url]`, max 2048. The service trims outer whitespace, then accepts only whitespace-free absolute HTTPS URLs without user-info on `feed.rutracker.cc`. The route profile ID is authoritative; the request has no name, type, key, enable flag, or parser option. |
 | `UpdateSettingsRequest` | `ExcludedGenres` and `ExcludedCountries` are required arrays of at most 100 values. Each value must be nonblank and at most 100 characters; values are trimmed, de-duplicated case-insensitively, and sorted case-insensitively. `MinMovieRating` and `MinSeriesRating` are each `0..10`; `MinImdbVotes` is `0..1,000,000,000`. |
 | `UpdateProviderSettingsRequest` | `OmdbApiKey` is optional and max 512 characters; blank/omitted preserves the saved key. Set `ClearOmdbApiKey` to remove it, and do not provide a new key in the same request. The shared request limit and Oscar daily limit are non-negative integers; the per-run Oscar film cap is `0..100,000`. A configured key requires a positive shared limit; a positive Oscar film cap requires a positive Oscar daily cap. |
+
+The profile ID is a fixed system value and the only selector for RSS behavior. `movie` uses movie parsing, OMDb `type=movie`, and the parsed release year for lookup/matching. `series_complete` and `series_ongoing` both use OMDb `type=series` without `y`; they have separate season-pack and episode-marker parsing rules. A parsed season/episode year is retained in parse history but is not used as the show's premiere year for lookup or matching. Legacy `series` source records migrate to `series_ongoing`.
 
 ## Response DTOs
 
@@ -75,7 +76,8 @@ Nullable response fields are marked `?`; collection fields are returned as lists
 | `OscarNominationResponse` | `Id`, `Ceremony`, `Class`, `CanonicalCategory`, `Category`, `Name`, `Nominees`, `NomineeIds`, `Detail`, `IsWinner` |
 | `TitleDetailsResponse` | `Id`, `Title`, `Year?`, `MediaType`, `SourceType?`, `ContentKind?`, `BroadcastRangeStartYear?`, `BroadcastRangeEndYear?`, `BroadcastRangeRaw?`, `ImdbId?`, `ImdbRating?`, `ImdbVotes?`, `Metascore?`, `Genres`, `Countries`, `Director?`, `Plot?`, `PosterUrl?`, `Runtime?`, `Awards?`, `BoxOffice?`, `FirstSeenAt?`, `LastSeenAt?`, `UpdatedAt`, `OccurrenceCount` |
 | `OccurrenceResponse` | `Id`, `TitleId`, `SourceId`, `SourceName`, `SourceItemKey`, `FeedEntryId?`, `TorrentUrl`, `RawTitle`, `SourceFeedName`, `FeedType?`, `SourcePublishedAt?`, `ObservedAt?`, `Quality?`, `RipType?`, `FirstSeenAt`, `LastSeenAt` |
-| `SourceResponse` | `Id`, `StableKey`, `Name`, `FeedType`, `Url`, `IsEnabled` |
+| `SourceProfileResponse` | `Id` (fixed profile ID), `Name` (fixed display label), `Urls` |
+| `SourceUrlResponse` | `Id`, `Url` |
 | `SettingsResponse` | `ExcludedGenres`, `ExcludedCountries`, `MinMovieRating`, `MinSeriesRating`, `MinImdbVotes`, `UpdatedAt?` |
 | `ProviderSettingsResponse` | `OmdbApiKeyConfigured`, `OmdbDailyRequestLimit`, `OscarEnrichmentMaxFilmsPerRun`, `OscarEnrichmentMaxRequestsPerDay`, `UpdatedAt?`; does not include the key. |
 | `ParseLogResponse` | `Id`, `SourceId?`, `SourceName?`, `SourceItemKey?`, `RawTitle`, `FeedName`, `ParsedSuccessfully`, `ParsedTitle?`, `ParsedYear?`, `OmdbStatus`, `Ignored`, `IgnoreReason?`, `ErrorMessage?`, `Decision?`, `ProcessedAt`, `RetryState`, `AttemptCount`, `LastAttemptAt?`, `FeedType?`, `SourcePublishedAt?`, `ObservedAt?`, `EventKind?` |
