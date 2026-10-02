@@ -92,6 +92,27 @@ public sealed class CatalogApiTests
         db.Occurrences.AddRange(
             CreateOccurrence(olderTitle.Id, source.Id, "matrix-1999", "The Matrix (1999)", firstSeen),
             CreateOccurrence(newerTitle.Id, source.Id, "matrix-2003", "The Matrix Reloaded (2003)", firstSeen.AddDays(1)));
+        var completeSeriesSource = new Source
+        {
+            StableKey = "series-complete",
+            Name = "Series",
+            FeedType = "series_complete",
+            Url = "https://feed.rutracker.cc/series-complete.atom",
+            IsEnabled = true
+        };
+        var ongoingSeriesSource = new Source
+        {
+            StableKey = "series-ongoing",
+            Name = "Series in progress",
+            FeedType = "series_ongoing",
+            Url = "https://feed.rutracker.cc/series-ongoing.atom",
+            IsEnabled = true
+        };
+        db.Sources.AddRange(completeSeriesSource, ongoingSeriesSource);
+        await db.SaveChangesAsync();
+        db.Occurrences.AddRange(
+            CreateOccurrence(seriesTitle.Id, completeSeriesSource.Id, "series-complete", "Example Series", firstSeen.AddDays(2), "series_complete", "Series"),
+            CreateOccurrence(seriesTitle.Id, ongoingSeriesSource.Id, "series-ongoing", "Example Series", firstSeen.AddDays(3), "series_ongoing", "Series in progress"));
         db.ParseLogs.AddRange(
             new ParseLog
             {
@@ -140,6 +161,16 @@ public sealed class CatalogApiTests
         Assert.Equal(2, firstPage.TotalPages);
         Assert.Equal("The Matrix Reloaded", Assert.Single(firstPage.Items).Title);
         Assert.Equal("tt2003", Assert.Single(firstPage.Items).ImdbId);
+
+        using var inProgressSeriesResponse = await client.GetAsync("/api/catalog?feedTypes=series_ongoing");
+        var inProgressSeries = await inProgressSeriesResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
+        Assert.NotNull(inProgressSeries);
+        Assert.Equal("Example Series", Assert.Single(inProgressSeries.Items).Title);
+
+        using var mainFeedsResponse = await client.GetAsync("/api/catalog?feedTypes=movie,series_complete,series_ongoing");
+        var mainFeeds = await mainFeedsResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
+        Assert.NotNull(mainFeeds);
+        Assert.Equal(3, mainFeeds.TotalCount);
 
         using var secondPageResponse = await client.GetAsync(
             "/api/catalog?page=2&pageSize=1&search=matrix&mediaType=movie");
@@ -384,15 +415,17 @@ public sealed class CatalogApiTests
         long sourceId,
         string sourceItemKey,
         string rawTitle,
-        DateTimeOffset lastSeenAt) => new()
+        DateTimeOffset lastSeenAt,
+        string feedType = "movie",
+        string sourceFeedName = "Movies") => new()
     {
         TitleId = titleId,
         SourceId = sourceId,
         SourceItemKey = sourceItemKey,
         TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=1",
         RawTitle = rawTitle,
-        SourceFeedName = "Movies",
-        FeedType = "movie",
+        SourceFeedName = sourceFeedName,
+        FeedType = feedType,
         FirstSeenAt = lastSeenAt,
         LastSeenAt = lastSeenAt
     };

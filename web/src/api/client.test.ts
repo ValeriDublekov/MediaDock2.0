@@ -10,6 +10,7 @@ import {
   getOscarFilm,
   getOscarFilms,
   getProviderSettings,
+  importPersonalRatings,
   requestJson,
   runDeploymentAction,
   updateProviderSettings,
@@ -133,6 +134,28 @@ describe('typed API client', () => {
     expect(body).toBeInstanceOf(FormData)
     expect(new Headers(init?.headers).has('Content-Type')).toBe(false)
     expect((body as FormData).get('YearAfter')).toBe('1980')
+    expect((body as FormData).get('File')).toBe(file)
+  })
+
+  it('sends one personal ratings JSON file as multipart', async () => {
+    const stub = fetchStub(response(200, {
+      ratingsInFile: 1,
+      added: 1,
+      updated: 0,
+      unchanged: 0,
+      totalRatings: 1,
+      importedAt: '2026-10-02T10:00:00Z',
+    }))
+    const file = new File(['[{"id":"tt14452776","rating":8}]'], 'ratings.json', { type: 'application/json' })
+
+    await importPersonalRatings(file, stub.fetcher)
+
+    const init = stub.calls[0]?.init
+    const body = init?.body
+    expect(String(stub.calls[0]?.input)).toBe('/api/personal-ratings/import')
+    expect(init?.method).toBe('POST')
+    expect(body).toBeInstanceOf(FormData)
+    expect(new Headers(init?.headers).has('Content-Type')).toBe(false)
     expect((body as FormData).get('File')).toBe(file)
   })
 

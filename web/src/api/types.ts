@@ -153,6 +153,15 @@ export interface ProviderSettingsInput {
   omdbDailyRequestLimit: number
 }
 
+export interface PersonalRatingsImportResult {
+  ratingsInFile: number
+  added: number
+  updated: number
+  unchanged: number
+  totalRatings: number
+  importedAt: string
+}
+
 export interface ParseLog {
   id: number
   sourceId: number | null

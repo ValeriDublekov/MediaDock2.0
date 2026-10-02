@@ -110,6 +110,10 @@ continues to write its separate `oscar_enrichment_runs` audit record, while RSS
 `scan_runs` and `parse_logs` retain their existing meanings. Status, safe events,
 and scan/parse history are available in the UI and the background-job API.
 
+### Import personal IMDb ratings
+
+In Configuration, upload each `.json` ratings export under **Personal IMDb ratings**. The importer accepts arrays of `{ "id": "tt14452776", "rating": 8 }` entries, up to 5 MiB and 50,000 rows. Imports merge by IMDb ID: new ratings are added, changed ratings are updated, unchanged ratings remain untouched, and IDs missing from a later file are retained. Invalid files are rejected before any ratings are changed.
+
 ### Import Oscar dataset
 
 The source is Kaggle's [The Oscar Award dataset](https://www.kaggle.com/datasets/unanimad/the-oscar-award); its page identifies the dataset as CC0. Download it yourself and keep it outside the repository. Record the source URL, retrieval date/version, SHA-256, and year threshold in the operator's import notes. The API accepts bounded CSV/TSV uploads and queues the bytes; it never accepts a server filesystem path.

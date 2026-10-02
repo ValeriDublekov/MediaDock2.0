@@ -8,6 +8,7 @@ import type {
   DeploymentStatus,
   FavoriteMovie,
   OmdbDailyUsage,
+  PersonalRatingsImportResult,
   OscarCatalogQuery,
   OscarFilm,
   Occurrence,
@@ -246,4 +247,10 @@ export function enqueueOscarImport(file: File, yearAfter: number, fetcher?: type
   body.append('File', file)
   body.append('YearAfter', String(yearAfter))
   return requestJson<BackgroundJobAccepted>('/background-jobs/oscar-import', { method: 'POST', body }, fetcher)
+}
+
+export function importPersonalRatings(file: File, fetcher?: typeof fetch) {
+  const body = new FormData()
+  body.append('File', file)
+  return requestJson<PersonalRatingsImportResult>('/personal-ratings/import', { method: 'POST', body }, fetcher)
 }

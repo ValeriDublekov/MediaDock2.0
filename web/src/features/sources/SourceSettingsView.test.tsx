@@ -12,6 +12,7 @@ import {
   getSettings,
   getSources,
   getVersion,
+  importPersonalRatings,
   removeSourceUrl,
   replaceSourceUrl,
   updateProviderSettings,
@@ -32,6 +33,7 @@ vi.mock('../../api/client', () => ({
   getSettings: vi.fn(),
   getSources: vi.fn(),
   getVersion: vi.fn(),
+  importPersonalRatings: vi.fn(),
   removeSourceUrl: vi.fn(),
   replaceSourceUrl: vi.fn(),
   updateProviderSettings: vi.fn(),
@@ -74,6 +76,7 @@ describe('SourceSettingsView', () => {
       { id: 'series_ongoing', name: 'Ongoing episodes', urls: [] },
     ] satisfies SourceProfile[])
     vi.mocked(getVersion).mockReset().mockResolvedValue(systemVersion)
+    vi.mocked(importPersonalRatings).mockReset()
     vi.mocked(updateProviderSettings).mockReset().mockResolvedValue(providerSettings)
     vi.mocked(updateSettings).mockReset()
     vi.mocked(removeSourceUrl).mockReset()
@@ -127,5 +130,26 @@ describe('SourceSettingsView', () => {
     }))
     expect(await screen.findByText('Provider settings saved.')).toBeTruthy()
     expect(keyInput.value).toBe('')
+  })
+
+  it('uploads one IMDb ratings file and reports the additive import result', async () => {
+    vi.mocked(importPersonalRatings).mockResolvedValue({
+      ratingsInFile: 3,
+      added: 1,
+      updated: 1,
+      unchanged: 1,
+      totalRatings: 12,
+      importedAt: '2026-10-02T10:00:00Z',
+    })
+
+    render(<SourceSettingsView />)
+
+    const file = new File(['[{"id":"tt14452776","rating":8}]'], 'ratings.json', { type: 'application/json' })
+    const fileInput = await screen.findByLabelText('IMDb ratings JSON')
+    Object.defineProperty(fileInput, 'files', { configurable: true, value: [file] })
+    fireEvent.submit(fileInput.closest('form')!)
+
+    await waitFor(() => expect(importPersonalRatings).toHaveBeenCalledWith(file))
+    expect((await screen.findByRole('status')).textContent).toContain('1 added, 1 updated, 1 unchanged. 12 ratings stored.')
   })
 })

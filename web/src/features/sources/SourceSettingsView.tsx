@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { addSourceUrl, getOmdbDailyUsage, getProviderSettings, getSettings, getSources, getVersion, removeSourceUrl, replaceSourceUrl, updateProviderSettings, updateSettings } from '../../api/client'
-import type { FeedType, OmdbDailyUsage, ProviderSettings, ProviderSettingsInput, Settings, SettingsInput, SourceProfile, SourceUrl, SystemVersion } from '../../api/types'
+import { addSourceUrl, getOmdbDailyUsage, getProviderSettings, getSettings, getSources, getVersion, importPersonalRatings, removeSourceUrl, replaceSourceUrl, updateProviderSettings, updateSettings } from '../../api/client'
+import type { FeedType, OmdbDailyUsage, PersonalRatingsImportResult, ProviderSettings, ProviderSettingsInput, Settings, SettingsInput, SourceProfile, SourceUrl, SystemVersion } from '../../api/types'
 import { ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate } from '../../shared/format'
 import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
@@ -75,6 +75,9 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
   const [sourceSaved, setSourceSaved] = useState(false)
   const [settingsSaved, setSettingsSaved] = useState(false)
   const [providerSaved, setProviderSaved] = useState(false)
+  const [importingRatings, setImportingRatings] = useState(false)
+  const [ratingsImportError, setRatingsImportError] = useState<string | null>(null)
+  const [ratingsImportResult, setRatingsImportResult] = useState<PersonalRatingsImportResult | null>(null)
 
   useEffect(() => {
     let current = true
@@ -205,6 +208,30 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
     }
   }
 
+  async function importRatings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = event.currentTarget
+    const fileInput = form.elements.namedItem('personal-ratings-file') as HTMLInputElement | null
+    const file = fileInput?.files?.[0]
+    if (!file) {
+      setRatingsImportError('Select a JSON file to import.')
+      return
+    }
+
+    setImportingRatings(true)
+    setRatingsImportError(null)
+    setRatingsImportResult(null)
+    try {
+      const result = await importPersonalRatings(file)
+      setRatingsImportResult(result)
+      form.reset()
+    } catch (requestError) {
+      setRatingsImportError(requestError instanceof Error ? requestError.message : 'Could not import IMDb ratings.')
+    } finally {
+      setImportingRatings(false)
+    }
+  }
+
   function updateSettingsField<K extends keyof SettingsDraft>(key: K, value: SettingsDraft[K]) {
     setSettingsDraft((current) => ({ ...current, [key]: value }))
   }
@@ -259,6 +286,24 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
       </div>
 
       <BackgroundIngestionPanel onOpenHistory={onOpenHistory} />
+
+      <section aria-labelledby="personal-ratings-heading" className="management-section">
+        <h2 id="personal-ratings-heading">Personal IMDb ratings</h2>
+        <p className="section-caption">Upload one JSON export at a time. Re-imports add or update ratings by IMDb ID and keep ratings not included in the file.</p>
+        <form className="settings-form" onSubmit={importRatings}>
+          <div className="field">
+            <label htmlFor="personal-ratings-file">IMDb ratings JSON</label>
+            <input accept=".json,application/json" id="personal-ratings-file" name="personal-ratings-file" required type="file" />
+          </div>
+          {ratingsImportError && <p className="form-error" role="alert">{ratingsImportError}</p>}
+          {ratingsImportResult && <p className="form-message" role="status">
+            Imported {ratingsImportResult.ratingsInFile}: {ratingsImportResult.added} added, {ratingsImportResult.updated} updated, {ratingsImportResult.unchanged} unchanged. {ratingsImportResult.totalRatings} ratings stored.
+          </p>}
+          <div className="form-actions">
+            <button className="button" disabled={importingRatings} type="submit">{importingRatings ? 'Importing...' : 'Import ratings'}</button>
+          </div>
+        </form>
+      </section>
 
       <div className="management-grid">
         <section aria-labelledby="matching-settings-heading">

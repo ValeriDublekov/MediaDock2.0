@@ -57,6 +57,13 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
             titles = titles.Where(title => title.SourceType == query.SourceType);
         }
 
+        if (query.FeedTypes is not null)
+        {
+            var feedTypes = query.FeedTypes.Split(',');
+            titles = titles.Where(title => title.Occurrences.Any(occurrence =>
+                occurrence.FeedType != null && feedTypes.Contains(occurrence.FeedType)));
+        }
+
         if (query.ContentKind is not null)
         {
             titles = titles.Where(title => title.ContentKind == query.ContentKind);
