@@ -160,6 +160,7 @@ public sealed class OscarEnrichmentServiceTests
         Assert.Equal("imdb_id_mismatch", saved.ErrorCode);
         Assert.Null(saved.Metadata);
         Assert.Equal(now.AddHours(1), saved.NextAttemptAt);
+        Assert.Equal("tt11111111", Assert.Single(client.RequestedImdbIds));
         Assert.Equal(1, run.Summary.TemporaryErrors);
         Assert.Equal(0, run.Summary.EnrichedFilms);
     }
@@ -239,15 +240,18 @@ public sealed class OscarEnrichmentServiceTests
         private readonly Queue<MetadataLookupResult> _results = new(results);
 
         public int Calls { get; private set; }
+        public List<string?> RequestedImdbIds { get; } = [];
 
         public Task<MetadataLookupResult> LookupAsync(
             string title,
             int? year,
             string sourceType,
             CancellationToken cancellationToken = default,
-            OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
+            OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion,
+            string? imdbId = null)
         {
             Calls++;
+            RequestedImdbIds.Add(imdbId);
             return Task.FromResult(_results.Dequeue());
         }
     }

@@ -33,6 +33,27 @@ public sealed class OmdbClientBudgetTests
     }
 
     [Fact]
+    public async Task LookupUsesImdbIdWithoutTitleOrYearFallback()
+    {
+        var handler = new NotFoundHandler();
+        using var httpClient = new HttpClient(handler);
+        var client = new OmdbClient(httpClient, "test-key");
+
+        var result = await client.LookupAsync(
+            "Glass Onion: A Knives Out Mystery",
+            2022,
+            "movie",
+            requestPurpose: OmdbRequestPurpose.OscarEnrichment,
+            imdbId: "tt11564570");
+
+        Assert.Equal(MetadataLookupStatus.ConfirmedNotFound, result.Status);
+        Assert.Equal(1, handler.RequestCount);
+        Assert.Contains("&i=tt11564570", handler.LastRequestUri!.Query);
+        Assert.DoesNotContain("&t=", handler.LastRequestUri.Query);
+        Assert.DoesNotContain("&y=", handler.LastRequestUri.Query);
+    }
+
+    [Fact]
     public async Task LookupPersistsProviderQuotaExhaustionForTheReservedUtcDay()
     {
         var budget = new SequentialRequestBudget(true);
@@ -111,6 +132,7 @@ public sealed class OmdbClientBudgetTests
     private sealed class NotFoundHandler : HttpMessageHandler
     {
         public int RequestCount { get; private set; }
+        public Uri? LastRequestUri { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
@@ -118,6 +140,7 @@ public sealed class OmdbClientBudgetTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             RequestCount++;
+            LastRequestUri = request.RequestUri;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent("""{"Response":"False","Error":"Movie not found!"}""")

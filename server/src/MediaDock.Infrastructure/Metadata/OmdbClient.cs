@@ -59,20 +59,25 @@ public sealed class OmdbClient : IOmdbClient
         int? year,
         string sourceType,
         CancellationToken cancellationToken = default,
-        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
+        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion,
+        string? imdbId = null)
     {
         if (string.IsNullOrWhiteSpace(title) || sourceType is not ("movie" or "series"))
         {
             return new MetadataLookupResult(MetadataLookupStatus.InvalidRequest, ErrorCode: "invalid_lookup");
         }
 
-        var first = await RequestAsync(title.Trim(), year, sourceType, requestPurpose, cancellationToken);
-        if (first.Status != MetadataLookupStatus.ConfirmedNotFound || year is null || sourceType == "series")
+        var normalizedImdbId = ImdbIdNormalizer.Normalize(imdbId);
+        var first = await RequestAsync(title.Trim(), year, sourceType, requestPurpose, cancellationToken, normalizedImdbId);
+        if (normalizedImdbId is not null
+            || first.Status != MetadataLookupStatus.ConfirmedNotFound
+            || year is null
+            || sourceType == "series")
         {
             return first;
         }
 
-        var fallback = await RequestAsync(title.Trim(), null, sourceType, requestPurpose, cancellationToken);
+        var fallback = await RequestAsync(title.Trim(), null, sourceType, requestPurpose, cancellationToken, null);
         return fallback with { HttpAttempts = first.HttpAttempts + fallback.HttpAttempts };
     }
 
@@ -81,7 +86,8 @@ public sealed class OmdbClient : IOmdbClient
         int? year,
         string sourceType,
         OmdbRequestPurpose requestPurpose,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? imdbId)
     {
         var utcDate = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
         if (_requestBudget is not null)
@@ -100,12 +106,19 @@ public sealed class OmdbClient : IOmdbClient
         }
 
         var query = new StringBuilder()
-            .Append("apikey=").Append(Uri.EscapeDataString(_apiKey))
-            .Append("&t=").Append(Uri.EscapeDataString(title))
-            .Append("&type=").Append(Uri.EscapeDataString(sourceType));
-        if (year is not null && sourceType != "series")
+            .Append("apikey=").Append(Uri.EscapeDataString(_apiKey));
+        if (imdbId is not null)
         {
-            query.Append("&y=").Append(year.Value.ToString(CultureInfo.InvariantCulture));
+            query.Append("&i=").Append(Uri.EscapeDataString(imdbId));
+        }
+        else
+        {
+            query.Append("&t=").Append(Uri.EscapeDataString(title))
+                .Append("&type=").Append(Uri.EscapeDataString(sourceType));
+            if (year is not null && sourceType != "series")
+            {
+                query.Append("&y=").Append(year.Value.ToString(CultureInfo.InvariantCulture));
+            }
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Get, Endpoint + "?" + query);

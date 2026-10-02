@@ -67,7 +67,8 @@ public sealed class OscarEnrichmentService
                     "movie",
                     attemptedAt,
                     cancellationToken,
-                    OmdbRequestPurpose.OscarEnrichment);
+                    OmdbRequestPurpose.OscarEnrichment,
+                    candidate.ImdbId ?? candidate.TitleImdbId);
                 httpAttempts += resolution.HttpAttempts;
                 await SaveProgressAsync(cancellationToken);
                 if (resolution.Status == MetadataLookupStatus.RequestBudgetExhausted)

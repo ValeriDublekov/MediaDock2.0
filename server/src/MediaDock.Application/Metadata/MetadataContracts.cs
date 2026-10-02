@@ -68,7 +68,8 @@ public interface IOmdbClient
         int? year,
         string sourceType,
         CancellationToken cancellationToken = default,
-        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion);
+        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion,
+        string? imdbId = null);
 }
 
 public interface IOmdbRequestBudget
