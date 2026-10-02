@@ -267,9 +267,16 @@ public sealed class CatalogApiTests
         using var groupedSourcesResponse = await client.GetAsync("/api/sources");
         var groupedProfiles = await groupedSourcesResponse.Content.ReadFromJsonAsync<List<SourceProfileResponse>>();
         Assert.NotNull(groupedProfiles);
-        Assert.Equal("https://feed.rutracker.cc/complete-replaced.atom", Assert.Single(groupedProfiles[1].Urls).Url);
         Assert.Equal(
-            new[] { "https://feed.rutracker.cc/complete-extra.atom", "https://feed.rutracker.cc/ongoing.atom" },
+            new[] { "https://feed.rutracker.cc/complete-replaced.atom", "https://feed.rutracker.cc/series-complete.atom" }.OrderBy(url => url),
+            groupedProfiles[1].Urls.Select(url => url.Url).OrderBy(url => url));
+        Assert.Equal(
+            new[]
+            {
+                "https://feed.rutracker.cc/complete-extra.atom",
+                "https://feed.rutracker.cc/ongoing.atom",
+                "https://feed.rutracker.cc/series-ongoing.atom"
+            },
             groupedProfiles[2].Urls.Select(url => url.Url).OrderBy(url => url));
 
         using var settingsResponse = await client.GetAsync("/api/settings");
