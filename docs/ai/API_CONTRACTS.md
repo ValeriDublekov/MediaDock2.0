@@ -75,7 +75,7 @@ Nullable response fields are marked `?`; collection fields are returned as lists
 | `VersionResponse` | `Version` (`YYYY.MM.DD+<7-character-SHA>` for automated deployments), `CommitSha`, `CommitDateUtc?` |
 | `HealthResponse` | `Status` |
 | `PageResponse<T>` | `Items`, `Page`, `PageSize`, `TotalCount`, `TotalPages` |
-| `CatalogTitleResponse` | `Id`, `Title`, `Year?`, `MediaType`, `SourceType?`, `ContentKind?`, `ImdbRating?`, `PosterUrl?`, `Genres`, `Countries`, `LastSeenAt?`, `OccurrenceCount` |
+| `CatalogTitleResponse` | `Id`, `Title`, `Year?`, `MediaType`, `SourceType?`, `ContentKind?`, `ImdbId?`, `ImdbRating?`, `PosterUrl?`, `Genres`, `Countries`, `LastSeenAt?`, `OccurrenceCount` |
 | `OscarFilmResponse` | `Id`, `TitleId`, `Title` (CSV title), `MetadataTitle`, `MetadataYear?`, `FilmYear`, `ImdbId?`, `EnrichmentStatus`, `EnrichmentAttemptCount`, `LastEnrichmentAttemptAt?`, `NextEnrichmentAttemptAt?`, `LastEnrichmentError?`, `MediaType`, `ImdbRating?`, `ImdbVotes?`, `Metascore?`, `Genres`, `Countries`, `Director?`, `Plot?`, `PosterUrl?`, `Runtime?`, `Awards?`, `BoxOffice?`, `Nominations` |
 | `OscarNominationResponse` | `Id`, `Ceremony`, `Class`, `CanonicalCategory`, `Category`, `Name`, `Nominees`, `NomineeIds`, `Detail`, `IsWinner` |
 | `TitleDetailsResponse` | `Id`, `Title`, `Year?`, `MediaType`, `SourceType?`, `ContentKind?`, `BroadcastRangeStartYear?`, `BroadcastRangeEndYear?`, `BroadcastRangeRaw?`, `ImdbId?`, `ImdbRating?`, `ImdbVotes?`, `Metascore?`, `Genres`, `Countries`, `Director?`, `Plot?`, `PosterUrl?`, `Runtime?`, `Awards?`, `BoxOffice?`, `FirstSeenAt?`, `LastSeenAt?`, `UpdatedAt`, `OccurrenceCount` |

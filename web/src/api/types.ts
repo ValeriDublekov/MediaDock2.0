@@ -17,6 +17,7 @@ export interface CatalogTitle {
   mediaType: MediaType
   sourceType: MediaSourceType | null
   contentKind: string | null
+  imdbId: string | null
   imdbRating: number | null
   posterUrl: string | null
   genres: string[]
@@ -29,7 +30,6 @@ export interface TitleDetails extends CatalogTitle {
   broadcastRangeStartYear: number | null
   broadcastRangeEndYear: number | null
   broadcastRangeRaw: string | null
-  imdbId: string | null
   imdbVotes: number | null
   metascore: number | null
   director: string | null

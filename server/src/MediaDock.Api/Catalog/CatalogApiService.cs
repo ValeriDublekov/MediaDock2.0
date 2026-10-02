@@ -102,6 +102,7 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
                 title.MediaType,
                 title.SourceType,
                 title.ContentKind,
+                title.ImdbId,
                 title.ImdbRating,
                 title.PosterUrl,
                 title.Genres,

@@ -68,7 +68,13 @@ export function CatalogView() {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selectedTitleId, setSelectedTitleId] = useState<number | null>(null)
+  const [detailsSection, setDetailsSection] = useState<'details' | 'torrents'>('details')
   const activeFilterCount = Object.entries(draftFilters).filter(([key, value]) => key !== 'search' && value !== '').length
+
+  function openTitle(titleId: number, section: 'details' | 'torrents') {
+    setSelectedTitleId(titleId)
+    setDetailsSection(section)
+  }
 
   useEffect(() => {
     let current = true
@@ -160,17 +166,40 @@ export function CatalogView() {
         <>
           {viewMode === 'posters' ? <div className="poster-grid">
             {result.items.map((title) => <article className="movie-tile" key={title.id}>
-              <button aria-label={`View ${title.title} details`} className="poster-action" onClick={() => setSelectedTitleId(title.id)} type="button">
+              <button aria-label={`View ${title.title} details`} className="poster-action" onClick={() => openTitle(title.id, 'details')} type="button">
                 <Poster label={title.mediaType.slice(0, 3).toUpperCase()} src={title.posterUrl} title={title.title} />
+                <span className="poster-type-badge">{formatWords(title.mediaType)}</span>
               </button>
               <div className="movie-tile-info">
-                <button className="tile-title" onClick={() => setSelectedTitleId(title.id)} type="button">{title.title}</button>
-                <div className="tile-meta">{title.year ?? 'Year unknown'} <span aria-hidden="true">·</span> {formatWords(title.mediaType)}</div>
-                <div className="tile-genres">{title.genres.slice(0, 2).join(' · ') || 'Genres unavailable'}</div>
-                <div className="tile-footer">
-                  <span className="tile-rating">{title.imdbRating === null ? 'Not rated' : `IMDb ${title.imdbRating.toFixed(1)}`}</span>
-                  <FavoriteControls from="catalog" mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} titleId={title.id} />
+                <div className="tile-heading">
+                  <button className="tile-title" onClick={() => openTitle(title.id, 'details')} type="button">{title.title}</button>
+                  <span className="tile-year" title={title.year ? `Release year ${title.year}` : 'Release year unknown'}>{title.year ?? '—'}</span>
                 </div>
+                <div aria-label={title.imdbRating === null
+                  ? `IMDb rating for ${title.title}: not rated`
+                  : `IMDb rating for ${title.title}: ${title.imdbRating.toFixed(1)} out of 10`} className="tile-rating" role="group">
+                  <span>IMDb</span>
+                  <strong>{title.imdbRating === null ? 'Not rated' : title.imdbRating.toFixed(1)}</strong>
+                  {title.imdbRating !== null && <span className="tile-rating-scale">/ 10</span>}
+                </div>
+                <div className="tile-genres">
+                  {title.genres.length > 0
+                    ? title.genres.slice(0, 3).map((genre) => <span className="tile-genre" key={genre}>{genre}</span>)
+                    : <span>Genres unavailable</span>}
+                </div>
+                <div className="tile-observations">
+                  <span>{title.occurrenceCount} feed observations</span>
+                  <span>Last seen {formatDate(title.lastSeenAt)}</span>
+                </div>
+                <div className="tile-actions">
+                  {title.imdbId
+                    ? <a aria-label={`Open ${title.title} on IMDb (opens in new tab)`} className="tile-action tile-action-imdb" href={`https://www.imdb.com/title/${title.imdbId}/`} rel="noopener noreferrer" target="_blank">IMDb</a>
+                    : <button aria-label={`Open details for ${title.title}`} className="tile-action" onClick={() => openTitle(title.id, 'details')} type="button">Details</button>}
+                  <button aria-label={`View torrent sources for ${title.title} (${title.occurrenceCount})`} className="tile-action tile-action-primary" onClick={() => openTitle(title.id, 'torrents')} type="button">
+                    Torrents <span>{title.occurrenceCount}</span>
+                  </button>
+                </div>
+                <FavoriteControls from="catalog" mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} titleId={title.id} />
               </div>
             </article>)}
           </div> : <div className="table-wrap">
@@ -182,7 +211,7 @@ export function CatalogView() {
           <Pagination onPageChange={setPage} page={result} />
         </>
       )}
-      {selectedTitleId !== null && <TitleDetailsDialog onClose={() => setSelectedTitleId(null)} titleId={selectedTitleId} />}
+      {selectedTitleId !== null && <TitleDetailsDialog initialSection={detailsSection} onClose={() => setSelectedTitleId(null)} titleId={selectedTitleId} />}
     </section>
   )
 }

@@ -139,6 +139,7 @@ public sealed class CatalogApiTests
         Assert.Equal(2, firstPage.TotalCount);
         Assert.Equal(2, firstPage.TotalPages);
         Assert.Equal("The Matrix Reloaded", Assert.Single(firstPage.Items).Title);
+        Assert.Equal("tt2003", Assert.Single(firstPage.Items).ImdbId);
 
         using var secondPageResponse = await client.GetAsync(
             "/api/catalog?page=2&pageSize=1&search=matrix&mediaType=movie");

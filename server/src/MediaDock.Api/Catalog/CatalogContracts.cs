@@ -57,6 +57,7 @@ public sealed record CatalogTitleResponse(
     string MediaType,
     string? SourceType,
     string? ContentKind,
+    string? ImdbId,
     decimal? ImdbRating,
     string? PosterUrl,
     IReadOnlyList<string> Genres,
