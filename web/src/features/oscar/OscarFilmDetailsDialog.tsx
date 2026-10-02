@@ -5,6 +5,7 @@ import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Poster } from '../../components/Poster'
 import { formatDate, formatWords } from '../../shared/format'
 import { FavoriteControls } from '../favorites/FavoriteControls'
+import { OscarAwardsTooltip } from './OscarAwardsTooltip'
 
 interface OscarFilmDetailsDialogProps {
   filmId: number
@@ -21,9 +22,6 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
   const winnerCount = film?.nominations.filter((nomination) => nomination.isWinner).length ?? 0
   const nominationCount = film?.nominations.filter((nomination) => !nomination.isWinner).length ?? 0
   const awardSummary = `${winnerCount} ${winnerCount === 1 ? 'win' : 'wins'} & ${nominationCount} ${nominationCount === 1 ? 'nomination' : 'nominations'}`
-  const awardTooltip = film?.nominations
-    .map((nomination) => `${nomination.isWinner ? 'Won' : 'Nominated for'} ${nomination.category}`)
-    .join('; ') ?? ''
 
   useEffect(() => {
     let current = true
@@ -74,15 +72,13 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
                 <Poster className="detail-poster" label="OSC" src={film.posterUrl} title={film.title} />
                 <div className="film-details-summary">
                   <strong
-                    aria-label={`${awardSummary}. ${awardTooltip || 'No nominations in the selected Oscar categories'}`}
+                    aria-label={awardSummary}
                     aria-describedby={`oscar-detail-award-tooltip-${film.id}`}
                     className="oscar-award-summary"
                     tabIndex={0}
                   >
                     {awardSummary}
-                    <span className="oscar-award-tooltip" id={`oscar-detail-award-tooltip-${film.id}`} role="tooltip">
-                      {awardTooltip || 'No nominations in the selected Oscar categories'}
-                    </span>
+                    <OscarAwardsTooltip id={`oscar-detail-award-tooltip-${film.id}`} nominations={film.nominations} />
                   </strong>
                   <span>{film.imdbRating === null ? 'Not rated' : `IMDb ${film.imdbRating.toFixed(1)}`}</span>
                   {film.plot && <p className="detail-description">{film.plot}</p>}

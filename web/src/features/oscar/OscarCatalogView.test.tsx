@@ -101,7 +101,9 @@ describe('OscarCatalogView', () => {
     expect(await screen.findByText('Winner · 1 win')).toBeTruthy()
     const posterButton = screen.getByRole('button', { name: 'View The Shape of Water Oscar details' })
     const posterTooltip = screen.getByRole('tooltip')
-    expect(posterTooltip.textContent).toBe('Won Best Picture; Nominated for Directing')
+    expect(within(posterTooltip).getByText('Oscar category results')).toBeTruthy()
+    expect(within(posterTooltip).getByRole('listitem', { name: 'Won Best Picture' })).toBeTruthy()
+    expect(within(posterTooltip).getByRole('listitem', { name: 'Nominated for Directing' })).toBeTruthy()
     expect(posterButton.getAttribute('aria-describedby')).toBe(posterTooltip.id)
     expect(screen.getByText('2 nominations').className).toContain('oscar-nomination-count')
     expect(screen.getByText(film.plot!)).toBeTruthy()
@@ -189,14 +191,15 @@ describe('OscarCatalogView', () => {
     const awardSummary = within(dialog).getByText('2 wins & 3 nominations')
     const detailTooltip = within(dialog).getByRole('tooltip')
     expect(awardSummary.getAttribute('aria-describedby')).toBe(detailTooltip.id)
-    expect(detailTooltip.textContent).toBe(
-      'Won Best Picture; Nominated for Directing; Won Writing (Original Screenplay); Nominated for Writing (Adapted Screenplay); Nominated for Cinematography',
-    )
+    expect(within(detailTooltip).getByRole('listitem', { name: 'Won Best Picture' })).toBeTruthy()
+    expect(within(detailTooltip).getByRole('listitem', { name: 'Nominated for Directing' })).toBeTruthy()
+    expect(within(detailTooltip).getByRole('listitem', { name: 'Nominated for Writing (Adapted Screenplay)' })).toBeTruthy()
     expect(within(dialog).queryByText('2 wins & 14 nominations total')).toBeNull()
     expect(await within(dialog).findAllByText('Guillermo del Toro and J. Miles Dale')).toHaveLength(2)
     expect(within(dialog).getAllByText('Fox Searchlight Pictures')).toHaveLength(2)
-    expect(within(dialog).getAllByText('Winner')).toHaveLength(2)
-    expect(within(dialog).getAllByText('Nominee')).toHaveLength(3)
+    const nominationsSection = within(dialog).getByRole('heading', { name: 'Nominations' }).closest('section')
+    expect(within(nominationsSection as HTMLElement).getAllByText('Winner')).toHaveLength(2)
+    expect(within(nominationsSection as HTMLElement).getAllByText('Nominee')).toHaveLength(3)
   })
 
   it('requests the next page from the pagination controls', async () => {

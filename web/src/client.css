@@ -186,8 +186,16 @@ button:disabled { cursor: not-allowed; }
 .poster-type-badge { position: absolute; top: 10px; left: 10px; border: 1px solid rgba(255, 255, 255, 0.32); border-radius: 3px; padding: 4px 7px; color: #fff; background: rgba(20, 24, 23, 0.88); font-size: 10px; font-weight: 700; }
 .winner-badge { position: absolute; right: 8px; bottom: 8px; max-width: calc(100% - 16px); border-radius: 3px; padding: 5px 8px; color: #fff4d4; background: #624421; font-size: 11px; font-weight: 700; overflow-wrap: anywhere; }
 .nominee-badge { color: #f0f2ec; background: #394c43; }
-.oscar-award-tooltip { position: absolute; z-index: 3; visibility: hidden; border: 1px solid #59665d; border-radius: 3px; padding: 8px 10px; color: #f3f2ec; background: rgba(25, 32, 29, 0.97); box-shadow: 0 3px 12px rgba(0, 0, 0, 0.32); font-size: 11px; font-weight: 500; line-height: 1.4; text-align: left; opacity: 0; pointer-events: none; transition: opacity 120ms ease, visibility 120ms ease; }
+.oscar-award-tooltip { position: absolute; z-index: 3; display: grid; gap: 8px; visibility: hidden; border: 1px solid #59665d; border-radius: 4px; padding: 10px; color: #f3f2ec; background: rgba(25, 32, 29, 0.98); box-shadow: 0 5px 16px rgba(0, 0, 0, 0.38); font-size: 11px; line-height: 1.35; text-align: left; opacity: 0; pointer-events: none; transition: opacity 120ms ease, visibility 120ms ease; }
 .poster-action .oscar-award-tooltip { right: 8px; bottom: 42px; left: 8px; }
+.oscar-award-tooltip-heading { color: #f0bd62; font-size: 10px; font-weight: 700; }
+.oscar-award-tooltip-list { display: grid; gap: 5px; }
+.oscar-award-tooltip-row { display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: center; gap: 8px; border-top: 1px solid #414b44; padding-top: 5px; }
+.oscar-award-tooltip-status { border-radius: 2px; padding: 3px 4px; font-size: 9px; font-weight: 700; text-align: center; }
+.oscar-award-tooltip-status.is-winner { color: #ffe0a0; background: #624421; }
+.oscar-award-tooltip-status.is-nominee { color: #d5e8dd; background: #394c43; }
+.oscar-award-tooltip-category { color: #f3f2ec; font-size: 11px; font-weight: 600; text-transform: capitalize; overflow-wrap: anywhere; }
+.oscar-award-tooltip-empty { color: #c2cbc5; }
 .poster-action:hover .oscar-award-tooltip, .poster-action:focus-visible .oscar-award-tooltip, .oscar-award-summary:hover .oscar-award-tooltip, .oscar-award-summary:focus-visible .oscar-award-tooltip { visibility: visible; opacity: 1; }
 .poster-action .poster { transition: filter 150ms ease; }
 .poster-action:hover .poster { filter: brightness(0.91); }

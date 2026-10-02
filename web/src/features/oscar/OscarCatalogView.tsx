@@ -11,8 +11,9 @@ import { Pagination } from '../../components/Pagination'
 import { Poster } from '../../components/Poster'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatWords } from '../../shared/format'
-import { OscarFilmDetailsDialog } from './OscarFilmDetailsDialog'
 import { FavoriteControls } from '../favorites/FavoriteControls'
+import { OscarAwardsTooltip } from './OscarAwardsTooltip'
+import { OscarFilmDetailsDialog } from './OscarFilmDetailsDialog'
 
 interface OscarFilters {
   search: string
@@ -261,9 +262,6 @@ export function OscarCatalogView() {
             {result.items.map((film) => {
               const wins = film.nominations.filter((nomination) => nomination.isWinner).length
               const nominationCount = film.nominations.length
-              const awardTooltip = film.nominations
-                .map((nomination) => `${nomination.isWinner ? 'Won' : 'Nominated for'} ${nomination.category}`)
-                .join('; ') || 'No nominations in the selected Oscar categories'
               return <article className="movie-tile" key={film.id}>
                 <button
                   aria-describedby={`oscar-award-tooltip-${film.id}`}
@@ -278,9 +276,7 @@ export function OscarCatalogView() {
                       ? `Winner · ${wins} ${wins === 1 ? 'win' : 'wins'}`
                       : `Nominee · ${nominationCount} ${nominationCount === 1 ? 'nomination' : 'nominations'}`}
                   </span>
-                  <span className="oscar-award-tooltip" id={`oscar-award-tooltip-${film.id}`} role="tooltip">
-                    {awardTooltip}
-                  </span>
+                  <OscarAwardsTooltip id={`oscar-award-tooltip-${film.id}`} nominations={film.nominations} />
                 </button>
                 <div className="movie-tile-info">
                   <button className="tile-title" onClick={() => setSelectedFilmId(film.id)} type="button">{film.title}</button>
