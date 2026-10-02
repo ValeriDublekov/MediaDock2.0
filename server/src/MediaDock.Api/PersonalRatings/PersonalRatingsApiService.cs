@@ -37,16 +37,17 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
             throw ValidationError($"The ratings file cannot exceed {MaximumUploadBytes / (1024 * 1024)} MiB.");
         }
 
-        IReadOnlyDictionary<string, int> importedRatings;
+        PersonalRatingsParseResult parsedFile;
         try
         {
-            importedRatings = PersonalRatingsJsonParser.Parse(buffer.GetBuffer().AsSpan(0, (int)buffer.Length));
+            parsedFile = PersonalRatingsJsonParser.Parse(buffer.GetBuffer().AsSpan(0, (int)buffer.Length));
         }
         catch (PersonalRatingsImportException exception)
         {
             throw ValidationError(exception.Message);
         }
 
+        var importedRatings = parsedFile.Ratings;
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var ids = importedRatings.Keys.ToArray();
         var existingRatings = await dbContext.PersonalRatings
@@ -92,7 +93,10 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
             updated,
             unchanged,
             totalRatings,
-            importedAt);
+            importedAt,
+            parsedFile.MissingRatingIds
+                .Select(id => new PersonalRatingsImportError(id, "Missing rating."))
+                .ToArray());
     }
 
     private static ApiValidationException ValidationError(string message) =>

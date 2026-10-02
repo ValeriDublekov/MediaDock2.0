@@ -296,9 +296,14 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
             <input accept=".json,application/json" id="personal-ratings-file" name="personal-ratings-file" required type="file" />
           </div>
           {ratingsImportError && <p className="form-error" role="alert">{ratingsImportError}</p>}
-          {ratingsImportResult && <p className="form-message" role="status">
-            Imported {ratingsImportResult.ratingsInFile}: {ratingsImportResult.added} added, {ratingsImportResult.updated} updated, {ratingsImportResult.unchanged} unchanged. {ratingsImportResult.totalRatings} ratings stored.
-          </p>}
+          {ratingsImportResult && <>
+            <p className="form-message" role="status">
+              Imported {ratingsImportResult.ratingsInFile}: {ratingsImportResult.added} added, {ratingsImportResult.updated} updated, {ratingsImportResult.unchanged} unchanged. {ratingsImportResult.totalRatings} ratings stored.
+            </p>
+            {ratingsImportResult.errors.length > 0 && <p className="form-error" role="alert">
+              Skipped entries with missing ratings: {ratingsImportResult.errors.map(error => `${error.id} (${error.message})`).join(', ')}.
+            </p>}
+          </>}
           <div className="form-actions">
             <button className="button" disabled={importingRatings} type="submit">{importingRatings ? 'Importing...' : 'Import ratings'}</button>
           </div>

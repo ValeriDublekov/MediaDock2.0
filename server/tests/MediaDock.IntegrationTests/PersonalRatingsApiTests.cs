@@ -54,6 +54,17 @@ public sealed class PersonalRatingsApiTests
         Assert.Equal(HttpStatusCode.OK, partialResponse.StatusCode);
         Assert.Equal(3, (await partialResponse.Content.ReadFromJsonAsync<PersonalRatingsImportResponse>())!.TotalRatings);
         Assert.Equal(6, (await db.PersonalRatings.SingleAsync(rating => rating.ImdbId == "tt1172049")).Rating);
+
+        using var partialWithErrorsResponse = await client.PostAsync("/api/personal-ratings/import", CreateUpload(
+            "[{\"id\":\"tt12345678\",\"rating\":8},{\"id\":\"tt5555555\",\"rating\":null},{\"id\":\"tt4444444\"}]"));
+        Assert.Equal(HttpStatusCode.OK, partialWithErrorsResponse.StatusCode);
+        var partialWithErrorsResult = await partialWithErrorsResponse.Content.ReadFromJsonAsync<PersonalRatingsImportResponse>();
+        Assert.NotNull(partialWithErrorsResult);
+        Assert.Equal(1, partialWithErrorsResult.Added);
+        Assert.Equal(4, partialWithErrorsResult.TotalRatings);
+        Assert.Equal(new[] { "tt5555555", "tt4444444" }, partialWithErrorsResult.Errors.Select(error => error.Id));
+        Assert.All(partialWithErrorsResult.Errors, error => Assert.Equal("Missing rating.", error.Message));
+        Assert.Equal(4, await db.PersonalRatings.CountAsync());
     }
 
     private static MultipartFormDataContent CreateUpload(string json)

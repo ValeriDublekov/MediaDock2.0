@@ -146,6 +146,7 @@ describe('typed API client', () => {
       unchanged: 0,
       totalRatings: 1,
       importedAt: '2026-10-02T10:00:00Z',
+      errors: [],
     }))
     const file = new File(['[{"id":"tt14452776","rating":8}]'], 'ratings.json', { type: 'application/json' })
 

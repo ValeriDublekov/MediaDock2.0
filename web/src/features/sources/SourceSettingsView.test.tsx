@@ -132,7 +132,7 @@ describe('SourceSettingsView', () => {
     expect(keyInput.value).toBe('')
   })
 
-  it('uploads one IMDb ratings file and reports the additive import result', async () => {
+  it('uploads IMDb ratings and reports imported and skipped entries', async () => {
     vi.mocked(importPersonalRatings).mockResolvedValue({
       ratingsInFile: 3,
       added: 1,
@@ -140,6 +140,7 @@ describe('SourceSettingsView', () => {
       unchanged: 1,
       totalRatings: 12,
       importedAt: '2026-10-02T10:00:00Z',
+      errors: [{ id: 'tt1234567', message: 'Missing rating.' }],
     })
 
     render(<SourceSettingsView />)
@@ -151,5 +152,6 @@ describe('SourceSettingsView', () => {
 
     await waitFor(() => expect(importPersonalRatings).toHaveBeenCalledWith(file))
     expect((await screen.findByRole('status')).textContent).toContain('1 added, 1 updated, 1 unchanged. 12 ratings stored.')
+    expect((await screen.findByText(/Skipped entries with missing ratings:/)).textContent).toContain('tt1234567 (Missing rating.)')
   })
 })

@@ -11,4 +11,7 @@ public sealed record PersonalRatingsImportResponse(
     int Updated,
     int Unchanged,
     int TotalRatings,
-    DateTimeOffset ImportedAt);
+    DateTimeOffset ImportedAt,
+    IReadOnlyList<PersonalRatingsImportError> Errors);
+
+public sealed record PersonalRatingsImportError(string Id, string Message);

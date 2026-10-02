@@ -160,6 +160,10 @@ export interface PersonalRatingsImportResult {
   unchanged: number
   totalRatings: number
   importedAt: string
+  errors: Array<{
+    id: string
+    message: string
+  }>
 }
 
 export interface ParseLog {

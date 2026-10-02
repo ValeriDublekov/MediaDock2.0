@@ -11,7 +11,7 @@ public static class PersonalRatingsJsonParser
         PropertyNameCaseInsensitive = true
     };
 
-    public static IReadOnlyDictionary<string, int> Parse(ReadOnlySpan<byte> json)
+    public static PersonalRatingsParseResult Parse(ReadOnlySpan<byte> json)
     {
         RatingRow?[]? rows;
         try
@@ -34,6 +34,7 @@ public static class PersonalRatingsJsonParser
         }
 
         var ratings = new Dictionary<string, int>(StringComparer.Ordinal);
+        var missingRatingIds = new List<string>();
         foreach (var row in rows)
         {
             if (row is null)
@@ -42,20 +43,27 @@ public static class PersonalRatingsJsonParser
             }
 
             var imdbId = NormalizeImdbId(row.Id);
-            if (row.Rating is < 1 or > 10)
+            if (row.Rating is null)
+            {
+                missingRatingIds.Add(imdbId);
+                continue;
+            }
+
+            var rating = row.Rating.Value;
+            if (rating is < 1 or > 10)
             {
                 throw new PersonalRatingsImportException("Ratings must be whole numbers from 1 to 10.");
             }
 
-            if (ratings.TryGetValue(imdbId, out var existingRating) && existingRating != row.Rating)
+            if (ratings.TryGetValue(imdbId, out var existingRating) && existingRating != rating)
             {
                 throw new PersonalRatingsImportException($"The file contains conflicting ratings for {imdbId}.");
             }
 
-            ratings[imdbId] = row.Rating;
+            ratings[imdbId] = rating;
         }
 
-        return ratings;
+        return new PersonalRatingsParseResult(ratings, missingRatingIds);
     }
 
     private static string NormalizeImdbId(string? value)
@@ -75,8 +83,12 @@ public static class PersonalRatingsJsonParser
     private sealed class RatingRow
     {
         public string? Id { get; set; }
-        public int Rating { get; set; }
+        public int? Rating { get; set; }
     }
 }
+
+public sealed record PersonalRatingsParseResult(
+    IReadOnlyDictionary<string, int> Ratings,
+    IReadOnlyList<string> MissingRatingIds);
 
 public sealed class PersonalRatingsImportException(string message) : Exception(message);
