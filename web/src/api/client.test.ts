@@ -6,10 +6,12 @@ import {
   getActiveBackgroundJob,
   getBackgroundJobEvents,
   getCatalog,
+  getDeploymentStatus,
   getOscarFilm,
   getOscarFilms,
   getProviderSettings,
   requestJson,
+  runDeploymentAction,
   updateProviderSettings,
 } from './client'
 import type { CatalogTitle, OscarFilm, PageResponse, ProviderSettings, ProviderSettingsInput } from './types'
@@ -104,6 +106,19 @@ describe('typed API client', () => {
     expect(eventsUrl.pathname).toBe('/api/background-jobs/7/events')
     expect(eventsUrl.searchParams.get('afterId')).toBe('12')
     expect(eventsUrl.searchParams.get('pageSize')).toBe('25')
+  })
+
+  it('loads deployment status and sends only the selected deployment action', async () => {
+    const status = { activeState: 'inactive', deployedSha: 'a'.repeat(40) }
+    const stub = fetchStub(response(200, status))
+
+    await getDeploymentStatus(stub.fetcher)
+    await runDeploymentAction('retry_failed_gate', stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/deployment')
+    expect(String(stub.calls[1]?.input)).toBe('/api/deployment/run')
+    expect(stub.calls[1]?.init?.method).toBe('POST')
+    expect(JSON.parse(String(stub.calls[1]?.init?.body))).toEqual({ action: 'retry_failed_gate' })
   })
 
   it('sends Oscar files as multipart without setting a boundary-less content type', async () => {

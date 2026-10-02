@@ -9,6 +9,8 @@ This document describes the API in `server/`. Routes are registered in [Program.
 | `GET /health/live` | None | `200 HealthResponse` (`Status = "ok"`) | Does not query PostgreSQL. |
 | `GET /health/ready` | None | `200 HealthResponse` (`Status = "ready"`) when PostgreSQL is reachable | `503 ProblemDetails` when `CanConnectAsync` is false. |
 | `GET /api/version` | None | `200 VersionResponse` with the version, full source commit SHA, and UTC commit timestamp embedded in the image | Does not query PostgreSQL. |
+| `GET /api/deployment` | None | `200 DeploymentStatusResponse` with systemd state, deployed SHA, failed gate/recovery markers, and up to 40 recent service output lines | `503 ProblemDetails` when the host control socket is unavailable. |
+| `POST /api/deployment/run` | `{ "action": "check" }` or `{ "action": "retry_failed_gate" }` | `202 DeploymentActionResponse` after queueing the fixed systemd deploy unit | `400 ProblemDetails` for unknown actions; `409 ProblemDetails` if already running, no failed gate exists, or recovery is required; `503 ProblemDetails` if the host control socket is unavailable. Retry removes only `gate-failed`; it never clears `deploy-failed`. |
 | `GET /api/catalog` | [CatalogQuery](../../server/src/MediaDock.Api/Catalog/CatalogContracts.cs) | `200 PageResponse<CatalogTitleResponse>` | `400 ValidationProblemDetails` for invalid query values. |
 | `GET /api/oscars` | [OscarCatalogQuery](../../server/src/MediaDock.Api/OscarAwards/OscarContracts.cs) | `200 PageResponse<OscarFilmResponse>` | `400 ValidationProblemDetails` for invalid query values or a reversed film-year range. |
 | `GET /api/oscars/{id:long}` | Route `id` | `200 OscarFilmResponse` with all selected-category nominations and linked title metadata | `404 ProblemDetails` when the Oscar film does not exist. |
@@ -38,7 +40,9 @@ This document describes the API in `server/`. Routes are registered in [Program.
 | `GET /api/scan-runs` | [ScanRunQuery](../../server/src/MediaDock.Api/Operations/OperationsContracts.cs) | `200 PageResponse<ScanRunResponse>` | `400 ValidationProblemDetails` for invalid query values. This lists history; it does not start a scan. |
 | `GET /openapi/v1.json` | None | OpenAPI document in Development only | `MapOpenApi` is registered only in Development. |
 
-The endpoint mappings and response metadata are in [CatalogEndpoints.cs](../../server/src/MediaDock.Api/Catalog/CatalogEndpoints.cs), [OscarEndpoints.cs](../../server/src/MediaDock.Api/OscarAwards/OscarEndpoints.cs), [SourceSettingsEndpoints.cs](../../server/src/MediaDock.Api/Sources/SourceSettingsEndpoints.cs), [OperationalHistoryEndpoints.cs](../../server/src/MediaDock.Api/Operations/OperationalHistoryEndpoints.cs), [BackgroundJobEndpoints.cs](../../server/src/MediaDock.Api/BackgroundJobs/BackgroundJobEndpoints.cs), and [HealthEndpoints.cs](../../server/src/MediaDock.Api/Health/HealthEndpoints.cs). Background-job API coverage is in [BackgroundJobApiTests.cs](../../server/tests/MediaDock.IntegrationTests/BackgroundJobApiTests.cs) and [BackgroundJobExecutionTests.cs](../../server/tests/MediaDock.IntegrationTests/BackgroundJobExecutionTests.cs).
+The endpoint mappings and response metadata are in [CatalogEndpoints.cs](../../server/src/MediaDock.Api/Catalog/CatalogEndpoints.cs), [OscarEndpoints.cs](../../server/src/MediaDock.Api/OscarAwards/OscarEndpoints.cs), [SourceSettingsEndpoints.cs](../../server/src/MediaDock.Api/Sources/SourceSettingsEndpoints.cs), [OperationalHistoryEndpoints.cs](../../server/src/MediaDock.Api/Operations/OperationalHistoryEndpoints.cs), [DeploymentControlEndpoints.cs](../../server/src/MediaDock.Api/Operations/DeploymentControlEndpoints.cs), [BackgroundJobEndpoints.cs](../../server/src/MediaDock.Api/BackgroundJobs/BackgroundJobEndpoints.cs), and [HealthEndpoints.cs](../../server/src/MediaDock.Api/Health/HealthEndpoints.cs). Background-job API coverage is in [BackgroundJobApiTests.cs](../../server/tests/MediaDock.IntegrationTests/BackgroundJobApiTests.cs) and [BackgroundJobExecutionTests.cs](../../server/tests/MediaDock.IntegrationTests/BackgroundJobExecutionTests.cs); deployment-control API coverage is in [DeploymentControlApiTests.cs](../../server/tests/MediaDock.IntegrationTests/DeploymentControlApiTests.cs).
+
+Deployment status and start routes proxy a fixed request set to the host-side Unix-socket service. They do not accept commands, paths, or unit names from clients. The routes remain unauthenticated and must only be reachable inside the trusted LAN boundary.
 
 Background job types are `rss_scan` (manual or scheduled), `oscar_enrichment` (manual), and `oscar_import` (manual). RSS scans do not run Oscar enrichment as a follow-up operation.
 
@@ -73,6 +77,9 @@ Nullable response fields are marked `?`; collection fields are returned as lists
 | DTO | Fields |
 | --- | --- |
 | `VersionResponse` | `Version` (`YYYY.MM.DD+<7-character-SHA>` for automated deployments), `CommitSha`, `CommitDateUtc?` |
+| `DeploymentStatusResponse` | `IsRunning`, `ActiveState`, `SubState`, `Result`, `ExitCode`, `StartedAt`, `FinishedAt`, `DeployedSha?`, `GateFailedSha?`, `RecoveryRequired`, `FailureTargetSha?`, `RecentOutput` (up to 40 lines) |
+| `DeploymentActionRequest` | `Action` (`check` or `retry_failed_gate`) |
+| `DeploymentActionResponse` | `Message` |
 | `HealthResponse` | `Status` |
 | `PageResponse<T>` | `Items`, `Page`, `PageSize`, `TotalCount`, `TotalPages` |
 | `CatalogTitleResponse` | `Id`, `Title`, `Year?`, `MediaType`, `SourceType?`, `ContentKind?`, `ImdbId?`, `ImdbRating?`, `PosterUrl?`, `Genres`, `Countries`, `LastSeenAt?`, `OccurrenceCount` |

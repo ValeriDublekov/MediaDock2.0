@@ -4,6 +4,7 @@ import type { FeedType, OmdbDailyUsage, ProviderSettings, ProviderSettingsInput,
 import { ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate } from '../../shared/format'
 import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
+import { DeploymentControlPanel } from './DeploymentControlPanel'
 
 interface SettingsDraft {
   excludedGenres: string
@@ -358,6 +359,7 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
           </div>
         </section>
       </div>
+      <DeploymentControlPanel />
       <section aria-labelledby="system-version-heading" className="management-section">
         <h2 id="system-version-heading">System version</h2>
         {systemVersion ? (

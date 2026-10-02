@@ -4,6 +4,8 @@ import type {
   BackgroundJob,
   BackgroundJobAccepted,
   BackgroundJobEvents,
+  DeploymentActionResult,
+  DeploymentStatus,
   FavoriteMovie,
   OmdbDailyUsage,
   OscarCatalogQuery,
@@ -186,6 +188,17 @@ export function getOmdbDailyUsage(fetcher?: typeof fetch) {
 
 export function getVersion(fetcher?: typeof fetch) {
   return requestJson<SystemVersion>('/version', {}, fetcher)
+}
+
+export function getDeploymentStatus(fetcher?: typeof fetch) {
+  return requestJson<DeploymentStatus>('/deployment', {}, fetcher)
+}
+
+export function runDeploymentAction(action: 'check' | 'retry_failed_gate', fetcher?: typeof fetch) {
+  return requestJson<DeploymentActionResult>('/deployment/run', {
+    method: 'POST',
+    body: JSON.stringify({ action }),
+  }, fetcher)
 }
 
 export function updateProviderSettings(input: ProviderSettingsInput, fetcher?: typeof fetch) {

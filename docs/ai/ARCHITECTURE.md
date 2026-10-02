@@ -121,6 +121,12 @@ API startup registers `MediaDockDbContext` with Npgsql from `ConnectionStrings:M
 
 The API image serves the bundled React app only in Production, via the default/static-file middleware and SPA fallback in `Program.cs`; its assets are produced by the [server Dockerfile](../../server/Dockerfile). Compose binds the API host port to loopback. This is an unauthenticated local MVP; keep the deployment boundary described in [project context](PROJECT_CONTEXT.md).
 
+The Configuration deployment panel proxies status and start requests through
+the API to a root-owned host control service over a read-only-mounted Unix
+socket. That service accepts only status, immediate start of the fixed deploy
+unit, or a retry of a failed staging gate. It does not expose a shell or Docker
+socket; see the [systemd runbook](../../deploy/systemd/README.md) for host setup.
+
 ## Where to Change Things
 
 | Change | Start here |

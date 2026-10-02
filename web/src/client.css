@@ -358,6 +358,12 @@ button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offs
 .background-job-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; color: #435a4d; font-size: 12px; }
 .background-job-state strong { overflow-wrap: anywhere; }
 .background-job-summary { max-height: 180px; overflow: auto; margin: 0; border-left: 2px solid #b6cbbb; padding: 8px 12px; color: #43564a; background: #eef3ed; font: 10px/1.5 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.deployment-status-grid { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 12px; }
+.deployment-status-grid .section-caption { margin: 0; }
+.deployment-status-grid code, .deployment-control code { font-family: Consolas, monospace; }
+.deployment-output { margin-top: 12px; color: #43564a; font-size: 11px; }
+.deployment-output summary { width: fit-content; cursor: pointer; }
+.deployment-output pre { max-height: 240px; overflow: auto; margin: 8px 0 0; border-left: 2px solid #b6cbbb; padding: 8px 12px; color: #43564a; background: #eef3ed; font: 10px/1.5 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .background-job-events-title { margin: 0 0 8px; color: #203a30; font-family: Georgia, "Times New Roman", serif; font-size: 17px; font-weight: 400; }
 .background-job-events { display: grid; max-height: 260px; overflow: auto; margin: 0; border-top: 1px solid #d4ded5; padding: 0; list-style: none; }
 .background-job-events li { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 4px 12px; border-bottom: 1px solid #d4ded5; padding: 9px 2px; color: #40574a; font-size: 11px; }

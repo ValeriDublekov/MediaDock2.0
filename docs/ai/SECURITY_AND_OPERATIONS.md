@@ -31,6 +31,8 @@ The API does not register authentication or authorization middleware ([API contr
 
 A LAN deployment must use a specific trusted IPv4 bind and an API-port-only `DOCKER-USER` policy that allows the trusted source subnet and drops other sources; a systemd unit can reapply that policy after Docker starts. Store the host IP and trusted subnet in a root-owned host configuration file, not in Git. This does not authenticate LAN clients: every client in the trusted subnet can read and change app data. Do not enable the API listener until the trusted deployment checkout contains the bind-address parameter and Compose confirms the expected mapping; verify LAN access and non-LAN denial during the initial deployment smoke tests.
 
+When enabled, the Configuration deployment panel can start the full host deployment pipeline from any client allowed by that same LAN rule. A root-owned host service exposes only status and fixed `check`/`retry_failed_gate` actions over a Unix socket mounted read-only into the API container; no Docker socket or shell is exposed to the API. This remains a high-impact unauthenticated control: clients can trigger a deploy of current `main` and its migrations. Do not publish or forward the API port outside the trusted LAN. A `deploy-failed` recovery marker blocks both scheduled and web-triggered deploys.
+
 ## Secrets
 
 - Keep real values in the ignored `.env` file or the host environment, never in source, documentation, the browser bundle, or the checked-in example. The `.env` file is excluded by both [`.gitignore`](../../.gitignore) and [`.dockerignore`](../../.dockerignore); it is still plaintext and must be protected by host file permissions and backup handling.

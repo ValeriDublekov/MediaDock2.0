@@ -141,6 +141,14 @@ pre-migration dump, uses versioned images, and checks readiness after startup.
 On a new host, keep its timer disabled until the manual deployment and rollback
 procedure have been reviewed.
 
+After installing the optional host deployment-control service, use
+**Configuration > Deployment > Check and deploy now** to trigger the same full
+pipeline immediately instead of waiting for the five-minute timer. If the
+staging gate failed for a transient host issue, **Retry failed gate** retries
+that commit. This is a deployment operation, not a standalone `git pull`; a
+post-migration recovery marker still blocks retries. See the systemd runbook
+for the one-time host socket setup in [deploy/systemd/README.md](deploy/systemd/README.md).
+
 Create a plain SQL backup inside the container, then copy it to the host:
 
 ```powershell

@@ -264,6 +264,25 @@ export interface SystemVersion {
   commitDateUtc: string | null
 }
 
+export interface DeploymentStatus {
+  isRunning: boolean
+  activeState: string
+  subState: string
+  result: string
+  exitCode: string
+  startedAt: string
+  finishedAt: string
+  deployedSha: string | null
+  gateFailedSha: string | null
+  recoveryRequired: boolean
+  failureTargetSha: string | null
+  recentOutput: string[]
+}
+
+export interface DeploymentActionResult {
+  message: string
+}
+
 export type BackgroundJobStatus = 'queued' | 'running' | 'succeeded' | 'partial' | 'failed'
 
 export interface BackgroundJob {
