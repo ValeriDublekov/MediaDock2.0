@@ -71,7 +71,7 @@ const film: OscarFilm = {
   imdbRating: 7.3,
   imdbVotes: 450000,
   metascore: 87,
-  genres: ['Drama', 'Fantasy'],
+  genres: ['Drama', 'Fantasy', 'Romance'],
   countries: ['USA'],
   director: 'Guillermo del Toro',
   plot: 'A woman discovers a mysterious amphibious creature.',
@@ -94,14 +94,35 @@ describe('OscarCatalogView', () => {
   })
   afterEach(() => cleanup())
 
-  it('shows a win on the poster and retains the table without refetching', async () => {
+  it('shows the winner, film details, and IMDb link in both list modes', async () => {
     filmRequest.mockResolvedValue(page([film]))
     render(<OscarCatalogView />)
 
-    expect(await screen.findByText('1 win')).toBeTruthy()
+    expect(await screen.findByText('Winner · 1 win')).toBeTruthy()
+    expect(screen.getByText(film.plot!)).toBeTruthy()
+    expect(screen.getByText(`Director: ${film.director}`)).toBeTruthy()
+    expect(screen.getByText('Drama · Fantasy · Romance')).toBeTruthy()
+    const posterRatingLink = screen.getByRole('link', { name: 'Open The Shape of Water on IMDb (opens in new tab)' })
+    expect(posterRatingLink.getAttribute('href')).toBe('https://www.imdb.com/title/tt5580390/')
+    expect(posterRatingLink.getAttribute('target')).toBe('_blank')
+
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(screen.getByRole('columnheader', { name: 'OMDB' })).toBeTruthy()
+    expect(screen.getByText('Winner')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Open The Shape of Water on IMDb (opens in new tab)' })).toBeTruthy()
     expect(filmRequest).toHaveBeenCalledTimes(1)
+  })
+
+  it('labels a film with no winning nomination as a nominee', async () => {
+    filmRequest.mockResolvedValue(page([{
+      ...film,
+      nominations: film.nominations.map((nomination) => ({ ...nomination, isWinner: false })),
+    }]))
+    render(<OscarCatalogView />)
+
+    expect(await screen.findByText('Nominee · 2 nominations')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+    expect(screen.getByText('Nominee')).toBeTruthy()
   })
 
   it('applies award filters and renders the empty state', async () => {

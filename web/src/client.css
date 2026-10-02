@@ -184,7 +184,8 @@ button:disabled { cursor: not-allowed; }
 .movie-tile { display: flex; min-width: 0; flex-direction: column; overflow: hidden; border: 1px solid #343a37; border-radius: 5px; color: #f3f2ec; background: #202524; box-shadow: 0 2px 7px rgba(24, 31, 28, 0.12); }
 .poster-action { position: relative; display: block; width: 100%; border: 0; padding: 0; background: transparent; text-align: left; }
 .poster-type-badge { position: absolute; top: 10px; left: 10px; border: 1px solid rgba(255, 255, 255, 0.32); border-radius: 3px; padding: 4px 7px; color: #fff; background: rgba(20, 24, 23, 0.88); font-size: 10px; font-weight: 700; }
-.winner-badge { position: absolute; right: 8px; bottom: 8px; padding: 5px 8px; color: #fff4d4; background: #624421; font-size: 11px; font-weight: 700; }
+.winner-badge { position: absolute; right: 8px; bottom: 8px; max-width: calc(100% - 16px); border-radius: 3px; padding: 5px 8px; color: #fff4d4; background: #624421; font-size: 11px; font-weight: 700; overflow-wrap: anywhere; }
+.nominee-badge { color: #f0f2ec; background: #394c43; }
 .poster-action .poster { transition: filter 150ms ease; }
 .poster-action:hover .poster { filter: brightness(0.91); }
 .movie-tile-info { display: flex; flex: 1; flex-direction: column; align-items: flex-start; gap: 9px; padding: 13px 13px 12px; }
@@ -195,7 +196,14 @@ button:disabled { cursor: not-allowed; }
 .tile-genres { color: #c2cbc5; font-size: 12px; line-height: 1.4; }
 .tile-genres { display: flex; min-height: 23px; flex-wrap: wrap; gap: 5px; color: #b9c2bc; }
 .tile-genre { border: 1px solid #454d48; border-radius: 3px; padding: 2px 6px; color: #dce1dc; background: #2a302d; font-size: 10px; }
+.oscar-tile-director { color: #c2cbc5; font-size: 11px; line-height: 1.35; }
+.oscar-tile-plot, .oscar-row-plot { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; color: #b9c2bc; font-size: 11px; line-height: 1.4; }
+.oscar-tile-plot { margin: 0; }
+.oscar-row-details { display: grid; min-width: 0; gap: 3px; }
+.oscar-row-plot { -webkit-line-clamp: 2; }
 .tile-rating { display: inline-flex; min-height: 28px; align-items: center; gap: 6px; border: 1px solid #efad39; border-radius: 3px; padding: 3px 8px; color: #171b19; background: #f0aa32; font-size: 11px; font-weight: 700; }
+.oscar-imdb-rating { text-decoration: none; }
+.oscar-imdb-rating:hover { border-color: #ffc45f; background: #ffc45f; }
 .tile-rating strong { font-size: 14px; font-variant-numeric: tabular-nums; }
 .tile-rating-scale { color: #473617; font-size: 10px; font-weight: 600; }
 .tile-observations { display: grid; width: 100%; gap: 4px; color: #b4beb7; font-size: 10px; line-height: 1.35; }
