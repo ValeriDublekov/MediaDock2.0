@@ -19,6 +19,11 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const winnerCount = film?.nominations.filter((nomination) => nomination.isWinner).length ?? 0
+  const nominationCount = film?.nominations.filter((nomination) => !nomination.isWinner).length ?? 0
+  const awardSummary = `${winnerCount} ${winnerCount === 1 ? 'win' : 'wins'} & ${nominationCount} ${nominationCount === 1 ? 'nomination' : 'nominations'}`
+  const awardTooltip = film?.nominations
+    .map((nomination) => `${nomination.isWinner ? 'Won' : 'Nominated for'} ${nomination.category}`)
+    .join('; ') ?? ''
 
   useEffect(() => {
     let current = true
@@ -68,13 +73,19 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
               <div className="film-details-intro">
                 <Poster className="detail-poster" label="OSC" src={film.posterUrl} title={film.title} />
                 <div className="film-details-summary">
-                  <strong>{winnerCount > 0 ? `${winnerCount} ${winnerCount === 1 ? 'Oscar win' : 'Oscar wins'}` : `${film.nominations.length} nominations`}</strong>
+                  <strong
+                    aria-label={`${awardSummary}. ${awardTooltip || 'No nominations in the selected Oscar categories'}`}
+                    className="oscar-award-summary"
+                    tabIndex={0}
+                    title={awardTooltip || 'No nominations in the selected Oscar categories'}
+                  >
+                    {awardSummary}
+                  </strong>
                   <span>{film.imdbRating === null ? 'Not rated' : `IMDb ${film.imdbRating.toFixed(1)}`}</span>
                   {film.plot && <p className="detail-description">{film.plot}</p>}
                 </div>
               </div>
               <dl className="detail-facts oscar-detail-facts">
-                <div><dt>Award record</dt><dd>{film.nominations.length} nominations, {winnerCount} wins</dd></div>
                 <div><dt>IMDb</dt><dd>{film.imdbId ?? 'Not listed'}</dd></div>
                 <div><dt>IMDb rating</dt><dd>{film.imdbRating?.toFixed(1) ?? 'Not rated'}{film.imdbVotes ? ` / ${film.imdbVotes.toLocaleString()} votes` : ''}</dd></div>
                 <div><dt>Metascore</dt><dd>{film.metascore ?? 'Not listed'}</dd></div>
@@ -85,7 +96,6 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
                 <div><dt>OMDb status</dt><dd><span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span></dd></div>
                 <div><dt>Last attempt</dt><dd>{formatDate(film.lastEnrichmentAttemptAt)}</dd></div>
                 <div><dt>Next attempt</dt><dd>{formatDate(film.nextEnrichmentAttemptAt)}</dd></div>
-                <div><dt>OMDb awards</dt><dd>{film.awards ?? 'Not listed'}</dd></div>
                 <div><dt>Box office</dt><dd>{film.boxOffice ?? 'Not listed'}</dd></div>
                 {film.lastEnrichmentError && <div><dt>Last error</dt><dd>{film.lastEnrichmentError}</dd></div>}
               </dl>

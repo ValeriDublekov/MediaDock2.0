@@ -253,6 +253,8 @@ button:disabled { cursor: not-allowed; }
 .detail-poster { width: 112px; }
 .film-details-summary { display: grid; align-content: start; gap: 9px; min-width: 0; color: #53665a; font-size: 12px; }
 .film-details-summary strong { color: #8a5428; font-size: 15px; }
+.film-details-summary .oscar-award-summary { width: fit-content; text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.film-details-summary .oscar-award-summary:focus-visible { outline: 2px solid #ad593a; outline-offset: 3px; }
 .film-details-summary .detail-description { font-size: 13px; }
 button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {

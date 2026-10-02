@@ -153,19 +153,43 @@ describe('OscarCatalogView', () => {
   })
 
   it('opens the film details and displays all nominations and winners', async () => {
+    const awardFilm: OscarFilm = {
+      ...film,
+      awards: '2 wins & 14 nominations total',
+      nominations: [
+        ...nominations,
+        {
+          ...nominations[0], id: 13, canonicalCategory: 'WRITING (Original Screenplay)',
+          category: 'Writing (Original Screenplay)', isWinner: true,
+        },
+        {
+          ...nominations[1], id: 14, canonicalCategory: 'WRITING (Adapted Screenplay)',
+          category: 'Writing (Adapted Screenplay)', isWinner: false,
+        },
+        {
+          ...nominations[1], id: 15, canonicalCategory: 'CINEMATOGRAPHY',
+          category: 'Cinematography', isWinner: false,
+        },
+      ],
+    }
     filmRequest.mockResolvedValue(page([film]))
-    detailsRequest.mockResolvedValue(film)
-    titleOscarsRequest.mockResolvedValue([film])
+    detailsRequest.mockResolvedValue(awardFilm)
+    titleOscarsRequest.mockResolvedValue([awardFilm])
     occurrencesRequest.mockResolvedValue({ items: [], page: 1, pageSize: 5, totalCount: 0, totalPages: 0 })
     render(<OscarCatalogView />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'View The Shape of Water Oscar details' }))
     const dialog = await screen.findByRole('dialog')
     expect(detailsRequest).toHaveBeenCalledWith(film.id)
-    expect(await within(dialog).findByText('Guillermo del Toro and J. Miles Dale')).toBeTruthy()
-    expect(within(dialog).getByText('Fox Searchlight Pictures')).toBeTruthy()
-    expect(within(dialog).getByText('Winner')).toBeTruthy()
-    expect(within(dialog).getByText('Nominee')).toBeTruthy()
+    const awardSummary = within(dialog).getByText('2 wins & 3 nominations')
+    expect(awardSummary.getAttribute('title')).toBe(
+      'Won Best Picture; Nominated for Directing; Won Writing (Original Screenplay); Nominated for Writing (Adapted Screenplay); Nominated for Cinematography',
+    )
+    expect(within(dialog).queryByText('2 wins & 14 nominations total')).toBeNull()
+    expect(await within(dialog).findAllByText('Guillermo del Toro and J. Miles Dale')).toHaveLength(2)
+    expect(within(dialog).getAllByText('Fox Searchlight Pictures')).toHaveLength(2)
+    expect(within(dialog).getAllByText('Winner')).toHaveLength(2)
+    expect(within(dialog).getAllByText('Nominee')).toHaveLength(3)
   })
 
   it('requests the next page from the pagination controls', async () => {
