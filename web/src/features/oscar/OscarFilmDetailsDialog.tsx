@@ -75,11 +75,14 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
                 <div className="film-details-summary">
                   <strong
                     aria-label={`${awardSummary}. ${awardTooltip || 'No nominations in the selected Oscar categories'}`}
+                    aria-describedby={`oscar-detail-award-tooltip-${film.id}`}
                     className="oscar-award-summary"
                     tabIndex={0}
-                    title={awardTooltip || 'No nominations in the selected Oscar categories'}
                   >
                     {awardSummary}
+                    <span className="oscar-award-tooltip" id={`oscar-detail-award-tooltip-${film.id}`} role="tooltip">
+                      {awardTooltip || 'No nominations in the selected Oscar categories'}
+                    </span>
                   </strong>
                   <span>{film.imdbRating === null ? 'Not rated' : `IMDb ${film.imdbRating.toFixed(1)}`}</span>
                   {film.plot && <p className="detail-description">{film.plot}</p>}

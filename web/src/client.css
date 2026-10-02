@@ -186,9 +186,14 @@ button:disabled { cursor: not-allowed; }
 .poster-type-badge { position: absolute; top: 10px; left: 10px; border: 1px solid rgba(255, 255, 255, 0.32); border-radius: 3px; padding: 4px 7px; color: #fff; background: rgba(20, 24, 23, 0.88); font-size: 10px; font-weight: 700; }
 .winner-badge { position: absolute; right: 8px; bottom: 8px; max-width: calc(100% - 16px); border-radius: 3px; padding: 5px 8px; color: #fff4d4; background: #624421; font-size: 11px; font-weight: 700; overflow-wrap: anywhere; }
 .nominee-badge { color: #f0f2ec; background: #394c43; }
+.oscar-award-tooltip { position: absolute; z-index: 3; visibility: hidden; border: 1px solid #59665d; border-radius: 3px; padding: 8px 10px; color: #f3f2ec; background: rgba(25, 32, 29, 0.97); box-shadow: 0 3px 12px rgba(0, 0, 0, 0.32); font-size: 11px; font-weight: 500; line-height: 1.4; text-align: left; opacity: 0; pointer-events: none; transition: opacity 120ms ease, visibility 120ms ease; }
+.poster-action .oscar-award-tooltip { right: 8px; bottom: 42px; left: 8px; }
+.poster-action:hover .oscar-award-tooltip, .poster-action:focus-visible .oscar-award-tooltip, .oscar-award-summary:hover .oscar-award-tooltip, .oscar-award-summary:focus-visible .oscar-award-tooltip { visibility: visible; opacity: 1; }
 .poster-action .poster { transition: filter 150ms ease; }
 .poster-action:hover .poster { filter: brightness(0.91); }
 .movie-tile-info { display: flex; flex: 1; flex-direction: column; align-items: flex-start; gap: 9px; padding: 13px 13px 12px; }
+.oscar-tile-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #aeb8b1; font-size: 11px; }
+.oscar-nomination-count { display: inline-flex; align-items: center; border: 1px solid #56645a; border-radius: 3px; padding: 3px 7px; color: #d8e2d8; background: #2c3931; font-size: 10px; font-weight: 600; line-height: 1.2; }
 .tile-heading { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .tile-title { display: block; min-width: 0; flex: 1; border: 0; padding: 0; color: #f5f3ed; background: transparent; font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 17px; font-weight: 700; line-height: 1.22; text-align: left; overflow-wrap: anywhere; }
 .tile-title:hover { color: #f0bd62; }
@@ -253,7 +258,8 @@ button:disabled { cursor: not-allowed; }
 .detail-poster { width: 112px; }
 .film-details-summary { display: grid; align-content: start; gap: 9px; min-width: 0; color: #53665a; font-size: 12px; }
 .film-details-summary strong { color: #8a5428; font-size: 15px; }
-.film-details-summary .oscar-award-summary { width: fit-content; text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.film-details-summary .oscar-award-summary { position: relative; width: fit-content; text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.oscar-award-summary .oscar-award-tooltip { top: calc(100% + 8px); left: 0; width: max-content; max-width: min(280px, calc(100vw - 48px)); }
 .film-details-summary .oscar-award-summary:focus-visible { outline: 2px solid #ad593a; outline-offset: 3px; }
 .film-details-summary .detail-description { font-size: 13px; }
 button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offset: 3px; }

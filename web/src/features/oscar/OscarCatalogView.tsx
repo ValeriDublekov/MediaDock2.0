@@ -261,18 +261,35 @@ export function OscarCatalogView() {
             {result.items.map((film) => {
               const wins = film.nominations.filter((nomination) => nomination.isWinner).length
               const nominationCount = film.nominations.length
+              const awardTooltip = film.nominations
+                .map((nomination) => `${nomination.isWinner ? 'Won' : 'Nominated for'} ${nomination.category}`)
+                .join('; ') || 'No nominations in the selected Oscar categories'
               return <article className="movie-tile" key={film.id}>
-                <button aria-label={`View ${film.title} Oscar details`} className="poster-action" onClick={() => setSelectedFilmId(film.id)} type="button">
+                <button
+                  aria-describedby={`oscar-award-tooltip-${film.id}`}
+                  aria-label={`View ${film.title} Oscar details`}
+                  className="poster-action"
+                  onClick={() => setSelectedFilmId(film.id)}
+                  type="button"
+                >
                   <Poster label="OSC" src={film.posterUrl} title={film.title} />
                   <span className={`winner-badge${wins === 0 ? ' nominee-badge' : ''}`}>
                     {wins > 0
                       ? `Winner · ${wins} ${wins === 1 ? 'win' : 'wins'}`
                       : `Nominee · ${nominationCount} ${nominationCount === 1 ? 'nomination' : 'nominations'}`}
                   </span>
+                  <span className="oscar-award-tooltip" id={`oscar-award-tooltip-${film.id}`} role="tooltip">
+                    {awardTooltip}
+                  </span>
                 </button>
                 <div className="movie-tile-info">
                   <button className="tile-title" onClick={() => setSelectedFilmId(film.id)} type="button">{film.title}</button>
-                  <div className="tile-meta">{film.filmYear} <span aria-hidden="true">·</span> {nominationCount} {nominationCount === 1 ? 'nomination' : 'nominations'}</div>
+                  <div className="tile-meta oscar-tile-meta">
+                    <span>{film.filmYear}</span>
+                    <span className="oscar-nomination-count">
+                      {nominationCount} {nominationCount === 1 ? 'nomination' : 'nominations'}
+                    </span>
+                  </div>
                   <div className="oscar-tile-director">Director: {film.director ?? 'Not listed'}</div>
                   <div className="tile-genres">{film.genres.join(' · ') || 'Genres unavailable'}</div>
                   {film.plot && <p className="oscar-tile-plot">{film.plot}</p>}

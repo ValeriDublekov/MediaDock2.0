@@ -99,6 +99,11 @@ describe('OscarCatalogView', () => {
     render(<OscarCatalogView />)
 
     expect(await screen.findByText('Winner · 1 win')).toBeTruthy()
+    const posterButton = screen.getByRole('button', { name: 'View The Shape of Water Oscar details' })
+    const posterTooltip = screen.getByRole('tooltip')
+    expect(posterTooltip.textContent).toBe('Won Best Picture; Nominated for Directing')
+    expect(posterButton.getAttribute('aria-describedby')).toBe(posterTooltip.id)
+    expect(screen.getByText('2 nominations').className).toContain('oscar-nomination-count')
     expect(screen.getByText(film.plot!)).toBeTruthy()
     expect(screen.getByText(`Director: ${film.director}`)).toBeTruthy()
     expect(screen.getByText('Drama · Fantasy · Romance')).toBeTruthy()
@@ -182,7 +187,9 @@ describe('OscarCatalogView', () => {
     const dialog = await screen.findByRole('dialog')
     expect(detailsRequest).toHaveBeenCalledWith(film.id)
     const awardSummary = within(dialog).getByText('2 wins & 3 nominations')
-    expect(awardSummary.getAttribute('title')).toBe(
+    const detailTooltip = within(dialog).getByRole('tooltip')
+    expect(awardSummary.getAttribute('aria-describedby')).toBe(detailTooltip.id)
+    expect(detailTooltip.textContent).toBe(
       'Won Best Picture; Nominated for Directing; Won Writing (Original Screenplay); Nominated for Writing (Adapted Screenplay); Nominated for Cinematography',
     )
     expect(within(dialog).queryByText('2 wins & 14 nominations total')).toBeNull()
