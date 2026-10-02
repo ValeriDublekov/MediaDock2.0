@@ -188,12 +188,12 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_background_jobs");
 
-                    b.HasIndex("JobType", "ux_background_jobs_active_rss_scan")
+                    b.HasIndex(new[] { "JobType" }, "ux_background_jobs_active_rss_scan")
                         .IsUnique()
                         .HasDatabaseName("ux_background_jobs_active_rss_scan")
                         .HasFilter("job_type = 'rss_scan' AND status IN ('queued', 'running')");
 
-                    b.HasIndex("JobType", "ux_background_jobs_active_oscar_enrichment")
+                    b.HasIndex(new[] { "JobType" }, "ux_background_jobs_active_oscar_enrichment")
                         .IsUnique()
                         .HasDatabaseName("ux_background_jobs_active_oscar_enrichment")
                         .HasFilter("job_type = 'oscar_enrichment' AND status IN ('queued', 'running')");

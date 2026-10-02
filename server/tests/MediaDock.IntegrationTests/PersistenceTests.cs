@@ -94,6 +94,13 @@ public sealed class PersistenceTests
         await using var db = new MediaDockDbContext(options);
         await db.Database.MigrateAsync();
 
+        var backgroundJobIndexes = db.Model.FindEntityType(typeof(BackgroundJob))!
+            .GetIndexes()
+            .Select(index => index.GetDatabaseName())
+            .ToArray();
+        Assert.Contains("ux_background_jobs_active_rss_scan", backgroundJobIndexes);
+        Assert.Contains("ux_background_jobs_active_oscar_enrichment", backgroundJobIndexes);
+
         var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
         Assert.Contains("20260930122500_InitialRelationalSchema", appliedMigrations);
 
