@@ -208,6 +208,7 @@ export interface ScanRun {
 export interface CatalogQuery {
   page: number
   pageSize: number
+  feedTypes?: FeedType[]
   search?: string
   mediaType?: MediaType
   sourceType?: MediaSourceType

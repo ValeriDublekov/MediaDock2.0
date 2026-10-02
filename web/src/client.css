@@ -238,6 +238,10 @@ button:disabled { cursor: not-allowed; }
 .imdb-detail-link { width: fit-content; min-height: 34px; border-color: #efad39; color: #171b19; background: #f0aa32; text-decoration: none; }
 .imdb-detail-link:hover { border-color: #ffc45f; color: #171b19; background: #ffc45f; }
 .filter-form.browse-filters { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-bottom: 18px; border: 0; padding: 0; }
+.catalog-category-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 17px; }
+.catalog-category-nav button { min-height: 38px; border: 1px solid #cbd4cc; border-radius: 2px; padding: 0 13px; color: #43544b; background: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.catalog-category-nav button:hover { border-color: #9caea1; color: #203a30; background: #edf2ec; }
+.catalog-category-nav button.is-active { border-color: #283631; color: #fff; background: #283631; }
 .browse-filters .filter-search { grid-column: 1; grid-row: 1; }
 .browse-filters .filter-search input { min-height: 44px; font-size: 14px; }
 .browse-filters .filter-actions { grid-column: 2; grid-row: 1; }

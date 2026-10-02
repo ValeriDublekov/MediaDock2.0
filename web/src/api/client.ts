@@ -95,6 +95,10 @@ function withQuery(path: string, query: object): string {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(query)) {
     if (value === undefined || value === null || value === '') continue
+    if (Array.isArray(value)) {
+      if (value.length > 0) params.set(key, value.join(','))
+      continue
+    }
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
       params.set(key, String(value))
     }

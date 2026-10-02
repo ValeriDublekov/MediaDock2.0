@@ -80,7 +80,34 @@ describe('CatalogView', () => {
 
     expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
-    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 2,
+      pageSize: 20,
+      feedTypes: ['movie', 'series_complete', 'series_ongoing'],
+    }))
+  })
+
+  it('defaults to the three main categories and switches categories with one click', async () => {
+    catalogRequest.mockResolvedValue(page([]))
+    render(<CatalogView />)
+
+    expect(await screen.findByText('No titles found')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Main categories' }).getAttribute('aria-pressed')).toBe('true')
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
+      feedTypes: ['movie', 'series_complete', 'series_ongoing'],
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Movies' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, feedTypes: ['movie'] }))
+    fireEvent.click(screen.getByRole('button', { name: 'Series' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, feedTypes: ['series_complete'] }))
+    fireEvent.click(screen.getByRole('button', { name: 'Series in progress' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, feedTypes: ['series_ongoing'] }))
+    fireEvent.click(screen.getByRole('button', { name: 'All' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 }))
+    expect(screen.getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe('true')
   })
 
   it('applies search and filters and renders an empty result state', async () => {
@@ -98,6 +125,7 @@ describe('CatalogView', () => {
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
       page: 1,
       pageSize: 20,
+      feedTypes: ['movie', 'series_complete', 'series_ongoing'],
       search: 'quiet river',
       mediaType: 'series',
       genre: 'drama',

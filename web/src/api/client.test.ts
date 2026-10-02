@@ -36,12 +36,13 @@ describe('typed API client', () => {
     const page: PageResponse<CatalogTitle> = { items: [], page: 2, pageSize: 20, totalCount: 0, totalPages: 0 }
     const stub = fetchStub(response(200, page))
 
-    await getCatalog({ page: 2, pageSize: 20, search: 'quiet river', mediaType: 'series', yearFrom: 1998, genre: 'drama' }, stub.fetcher)
+    await getCatalog({ page: 2, pageSize: 20, feedTypes: ['series_complete', 'series_ongoing'], search: 'quiet river', mediaType: 'series', yearFrom: 1998, genre: 'drama' }, stub.fetcher)
 
     const requestUrl = new URL(String(stub.calls[0]?.input), 'http://localhost')
     expect(requestUrl.pathname).toBe('/api/catalog')
     expect(requestUrl.searchParams.get('page')).toBe('2')
     expect(requestUrl.searchParams.get('pageSize')).toBe('20')
+    expect(requestUrl.searchParams.get('feedTypes')).toBe('series_complete,series_ongoing')
     expect(requestUrl.searchParams.get('search')).toBe('quiet river')
     expect(requestUrl.searchParams.get('mediaType')).toBe('series')
     expect(requestUrl.searchParams.get('yearFrom')).toBe('1998')

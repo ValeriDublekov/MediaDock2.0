@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getCatalog } from '../../api/client'
-import type { CatalogQuery, CatalogTitle, MediaType, PageResponse } from '../../api/types'
+import type { CatalogQuery, CatalogTitle, FeedType, MediaType, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { Poster } from '../../components/Poster'
@@ -19,14 +19,32 @@ interface CatalogFilters {
   genre: string
 }
 
+type CatalogCategory = 'main' | 'movie' | 'series' | 'series_ongoing' | 'all'
+
+const categoryFeedTypes: Record<Exclude<CatalogCategory, 'all'>, FeedType[]> = {
+  main: ['movie', 'series_complete', 'series_ongoing'],
+  movie: ['movie'],
+  series: ['series_complete'],
+  series_ongoing: ['series_ongoing'],
+}
+
+const categories: Array<{ id: CatalogCategory; label: string }> = [
+  { id: 'main', label: 'Main categories' },
+  { id: 'movie', label: 'Movies' },
+  { id: 'series', label: 'Series' },
+  { id: 'series_ongoing', label: 'Series in progress' },
+  { id: 'all', label: 'All' },
+]
+
 const emptyFilters: CatalogFilters = {
   search: '', mediaType: '', sourceType: '', contentKind: '', yearFrom: '', yearTo: '', genre: '',
 }
 
-function buildQuery(page: number, filters: CatalogFilters): CatalogQuery {
+function buildQuery(page: number, filters: CatalogFilters, category: CatalogCategory): CatalogQuery {
   return {
     page,
     pageSize: 20,
+    ...(category !== 'all' ? { feedTypes: categoryFeedTypes[category] } : {}),
     ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
     ...(filters.mediaType ? { mediaType: filters.mediaType as MediaType } : {}),
     ...(filters.sourceType ? { sourceType: filters.sourceType as 'movie' | 'series' } : {}),
@@ -60,6 +78,7 @@ function CatalogRow({ title, onSelect }: { title: CatalogTitle; onSelect: (id: n
 
 export function CatalogView() {
   const [viewMode, setViewMode] = useState<ViewMode>('posters')
+  const [category, setCategory] = useState<CatalogCategory>('main')
   const [page, setPage] = useState(1)
   const [draftFilters, setDraftFilters] = useState<CatalogFilters>(emptyFilters)
   const [appliedFilters, setAppliedFilters] = useState<CatalogFilters>(emptyFilters)
@@ -80,14 +99,14 @@ export function CatalogView() {
     let current = true
     setLoading(true)
     setError(null)
-    getCatalog(buildQuery(page, appliedFilters))
+    getCatalog(buildQuery(page, appliedFilters, category))
       .then((response) => { if (current) setResult(response) })
       .catch((requestError: unknown) => {
         if (current) setError(requestError instanceof Error ? requestError.message : 'The catalog request failed.')
       })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
-  }, [page, appliedFilters, attempt])
+  }, [page, appliedFilters, category, attempt])
 
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -101,6 +120,15 @@ export function CatalogView() {
 
   return (
     <section aria-label="Catalog" className="media-view">
+      <nav aria-label="Catalog categories" className="catalog-category-nav">
+        {categories.map((item) => <button
+          aria-pressed={category === item.id}
+          className={category === item.id ? 'is-active' : ''}
+          key={item.id}
+          onClick={() => { setCategory(item.id); setPage(1) }}
+          type="button"
+        >{item.label}</button>)}
+      </nav>
       <form className="filter-form browse-filters" onSubmit={applyFilters}>
         <div className="field filter-search">
           <label htmlFor="catalog-search">Search titles</label>
