@@ -183,7 +183,7 @@ internal sealed class BackgroundJobDispatcher(
                 return;
             }
 
-            await LoadProviderSettingsAsync(services, dbContext, requireOscarEnrichment: false, stoppingToken);
+            await LoadProviderSettingsAsync(services, dbContext, stoppingToken);
             var ingestion = services.GetRequiredService<RssIngestionService>();
             var result = await ingestion.RunAsync(
                 job.Trigger,
@@ -227,10 +227,9 @@ internal sealed class BackgroundJobDispatcher(
         }
     }
 
-    private async Task<int> LoadProviderSettingsAsync(
+    private async Task LoadProviderSettingsAsync(
         IServiceProvider services,
         MediaDockDbContext dbContext,
-        bool requireOscarEnrichment,
         CancellationToken cancellationToken)
     {
         var settings = await dbContext.Settings.AsNoTracking()
@@ -238,28 +237,19 @@ internal sealed class BackgroundJobDispatcher(
             .Select(item => new
             {
                 item.OmdbApiKey,
-                item.OmdbDailyRequestLimit,
-                item.OscarEnrichmentMaxFilmsPerRun,
-                item.OscarEnrichmentMaxRequestsPerDay
+                item.OmdbDailyRequestLimit
             })
             .SingleOrDefaultAsync(cancellationToken);
-        if (requireOscarEnrichment && (settings is null || settings.OscarEnrichmentMaxFilmsPerRun <= 0))
-        {
-            return 0;
-        }
 
         if (settings is null || string.IsNullOrWhiteSpace(settings.OmdbApiKey)
-            || settings.OmdbDailyRequestLimit <= 0
-            || (requireOscarEnrichment && settings.OscarEnrichmentMaxRequestsPerDay <= 0))
+            || settings.OmdbDailyRequestLimit <= 0)
         {
             throw new InvalidOperationException("Provider settings are missing or invalid.");
         }
 
         services.GetRequiredService<IngestionProviderSettings>().Configure(
             settings.OmdbApiKey,
-            settings.OmdbDailyRequestLimit,
-            settings.OscarEnrichmentMaxRequestsPerDay);
-        return settings.OscarEnrichmentMaxFilmsPerRun;
+            settings.OmdbDailyRequestLimit);
     }
 
     private async Task ExecuteOscarEnrichmentAsync(
@@ -268,26 +258,10 @@ internal sealed class BackgroundJobDispatcher(
         BackgroundJob job,
         CancellationToken cancellationToken)
     {
-        var maximumFilms = await LoadProviderSettingsAsync(
-            services,
-            dbContext,
-            requireOscarEnrichment: true,
-            cancellationToken);
-        if (maximumFilms <= 0)
-        {
-            await CompleteJobAsync(
-                dbContext,
-                job,
-                "succeeded",
-                new { status = "skipped", reason = "disabled" },
-                null,
-                CancellationToken.None);
-            return;
-        }
-
+        await LoadProviderSettingsAsync(services, dbContext, cancellationToken);
         await SetStageAsync(dbContext, job, "oscar_enrichment", "Oscar enrichment started.", cancellationToken);
         var enrichment = await services.GetRequiredService<OscarEnrichmentService>()
-            .RunAsync(maximumFilms, job.Trigger, cancellationToken);
+            .RunAsync(job.Trigger, cancellationToken);
         var status = enrichment.Status == OscarEnrichmentRunStatuses.Succeeded ? "succeeded" : "partial";
         await CompleteJobAsync(
             dbContext,

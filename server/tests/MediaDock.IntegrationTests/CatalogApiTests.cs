@@ -306,8 +306,7 @@ public sealed class CatalogApiTests
             "/api/settings/providers/omdb",
             new UpdateProviderSettingsRequest
             {
-                OmdbApiKey = "test-omdb-key-value",
-                OscarEnrichmentMaxFilmsPerRun = 5
+                OmdbApiKey = "test-omdb-key-value"
             });
         Assert.Equal(HttpStatusCode.BadRequest, invalidProviderSettingsResponse.StatusCode);
         Assert.NotNull(await invalidProviderSettingsResponse.Content.ReadFromJsonAsync<ValidationProblemDetails>());
@@ -318,9 +317,7 @@ public sealed class CatalogApiTests
             new UpdateProviderSettingsRequest
             {
                 OmdbApiKey = testOmdbApiKey,
-                OmdbDailyRequestLimit = 20,
-                OscarEnrichmentMaxFilmsPerRun = 5,
-                OscarEnrichmentMaxRequestsPerDay = 8
+                OmdbDailyRequestLimit = 20
             });
         Assert.Equal(HttpStatusCode.OK, updateProviderSettingsResponse.StatusCode);
         var providerSettingsJson = await updateProviderSettingsResponse.Content.ReadAsStringAsync();
@@ -330,8 +327,6 @@ public sealed class CatalogApiTests
         Assert.NotNull(savedProviderSettings);
         Assert.True(savedProviderSettings.OmdbApiKeyConfigured);
         Assert.Equal(20, savedProviderSettings.OmdbDailyRequestLimit);
-        Assert.Equal(5, savedProviderSettings.OscarEnrichmentMaxFilmsPerRun);
-        Assert.Equal(8, savedProviderSettings.OscarEnrichmentMaxRequestsPerDay);
 
         db.ChangeTracker.Clear();
         var providerSettingsInDatabase = await db.Settings.AsNoTracking().SingleAsync();
@@ -343,9 +338,7 @@ public sealed class CatalogApiTests
             new UpdateProviderSettingsRequest
             {
                 ClearOmdbApiKey = true,
-                OmdbDailyRequestLimit = 20,
-                OscarEnrichmentMaxFilmsPerRun = 5,
-                OscarEnrichmentMaxRequestsPerDay = 8
+                OmdbDailyRequestLimit = 20
             });
         Assert.Equal(HttpStatusCode.OK, clearProviderSettingsResponse.StatusCode);
         Assert.False((await clearProviderSettingsResponse.Content

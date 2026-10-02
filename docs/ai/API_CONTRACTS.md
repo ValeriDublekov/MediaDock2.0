@@ -62,7 +62,7 @@ Catalog titles with occurrences sort by `LastSeenAt` descending, then `Id` desce
 | --- | --- |
 | `SourceUrlRequest` | `Url` is required, `[Url]`, max 2048. The service trims outer whitespace, then accepts only whitespace-free absolute HTTPS URLs without user-info on `feed.rutracker.cc`. The route profile ID is authoritative; the request has no name, type, key, enable flag, or parser option. |
 | `UpdateSettingsRequest` | `ExcludedGenres` and `ExcludedCountries` are required arrays of at most 100 values. Each value must be nonblank and at most 100 characters; values are trimmed, de-duplicated case-insensitively, and sorted case-insensitively. `MinMovieRating` and `MinSeriesRating` are each `0..10`; `MinImdbVotes` is `0..1,000,000,000`. |
-| `UpdateProviderSettingsRequest` | `OmdbApiKey` is optional and max 512 characters; blank/omitted preserves the saved key. Set `ClearOmdbApiKey` to remove it, and do not provide a new key in the same request. The shared request limit and Oscar daily limit are non-negative integers; the per-run Oscar film cap is `0..100,000`. A configured key requires a positive shared limit; a positive Oscar film cap requires a positive Oscar daily cap. |
+| `UpdateProviderSettingsRequest` | `OmdbApiKey` is optional and max 512 characters; blank/omitted preserves the saved key. Set `ClearOmdbApiKey` to remove it, and do not provide a new key in the same request. The shared daily request limit is a non-negative integer; a configured key requires a positive value. |
 
 The profile ID is a fixed system value and the only selector for RSS behavior. `movie` uses movie parsing, OMDb `type=movie`, and the parsed release year for lookup/matching. `series_complete` and `series_ongoing` both use OMDb `type=series` without `y`; they have separate season-pack and episode-marker parsing rules. A parsed season/episode year is retained in parse history but is not used as the show's premiere year for lookup or matching. Legacy `series` source records migrate to `series_ongoing`.
 
@@ -83,7 +83,7 @@ Nullable response fields are marked `?`; collection fields are returned as lists
 | `SourceProfileResponse` | `Id` (fixed profile ID), `Name` (fixed display label), `Urls` |
 | `SourceUrlResponse` | `Id`, `Url` |
 | `SettingsResponse` | `ExcludedGenres`, `ExcludedCountries`, `MinMovieRating`, `MinSeriesRating`, `MinImdbVotes`, `UpdatedAt?` |
-| `ProviderSettingsResponse` | `OmdbApiKeyConfigured`, `OmdbDailyRequestLimit`, `OscarEnrichmentMaxFilmsPerRun`, `OscarEnrichmentMaxRequestsPerDay`, `UpdatedAt?`; does not include the key. |
+| `ProviderSettingsResponse` | `OmdbApiKeyConfigured`, `OmdbDailyRequestLimit`, `UpdatedAt?`; does not include the key. |
 | `OmdbDailyUsageResponse` | `UtcDate`, `TotalRequests`, `RssRequests`, `OscarRequests`, `DailyRequestLimitReached`, `ProviderQuotaExceeded`, `LastErrorCode?`; counts are conservative reservations and can include an attempt interrupted before sending. |
 | `ParseLogResponse` | `Id`, `SourceId?`, `SourceName?`, `SourceItemKey?`, `RawTitle`, `FeedName`, `ParsedSuccessfully`, `ParsedTitle?`, `ParsedYear?`, `OmdbStatus`, `Ignored`, `IgnoreReason?`, `ErrorMessage?`, `Decision?`, `ProcessedAt`, `RetryState`, `AttemptCount`, `LastAttemptAt?`, `FeedType?`, `SourcePublishedAt?`, `ObservedAt?`, `EventKind?` |
 | `ScanRunResponse` | `Id`, `StartedAt`, `FinishedAt?`, `Status`, `Trigger`, `FeedsProcessed`, `EntriesSeen`, `KnownEntriesSkipped`, `TitlesCreated`, `OccurrencesCreated`, `CacheHits`, `OmdbRequests` (actual HTTP attempts), `IgnoredEntries`, `ErrorCount`, `ErrorSummary` |

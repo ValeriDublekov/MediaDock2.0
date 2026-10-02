@@ -6,6 +6,26 @@ namespace MediaDock.UnitTests;
 public sealed class OscarEnrichmentServiceTests
 {
     [Fact]
+    public async Task RunAsyncProcessesMoreThanOneHundredEligibleFilms()
+    {
+        var now = new DateTimeOffset(2026, 9, 29, 12, 0, 0, TimeSpan.Zero);
+        var candidates = Enumerable.Range(1, 101)
+            .Select(index => new OscarEnrichmentCandidate(index, $"Film {index}", 2025, null, null, 0))
+            .ToArray();
+        var repository = new FakeOscarEnrichmentRepository(candidates);
+        var result = new MetadataLookupResult(MetadataLookupStatus.Found, CreateMetadata(), HttpAttempts: 1);
+        var client = new StubOmdbClient(Enumerable.Repeat(result, candidates.Length).ToArray());
+        var service = CreateService(repository, client, now, out _);
+
+        var run = await service.RunAsync("manual");
+
+        Assert.Equal(101, run.Summary.EligibleFilms);
+        Assert.Equal(101, run.Summary.AttemptedFilms);
+        Assert.Equal(101, repository.SavedOutcomes.Count);
+        Assert.Equal(101, client.Calls);
+    }
+
+    [Fact]
     public async Task RunAsyncSavesEachOutcomeAndCountsFallbackHttpAttempts()
     {
         var now = new DateTimeOffset(2026, 9, 29, 12, 0, 0, TimeSpan.Zero);
@@ -23,7 +43,7 @@ public sealed class OscarEnrichmentServiceTests
         ]);
         var service = CreateService(repository, client, now, out var runRepository);
 
-        var run = await service.RunAsync(3, "manual");
+        var run = await service.RunAsync("manual");
         var summary = run.Summary;
 
         Assert.Equal(3, summary.EligibleFilms);
@@ -66,7 +86,7 @@ public sealed class OscarEnrichmentServiceTests
         ]);
         var service = CreateService(repository, client, now, out var runRepository);
 
-        var run = await service.RunAsync(2, "schedule");
+        var run = await service.RunAsync("schedule");
         var summary = run.Summary;
 
         Assert.Equal(2, summary.EligibleFilms);
@@ -103,7 +123,7 @@ public sealed class OscarEnrichmentServiceTests
         ]);
         var service = CreateService(repository, client, now, out var runRepository);
 
-        var run = await service.RunAsync(2, "manual");
+        var run = await service.RunAsync("manual");
         var summary = run.Summary;
 
         Assert.Equal(2, summary.EligibleFilms);
@@ -133,7 +153,7 @@ public sealed class OscarEnrichmentServiceTests
         ]);
         var service = CreateService(repository, client, now, out _);
 
-        var run = await service.RunAsync(1, "manual");
+        var run = await service.RunAsync("manual");
 
         var saved = Assert.Single(repository.SavedOutcomes).Update;
         Assert.Equal(OscarEnrichmentStatuses.TemporaryError, saved.Status);
@@ -155,7 +175,7 @@ public sealed class OscarEnrichmentServiceTests
             runRepository,
             new FrozenTimeProvider(now));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.RunAsync(1, "manual"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.RunAsync("manual"));
 
         Assert.Equal(OscarEnrichmentRunStatuses.Failed, runRepository.FinishedStatus);
         Assert.Equal(nameof(InvalidOperationException), runRepository.ErrorCode);
@@ -201,9 +221,8 @@ public sealed class OscarEnrichmentServiceTests
 
         public Task<IReadOnlyList<OscarEnrichmentCandidate>> GetEligibleCandidatesAsync(
             DateTimeOffset now,
-            int limit,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<OscarEnrichmentCandidate>>(candidates.Take(limit).ToArray());
+            Task.FromResult(candidates);
 
         public Task SaveOutcomeAsync(
             long filmId,
@@ -287,7 +306,6 @@ public sealed class OscarEnrichmentServiceTests
     {
         public Task<IReadOnlyList<OscarEnrichmentCandidate>> GetEligibleCandidatesAsync(
             DateTimeOffset now,
-            int limit,
             CancellationToken cancellationToken = default) =>
             Task.FromException<IReadOnlyList<OscarEnrichmentCandidate>>(
                 new InvalidOperationException("Repository failure."));

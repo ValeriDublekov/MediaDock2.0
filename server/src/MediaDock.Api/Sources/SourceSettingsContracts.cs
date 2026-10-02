@@ -50,8 +50,6 @@ public sealed record UpdateSettingsRequest
 public sealed record ProviderSettingsResponse(
     bool OmdbApiKeyConfigured,
     int OmdbDailyRequestLimit,
-    int OscarEnrichmentMaxFilmsPerRun,
-    int OscarEnrichmentMaxRequestsPerDay,
     DateTimeOffset? UpdatedAt);
 
 /// <summary>One UTC day's OMDb request usage and most recent safe provider error code.</summary>
@@ -74,10 +72,4 @@ public sealed record UpdateProviderSettingsRequest
 
     [Range(0, int.MaxValue)]
     public int OmdbDailyRequestLimit { get; init; }
-
-    [Range(0, 100_000)]
-    public int OscarEnrichmentMaxFilmsPerRun { get; init; }
-
-    [Range(0, int.MaxValue)]
-    public int OscarEnrichmentMaxRequestsPerDay { get; init; }
 }

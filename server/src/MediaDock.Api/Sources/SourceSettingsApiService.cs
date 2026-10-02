@@ -196,12 +196,10 @@ internal sealed class SourceSettingsApiService(MediaDockDbContext dbContext) : I
             .Select(setting => new ProviderSettingsResponse(
                 !string.IsNullOrWhiteSpace(setting.OmdbApiKey),
                 setting.OmdbDailyRequestLimit,
-                setting.OscarEnrichmentMaxFilmsPerRun,
-                setting.OscarEnrichmentMaxRequestsPerDay,
                 setting.UpdatedAt))
             .SingleOrDefaultAsync(cancellationToken);
 
-        return settings ?? new ProviderSettingsResponse(false, 0, 0, 0, null);
+        return settings ?? new ProviderSettingsResponse(false, 0, null);
     }
 
     public async Task<IReadOnlyList<OmdbDailyUsageResponse>> GetOmdbDailyUsageAsync(
@@ -244,12 +242,6 @@ internal sealed class SourceSettingsApiService(MediaDockDbContext dbContext) : I
                 ["A positive shared daily request limit is required when an API key is configured."];
         }
 
-        if (request.OscarEnrichmentMaxFilmsPerRun > 0 && request.OscarEnrichmentMaxRequestsPerDay == 0)
-        {
-            errors[nameof(request.OscarEnrichmentMaxRequestsPerDay)] =
-                ["A positive Oscar request limit is required when enrichment is enabled."];
-        }
-
         if (errors.Count > 0)
         {
             throw new ApiValidationException(errors);
@@ -270,8 +262,6 @@ internal sealed class SourceSettingsApiService(MediaDockDbContext dbContext) : I
         }
 
         settings.OmdbDailyRequestLimit = request.OmdbDailyRequestLimit;
-        settings.OscarEnrichmentMaxFilmsPerRun = request.OscarEnrichmentMaxFilmsPerRun;
-        settings.OscarEnrichmentMaxRequestsPerDay = request.OscarEnrichmentMaxRequestsPerDay;
         settings.UpdatedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -331,8 +321,6 @@ internal sealed class SourceSettingsApiService(MediaDockDbContext dbContext) : I
     private static ProviderSettingsResponse ToProviderSettingsResponse(AppSetting settings) => new(
         !string.IsNullOrWhiteSpace(settings.OmdbApiKey),
         settings.OmdbDailyRequestLimit,
-        settings.OscarEnrichmentMaxFilmsPerRun,
-        settings.OscarEnrichmentMaxRequestsPerDay,
         settings.UpdatedAt);
 
     private async Task<AppSetting> GetOrCreateSettingsAsync(CancellationToken cancellationToken)

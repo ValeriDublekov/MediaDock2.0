@@ -77,7 +77,6 @@ public interface IOmdbRequestBudget
         DateOnly utcDate,
         OmdbRequestPurpose requestPurpose,
         int dailyRequestLimit,
-        int oscarDailyRequestLimit,
         CancellationToken cancellationToken = default);
 
     Task RecordProviderErrorAsync(

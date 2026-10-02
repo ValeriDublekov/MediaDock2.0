@@ -6,13 +6,10 @@ namespace MediaDock.Infrastructure.Metadata;
 
 public sealed class PostgresOmdbRequestBudget(MediaDockDbContext dbContext) : IOmdbRequestBudget
 {
-    private const int DailyRequestSafetyBuffer = 50;
-
     public async Task<bool> TryReserveAsync(
         DateOnly utcDate,
         OmdbRequestPurpose requestPurpose,
         int dailyRequestLimit,
-        int oscarDailyRequestLimit,
         CancellationToken cancellationToken = default)
     {
         if (requestPurpose is not (OmdbRequestPurpose.RssIngestion or OmdbRequestPurpose.OscarEnrichment))
@@ -20,35 +17,23 @@ public sealed class PostgresOmdbRequestBudget(MediaDockDbContext dbContext) : IO
             throw new ArgumentOutOfRangeException(nameof(requestPurpose));
         }
 
-        if (dailyRequestLimit <= 0 || oscarDailyRequestLimit < 0)
+        if (dailyRequestLimit <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(dailyRequestLimit));
         }
 
         var isOscarRequest = requestPurpose == OmdbRequestPurpose.OscarEnrichment;
-        if (isOscarRequest && oscarDailyRequestLimit == 0)
-        {
-            return false;
-        }
-
-        var effectiveDailyRequestLimit = dailyRequestLimit - DailyRequestSafetyBuffer;
-        if (effectiveDailyRequestLimit <= 0)
-        {
-            return false;
-        }
-
         var oscarIncrement = isOscarRequest ? 1 : 0;
         var affectedRows = await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"""
             INSERT INTO omdb_daily_usage (utc_date, total_requests, oscar_requests, daily_request_limit_reached)
-            VALUES ({utcDate}, 1, {oscarIncrement}, 1 >= {effectiveDailyRequestLimit})
+            VALUES ({utcDate}, 1, {oscarIncrement}, 1 >= {dailyRequestLimit})
             ON CONFLICT (utc_date) DO UPDATE
             SET total_requests = omdb_daily_usage.total_requests + 1,
                 oscar_requests = omdb_daily_usage.oscar_requests + EXCLUDED.oscar_requests,
-                daily_request_limit_reached = omdb_daily_usage.total_requests + 1 >= {effectiveDailyRequestLimit}
-            WHERE omdb_daily_usage.total_requests < {effectiveDailyRequestLimit}
-                            AND NOT omdb_daily_usage.provider_quota_exceeded
-              AND ({!isOscarRequest} OR omdb_daily_usage.oscar_requests < {oscarDailyRequestLimit});
+                daily_request_limit_reached = omdb_daily_usage.total_requests + 1 >= {dailyRequestLimit}
+            WHERE omdb_daily_usage.total_requests < {dailyRequestLimit}
+              AND NOT omdb_daily_usage.provider_quota_exceeded;
             """,
             cancellationToken);
 

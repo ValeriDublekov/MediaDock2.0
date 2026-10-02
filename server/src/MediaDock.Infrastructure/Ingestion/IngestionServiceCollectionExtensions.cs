@@ -42,7 +42,6 @@ public static class IngestionServiceCollectionExtensions
                 settings.ApiKey ?? throw new InvalidOperationException("OMDb settings were not loaded for this job."),
                 requestBudget: serviceProvider.GetRequiredService<IOmdbRequestBudget>(),
                 dailyRequestLimit: settings.DailyRequestLimit,
-                oscarDailyRequestLimit: settings.OscarDailyRequestLimit,
                 timeProvider: serviceProvider.GetRequiredService<TimeProvider>());
         });
 

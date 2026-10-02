@@ -18,7 +18,6 @@ public sealed class OmdbClient : IOmdbClient
     private readonly int _maximumResponseBytes;
     private readonly IOmdbRequestBudget? _requestBudget;
     private readonly int _dailyRequestLimit;
-    private readonly int _oscarDailyRequestLimit;
     private readonly TimeProvider _timeProvider;
 
     public OmdbClient(
@@ -28,7 +27,6 @@ public sealed class OmdbClient : IOmdbClient
         int maximumResponseBytes = DefaultMaximumResponseBytes,
         IOmdbRequestBudget? requestBudget = null,
         int dailyRequestLimit = int.MaxValue,
-        int oscarDailyRequestLimit = int.MaxValue,
         TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(httpClient);
@@ -42,7 +40,7 @@ public sealed class OmdbClient : IOmdbClient
             throw new ArgumentOutOfRangeException(nameof(timeout));
         }
 
-        if (requestBudget is not null && (dailyRequestLimit <= 0 || oscarDailyRequestLimit < 0))
+        if (requestBudget is not null && dailyRequestLimit <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(dailyRequestLimit));
         }
@@ -53,7 +51,6 @@ public sealed class OmdbClient : IOmdbClient
         _maximumResponseBytes = maximumResponseBytes;
         _requestBudget = requestBudget;
         _dailyRequestLimit = dailyRequestLimit;
-        _oscarDailyRequestLimit = oscarDailyRequestLimit;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
@@ -89,18 +86,10 @@ public sealed class OmdbClient : IOmdbClient
         var utcDate = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
         if (_requestBudget is not null)
         {
-            if (requestPurpose == OmdbRequestPurpose.OscarEnrichment && _oscarDailyRequestLimit == 0)
-            {
-                return new MetadataLookupResult(
-                    MetadataLookupStatus.RequestBudgetExhausted,
-                    ErrorCode: "daily_budget_exhausted");
-            }
-
             var reserved = await _requestBudget.TryReserveAsync(
                 utcDate,
                 requestPurpose,
                 _dailyRequestLimit,
-                _oscarDailyRequestLimit,
                 cancellationToken);
             if (!reserved)
             {

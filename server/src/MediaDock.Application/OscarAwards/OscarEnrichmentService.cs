@@ -22,15 +22,9 @@ public sealed class OscarEnrichmentService
     }
 
     public async Task<OscarEnrichmentRunResult> RunAsync(
-        int maximumFilms,
         string trigger,
         CancellationToken cancellationToken = default)
     {
-        if (maximumFilms <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maximumFilms));
-        }
-
         var startedAt = _timeProvider.GetUtcNow();
         var runId = await _runRepository.StartAsync(trigger, startedAt, cancellationToken);
         var eligibleFilms = 0;
@@ -59,7 +53,6 @@ public sealed class OscarEnrichmentService
         {
             var candidates = await _repository.GetEligibleCandidatesAsync(
                 _timeProvider.GetUtcNow(),
-                maximumFilms,
                 cancellationToken);
             eligibleFilms = candidates.Count;
             await SaveProgressAsync(cancellationToken);

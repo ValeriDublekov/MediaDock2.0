@@ -17,8 +17,6 @@ interface ProviderSettingsDraft {
   omdbApiKey: string
   clearOmdbApiKey: boolean
   omdbDailyRequestLimit: string
-  oscarEnrichmentMaxFilmsPerRun: string
-  oscarEnrichmentMaxRequestsPerDay: string
 }
 
 const emptySettings: SettingsDraft = { excludedGenres: '', excludedCountries: '', minMovieRating: '0', minSeriesRating: '0', minImdbVotes: '0' }
@@ -26,8 +24,6 @@ const emptyProviderSettings: ProviderSettingsDraft = {
   omdbApiKey: '',
   clearOmdbApiKey: false,
   omdbDailyRequestLimit: '0',
-  oscarEnrichmentMaxFilmsPerRun: '0',
-  oscarEnrichmentMaxRequestsPerDay: '0',
 }
 
 function settingsToDraft(settings: Settings): SettingsDraft {
@@ -44,8 +40,6 @@ function providerSettingsToDraft(settings: ProviderSettings): ProviderSettingsDr
   return {
     ...emptyProviderSettings,
     omdbDailyRequestLimit: String(settings.omdbDailyRequestLimit),
-    oscarEnrichmentMaxFilmsPerRun: String(settings.oscarEnrichmentMaxFilmsPerRun),
-    oscarEnrichmentMaxRequestsPerDay: String(settings.oscarEnrichmentMaxRequestsPerDay),
   }
 }
 
@@ -197,8 +191,6 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
       omdbApiKey: providerDraft.omdbApiKey.trim() || null,
       clearOmdbApiKey: providerDraft.clearOmdbApiKey,
       omdbDailyRequestLimit: Number(providerDraft.omdbDailyRequestLimit),
-      oscarEnrichmentMaxFilmsPerRun: Number(providerDraft.oscarEnrichmentMaxFilmsPerRun),
-      oscarEnrichmentMaxRequestsPerDay: Number(providerDraft.oscarEnrichmentMaxRequestsPerDay),
     }
     try {
       const saved = await updateProviderSettings(payload)
@@ -324,17 +316,8 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
               <label htmlFor="omdb-daily-limit">Shared daily HTTP request limit</label>
               <input id="omdb-daily-limit" min="0" onChange={(event) => setProviderDraft((current) => ({ ...current, omdbDailyRequestLimit: event.target.value }))} required type="number" value={providerDraft.omdbDailyRequestLimit} />
             </div>
-            <div className="form-grid">
-              <div className="field">
-                <label htmlFor="oscar-max-films">Oscar films per run</label>
-                <input id="oscar-max-films" max="100000" min="0" onChange={(event) => setProviderDraft((current) => ({ ...current, oscarEnrichmentMaxFilmsPerRun: event.target.value }))} required type="number" value={providerDraft.oscarEnrichmentMaxFilmsPerRun} />
-              </div>
-              <div className="field">
-                <label htmlFor="oscar-daily-limit">Oscar daily HTTP limit</label>
-                <input id="oscar-daily-limit" min="0" onChange={(event) => setProviderDraft((current) => ({ ...current, oscarEnrichmentMaxRequestsPerDay: event.target.value }))} required type="number" value={providerDraft.oscarEnrichmentMaxRequestsPerDay} />
-              </div>
-            </div>
-            <p className="section-caption">Set a positive shared limit matching the OMDb key's confirmed quota. RSS and Oscar share a 50-request safety reserve and stop at 50 below this limit. Oscar limits are additional caps, not reserved capacity. Set Oscar films per run to 0 to disable enrichment.</p>
+            <p className="section-caption">Set the shared daily limit to the OMDb key's confirmed quota. RSS and Oscar use the same limit; requests stop when it is reached or OMDb reports that its quota is exhausted.</p>
+            <p className="section-caption">Set the shared daily limit to the OMDb key's confirmed quota. RSS and Oscar use the same limit; requests stop when it is reached or OMDb reports that its quota is exhausted.</p>
             {providerSettings?.updatedAt && <p className="section-caption">Last updated {formatDate(providerSettings.updatedAt)}</p>}
             {providerError && <p className="form-error" role="alert">{providerError}</p>}
             {providerSaved && <p className="form-message" role="status">Provider settings saved.</p>}

@@ -16,8 +16,7 @@ public sealed class OmdbClientBudgetTests
             httpClient,
             "test-key",
             requestBudget: budget,
-            dailyRequestLimit: 1,
-            oscarDailyRequestLimit: 1);
+            dailyRequestLimit: 1);
 
         var result = await client.LookupAsync(
             "Example Film",
@@ -43,8 +42,7 @@ public sealed class OmdbClientBudgetTests
             httpClient,
             "test-key",
             requestBudget: budget,
-            dailyRequestLimit: 10,
-            oscarDailyRequestLimit: 5);
+            dailyRequestLimit: 10);
 
         var result = await client.LookupAsync("Example Series", null, "series");
 
@@ -65,8 +63,7 @@ public sealed class OmdbClientBudgetTests
             httpClient,
             "test-key",
             requestBudget: budget,
-            dailyRequestLimit: 10,
-            oscarDailyRequestLimit: 5);
+            dailyRequestLimit: 10);
 
         var result = await client.LookupAsync("Example Film", null, "movie");
 
@@ -91,7 +88,6 @@ public sealed class OmdbClientBudgetTests
             DateOnly utcDate,
             OmdbRequestPurpose requestPurpose,
             int dailyRequestLimit,
-            int oscarDailyRequestLimit,
             CancellationToken cancellationToken = default)
         {
             RequestPurposes.Add(requestPurpose);

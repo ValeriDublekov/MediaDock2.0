@@ -85,9 +85,11 @@ deterministic across DST. One partial unique index prevents more than one
 queued/running RSS job, while a unique slot index makes schedule enqueue
 idempotent.
 
-The RSS handler loads the OMDb key and shared limit from the singleton `settings` row
-inside the job scope; the shared RSS/Oscar budget stops 50 requests below that
-limit to preserve provider-quota headroom. Credentials never enter job payloads or API responses.
+RSS and Oscar handlers load the OMDb key and shared daily limit from the singleton
+`settings` row inside the job scope. The atomic budget allows requests up to that
+configured limit, with no separate Oscar caps or safety buffer; an OMDb quota error
+also blocks further requests for that UTC day. Credentials never enter job payloads
+or API responses.
 `RssIngestionService` reports stage/source/counter snapshots at feed boundaries
 and periodically during processing. New parse logs store their `scan_run_id`;
 older rows remain unassociated. Oscar enrichment is a separate manual job using

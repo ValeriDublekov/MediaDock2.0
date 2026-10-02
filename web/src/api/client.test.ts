@@ -75,16 +75,12 @@ describe('typed API client', () => {
     const providerSettings: ProviderSettings = {
       omdbApiKeyConfigured: true,
       omdbDailyRequestLimit: 25,
-      oscarEnrichmentMaxFilmsPerRun: 10,
-      oscarEnrichmentMaxRequestsPerDay: 8,
       updatedAt: null,
     }
     const input: ProviderSettingsInput = {
       omdbApiKey: 'new-key-value',
       clearOmdbApiKey: false,
       omdbDailyRequestLimit: 25,
-      oscarEnrichmentMaxFilmsPerRun: 10,
-      oscarEnrichmentMaxRequestsPerDay: 8,
     }
     const stub = fetchStub(response(200, providerSettings))
 

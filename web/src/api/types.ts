@@ -134,8 +134,6 @@ export interface SettingsInput {
 export interface ProviderSettings {
   omdbApiKeyConfigured: boolean
   omdbDailyRequestLimit: number
-  oscarEnrichmentMaxFilmsPerRun: number
-  oscarEnrichmentMaxRequestsPerDay: number
   updatedAt: string | null
 }
 
@@ -153,8 +151,6 @@ export interface ProviderSettingsInput {
   omdbApiKey: string | null
   clearOmdbApiKey: boolean
   omdbDailyRequestLimit: number
-  oscarEnrichmentMaxFilmsPerRun: number
-  oscarEnrichmentMaxRequestsPerDay: number
 }
 
 export interface ParseLog {

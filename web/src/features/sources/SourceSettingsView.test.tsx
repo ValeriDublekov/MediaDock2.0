@@ -41,8 +41,6 @@ vi.mock('../../api/client', () => ({
 const providerSettings: ProviderSettings = {
   omdbApiKeyConfigured: true,
   omdbDailyRequestLimit: 25,
-  oscarEnrichmentMaxFilmsPerRun: 0,
-  oscarEnrichmentMaxRequestsPerDay: 0,
   updatedAt: null,
 }
 
@@ -120,16 +118,12 @@ describe('SourceSettingsView', () => {
 
     fireEvent.change(keyInput, { target: { value: 'replacement-test-key' } })
     fireEvent.change(screen.getByLabelText('Shared daily HTTP request limit'), { target: { value: '25' } })
-    fireEvent.change(screen.getByLabelText('Oscar films per run'), { target: { value: '10' } })
-    fireEvent.change(screen.getByLabelText('Oscar daily HTTP limit'), { target: { value: '8' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save provider settings' }))
 
     await waitFor(() => expect(updateProviderSettings).toHaveBeenCalledWith({
       omdbApiKey: 'replacement-test-key',
       clearOmdbApiKey: false,
       omdbDailyRequestLimit: 25,
-      oscarEnrichmentMaxFilmsPerRun: 10,
-      oscarEnrichmentMaxRequestsPerDay: 8,
     }))
     expect(await screen.findByText('Provider settings saved.')).toBeTruthy()
     expect(keyInput.value).toBe('')
