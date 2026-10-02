@@ -334,7 +334,7 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
                 <input id="oscar-daily-limit" min="0" onChange={(event) => setProviderDraft((current) => ({ ...current, oscarEnrichmentMaxRequestsPerDay: event.target.value }))} required type="number" value={providerDraft.oscarEnrichmentMaxRequestsPerDay} />
               </div>
             </div>
-            <p className="section-caption">Set a positive shared limit matching the OMDb key's confirmed quota. Oscar limits are additional caps, not reserved capacity; RSS runs first. Set Oscar films per run to 0 to disable enrichment.</p>
+            <p className="section-caption">Set a positive shared limit matching the OMDb key's confirmed quota. RSS and Oscar share a 50-request safety reserve and stop at 50 below this limit. Oscar limits are additional caps, not reserved capacity. Set Oscar films per run to 0 to disable enrichment.</p>
             {providerSettings?.updatedAt && <p className="section-caption">Last updated {formatDate(providerSettings.updatedAt)}</p>}
             {providerError && <p className="form-error" role="alert">{providerError}</p>}
             {providerSaved && <p className="form-message" role="status">Provider settings saved.</p>}

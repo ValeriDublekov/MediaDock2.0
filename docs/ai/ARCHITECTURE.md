@@ -86,7 +86,8 @@ queued/running RSS job, while a unique slot index makes schedule enqueue
 idempotent.
 
 The RSS handler loads the OMDb key and shared limit from the singleton `settings` row
-inside the job scope; credentials never enter job payloads or API responses.
+inside the job scope; the shared RSS/Oscar budget stops 50 requests below that
+limit to preserve provider-quota headroom. Credentials never enter job payloads or API responses.
 `RssIngestionService` reports stage/source/counter snapshots at feed boundaries
 and periodically during processing. New parse logs store their `scan_run_id`;
 older rows remain unassociated. Oscar enrichment is a separate manual job using

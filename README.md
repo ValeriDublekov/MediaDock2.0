@@ -101,10 +101,11 @@ dispatcher starts.
 
 Configure the OMDb key, confirmed shared daily quota, Oscar per-run cap, and
 Oscar daily cap in Configuration. RSS and Oscar attempts share the UTC-day
-budget; the Oscar cap is additional, not reserved capacity. Every non-cache
-HTTP attempt reserves before sending, including fallbacks and retries. Cache
-hits use no slot. Provider quota exhaustion stops further attempts for that
-UTC day and leaves unprocessed Oscar candidates eligible. Each enrichment
+budget, which stops at 50 requests below the configured shared quota (950 for
+a quota of 1,000); the Oscar cap is additional, not reserved capacity. Every
+non-cache HTTP attempt reserves before sending, including fallbacks and
+retries. Cache hits use no slot. Provider quota exhaustion stops further
+attempts for that UTC day and leaves unprocessed Oscar candidates eligible. Each enrichment
 continues to write its separate `oscar_enrichment_runs` audit record, while RSS
 `scan_runs` and `parse_logs` retain their existing meanings. Status, safe events,
 and scan/parse history are available in the UI and the background-job API.
