@@ -20,7 +20,15 @@ internal sealed class GoldenGlobeNominationConfiguration : IEntityTypeConfigurat
 {
     public void Configure(EntityTypeBuilder<GoldenGlobeNomination> builder)
     {
-        builder.ToTable("golden_globe_nominations");
+        builder.ToTable("golden_globe_nominations", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_golden_globe_nominations_enrichment_status",
+                "enrichment_status IN ('pending', 'enriched', 'problem', 'not_found', 'temporary_error')");
+            table.HasCheckConstraint(
+                "ck_golden_globe_nominations_enrichment_attempt_count",
+                "enrichment_attempt_count >= 0");
+        });
         builder.HasKey(x => x.Id).HasName("pk_golden_globe_nominations");
         builder.Property(x => x.Id).UseIdentityByDefaultColumn().HasColumnName("id");
         builder.Property(x => x.ImportKey).HasColumnName("import_key").HasMaxLength(64).IsRequired();
