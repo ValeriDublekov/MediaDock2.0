@@ -153,10 +153,7 @@ class DeploymentControlHandler(BaseHTTPRequestHandler):
             self.send_json(404, {"message": "Not found."})
             return
         try:
-            length = int(self.headers.get("Content-Length", "0"))
-            if length < 1 or length > 128:
-                raise ValueError("Invalid request size.")
-            raw_body = self.rfile.read(length)
+            raw_body = self._read_request_body()
             request = json.loads(raw_body.decode("utf-8-sig"))
             action = None
             if isinstance(request, dict):
@@ -168,6 +165,45 @@ class DeploymentControlHandler(BaseHTTPRequestHandler):
             return
         status, body = start_deployment(action)
         self.send_json(status, body)
+
+    def _read_request_body(self) -> bytes:
+        """Read a small JSON body from either a fixed-length or chunked request."""
+        transfer_encoding = self.headers.get("Transfer-Encoding", "").lower()
+        if "chunked" in transfer_encoding:
+            chunks: list[bytes] = []
+            total = 0
+            while True:
+                size_line = self.rfile.readline(32).split(b";", 1)[0].strip()
+                try:
+                    size = int(size_line, 16)
+                except ValueError as exception:
+                    raise ValueError("Invalid chunk size.") from exception
+                if size < 0 or total + size > 128:
+                    raise ValueError("Invalid request size.")
+                if size == 0:
+                    self.rfile.readline(2)
+                    break
+                chunk = self.rfile.read(size)
+                if len(chunk) != size:
+                    raise ValueError("Incomplete request body.")
+                if self.rfile.read(2) != b"\r\n":
+                    raise ValueError("Invalid chunk terminator.")
+                chunks.append(chunk)
+                total += size
+            if total < 1:
+                raise ValueError("Invalid request size.")
+            return b"".join(chunks)
+
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError as exception:
+            raise ValueError("Invalid content length.") from exception
+        if length < 1 or length > 128:
+            raise ValueError("Invalid request size.")
+        raw_body = self.rfile.read(length)
+        if len(raw_body) != length:
+            raise ValueError("Incomplete request body.")
+        return raw_body
 
 
 def main() -> None:
