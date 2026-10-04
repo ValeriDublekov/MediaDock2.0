@@ -226,13 +226,25 @@ internal sealed class BackgroundJobDispatcher(
         {
             var errorCode = exception is InvalidDataException ? "invalid_dataset" : "operation_failed";
             logger.LogError(
+                exception,
                 "Background job {JobId} failed ({ErrorType}); safe code {ErrorCode}.",
                 job.Id,
                 exception.GetType().Name,
                 errorCode);
             try
             {
-                await CompleteJobAsync(dbContext, job, "failed", null, errorCode, CancellationToken.None);
+                await CompleteJobAsync(
+                    dbContext,
+                    job,
+                    "failed",
+                    new
+                    {
+                        error = exception.Message,
+                        exceptionType = exception.GetType().FullName,
+                        innerError = exception.InnerException?.Message
+                    },
+                    errorCode,
+                    CancellationToken.None);
             }
             catch (Exception completionException)
             {
@@ -257,6 +269,7 @@ internal sealed class BackgroundJobDispatcher(
             job.CurrentStage = "failed";
             job.ErrorCode = errorCode;
             job.ProgressUpdatedAt = now;
+            job.ResultSummary = JsonSerializer.Serialize(new { error = "The job failed before its error details could be persisted." });
             job.InputBytes = null;
             await dbContext.SaveChangesAsync();
         }

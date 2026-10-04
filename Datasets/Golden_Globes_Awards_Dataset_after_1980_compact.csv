@@ -1,0 +1,1474 @@
+id,nominee_type,year,winner,award,title
+0,tv-show,2024,True,Best Television Series - Drama,Succession
+9,film,2024,False,Best Motion Picture - Animated,Spider-Man: Across the Spider-Verse
+24,film,2024,False,Best Motion Picture - Drama,The Zone of Interest
+26,film,2024,False,Best Motion Picture - Drama,Past Lives
+27,film,2024,True,Best Motion Picture - Drama,Oppenheimer
+32,film,2024,True,Best Motion Picture - Animated,The Boy and the Heron
+36,tv-show,2024,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Beef
+39,tv-show,2024,False,Best Television Series - Musical or Comedy,Ted Lasso
+41,tv-show,2024,False,Best Television Series - Musical or Comedy,Only Murders in the Building
+42,tv-show,2024,False,Best Television Series - Musical or Comedy,Jury Duty
+44,tv-show,2024,True,Best Television Series - Musical or Comedy,The Bear
+45,film,2024,False,Best Motion Picture - Musical or Comedy,Air
+46,tv-show,2024,False,Best Television Series - Musical or Comedy,Barry
+50,tv-show,2024,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",All the Light We Cannot See
+51,tv-show,2024,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Daisy Jones and the Six
+53,tv-show,2024,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Fargo
+54,tv-show,2024,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Fellow Travelers
+56,tv-show,2024,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Lessons in Chemistry
+57,film,2024,False,Best Motion Picture - Musical or Comedy,American Fiction
+58,tv-show,2024,False,Best Television Series - Musical or Comedy,Abbott Elementary
+60,film,2024,False,Best Motion Picture - Musical or Comedy,Barbie
+61,film,2024,False,Best Motion Picture - Musical or Comedy,The Holdovers
+62,film,2024,False,Best Motion Picture - Musical or Comedy,May December
+64,film,2024,True,Best Motion Picture - Musical or Comedy,Poor Things
+67,film,2024,False,Best Motion Picture - Animated,Elemental
+68,film,2024,False,Best Motion Picture - Animated,The Super Mario Bros. Movie
+97,tv-show,2024,False,Best Television Series - Drama,The Morning Show
+101,tv-show,2024,False,Best Television Series - Drama,The Crown
+104,tv-show,2024,False,Best Television Series - Drama,1923
+105,film,2024,False,Best Motion Picture – Non-English Language,Fallen Leaves
+106,film,2024,False,Best Motion Picture - Drama,Maestro
+107,film,2024,False,Best Motion Picture - Drama,Killers of the Flower Moon
+108,film,2024,False,Best Motion Picture - Drama,Anatomy of a Fall
+110,tv-show,2024,False,Best Performance in Stand-Up Comedy on Television,Wanda Sykes: I’m an Entertainer
+111,tv-show,2024,False,Best Performance in Stand-Up Comedy on Television,Sarah Silverman: Someone You Love
+112,tv-show,2024,False,Best Performance in Stand-Up Comedy on Television,Amy Schumer: Emergency Contact
+115,tv-show,2024,False,Best Performance in Stand-Up Comedy on Television,Chris Rock: Selective Outrage
+116,film,2024,False,Best Motion Picture - Animated,Suzume
+117,film,2024,False,Best Motion Picture - Animated,Wish
+119,film,2024,True,Best Motion Picture – Non-English Language,Anatomy of a Fall
+120,tv-show,2024,False,Best Television Series - Drama,The Diplomat
+122,film,2024,False,Best Motion Picture – Non-English Language,Io Capitano
+123,film,2024,False,Best Motion Picture – Non-English Language,Past Lives
+124,film,2024,False,Best Motion Picture – Non-English Language,Society of the Snow
+125,film,2024,False,Best Motion Picture – Non-English Language,The Zone of Interest
+126,film,2024,False,Cinematic and Box Office Achievement,Mission: Impossible - Dead Reckoning Part 1
+127,tv-show,2024,False,Best Performance in Stand-Up Comedy on Television,Trevor Noah: Where Was I
+129,tv-show,2024,True,Best Performance in Stand-Up Comedy on Television,Ricky Gervais: Armageddon
+139,film,2024,True,Cinematic and Box Office Achievement,Barbie
+140,film,2024,False,Cinematic and Box Office Achievement,Mission: Impossible - Dead Reckoning Part 1
+141,tv-show,2024,False,Best Television Series - Drama,The Last of Us
+142,film,2024,False,Cinematic and Box Office Achievement,Taylor Swift: The Eras Tour
+143,film,2024,False,Cinematic and Box Office Achievement,John Wick: Chapter 4
+144,film,2024,False,Cinematic and Box Office Achievement,The Super Mario Bros. Movie
+145,film,2024,False,Cinematic and Box Office Achievement,Guardians of the Galaxy Vol. 3
+146,film,2024,False,Cinematic and Box Office Achievement,Spider-Man: Across the Spider-Verse
+147,film,2024,False,Cinematic and Box Office Achievement,Oppenheimer
+148,film,2024,True,Cinematic and Box Office Achievement,Barbie
+159,tv-show,2024,True,Best Television Series - Drama,Succession
+161,film,2024,False,Cinematic and Box Office Achievement,Oppenheimer
+163,film,2024,False,Cinematic and Box Office Achievement,The Super Mario Bros. Movie
+164,film,2024,False,Cinematic and Box Office Achievement,John Wick: Chapter 4
+165,film,2024,False,Cinematic and Box Office Achievement,Taylor Swift: The Eras Tour
+166,tv-show,2024,False,Best Television Series - Drama,The Last of Us
+168,film,2024,False,Cinematic and Box Office Achievement,Spider-Man: Across the Spider-Verse
+173,film,2024,False,Cinematic and Box Office Achievement,Guardians of the Galaxy Vol. 3
+186,tv-show,2023,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The White Lotus
+196,tv-show,2023,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Pam & Tommy
+200,tv-show,2023,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Black Bird
+201,tv-show,2023,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Dahmer - Monster: The Jeffrey Dahmer Story
+202,tv-show,2023,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Dropout
+206,film,2023,False,Best Motion Picture - Musical or Comedy,Glass Onion: A Knives Out Mystery
+207,film,2023,False,Best Motion Picture - Musical or Comedy,Triangle of Sadness
+208,film,2023,False,Best Motion Picture - Drama,Avatar: The Way of Water
+209,film,2023,False,Best Motion Picture - Drama,Elvis
+210,film,2023,True,Best Motion Picture - Drama,The Fabelmans
+211,film,2023,False,Best Motion Picture - Drama,TÁR
+212,film,2023,False,Best Motion Picture - Drama,Top Gun: Maverick
+235,film,2023,False,Best Motion Picture - Musical or Comedy,Babylon
+256,film,2023,False,Best Motion Picture - Animated,Marcel the Shell with Shoes On
+261,film,2023,True,Best Motion Picture - Animated,Guillermo del Toro's Pinocchio
+262,film,2023,False,Best Motion Picture - Animated,Inu-Oh
+263,film,2023,False,Best Motion Picture - Animated,Puss in Boots: The Last Wish
+265,film,2023,False,Best Motion Picture - Animated,Turning Red
+266,film,2023,False,Best Motion Picture – Non-English Language,All Quiet on the Western Front
+267,film,2023,True,Best Motion Picture – Non-English Language,"Argentina, 1985"
+268,film,2023,False,Best Motion Picture – Non-English Language,Close
+269,film,2023,False,Best Motion Picture – Non-English Language,Decision to Leave
+270,film,2023,False,Best Motion Picture – Non-English Language,RRR
+274,tv-show,2023,False,Best Television Series - Musical or Comedy,Hacks
+279,film,2023,True,Best Motion Picture - Musical or Comedy,The Banshees of Inisherin
+280,tv-show,2023,False,Best Television Series - Musical or Comedy,The Bear
+281,tv-show,2023,False,Best Television Series - Musical or Comedy,Only Murders in the Building
+283,tv-show,2023,False,Best Television Series - Musical or Comedy,Wednesday
+299,tv-show,2023,False,Best Television Series - Drama,Better Call Saul
+301,tv-show,2023,False,Best Television Series - Drama,The Crown
+302,tv-show,2023,True,Best Television Series - Drama,House of the Dragon
+303,tv-show,2023,False,Best Television Series - Drama,Ozark
+304,tv-show,2023,False,Best Television Series - Drama,Severance
+307,tv-show,2023,True,Best Television Series - Musical or Comedy,Abbott Elementary
+308,film,2023,False,Best Motion Picture - Musical or Comedy,Everything Everywhere All at Once
+312,tv-show,2022,False,Best Television Series - Musical or Comedy,Ted Lasso
+313,tv-show,2022,False,Best Television Series - Musical or Comedy,Reservation Dogs
+314,tv-show,2022,False,Best Television Series - Musical or Comedy,Only Murders in the Building
+315,tv-show,2022,True,Best Television Series - Musical or Comedy,Hacks
+316,tv-show,2022,False,Best Television Series - Musical or Comedy,The Great
+327,tv-show,2022,True,Best Television Series - Drama,Succession
+328,tv-show,2022,False,Best Television Series - Drama,Squid Game
+329,tv-show,2022,False,Best Television Series - Drama,Pose
+330,tv-show,2022,False,Best Television Series - Drama,The Morning Show
+331,tv-show,2022,False,Best Television Series - Drama,Lupin
+362,tv-show,2022,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Underground Railroad
+363,tv-show,2022,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Mare of Easttown
+364,tv-show,2022,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Maid
+365,tv-show,2022,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Impeachment: American Crime Story
+366,tv-show,2022,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Dopesick
+383,film,2022,True,Best Motion Picture - Musical or Comedy,West Side Story (2021)
+384,film,2022,False,Best Motion Picture - Musical or Comedy,"tick, tick...BOOM!"
+385,film,2022,False,Best Motion Picture - Musical or Comedy,Licorice Pizza
+386,film,2022,False,Best Motion Picture - Musical or Comedy,Don't Look Up
+387,film,2022,False,Best Motion Picture - Musical or Comedy,Cyrano
+398,film,2022,True,Best Motion Picture - Drama,The Power of the Dog
+399,film,2022,False,Best Motion Picture - Drama,King Richard
+401,film,2022,False,Best Motion Picture - Drama,CODA
+402,film,2022,False,Best Motion Picture - Drama,Belfast
+404,film,2022,False,Best Motion Picture - Drama,Dune
+405,film,2022,True,Best Motion Picture - Animated,Encanto
+407,film,2022,False,Best Motion Picture - Animated,Flee
+422,film,2022,False,Best Motion Picture – Non-English Language,The Hand of God
+424,film,2022,False,Best Motion Picture - Animated,My Sunny Maad
+425,film,2022,False,Best Motion Picture - Animated,Raya and the Last Dragon
+426,film,2022,False,Best Motion Picture – Non-English Language,Compartment No. 6
+427,film,2022,True,Best Motion Picture – Non-English Language,Drive My Car
+428,film,2022,False,Best Motion Picture - Animated,Luca
+429,film,2022,False,Best Motion Picture – Non-English Language,"Hero, A"
+433,film,2022,False,Best Motion Picture – Non-English Language,Parallel Mothers
+443,tv-show,2021,False,Best Television Series - Musical or Comedy,Emily in Paris
+445,tv-show,2021,False,Best Television Series - Musical or Comedy,The Great
+446,tv-show,2021,False,Best Television Series - Musical or Comedy,The Flight Attendant
+448,tv-show,2021,False,Best Television Series - Drama,Ratched
+449,tv-show,2021,False,Best Television Series - Drama,Ozark
+450,tv-show,2021,False,Best Television Series - Drama,The Mandalorian
+451,tv-show,2021,False,Best Television Series - Drama,Lovecraft Country
+452,tv-show,2021,True,Best Television Series - Drama,The Crown
+460,tv-show,2021,False,Best Television Series - Musical or Comedy,Ted Lasso
+462,tv-show,2021,True,Best Television Series - Musical or Comedy,Schitt's Creek
+463,tv-show,2021,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Undoing
+480,tv-show,2021,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Unorthodox
+481,tv-show,2021,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Small Axe
+482,tv-show,2021,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Queen's Gambit
+483,tv-show,2021,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Normal People
+502,film,2021,False,Best Motion Picture - Musical or Comedy,The Prom
+503,film,2021,False,Best Motion Picture - Musical or Comedy,Palm Springs
+504,film,2021,False,Best Motion Picture - Musical or Comedy,Music
+505,film,2021,False,Best Motion Picture - Musical or Comedy,Hamilton
+506,film,2021,True,Best Motion Picture - Musical or Comedy,Borat Subsequent Moviefilm
+517,film,2021,False,Best Motion Picture - Drama,The Trial of the Chicago 7
+518,film,2021,False,Best Motion Picture - Drama,Promising Young Woman
+519,film,2021,True,Best Motion Picture - Drama,Nomadland
+520,film,2021,False,Best Motion Picture - Drama,Mank
+521,film,2021,False,Best Motion Picture - Drama,The Father
+543,film,2021,False,Best Motion Picture – Non-English Language,Two of Us
+544,film,2021,True,Best Motion Picture – Non-English Language,Minari
+545,film,2021,False,Best Motion Picture – Non-English Language,The Life Ahead
+546,film,2021,False,Best Motion Picture – Non-English Language,La Llorona
+547,film,2021,False,Best Motion Picture – Non-English Language,Another Round
+548,film,2021,False,Best Motion Picture - Animated,Wolfwalkers
+549,film,2021,True,Best Motion Picture - Animated,Soul
+550,film,2021,False,Best Motion Picture - Animated,Over the Moon
+551,film,2021,False,Best Motion Picture - Animated,Onward
+552,film,2021,False,Best Motion Picture - Animated,The Croods: A New Age
+559,tv-show,2020,False,Best Television Series - Drama,The Morning Show
+564,tv-show,2020,False,Best Television Series - Drama,Big Little Lies
+565,tv-show,2020,False,Best Television Series - Drama,The Crown
+566,tv-show,2020,False,Best Television Series - Drama,Killing Eve
+567,tv-show,2020,True,Best Television Series - Drama,Succession
+599,tv-show,2020,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Fosse/Verdon
+605,tv-show,2020,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Catch-22
+606,tv-show,2020,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Chernobyl
+607,tv-show,2020,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Loudest Voice
+609,tv-show,2020,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Unbelievable
+629,tv-show,2020,False,Best Television Series - Musical or Comedy,Barry
+630,tv-show,2020,True,Best Television Series - Musical or Comedy,Fleabag
+631,tv-show,2020,False,Best Television Series - Musical or Comedy,The Kominsky Method
+632,tv-show,2020,False,Best Television Series - Musical or Comedy,The Marvelous Mrs. Maisel
+633,tv-show,2020,False,Best Television Series - Musical or Comedy,The Politician
+639,film,2020,False,Best Motion Picture - Musical or Comedy,Rocketman
+647,film,2020,False,Best Motion Picture – Non-English Language,Les Misérables
+650,film,2020,False,Best Motion Picture - Animated,Frozen II
+651,film,2020,False,Best Motion Picture - Animated,How to Train Your Dragon: The Hidden World
+653,film,2020,True,Best Motion Picture - Animated,Missing Link
+654,film,2020,False,Best Motion Picture - Animated,Toy Story 4
+655,film,2020,True,Best Motion Picture - Musical or Comedy,Once Upon a Time...in Hollywood
+656,film,2020,False,Best Motion Picture - Musical or Comedy,Knives Out
+657,film,2020,False,Best Motion Picture - Musical or Comedy,Jojo Rabbit
+658,film,2020,False,Best Motion Picture - Musical or Comedy,Dolemite Is My Name
+659,film,2020,True,Best Motion Picture - Drama,1917
+660,film,2020,False,Best Motion Picture - Drama,The Irishman
+661,film,2020,False,Best Motion Picture - Drama,Joker
+662,film,2020,False,Best Motion Picture - Drama,Marriage Story
+663,film,2020,False,Best Motion Picture - Drama,The Two Popes
+674,film,2020,False,Best Motion Picture – Non-English Language,The Farewell
+675,film,2020,False,Best Motion Picture - Animated,The (2019) Lion King
+676,film,2020,False,Best Motion Picture – Non-English Language,Pain and Glory
+680,film,2020,True,Best Motion Picture – Non-English Language,Parasite
+682,film,2020,False,Best Motion Picture – Non-English Language,Portrait of a Lady on Fire
+724,film,2019,False,Best Motion Picture - Animated,Ralph Breaks the Internet
+739,film,2019,False,Best Motion Picture - Drama,Black Panther
+755,film,2019,False,Best Motion Picture - Drama,BlacKkKlansman
+756,film,2019,True,Best Motion Picture - Drama,Bohemian Rhapsody
+757,film,2019,False,Best Motion Picture - Drama,If Beale Street Could Talk
+758,film,2019,False,Best Motion Picture - Drama,"Star Is Born, A (2018)"
+759,film,2019,False,Best Motion Picture - Musical or Comedy,Crazy Rich Asians
+760,film,2019,False,Best Motion Picture - Musical or Comedy,The Favourite
+761,film,2019,True,Best Motion Picture - Musical or Comedy,Green Book
+762,film,2019,False,Best Motion Picture - Musical or Comedy,Mary Poppins Returns
+763,film,2019,False,Best Motion Picture - Musical or Comedy,Vice
+764,film,2019,False,Best Motion Picture - Animated,Incredibles 2
+765,film,2019,False,Best Motion Picture - Animated,Isle of Dogs
+766,film,2019,False,Best Motion Picture - Animated,Mirai
+768,film,2019,True,Best Motion Picture - Animated,Spider-Man: Into the Spider-Verse
+769,film,2019,False,Best Motion Picture – Non-English Language,Capernaum
+770,film,2019,False,Best Motion Picture – Non-English Language,Girl
+771,film,2019,False,Best Motion Picture – Non-English Language,Never Look Away
+772,film,2019,True,Best Motion Picture – Non-English Language,Roma
+781,tv-show,2019,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Alienist
+782,tv-show,2019,True,Best Television Series - Musical or Comedy,The Kominsky Method
+783,tv-show,2019,False,Best Television Series - Musical or Comedy,Kidding
+784,tv-show,2019,False,Best Television Series - Musical or Comedy,The Good Place
+785,tv-show,2019,False,Best Television Series - Musical or Comedy,Barry
+786,tv-show,2019,False,Best Television Series - Drama,Pose
+787,tv-show,2019,False,Best Television Series - Drama,Killing Eve
+792,tv-show,2019,False,Best Television Series - Drama,Homecoming
+793,tv-show,2019,False,Best Television Series - Drama,Bodyguard
+794,tv-show,2019,True,Best Television Series - Drama,The Americans
+795,film,2019,False,Best Motion Picture – Non-English Language,Shoplifters
+799,tv-show,2019,False,Best Television Series - Musical or Comedy,The Marvelous Mrs. Maisel
+801,tv-show,2019,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Assassination of Gianni Versace: American Crime Story
+805,tv-show,2019,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television","Very English Scandal, A"
+806,tv-show,2019,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Sharp Objects
+807,tv-show,2019,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Escape at Dannemora
+809,tv-show,2018,False,Best Television Series - Musical or Comedy,Will & Grace
+832,tv-show,2018,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Big Little Lies
+834,tv-show,2018,False,Best Television Series - Musical or Comedy,SMILF
+835,tv-show,2018,False,Best Television Series - Musical or Comedy,Master of None
+836,tv-show,2018,True,Best Television Series - Musical or Comedy,The Marvelous Mrs. Maisel
+837,tv-show,2018,False,Best Television Series - Drama,This Is Us
+838,tv-show,2018,False,Best Television Series - Drama,Stranger Things
+839,tv-show,2018,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Fargo
+840,tv-show,2018,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Feud: Bette And Joan
+841,tv-show,2018,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Sinner
+842,tv-show,2018,True,Best Television Series - Drama,The Handmaid's Tale
+843,tv-show,2018,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Top of The Lake: China Girl
+856,tv-show,2018,False,Best Television Series - Drama,The Crown
+878,film,2018,False,Best Motion Picture – Non-English Language,The Square
+879,film,2018,False,Best Motion Picture – Non-English Language,Loveless
+880,film,2018,True,Best Motion Picture – Non-English Language,In The Fade
+881,film,2018,False,Best Motion Picture - Musical or Comedy,The Disaster Artist
+886,film,2018,False,Best Motion Picture - Drama,Call Me By Your Name
+887,film,2018,False,Best Motion Picture - Drama,Dunkirk
+888,film,2018,False,Best Motion Picture - Drama,The Post
+889,film,2018,False,Best Motion Picture - Drama,The Shape of Water
+890,film,2018,True,Best Motion Picture - Drama,"Three Billboards Outside Ebbing, Missouri"
+891,film,2018,False,Best Motion Picture - Musical or Comedy,Get Out
+892,film,2018,False,Best Motion Picture – Non-English Language,First They Killed My Father
+893,film,2018,False,Best Motion Picture - Musical or Comedy,The Greatest Showman
+894,film,2018,False,Best Motion Picture - Musical or Comedy,"I, Tonya"
+895,film,2018,True,Best Motion Picture - Musical or Comedy,Lady Bird
+896,film,2018,False,Best Motion Picture - Animated,The Boss Baby
+897,film,2018,False,Best Motion Picture - Animated,The Breadwinner
+898,film,2018,True,Best Motion Picture - Animated,Coco
+899,film,2018,False,Best Motion Picture - Animated,Ferdinand
+900,film,2018,False,Best Motion Picture - Animated,Loving Vincent
+901,film,2018,False,Best Motion Picture – Non-English Language,A Fantastic Woman
+902,tv-show,2018,False,Best Television Series - Drama,Game of Thrones
+915,tv-show,2018,False,Best Television Series - Musical or Comedy,Barry
+916,film,2018,False,Best Motion Picture - Animated,Incredibles 2
+917,film,2018,False,Best Motion Picture - Animated,Ralph Breaks the Internet
+926,tv-show,2018,False,Best Television Series - Musical or Comedy,Black-ish
+958,film,2017,False,Best Motion Picture - Animated,Kubo and the Two Strings
+959,film,2017,False,Best Motion Picture - Animated,My Life as a Zucchini
+960,film,2017,False,Best Motion Picture - Animated,Moana
+961,film,2017,True,Best Motion Picture – Non-English Language,Elle
+962,film,2017,False,Best Motion Picture - Animated,Sing
+963,film,2017,False,Best Motion Picture – Non-English Language,Neruda
+964,film,2017,False,Best Motion Picture – Non-English Language,Toni Erdmann
+965,film,2017,False,Best Motion Picture - Musical or Comedy,20th Century Women
+966,film,2017,False,Best Motion Picture - Musical or Comedy,Deadpool
+967,film,2017,False,Best Motion Picture - Musical or Comedy,Florence Foster Jenkins
+968,film,2017,True,Best Motion Picture - Musical or Comedy,La La Land
+969,film,2017,False,Best Motion Picture - Musical or Comedy,Sing Street
+979,film,2017,False,Best Motion Picture – Non-English Language,The Salesman
+981,film,2017,True,Best Motion Picture - Animated,Zootopia
+983,film,2017,False,Best Motion Picture - Drama,Hacksaw Ridge
+984,film,2017,False,Best Motion Picture - Drama,Hell or High Water
+985,film,2017,False,Best Motion Picture - Drama,Lion
+986,film,2017,False,Best Motion Picture - Drama,Manchester by the Sea
+987,film,2017,True,Best Motion Picture - Drama,Moonlight
+988,film,2017,False,Best Motion Picture – Non-English Language,Divines
+1000,tv-show,2017,True,Best Television Series - Drama,The Crown
+1017,tv-show,2017,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",American Crime
+1018,tv-show,2017,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Dresser
+1019,tv-show,2017,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Night Manager
+1020,tv-show,2017,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Night Of
+1021,tv-show,2017,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The People v. O.J. Simpson: American Crime Story
+1022,tv-show,2017,False,Best Television Series - Drama,Game of Thrones
+1023,tv-show,2017,False,Best Television Series - Drama,Stranger Things
+1024,tv-show,2017,False,Best Television Series - Drama,This Is Us
+1025,tv-show,2017,False,Best Television Series - Drama,Westworld
+1026,tv-show,2017,True,Best Television Series - Musical or Comedy,Atlanta
+1027,tv-show,2017,False,Best Television Series - Musical or Comedy,Black-ish
+1028,tv-show,2017,False,Best Television Series - Musical or Comedy,Mozart in the Jungle
+1029,tv-show,2017,False,Best Television Series - Musical or Comedy,Transparent
+1030,tv-show,2017,False,Best Television Series - Musical or Comedy,Veep
+1065,tv-show,2016,False,Best Television Series - Drama,Outlander
+1068,tv-show,2016,False,Best Television Series - Musical or Comedy,Veep
+1069,tv-show,2016,False,Best Television Series - Musical or Comedy,Transparent
+1070,tv-show,2016,False,Best Television Series - Musical or Comedy,Silicon Valley
+1071,tv-show,2016,False,Best Television Series - Musical or Comedy,Orange is the New Black
+1072,tv-show,2016,True,Best Television Series - Musical or Comedy,Mozart in the Jungle
+1073,tv-show,2016,False,Best Television Series - Musical or Comedy,Casual
+1074,tv-show,2016,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Flesh and Bone
+1075,tv-show,2016,False,Best Television Series - Drama,Narcos
+1076,tv-show,2016,True,Best Television Series - Drama,Mr. Robot
+1077,tv-show,2016,False,Best Television Series - Drama,Game of Thrones
+1078,tv-show,2016,False,Best Television Series - Drama,Empire
+1079,tv-show,2016,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Wolf Hall
+1080,tv-show,2016,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Fargo
+1081,tv-show,2016,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",American Horror Story: Hotel
+1082,tv-show,2016,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",American Crime
+1161,film,2016,False,Best Motion Picture - Musical or Comedy,The Big Short
+1162,film,2016,False,Best Motion Picture - Drama,Spotlight
+1166,film,2016,False,Best Motion Picture - Musical or Comedy,Trainwreck
+1167,film,2016,True,Best Motion Picture - Musical or Comedy,The Martian
+1168,film,2016,False,Best Motion Picture - Musical or Comedy,Spy
+1169,film,2016,False,Best Motion Picture - Musical or Comedy,Joy
+1170,film,2016,False,Best Motion Picture – Non-English Language,The Fencer
+1171,film,2016,False,Best Motion Picture – Non-English Language,The Club
+1172,film,2016,True,Best Motion Picture – Non-English Language,Son of Saul
+1173,film,2016,False,Best Motion Picture – Non-English Language,Mustang
+1174,film,2016,True,Best Motion Picture - Drama,The Revenant
+1175,film,2016,False,Best Motion Picture – Non-English Language,The Brand New Testament
+1176,film,2016,False,Best Motion Picture - Drama,Room
+1177,film,2016,False,Best Motion Picture - Animated,Anomalisa
+1181,film,2016,False,Best Motion Picture - Drama,Mad Max: Fury Road
+1184,film,2016,True,Best Motion Picture - Animated,Inside Out
+1185,film,2016,False,Best Motion Picture - Animated,Shaun the Sheep Movie
+1186,film,2016,False,Best Motion Picture - Animated,The Good Dinosaur
+1187,film,2016,False,Best Motion Picture - Animated,The Peanuts Movie
+1188,film,2016,False,Best Motion Picture - Drama,Carol
+1268,film,2015,True,Best Motion Picture - Musical or Comedy,The Grand Budapest Hotel
+1274,tv-show,2015,False,Best Television Series - Drama,The Good Wife
+1276,film,2015,False,Best Motion Picture - Drama,Selma
+1278,tv-show,2015,False,Best Television Series - Drama,Downton Abbey
+1279,tv-show,2015,False,Best Television Series - Musical or Comedy,Girls
+1280,tv-show,2015,False,Best Television Series - Musical or Comedy,Jane The Virgin
+1281,tv-show,2015,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Missing
+1282,tv-show,2015,True,Best Television Series - Musical or Comedy,Transparent
+1283,tv-show,2015,False,Best Television Series - Drama,Game of Thrones
+1284,tv-show,2015,False,Best Television Series - Musical or Comedy,Silicon Valley
+1286,tv-show,2015,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Olive Kitteridge
+1289,film,2015,False,Best Motion Picture - Drama,The Theory of Everything
+1290,film,2015,True,Best Motion Picture - Drama,Boyhood
+1291,film,2015,False,Best Motion Picture - Drama,The Imitation Game
+1292,film,2015,False,Best Motion Picture - Musical or Comedy,Birdman
+1293,film,2015,False,Best Motion Picture - Drama,Foxcatcher
+1294,tv-show,2015,False,Best Television Series - Musical or Comedy,Orange is the New Black
+1296,tv-show,2015,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Normal Heart
+1297,film,2015,False,Best Motion Picture - Musical or Comedy,St. Vincent
+1298,film,2015,True,Best Motion Picture – Non-English Language,Leviathan
+1299,film,2015,False,Best Motion Picture - Animated,The LEGO Movie
+1300,film,2015,False,Best Motion Picture - Musical or Comedy,Into the Woods
+1301,film,2015,False,Best Motion Picture – Non-English Language,Ida
+1302,film,2015,True,Best Motion Picture - Animated,How to Train Your Dragon 2
+1303,film,2015,False,Best Motion Picture – Non-English Language,Gett: The Trial of Viviane Amsalem
+1304,film,2015,False,Best Motion Picture – Non-English Language,Force Majeure
+1305,film,2015,False,Best Motion Picture - Animated,The Boxtrolls
+1306,film,2015,False,Best Motion Picture - Animated,The Book of Life
+1307,film,2015,False,Best Motion Picture – Non-English Language,Tangerines
+1308,film,2015,False,Best Motion Picture - Animated,Big Hero 6
+1309,tv-show,2015,False,Best Television Series - Drama,House of Cards
+1310,tv-show,2015,True,Best Television Series - Drama,The Affair
+1311,tv-show,2015,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Fargo
+1312,tv-show,2015,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",True Detective
+1313,film,2015,False,Best Motion Picture - Musical or Comedy,Pride
+1314,tv-show,2014,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Dancing on the Edge
+1315,tv-show,2014,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The White Queen
+1316,tv-show,2014,True,Best Television Series - Drama,Breaking Bad
+1317,tv-show,2014,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",American Horror Story: Coven
+1318,tv-show,2014,True,Best Television Series - Musical or Comedy,Brooklyn Nine-Nine
+1319,tv-show,2014,False,Best Television Series - Musical or Comedy,Girls
+1320,tv-show,2014,False,Best Television Series - Drama,Masters of Sex
+1321,tv-show,2014,False,Best Television Series - Drama,House of Cards
+1322,film,2014,False,Best Motion Picture – Non-English Language,The Wind Rises
+1323,tv-show,2014,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Behind the Candelabra
+1324,film,2014,False,Best Motion Picture - Musical or Comedy,Inside Llewyn Davis
+1330,film,2014,False,Best Motion Picture - Drama,Rush
+1331,film,2014,True,Best Motion Picture - Musical or Comedy,American Hustle
+1332,film,2014,False,Best Motion Picture - Musical or Comedy,Nebraska
+1333,film,2014,False,Best Motion Picture - Musical or Comedy,Her
+1334,tv-show,2014,False,Best Television Series - Musical or Comedy,Parks And Recreation
+1335,film,2014,True,Best Motion Picture - Animated,Frozen
+1336,film,2014,False,Best Motion Picture - Musical or Comedy,The Wolf of Wall Street
+1337,film,2014,False,Best Motion Picture – Non-English Language,Blue is the Warmest Color
+1338,film,2014,False,Best Motion Picture - Animated,Despicable Me 2
+1339,film,2014,False,Best Motion Picture - Animated,The Croods
+1340,film,2014,True,Best Motion Picture – Non-English Language,The Great Beauty
+1341,film,2014,False,Best Motion Picture – Non-English Language,The Hunt
+1342,film,2014,False,Best Motion Picture – Non-English Language,The Past
+1343,tv-show,2014,False,Best Television Series - Musical or Comedy,Modern Family
+1345,tv-show,2014,False,Best Television Series - Musical or Comedy,The Big Bang Theory
+1361,tv-show,2014,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Top of the Lake
+1366,film,2014,True,Best Motion Picture - Drama,12 Years a Slave
+1373,tv-show,2014,False,Best Television Series - Drama,The Good Wife
+1374,tv-show,2014,False,Best Television Series - Drama,Downton Abbey
+1411,film,2014,False,Best Motion Picture - Drama,Philomena
+1412,film,2014,False,Best Motion Picture - Drama,Gravity
+1413,film,2014,False,Best Motion Picture - Drama,Captain Phillips
+1438,film,2013,False,Best Motion Picture - Drama,Zero Dark Thirty
+1439,film,2013,False,Best Motion Picture - Drama,Lincoln
+1507,tv-show,2013,False,Best Television Series - Musical or Comedy,Episodes
+1508,film,2013,True,Best Motion Picture – Non-English Language,Amour
+1509,film,2013,False,Best Motion Picture – Non-English Language,A Royal Affair
+1510,film,2013,False,Best Motion Picture – Non-English Language,The Intouchables
+1511,film,2013,False,Best Motion Picture – Non-English Language,Rust and Bone
+1512,tv-show,2013,False,Best Television Series - Drama,Breaking Bad
+1514,film,2013,False,Best Motion Picture - Drama,Life of Pi
+1515,tv-show,2013,False,Best Television Series - Drama,Boardwalk Empire
+1516,tv-show,2013,False,Best Television Series - Drama,Downton Abbey
+1517,tv-show,2013,True,Best Television Series - Drama,Homeland
+1518,tv-show,2013,False,Best Television Series - Drama,The Newsroom
+1519,tv-show,2013,False,Best Television Series - Musical or Comedy,The Big Bang Theory
+1520,tv-show,2013,False,Best Television Series - Musical or Comedy,Modern Family
+1521,film,2013,False,Best Motion Picture - Animated,Rise of the Guardians
+1522,tv-show,2013,True,Best Television Series - Musical or Comedy,Girls
+1523,tv-show,2013,False,Best Television Series - Musical or Comedy,Smash
+1524,tv-show,2013,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Hour
+1525,tv-show,2013,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Game Change
+1526,tv-show,2013,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Girl
+1527,tv-show,2013,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Hatfields & McCoys
+1528,tv-show,2013,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Political Animals
+1533,film,2013,True,Best Motion Picture - Drama,Argo
+1534,film,2013,False,Best Motion Picture - Animated,Wreck-It Ralph
+1535,film,2013,False,Best Motion Picture – Non-English Language,Kon Tiki
+1536,film,2013,False,Best Motion Picture - Animated,Hotel Transylvania
+1538,film,2013,False,Best Motion Picture - Animated,Frankenweenie
+1541,film,2013,False,Best Motion Picture - Drama,Django Unchained
+1556,film,2013,True,Best Motion Picture - Animated,Brave
+1557,film,2013,False,Best Motion Picture - Musical or Comedy,Silver Linings Playbook
+1558,film,2013,False,Best Motion Picture - Musical or Comedy,Salmon Fishing in the Yemen
+1559,film,2013,False,Best Motion Picture - Musical or Comedy,Moonrise Kingdom
+1560,film,2013,True,Best Motion Picture - Musical or Comedy,Les Misérables
+1561,film,2013,False,Best Motion Picture - Musical or Comedy,The Best Exotic Marigold Hotel
+1563,film,2012,True,Best Motion Picture - Drama,The Descendants
+1564,film,2012,False,Best Motion Picture - Drama,Moneyball
+1565,film,2012,False,Best Motion Picture - Drama,The Help
+1566,film,2012,False,Best Motion Picture - Drama,Hugo
+1572,film,2012,False,Best Motion Picture - Drama,The Ides of March
+1590,film,2012,False,Best Motion Picture - Musical or Comedy,50/50
+1591,film,2012,False,Best Motion Picture - Drama,War Horse
+1593,film,2012,True,Best Motion Picture - Musical or Comedy,The Artist
+1594,film,2012,False,Best Motion Picture - Musical or Comedy,Bridesmaids
+1597,film,2012,False,Best Motion Picture – Non-English Language,The Skin I Live In
+1598,tv-show,2012,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Too Big To Fail
+1599,tv-show,2012,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Mildred Pierce
+1600,tv-show,2012,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Hour
+1601,tv-show,2012,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Downton Abbey
+1602,tv-show,2012,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Cinema Verite
+1604,tv-show,2012,False,Best Television Series - Musical or Comedy,New Girl
+1605,tv-show,2012,True,Best Television Series - Musical or Comedy,Modern Family
+1606,tv-show,2012,False,Best Television Series - Musical or Comedy,Glee
+1607,tv-show,2012,False,Best Television Series - Musical or Comedy,Episodes
+1608,tv-show,2012,False,Best Television Series - Musical or Comedy,Enlightened
+1609,tv-show,2012,True,Best Television Series - Drama,Homeland
+1610,tv-show,2012,False,Best Television Series - Drama,Game of Thrones
+1611,tv-show,2012,False,Best Television Series - Drama,Boss
+1612,tv-show,2012,False,Best Television Series - Drama,Boardwalk Empire
+1613,tv-show,2012,False,Best Television Series - Drama,American Horror Story: Asylum
+1617,film,2012,False,Best Motion Picture - Animated,Rango
+1618,film,2012,False,Best Motion Picture - Animated,Puss In Boots
+1619,film,2012,False,Best Motion Picture - Animated,Cars 2
+1620,film,2012,False,Best Motion Picture - Animated,Arthur Christmas
+1621,film,2012,True,Best Motion Picture - Animated,The Adventures of Tintin
+1622,film,2012,False,Best Motion Picture - Musical or Comedy,My Week With Marilyn
+1623,film,2012,False,Best Motion Picture - Musical or Comedy,Midnight In Paris
+1633,film,2012,True,Best Motion Picture – Non-English Language,A Separation
+1634,film,2012,False,Best Motion Picture – Non-English Language,The Kid With A Bike
+1635,film,2012,False,Best Motion Picture – Non-English Language,In the Land of Blood and Honey
+1636,film,2012,False,Best Motion Picture – Non-English Language,The Flowers Of War
+1720,film,2011,False,Best Motion Picture - Drama,Black Swan
+1721,film,2011,False,Best Motion Picture - Musical or Comedy,Burlesque
+1723,tv-show,2011,True,Best Television Series - Drama,Boardwalk Empire
+1727,film,2011,True,Best Motion Picture - Animated,Toy Story 3
+1728,film,2011,False,Best Motion Picture - Animated,Tangled
+1729,film,2011,False,Best Motion Picture - Animated,The Illusionist
+1730,film,2011,False,Best Motion Picture - Animated,How To Train Your Dragon
+1731,film,2011,False,Best Motion Picture - Animated,Despicable Me
+1732,film,2011,False,Best Motion Picture - Musical or Comedy,The Tourist
+1733,film,2011,False,Best Motion Picture - Musical or Comedy,Red
+1734,film,2011,True,Best Motion Picture - Musical or Comedy,The Kids Are All Right
+1735,tv-show,2011,False,Best Television Series - Drama,Mad Men
+1736,film,2011,False,Best Motion Picture - Drama,The Fighter
+1737,tv-show,2011,False,Best Television Series - Drama,The Walking Dead
+1738,tv-show,2011,False,Best Television Series - Musical or Comedy,30 Rock
+1739,tv-show,2011,False,Best Television Series - Musical or Comedy,The Big Bang Theory
+1740,tv-show,2011,False,Best Television Series - Musical or Comedy,The Big C
+1741,tv-show,2011,True,Best Television Series - Musical or Comedy,Glee
+1742,tv-show,2011,False,Best Television Series - Musical or Comedy,Modern Family
+1743,tv-show,2011,False,Best Television Series - Musical or Comedy,Nurse Jackie
+1744,tv-show,2011,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Carlos
+1745,tv-show,2011,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Pacific
+1746,film,2011,False,Best Motion Picture - Musical or Comedy,Alice in Wonderland
+1747,film,2011,True,Best Motion Picture - Drama,The Social Network
+1748,film,2011,False,Best Motion Picture - Drama,The King's Speech
+1749,film,2011,False,Best Motion Picture - Drama,Inception
+1751,tv-show,2011,False,Best Television Series - Drama,The Good Wife
+1754,film,2011,False,Best Motion Picture – Non-English Language,I Am Love
+1755,film,2011,False,Best Motion Picture – Non-English Language,The Edge
+1756,film,2011,False,Best Motion Picture – Non-English Language,The Concert
+1757,film,2011,False,Best Motion Picture – Non-English Language,Biutiful
+1778,tv-show,2011,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Pillars Of The Earth
+1779,tv-show,2011,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Temple Grandin
+1780,tv-show,2011,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",You Don't Know Jack
+1782,film,2011,True,Best Motion Picture – Non-English Language,In A Better World
+1813,tv-show,2011,False,Best Television Series - Drama,Dexter
+1816,film,2010,False,Best Motion Picture - Drama,Up In The Air
+1817,film,2010,True,Best Motion Picture - Animated,Up
+1818,film,2010,False,Best Motion Picture - Animated,Fantastic Mr. Fox
+1819,film,2010,False,Best Motion Picture - Animated,Coraline
+1820,film,2010,False,Best Motion Picture - Animated,Cloudy With A Chance Of Meatballs
+1821,film,2010,False,Best Motion Picture - Musical or Comedy,Nine
+1822,film,2010,False,Best Motion Picture - Musical or Comedy,Julie & Julia
+1823,film,2010,False,Best Motion Picture - Musical or Comedy,It's Complicated
+1837,film,2010,False,Best Motion Picture - Animated,The Princess And The Frog
+1865,tv-show,2010,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Grey Gardens
+1869,tv-show,2010,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Georgia O'Keeffe
+1870,film,2010,False,Best Motion Picture - Drama,Precious: Based on the novel Push by Sapphire
+1871,film,2010,False,Best Motion Picture - Drama,Inglourious Basterds
+1872,film,2010,False,Best Motion Picture - Drama,The Hurt Locker
+1873,film,2010,True,Best Motion Picture - Drama,Avatar
+1874,tv-show,2010,False,Best Television Series - Musical or Comedy,The Office
+1875,tv-show,2010,False,Best Television Series - Musical or Comedy,Modern Family
+1876,tv-show,2010,True,Best Television Series - Musical or Comedy,Glee
+1891,film,2010,True,Best Motion Picture - Musical or Comedy,The Hangover
+1892,film,2010,False,Best Motion Picture - Musical or Comedy,(500) Days of Summer
+1893,tv-show,2010,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Taking Chance
+1894,tv-show,2010,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Little Dorrit
+1895,tv-show,2010,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Into The Storm
+1899,tv-show,2010,False,Best Television Series - Drama,Big Love
+1900,tv-show,2010,False,Best Television Series - Drama,Dexter
+1901,tv-show,2010,False,Best Television Series - Drama,House
+1902,tv-show,2010,True,Best Television Series - Drama,Mad Men
+1903,tv-show,2010,False,Best Television Series - Drama,True Blood
+1904,tv-show,2010,False,Best Television Series - Musical or Comedy,30 Rock
+1905,tv-show,2010,False,Best Television Series - Musical or Comedy,Entourage
+1908,film,2010,False,Best Motion Picture – Non-English Language,Baarìa
+1910,film,2010,False,Best Motion Picture – Non-English Language,Broken Embraces
+1931,film,2010,True,Best Motion Picture – Non-English Language,The White Ribbon (Das weiße Band - Eine Deutsche Kindergeschichte)
+1932,film,2010,False,Best Motion Picture – Non-English Language,A Prophet (Un Prophete)
+1933,film,2010,False,Best Motion Picture – Non-English Language,The Maid (La Nana)
+1965,tv-show,2009,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Recount
+1967,film,2009,True,Best Motion Picture – Non-English Language,Waltz with Bashir
+1984,tv-show,2009,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Cranford
+1988,film,2009,False,Best Motion Picture – Non-English Language,The Baader Meinhof Complex
+1989,film,2009,False,Best Motion Picture – Non-English Language,Everlasting Moments
+1990,film,2009,False,Best Motion Picture – Non-English Language,Gomorrah
+1991,film,2009,False,Best Motion Picture – Non-English Language,I've Loved You So Long
+1996,tv-show,2009,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",John Adams
+1998,tv-show,2009,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Bernard And Doris
+2030,tv-show,2009,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",A Raisin In The Sun
+2032,tv-show,2009,False,Best Television Series - Musical or Comedy,Weeds
+2033,tv-show,2009,False,Best Television Series - Musical or Comedy,The Office
+2034,tv-show,2009,False,Best Television Series - Musical or Comedy,Entourage
+2035,tv-show,2009,False,Best Television Series - Musical or Comedy,Californication
+2036,tv-show,2009,True,Best Television Series - Musical or Comedy,30 Rock
+2037,tv-show,2009,False,Best Television Series - Drama,True Blood
+2038,tv-show,2009,True,Best Television Series - Drama,Mad Men
+2039,tv-show,2009,False,Best Television Series - Drama,In Treatment
+2040,tv-show,2009,False,Best Television Series - Drama,House
+2041,tv-show,2009,False,Best Television Series - Drama,Dexter
+2045,film,2009,True,Best Motion Picture - Animated,Wall-E
+2047,film,2009,False,Best Motion Picture - Animated,Kung Fu Panda
+2048,film,2009,False,Best Motion Picture - Animated,Bolt
+2049,film,2009,True,Best Motion Picture - Musical or Comedy,Vicky Cristina Barcelona
+2050,film,2009,False,Best Motion Picture - Musical or Comedy,Mamma Mia!
+2051,film,2009,False,Best Motion Picture - Musical or Comedy,In Bruges
+2052,film,2009,False,Best Motion Picture - Musical or Comedy,Happy-Go-Lucky
+2053,film,2009,False,Best Motion Picture - Musical or Comedy,Burn After Reading
+2054,film,2009,True,Best Motion Picture - Drama,Slumdog Millionaire
+2055,film,2009,False,Best Motion Picture - Drama,Revolutionary Road
+2056,film,2009,False,Best Motion Picture - Drama,The Reader
+2057,film,2009,False,Best Motion Picture - Drama,Frost/Nixon
+2058,film,2009,False,Best Motion Picture - Drama,The Curious Case of Benjamin Button
+2062,film,2008,True,Best Motion Picture - Drama,Atonement
+2064,tv-show,2008,False,Best Television Series - Musical or Comedy,Entourage
+2065,tv-show,2008,False,Best Television Series - Musical or Comedy,Californication
+2066,tv-show,2008,False,Best Television Series - Musical or Comedy,30 Rock
+2067,tv-show,2008,False,Best Television Series - Drama,The Tudors
+2068,tv-show,2008,True,Best Television Series - Drama,Mad Men
+2069,tv-show,2008,False,Best Television Series - Drama,House
+2070,tv-show,2008,False,Best Television Series - Drama,Grey's Anatomy
+2071,tv-show,2008,False,Best Television Series - Drama,Damages
+2072,tv-show,2008,False,Best Television Series - Drama,Big Love
+2077,film,2008,False,Best Motion Picture - Animated,The Simpsons Movie
+2078,film,2008,True,Best Motion Picture - Animated,Ratatouille
+2079,film,2008,False,Best Motion Picture - Animated,Bee Movie
+2080,film,2008,True,Best Motion Picture - Musical or Comedy,Sweeney Todd: The Demon Barber of Fleet Street
+2081,tv-show,2008,True,Best Television Series - Musical or Comedy,Extras
+2082,tv-show,2008,False,Best Television Series - Musical or Comedy,Pushing Daisies
+2083,tv-show,2008,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Bury My Heart at Wounded Knee
+2093,tv-show,2008,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Company
+2098,tv-show,2008,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The State Within
+2099,tv-show,2008,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Longford
+2100,tv-show,2008,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Five Days
+2101,film,2008,False,Best Motion Picture - Musical or Comedy,Juno
+2102,film,2008,False,Best Motion Picture - Musical or Comedy,Hairspray
+2103,film,2008,False,Best Motion Picture - Musical or Comedy,Charlie Wilson's War
+2123,film,2008,False,Best Motion Picture - Musical or Comedy,Across The Universe
+2125,film,2008,False,Best Motion Picture - Drama,There Will Be Blood
+2126,film,2008,False,Best Motion Picture - Drama,No Country for Old Men
+2127,film,2008,False,Best Motion Picture - Drama,Michael Clayton
+2128,film,2008,False,Best Motion Picture - Drama,The Great Debaters
+2129,film,2008,False,Best Motion Picture - Drama,Eastern Promises
+2131,film,2008,False,Best Motion Picture - Drama,American Gangster
+2144,film,2008,False,Best Motion Picture – Non-English Language,The Kite Runner
+2149,film,2008,False,Best Motion Picture – Non-English Language,"4 Months, 3 Weeks And 2 Days"
+2150,film,2008,True,Best Motion Picture – Non-English Language,The Diving Bell and the Butterfly
+2151,film,2008,False,Best Motion Picture – Non-English Language,"Lust, Caution"
+2153,film,2008,False,Best Motion Picture – Non-English Language,Persepolis
+2195,tv-show,2007,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Prime Suspect: The Final Act
+2196,tv-show,2007,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Mrs. Harris
+2197,tv-show,2007,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Elizabeth I
+2198,tv-show,2007,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Broken Trail
+2199,tv-show,2007,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Bleak House
+2200,tv-show,2007,False,Best Television Series - Musical or Comedy,Weeds
+2201,tv-show,2007,True,Best Television Series - Musical or Comedy,Ugly Betty
+2202,tv-show,2007,False,Best Television Series - Musical or Comedy,The Office
+2203,tv-show,2007,False,Best Television Series - Musical or Comedy,Entourage
+2204,tv-show,2007,False,Best Television Series - Musical or Comedy,Desperate Housewives
+2205,tv-show,2007,False,Best Television Series - Drama,Heroes
+2207,film,2007,False,Best Motion Picture - Drama,The Queen
+2208,film,2007,True,Best Motion Picture - Animated,Cars
+2209,film,2007,False,Best Motion Picture - Animated,Happy Feet
+2210,film,2007,False,Best Motion Picture - Animated,Monster House
+2211,tv-show,2007,True,Best Television Series - Drama,Grey's Anatomy
+2212,film,2007,False,Best Motion Picture - Musical or Comedy,The Devil Wears Prada
+2213,film,2007,True,Best Motion Picture - Musical or Comedy,Dreamgirls
+2214,film,2007,False,Best Motion Picture - Musical or Comedy,Little Miss Sunshine
+2215,film,2007,False,Best Motion Picture - Musical or Comedy,Thank You For Smoking
+2217,tv-show,2007,False,Best Television Series - Drama,Big Love
+2218,tv-show,2007,False,Best Television Series - Drama,24
+2221,film,2007,False,Best Motion Picture - Musical or Comedy,Borat
+2223,film,2007,False,Best Motion Picture - Drama,Little Children
+2270,tv-show,2007,False,Best Television Series - Drama,Lost
+2282,film,2007,True,Best Motion Picture - Drama,Babel
+2284,film,2007,False,Best Motion Picture - Drama,Bobby
+2285,film,2007,False,Best Motion Picture - Drama,The Departed
+2297,film,2007,False,Best Motion Picture – Non-English Language,Pan's Labyrinth
+2299,film,2007,False,Best Motion Picture – Non-English Language,The Lives Of Others
+2300,film,2007,True,Best Motion Picture – Non-English Language,Letters from Iwo Jima
+2303,film,2007,False,Best Motion Picture – Non-English Language,Volver
+2306,film,2007,False,Best Motion Picture – Non-English Language,Apocalypto
+2347,film,2006,False,Best Motion Picture - Drama,The Constant Gardener
+2348,film,2006,True,Best Motion Picture - Drama,Brokeback Mountain
+2349,tv-show,2006,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Lackawanna Blues
+2350,film,2006,False,Best Motion Picture - Drama,"Good Night, and Good Luck"
+2352,tv-show,2006,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Empire Falls
+2353,tv-show,2006,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Into the West
+2355,tv-show,2006,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Sleeper Cell
+2356,tv-show,2006,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Viva Blackpool
+2357,tv-show,2006,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Warm Springs
+2359,film,2006,False,Best Motion Picture - Drama,A History of Violence
+2366,tv-show,2006,False,Best Television Series - Musical or Comedy,Weeds
+2367,tv-show,2006,False,Best Television Series - Musical or Comedy,My Name Is Earl
+2368,tv-show,2006,False,Best Television Series - Musical or Comedy,Everybody Hates Chris
+2369,tv-show,2006,False,Best Television Series - Musical or Comedy,Entourage
+2370,tv-show,2006,True,Best Television Series - Musical or Comedy,Desperate Housewives
+2371,tv-show,2006,False,Best Television Series - Musical or Comedy,Curb Your Enthusiasm
+2372,tv-show,2006,False,Best Television Series - Drama,Rome
+2373,tv-show,2006,False,Best Television Series - Drama,Prison Break
+2374,tv-show,2006,True,Best Television Series - Drama,Lost
+2375,tv-show,2006,False,Best Television Series - Drama,Grey's Anatomy
+2376,tv-show,2006,False,Best Television Series - Drama,Commander in Chief
+2377,film,2006,True,Best Motion Picture - Musical or Comedy,Walk The Line
+2378,film,2006,False,Best Motion Picture - Musical or Comedy,The Squid and the Whale
+2379,film,2006,False,Best Motion Picture - Musical or Comedy,The Producers
+2380,film,2006,False,Best Motion Picture - Musical or Comedy,Pride & Prejudice
+2381,film,2006,False,Best Motion Picture - Musical or Comedy,Mrs. Henderson Presents
+2382,film,2006,False,Best Motion Picture - Drama,Match Point
+2386,film,2006,False,Best Motion Picture – Non-English Language,Joyeux Noel (Merry Christmas)
+2391,film,2006,False,Best Motion Picture – Non-English Language,Kung Fu Hustle
+2392,film,2006,False,Best Motion Picture – Non-English Language,The Promise (Master of the Crimson Armor)
+2395,film,2006,False,Best Motion Picture – Non-English Language,Tsotsi
+2419,film,2006,True,Best Motion Picture – Non-English Language,Paradise Now
+2443,film,2005,False,Best Motion Picture - Musical or Comedy,Eternal Sunshine of The Spotless Mind
+2444,film,2005,False,Best Motion Picture - Drama,Hotel Rwanda
+2445,film,2005,False,Best Motion Picture - Drama,Finding Neverland
+2446,film,2005,False,Best Motion Picture - Drama,Closer
+2447,film,2005,True,Best Motion Picture - Drama,The Aviator
+2448,tv-show,2005,False,Best Television Series - Drama,The Sopranos
+2449,tv-show,2005,False,Best Television Series - Drama,Deadwood
+2450,tv-show,2005,False,Best Television Series - Drama,24
+2451,film,2005,True,Best Motion Picture - Musical or Comedy,Sideways
+2453,film,2005,False,Best Motion Picture - Musical or Comedy,The Phantom of the Opera
+2454,film,2005,False,Best Motion Picture - Musical or Comedy,Ray
+2455,film,2005,False,Best Motion Picture - Musical or Comedy,The Incredibles
+2457,film,2005,False,Best Motion Picture – Non-English Language,The Motorcycle Diaries
+2461,film,2005,False,Best Motion Picture – Non-English Language,A Very Long Engagement
+2472,tv-show,2005,False,Best Television Series - Musical or Comedy,Arrested Development
+2484,tv-show,2005,True,Best Television Series - Musical or Comedy,Desperate Housewives
+2520,film,2005,True,Best Motion Picture – Non-English Language,The Sea Inside
+2521,tv-show,2005,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Something The Lord Made
+2529,film,2005,False,Best Motion Picture – Non-English Language,The Chorus
+2532,film,2005,False,Best Motion Picture – Non-English Language,House of Flying Daggers
+2533,tv-show,2005,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Lion in Winter (2004)
+2534,tv-show,2005,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Iron Jawed Angels
+2535,tv-show,2005,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",American Family: Journey of Dreams
+2536,tv-show,2005,True,Best Television Series - Drama,Nip/Tuck
+2537,tv-show,2005,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Life and Death of Peter Sellers
+2538,tv-show,2005,False,Best Television Series - Musical or Comedy,Will & Grace
+2539,tv-show,2005,False,Best Television Series - Musical or Comedy,Sex and the City
+2540,tv-show,2005,False,Best Television Series - Musical or Comedy,Entourage
+2554,film,2005,False,Best Motion Picture - Drama,Million Dollar Baby
+2561,tv-show,2005,False,Best Television Series - Drama,Lost
+2563,film,2005,False,Best Motion Picture - Drama,Kinsey
+2567,film,2004,False,Best Motion Picture – Non-English Language,Monsieur Ibrahim
+2568,film,2004,True,Best Motion Picture – Non-English Language,Osama
+2576,film,2004,False,Best Motion Picture - Drama,Master and Commander: The Far Side of the World
+2578,film,2004,True,Best Motion Picture - Musical or Comedy,Lost in Translation
+2579,film,2004,False,Best Motion Picture - Musical or Comedy,Love Actually
+2580,film,2004,False,Best Motion Picture - Musical or Comedy,Finding Nemo
+2581,film,2004,False,Best Motion Picture - Musical or Comedy,Big Fish
+2584,film,2004,False,Best Motion Picture - Musical or Comedy,Bend It Like Beckham
+2585,film,2004,True,Best Motion Picture - Drama,The Lord of the Rings: The Return of the King
+2586,film,2004,False,Best Motion Picture - Drama,Seabiscuit
+2587,tv-show,2004,True,Best Television Series - Musical or Comedy,The (UK) Office
+2594,tv-show,2004,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Angels in America
+2595,film,2004,False,Best Motion Picture – Non-English Language,The Return
+2596,film,2004,False,Best Motion Picture - Drama,Cold Mountain
+2597,tv-show,2004,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Soldier's Girl
+2599,film,2004,False,Best Motion Picture – Non-English Language,Good Bye Lenin!
+2600,film,2004,False,Best Motion Picture – Non-English Language,The Barbarian Invasions
+2626,tv-show,2004,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Roman Spring of Mrs. Stone
+2627,film,2004,False,Best Motion Picture - Drama,Mystic River
+2628,tv-show,2004,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Normal
+2637,tv-show,2004,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",My House in Umbria
+2662,tv-show,2004,False,Best Television Series - Drama,Six Feet Under
+2663,tv-show,2004,False,Best Television Series - Drama,The West Wing
+2664,tv-show,2004,True,Best Television Series - Drama,24
+2665,tv-show,2004,False,Best Television Series - Musical or Comedy,Arrested Development
+2666,tv-show,2004,False,Best Television Series - Musical or Comedy,Monk
+2667,tv-show,2004,False,Best Television Series - Musical or Comedy,Sex and the City
+2669,tv-show,2004,False,Best Television Series - Musical or Comedy,Will & Grace
+2672,tv-show,2004,False,Best Television Series - Drama,Nip/Tuck
+2686,tv-show,2004,False,Best Television Series - Drama,C. S. I.: Crime Scene Investigation
+2692,tv-show,2003,False,Best Television Series - Drama,Six Feet Under
+2709,tv-show,2003,False,Best Television Series - Drama,The Sopranos
+2710,tv-show,2003,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Shackleton
+2717,tv-show,2003,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Gathering Storm
+2718,tv-show,2003,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Taken
+2719,tv-show,2003,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Path to War
+2720,tv-show,2003,False,Best Television Series - Drama,24
+2721,tv-show,2003,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Live from Baghdad
+2722,tv-show,2003,True,Best Television Series - Musical or Comedy,Curb Your Enthusiasm
+2723,tv-show,2003,False,Best Television Series - Musical or Comedy,Will & Grace
+2724,tv-show,2003,False,Best Television Series - Musical or Comedy,The Simpsons
+2725,tv-show,2003,False,Best Television Series - Musical or Comedy,Sex and the City
+2726,tv-show,2003,False,Best Television Series - Musical or Comedy,Friends
+2727,tv-show,2003,True,Best Television Series - Drama,The Shield
+2728,tv-show,2003,False,Best Television Series - Drama,The West Wing
+2732,film,2003,True,Best Motion Picture - Musical or Comedy,Chicago
+2733,film,2003,False,Best Motion Picture - Drama,Gangs of New York
+2734,film,2003,False,Best Motion Picture - Drama,The Lord of the Rings: The Two Towers
+2735,film,2003,False,Best Motion Picture - Drama,The Pianist
+2736,film,2003,True,Best Motion Picture - Drama,The Hours
+2737,film,2003,False,Best Motion Picture - Musical or Comedy,About a Boy
+2738,film,2003,False,Best Motion Picture - Musical or Comedy,Adaptation
+2739,film,2003,False,Best Motion Picture - Musical or Comedy,My Big Fat Greek Wedding
+2740,film,2003,False,Best Motion Picture - Musical or Comedy,Nicholas Nickleby
+2751,film,2003,False,Best Motion Picture - Drama,About Schmidt
+2774,film,2003,False,Best Motion Picture – Non-English Language,Balzac and The Little Chinese Seamstress
+2780,film,2003,False,Best Motion Picture – Non-English Language,City of God
+2797,film,2003,False,Best Motion Picture – Non-English Language,The Crime of Padre Amaro
+2798,film,2003,False,Best Motion Picture – Non-English Language,Hero
+2799,film,2003,False,Best Motion Picture – Non-English Language,Nowhere In Africa
+2800,film,2003,True,Best Motion Picture – Non-English Language,Talk To Her
+2834,tv-show,2002,False,Best Television Series - Musical or Comedy,Will & Grace
+2841,tv-show,2002,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Band of Brothers
+2842,tv-show,2002,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Wit
+2843,tv-show,2002,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Life With Judy Garland: Me & My Shadows
+2844,tv-show,2002,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Conspiracy
+2845,tv-show,2002,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Anne Frank: The Whole Story
+2846,tv-show,2002,True,Best Television Series - Musical or Comedy,Sex and the City
+2847,tv-show,2002,False,Best Television Series - Musical or Comedy,Friends
+2849,tv-show,2002,False,Best Television Series - Musical or Comedy,Frasier
+2850,tv-show,2002,False,Best Television Series - Musical or Comedy,Ally McBeal
+2851,tv-show,2002,True,Best Television Series - Drama,Six Feet Under
+2852,tv-show,2002,False,Best Television Series - Drama,The West Wing
+2853,tv-show,2002,False,Best Television Series - Drama,24
+2854,tv-show,2002,False,Best Television Series - Drama,The Sopranos
+2855,tv-show,2002,False,Best Television Series - Drama,C. S. I.: Crime Scene Investigation
+2856,tv-show,2002,False,Best Television Series - Drama,Alias
+2865,film,2002,False,Best Motion Picture - Drama,In the Bedroom
+2866,film,2002,False,Best Motion Picture - Drama,The Lord of the Rings: The Fellowship of the Ring
+2867,film,2002,False,Best Motion Picture - Drama,The Man Who Wasn't There
+2868,film,2002,False,Best Motion Picture - Drama,Mulholland Dr.
+2869,film,2002,True,Best Motion Picture - Drama,A Beautiful Mind
+2870,film,2002,False,Best Motion Picture - Musical or Comedy,Bridget Jones's Diary
+2871,film,2002,False,Best Motion Picture - Musical or Comedy,Gosford Park
+2872,film,2002,False,Best Motion Picture - Musical or Comedy,Legally Blonde
+2873,film,2002,False,Best Motion Picture - Musical or Comedy,Shrek
+2874,film,2002,True,Best Motion Picture - Musical or Comedy,Moulin Rouge!
+2927,film,2002,False,Best Motion Picture – Non-English Language,Amélie
+2928,film,2002,False,Best Motion Picture – Non-English Language,Y Tu Mamá También
+2929,film,2002,False,Best Motion Picture – Non-English Language,Behind The Sun
+2930,film,2002,False,Best Motion Picture – Non-English Language,Monsoon Wedding
+2931,film,2002,True,Best Motion Picture – Non-English Language,No Man's Land
+2950,film,2001,True,Best Motion Picture – Non-English Language,"Crouching Tiger, Hidden Dragon"
+2951,film,2001,False,Best Motion Picture – Non-English Language,The Widow of Saint-Pierre
+2956,film,2001,False,Best Motion Picture – Non-English Language,Amores Perros
+2964,film,2001,False,Best Motion Picture – Non-English Language,Malèna
+2966,film,2001,False,Best Motion Picture – Non-English Language,One Hundred Steps
+2987,film,2001,False,Best Motion Picture - Drama,Billy Elliot
+2988,film,2001,False,Best Motion Picture - Drama,Erin Brockovich
+2989,film,2001,False,Best Motion Picture - Drama,Sunshine
+2999,film,2001,True,Best Motion Picture - Musical or Comedy,Almost Famous
+3000,film,2001,False,Best Motion Picture - Musical or Comedy,"O Brother, Where Art Thou?"
+3001,film,2001,False,Best Motion Picture - Musical or Comedy,Chocolat
+3002,film,2001,False,Best Motion Picture - Musical or Comedy,Chicken Run
+3003,film,2001,False,Best Motion Picture - Musical or Comedy,Best in Show
+3004,film,2001,True,Best Motion Picture - Drama,Gladiator
+3005,film,2001,False,Best Motion Picture - Drama,Wonder Boys
+3006,film,2001,False,Best Motion Picture - Drama,Traffic
+3010,tv-show,2001,False,Best Television Series - Musical or Comedy,Malcolm in the Middle
+3018,tv-show,2001,False,Best Television Series - Drama,C. S. I.: Crime Scene Investigation
+3019,tv-show,2001,False,Best Television Series - Drama,ER
+3020,tv-show,2001,False,Best Television Series - Drama,The Practice
+3021,tv-show,2001,False,Best Television Series - Drama,The Sopranos
+3022,tv-show,2001,True,Best Television Series - Drama,The West Wing
+3023,tv-show,2001,False,Best Television Series - Musical or Comedy,Frasier
+3024,tv-show,2001,False,Best Television Series - Musical or Comedy,Will & Grace
+3026,tv-show,2001,True,Best Television Series - Musical or Comedy,Sex and the City
+3027,tv-show,2001,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Fail Safe
+3028,tv-show,2001,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",For Love or Country: The Arturo Sandoval Story
+3029,tv-show,2001,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Nuremberg
+3030,tv-show,2001,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",On the Beach (2000)
+3031,tv-show,2001,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Dirty Pictures
+3040,tv-show,2001,False,Best Television Series - Musical or Comedy,Ally McBeal
+3110,tv-show,2000,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",RKO 281
+3111,tv-show,2000,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Witness Protection
+3112,tv-show,2000,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Joan of Arc
+3113,tv-show,2000,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Introducing Dorothy Dandridge
+3114,tv-show,2000,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Dash and Lilly
+3115,tv-show,2000,True,Best Television Series - Musical or Comedy,Sex and the City
+3116,tv-show,2000,False,Best Television Series - Musical or Comedy,Will & Grace
+3117,tv-show,2000,False,Best Television Series - Musical or Comedy,Spin City
+3118,tv-show,2000,False,Best Television Series - Musical or Comedy,Dharma & Greg
+3119,tv-show,2000,False,Best Television Series - Musical or Comedy,Ally McBeal
+3120,tv-show,2000,True,Best Television Series - Drama,The Sopranos
+3121,tv-show,2000,False,Best Television Series - Drama,The West Wing
+3122,tv-show,2000,False,Best Television Series - Drama,The Practice
+3123,tv-show,2000,False,Best Television Series - Drama,Once and Again
+3124,tv-show,2000,False,Best Television Series - Drama,ER
+3138,film,2000,False,Best Motion Picture - Musical or Comedy,Notting Hill
+3139,film,2000,False,Best Motion Picture - Musical or Comedy,Man on the Moon
+3140,film,2000,False,Best Motion Picture - Musical or Comedy,Being John Malkovich
+3141,film,2000,False,Best Motion Picture - Musical or Comedy,Analyze This
+3142,film,2000,True,Best Motion Picture - Drama,American Beauty
+3143,film,2000,False,Best Motion Picture - Drama,The Talented Mr. Ripley
+3144,film,2000,False,Best Motion Picture - Drama,The Insider
+3145,film,2000,False,Best Motion Picture - Drama,The Hurricane
+3146,film,2000,False,Best Motion Picture - Drama,The End of the Affair
+3167,film,2000,True,Best Motion Picture - Musical or Comedy,Toy Story 2
+3170,film,2000,True,Best Motion Picture – Non-English Language,All About My Mother
+3184,film,2000,False,Best Motion Picture – Non-English Language,The Red Violin
+3186,film,2000,False,Best Motion Picture – Non-English Language,The Girl on the Bridge
+3187,film,2000,False,Best Motion Picture – Non-English Language,East/West
+3188,film,2000,False,Best Motion Picture – Non-English Language,Aimée & Jaguar
+3203,tv-show,1999,False,Best Television Series - Drama,Felicity
+3204,tv-show,1999,False,Best Television Series - Drama,ER
+3231,tv-show,1999,False,Best Television Series - Drama,Law & Order
+3232,tv-show,1999,False,Best Television Series - Drama,The X-Files
+3233,tv-show,1999,True,Best Television Series - Drama,The Practice
+3234,tv-show,1999,False,Best Television Series - Musical or Comedy,Dharma & Greg
+3253,tv-show,1999,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",From the Earth to the Moon
+3254,tv-show,1999,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Temptations
+3255,tv-show,1999,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Merlin
+3256,tv-show,1999,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Gia
+3257,tv-show,1999,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Baby Dance
+3258,tv-show,1999,True,Best Television Series - Musical or Comedy,Ally McBeal
+3259,tv-show,1999,False,Best Television Series - Musical or Comedy,Spin City
+3260,tv-show,1999,False,Best Television Series - Musical or Comedy,Just Shoot Me!
+3261,tv-show,1999,False,Best Television Series - Musical or Comedy,Frasier
+3266,film,1999,False,Best Motion Picture - Musical or Comedy,Patch Adams
+3267,film,1999,False,Best Motion Picture - Musical or Comedy,The Mask of Zorro
+3268,film,1999,False,Best Motion Picture - Musical or Comedy,Bulworth
+3269,film,1999,True,Best Motion Picture - Drama,Saving Private Ryan
+3270,film,1999,False,Best Motion Picture - Drama,The Truman Show
+3271,film,1999,False,Best Motion Picture - Drama,The Horse Whisperer
+3272,film,1999,False,Best Motion Picture - Drama,Elizabeth
+3280,film,1999,False,Best Motion Picture - Musical or Comedy,There's Something About Mary
+3294,film,1999,False,Best Motion Picture - Musical or Comedy,Still Crazy
+3295,film,1999,False,Best Motion Picture - Drama,Gods and Monsters
+3296,film,1999,True,Best Motion Picture - Musical or Comedy,Shakespeare in Love
+3297,film,1999,False,Best Motion Picture – Non-English Language,Tango
+3311,film,1999,True,Best Motion Picture – Non-English Language,Central Station
+3313,film,1999,False,Best Motion Picture – Non-English Language,The Polish Bride
+3314,film,1999,False,Best Motion Picture – Non-English Language,Men With Guns
+3324,film,1999,False,Best Motion Picture – Non-English Language,The Celebration
+3326,film,1998,False,Best Motion Picture - Drama,L.A. Confidential
+3327,film,1998,True,Best Motion Picture - Musical or Comedy,As Good as It Gets
+3328,film,1998,True,Best Motion Picture - Drama,Titanic
+3329,film,1998,False,Best Motion Picture - Musical or Comedy,My Best Friend's Wedding
+3330,film,1998,False,Best Motion Picture - Musical or Comedy,Men in Black
+3331,film,1998,False,Best Motion Picture - Musical or Comedy,The Full Monty
+3341,film,1998,False,Best Motion Picture – Non-English Language,Artemisia
+3342,film,1998,False,Best Motion Picture – Non-English Language,Lea
+3343,film,1998,False,Best Motion Picture - Drama,The Boxer
+3344,film,1998,False,Best Motion Picture - Drama,Good Will Hunting
+3346,film,1998,False,Best Motion Picture - Drama,Amistad
+3348,film,1998,True,Best Motion Picture – Non-English Language,Ma Vie en Rose
+3366,film,1998,False,Best Motion Picture – Non-English Language,The Thief
+3370,tv-show,1998,False,Best Television Series - Drama,Law & Order
+3371,tv-show,1998,False,Best Television Series - Drama,ER
+3372,tv-show,1998,False,Best Television Series - Drama,Chicago Hope
+3387,tv-show,1998,False,Best Television Series - Drama,NYPD Blue
+3388,tv-show,1998,True,Best Television Series - Drama,The X-Files
+3389,tv-show,1998,False,Best Television Series - Musical or Comedy,Frasier
+3390,tv-show,1998,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",George Wallace
+3391,film,1998,False,Best Motion Picture – Non-English Language,The Best Man
+3398,tv-show,1998,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",12 Angry Men (TV-1997)
+3399,tv-show,1998,False,Best Television Series - Musical or Comedy,Friends
+3400,tv-show,1998,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Odyssey
+3401,tv-show,1998,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Miss Evers' Boys
+3402,tv-show,1998,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Don King: Only In America
+3403,tv-show,1998,True,Best Television Series - Musical or Comedy,Ally McBeal
+3404,tv-show,1998,False,Best Television Series - Musical or Comedy,3rd Rock From The Sun
+3405,tv-show,1998,False,Best Television Series - Musical or Comedy,Spin City
+3406,tv-show,1998,False,Best Television Series - Musical or Comedy,Seinfeld
+3448,film,1998,False,Best Motion Picture - Musical or Comedy,Wag the Dog
+3490,tv-show,1997,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Rasputin
+3491,tv-show,1997,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Losing Chase
+3492,tv-show,1997,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",If These Walls Could Talk
+3493,tv-show,1997,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Hidden in America
+3494,tv-show,1997,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Gotti
+3495,tv-show,1997,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Crime of the Century
+3496,tv-show,1997,True,Best Television Series - Musical or Comedy,3rd Rock From The Sun
+3497,tv-show,1997,False,Best Television Series - Musical or Comedy,Seinfeld
+3498,tv-show,1997,False,Best Television Series - Musical or Comedy,Mad About You
+3499,tv-show,1997,False,Best Television Series - Musical or Comedy,The Larry Sanders Show
+3500,tv-show,1997,False,Best Television Series - Musical or Comedy,Friends
+3501,tv-show,1997,False,Best Television Series - Musical or Comedy,Frasier
+3502,tv-show,1997,True,Best Television Series - Drama,The X-Files
+3503,tv-show,1997,False,Best Television Series - Drama,Party of Five
+3504,tv-show,1997,False,Best Television Series - Drama,NYPD Blue
+3505,tv-show,1997,False,Best Television Series - Drama,ER
+3506,tv-show,1997,False,Best Television Series - Drama,Chicago Hope
+3515,film,1997,False,Best Motion Picture - Musical or Comedy,Jerry Maguire
+3516,film,1997,False,Best Motion Picture - Musical or Comedy,Fargo
+3517,film,1997,False,Best Motion Picture - Musical or Comedy,Everyone Says I Love You
+3518,film,1997,False,Best Motion Picture - Musical or Comedy,The Birdcage
+3519,film,1997,True,Best Motion Picture - Drama,The English Patient
+3520,film,1997,False,Best Motion Picture - Drama,Shine
+3521,film,1997,False,Best Motion Picture - Drama,Secrets & Lies
+3522,film,1997,False,Best Motion Picture - Drama,The People vs. Larry Flynt
+3523,film,1997,False,Best Motion Picture - Drama,Breaking the Waves
+3544,film,1997,True,Best Motion Picture - Musical or Comedy,Evita
+3561,film,1997,True,Best Motion Picture – Non-English Language,Kolya
+3563,film,1997,False,Best Motion Picture – Non-English Language,Ridicule
+3570,film,1997,False,Best Motion Picture – Non-English Language,The Eighth Day
+3571,film,1997,False,Best Motion Picture – Non-English Language,Luna e l'Altra
+3572,film,1997,False,Best Motion Picture – Non-English Language,Prisoner of the Mountains
+3606,tv-show,1996,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Citizen X
+3616,tv-show,1996,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Indictment: The McMartin Trial
+3617,tv-show,1996,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Truman
+3618,tv-show,1996,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Serving in Silence: The Margarethe Cammermeyer Story
+3619,tv-show,1996,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Heidi Chronicles
+3620,tv-show,1996,True,Best Television Series - Musical or Comedy,Cybill
+3622,tv-show,1996,False,Best Television Series - Musical or Comedy,Seinfeld
+3623,tv-show,1996,False,Best Television Series - Musical or Comedy,Mad About You
+3624,tv-show,1996,False,Best Television Series - Musical or Comedy,Friends
+3625,tv-show,1996,False,Best Television Series - Musical or Comedy,Frasier
+3626,tv-show,1996,True,Best Television Series - Drama,Party of Five
+3627,tv-show,1996,False,Best Television Series - Drama,NYPD Blue
+3628,tv-show,1996,False,Best Television Series - Drama,Murder One
+3629,tv-show,1996,False,Best Television Series - Drama,ER
+3630,tv-show,1996,False,Best Television Series - Drama,Chicago Hope
+3639,film,1996,True,Best Motion Picture - Musical or Comedy,Babe
+3640,film,1996,False,Best Motion Picture - Musical or Comedy,Toy Story
+3641,film,1996,False,Best Motion Picture - Musical or Comedy,Sabrina (1995)
+3642,film,1996,False,Best Motion Picture - Musical or Comedy,Get Shorty
+3643,film,1996,False,Best Motion Picture - Musical or Comedy,The American President
+3644,film,1996,True,Best Motion Picture - Drama,Sense and Sensibility
+3645,film,1996,False,Best Motion Picture - Drama,Leaving Las Vegas
+3646,film,1996,False,Best Motion Picture - Drama,The Bridges of Madison County
+3647,film,1996,False,Best Motion Picture - Drama,Braveheart
+3648,film,1996,False,Best Motion Picture - Drama,Apollo 13
+3670,film,1996,False,Best Motion Picture – Non-English Language,Brother of Sleep
+3671,film,1996,False,Best Motion Picture – Non-English Language,Like Two Crocodiles
+3672,film,1996,False,Best Motion Picture – Non-English Language,Shanghai Triad
+3673,film,1996,True,Best Motion Picture – Non-English Language,Les Misérables
+3686,film,1996,False,Best Motion Picture – Non-English Language,French Twist
+3730,tv-show,1995,False,Best Television Series - Drama,ER
+3732,tv-show,1995,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",White Mile
+3733,tv-show,1995,False,Best Television Series - Musical or Comedy,Home Improvement
+3734,tv-show,1995,False,Best Television Series - Musical or Comedy,Seinfeld
+3735,tv-show,1995,True,Best Television Series - Musical or Comedy,Mad About You
+3736,tv-show,1995,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Fatherland
+3737,tv-show,1995,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Return of the Native
+3738,tv-show,1995,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Roswell
+3739,tv-show,1995,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Burning Season
+3747,tv-show,1995,False,Best Television Series - Musical or Comedy,Grace Under Fire
+3748,tv-show,1995,False,Best Television Series - Musical or Comedy,Frasier
+3749,tv-show,1995,True,Best Television Series - Drama,The X-Files
+3750,tv-show,1995,False,Best Television Series - Drama,Picket Fences
+3751,tv-show,1995,False,Best Television Series - Drama,NYPD Blue
+3753,tv-show,1995,False,Best Television Series - Drama,Chicago Hope
+3767,film,1995,False,Best Motion Picture - Musical or Comedy,Four Weddings and a Funeral
+3768,film,1995,False,Best Motion Picture - Drama,Nell
+3769,film,1995,False,Best Motion Picture - Drama,Pulp Fiction
+3770,film,1995,False,Best Motion Picture - Drama,Quiz Show
+3771,film,1995,True,Best Motion Picture - Drama,Forrest Gump
+3772,film,1995,False,Best Motion Picture - Musical or Comedy,Queen of the Desert Adventures of Priscilla
+3773,film,1995,False,Best Motion Picture - Musical or Comedy,Ed Wood
+3774,film,1995,False,Best Motion Picture - Musical or Comedy,Ready to Wear
+3776,film,1995,True,Best Motion Picture - Musical or Comedy,The Lion King (1994)
+3782,film,1995,False,Best Motion Picture - Drama,Legends of the Fall
+3812,film,1995,True,Best Motion Picture – Non-English Language,Farinelli
+3813,film,1995,False,Best Motion Picture – Non-English Language,To Live
+3814,film,1995,False,Best Motion Picture – Non-English Language,Three Colors: Red
+3815,film,1995,False,Best Motion Picture – Non-English Language,Queen Margot
+3816,film,1995,False,Best Motion Picture – Non-English Language,Eat Drink Man Woman
+3859,tv-show,1994,False,Best Television Series - Musical or Comedy,Roseanne
+3860,tv-show,1994,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Barbarians at the Gate
+3861,tv-show,1994,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Heidi
+3862,tv-show,1994,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Gypsy (1993-TV)
+3863,tv-show,1994,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Columbo: It's All In The Game
+3864,tv-show,1994,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",And the Band Played On
+3865,tv-show,1994,True,Best Television Series - Musical or Comedy,Seinfeld
+3866,tv-show,1994,False,Best Television Series - Musical or Comedy,Home Improvement
+3868,tv-show,1994,False,Best Television Series - Musical or Comedy,Frasier
+3869,tv-show,1994,False,Best Television Series - Musical or Comedy,Coach
+3870,tv-show,1994,True,Best Television Series - Drama,NYPD Blue
+3871,tv-show,1994,False,Best Television Series - Drama,The Young Indiana Jones Chronicles
+3872,tv-show,1994,False,Best Television Series - Drama,Picket Fences
+3873,tv-show,1994,False,Best Television Series - Drama,Northern Exposure
+3886,tv-show,1994,False,Best Television Series - Drama,Law & Order
+3889,tv-show,1994,False,Best Television Series - Drama,"Dr. Quinn, Medicine Woman"
+3897,film,1994,True,Best Motion Picture - Musical or Comedy,Mrs. Doubtfire
+3898,film,1994,False,Best Motion Picture - Musical or Comedy,Strictly Ballroom
+3899,film,1994,False,Best Motion Picture - Musical or Comedy,Sleepless in Seattle
+3900,film,1994,False,Best Motion Picture - Musical or Comedy,Much Ado About Nothing
+3901,film,1994,False,Best Motion Picture - Musical or Comedy,Dave
+3902,film,1994,True,Best Motion Picture - Drama,Schindler's List
+3903,film,1994,False,Best Motion Picture - Drama,The Remains of the Day
+3904,film,1994,False,Best Motion Picture - Drama,The Piano
+3905,film,1994,False,Best Motion Picture - Drama,In the Name of the Father
+3906,film,1994,False,Best Motion Picture - Drama,The Age of Innocence
+3928,film,1994,True,Best Motion Picture – Non-English Language,Farewell My Concubine
+3931,film,1994,False,Best Motion Picture – Non-English Language,The Wedding Banquet
+3932,film,1994,False,Best Motion Picture – Non-English Language,Justiz
+3933,film,1994,False,Best Motion Picture – Non-English Language,Flight of the Innocent
+3934,film,1994,False,Best Motion Picture – Non-English Language,Three Colours: Blue (Trois couleurs: Bleu)
+3944,film,1993,True,Best Motion Picture – Non-English Language,Indochine
+3945,film,1993,False,Best Motion Picture – Non-English Language,Close to Eden
+3946,film,1993,False,Best Motion Picture – Non-English Language,Like Water for Chocolate
+3947,film,1993,False,Best Motion Picture – Non-English Language,Schtonk!
+3956,film,1993,False,Best Motion Picture – Non-English Language,All The Mornings of The World
+4008,tv-show,1993,False,Best Television Series - Musical or Comedy,Brooklyn Bridge
+4013,tv-show,1993,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Sinatra
+4014,tv-show,1993,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Stalin
+4015,tv-show,1993,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Miss Rose White
+4016,tv-show,1993,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Danielle Steel's Jewels
+4017,tv-show,1993,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Citizen Cohn
+4018,tv-show,1993,True,Best Television Series - Musical or Comedy,Roseanne
+4019,tv-show,1993,False,Best Television Series - Musical or Comedy,Murphy Brown
+4020,tv-show,1993,False,Best Television Series - Musical or Comedy,Evening Shade
+4021,tv-show,1993,False,Best Television Series - Musical or Comedy,Cheers
+4022,tv-show,1993,True,Best Television Series - Drama,Northern Exposure
+4024,tv-show,1993,False,Best Television Series - Drama,Sisters
+4025,tv-show,1993,False,Best Television Series - Drama,I'll Fly Away
+4026,tv-show,1993,False,Best Television Series - Drama,Homefront
+4036,tv-show,1993,False,Best Television Series - Drama,"Beverly Hills, 90210"
+4040,film,1993,False,Best Motion Picture - Drama,The Crying Game
+4045,film,1993,True,Best Motion Picture - Musical or Comedy,The Player
+4046,film,1993,False,Best Motion Picture - Musical or Comedy,Sister Act
+4047,film,1993,False,Best Motion Picture - Musical or Comedy,Honeymoon In Vegas
+4048,film,1993,False,Best Motion Picture - Musical or Comedy,Enchanted April
+4049,film,1993,False,Best Motion Picture - Musical or Comedy,Aladdin
+4050,film,1993,True,Best Motion Picture - Drama,Scent of a Woman
+4051,film,1993,False,Best Motion Picture - Drama,Unforgiven
+4052,film,1993,False,Best Motion Picture - Drama,Howards End
+4053,film,1993,False,Best Motion Picture - Drama,"Few Good Men, A"
+4069,film,1992,False,Best Motion Picture - Musical or Comedy,City Slickers
+4070,film,1992,True,Best Motion Picture - Drama,Bugsy
+4102,tv-show,1992,False,Best Television Series - Drama,"Beverly Hills, 90210"
+4103,tv-show,1992,False,Best Television Series - Drama,I'll Fly Away
+4104,tv-show,1992,False,Best Television Series - Drama,L.A. Law
+4120,tv-show,1992,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",One Against The Wind
+4121,tv-show,1992,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Separate But Equal
+4122,tv-show,1992,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television","Sarah, Plain and Tall"
+4123,tv-show,1992,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Josephine Baker Story
+4124,tv-show,1992,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",In a Child's Name
+4125,tv-show,1992,True,Best Television Series - Musical or Comedy,Brooklyn Bridge
+4126,tv-show,1992,False,Best Television Series - Musical or Comedy,Murphy Brown
+4127,tv-show,1992,False,Best Television Series - Musical or Comedy,The Golden Girls
+4128,tv-show,1992,False,Best Television Series - Musical or Comedy,Evening Shade
+4129,tv-show,1992,False,Best Television Series - Musical or Comedy,Cheers
+4130,tv-show,1992,True,Best Television Series - Drama,Northern Exposure
+4131,tv-show,1992,False,Best Television Series - Drama,Law & Order
+4135,film,1992,False,Best Motion Picture – Non-English Language,The Double Life of Veronique
+4151,film,1992,False,Best Motion Picture - Drama,JFK
+4152,film,1992,False,Best Motion Picture - Drama,The Prince of Tides
+4153,film,1992,False,Best Motion Picture - Drama,The Silence of the Lambs
+4154,film,1992,False,Best Motion Picture - Musical or Comedy,The Commitments
+4155,film,1992,False,Best Motion Picture - Drama,Thelma & Louise
+4159,film,1992,True,Best Motion Picture - Musical or Comedy,Beauty and the Beast
+4160,film,1992,False,Best Motion Picture - Musical or Comedy,Fried Green Tomatoes
+4161,film,1992,False,Best Motion Picture - Musical or Comedy,The Fisher King
+4165,film,1992,False,Best Motion Picture – Non-English Language,"Femme Nikita, La"
+4175,film,1992,False,Best Motion Picture – Non-English Language,High Heels
+4182,film,1992,True,Best Motion Picture – Non-English Language,Europa Europa
+4187,film,1992,False,Best Motion Picture – Non-English Language,Lost in Siberia
+4190,film,1992,False,Best Motion Picture – Non-English Language,Madame Bovary
+4223,tv-show,1991,False,Best Television Series - Drama,thirtysomething
+4232,tv-show,1991,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Decoration Day
+4233,tv-show,1991,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Phantom of the Opera
+4234,tv-show,1991,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Kennedys of Massachusetts
+4235,tv-show,1991,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Family of Spies
+4236,tv-show,1991,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Caroline?
+4237,tv-show,1991,True,Best Television Series - Musical or Comedy,Cheers
+4238,tv-show,1991,False,Best Television Series - Musical or Comedy,Murphy Brown
+4239,tv-show,1991,False,Best Television Series - Musical or Comedy,Married With Children
+4240,tv-show,1991,False,Best Television Series - Musical or Comedy,The Golden Girls
+4241,tv-show,1991,False,Best Television Series - Musical or Comedy,Designing Women
+4242,tv-show,1991,True,Best Television Series - Drama,Twin Peaks
+4243,tv-show,1991,False,Best Television Series - Drama,L.A. Law
+4244,tv-show,1991,False,Best Television Series - Drama,In The Heat of the Night (TV)
+4245,tv-show,1991,False,Best Television Series - Drama,China Beach
+4258,film,1991,True,Best Motion Picture - Musical or Comedy,Green Card
+4259,film,1991,False,Best Motion Picture - Musical or Comedy,Pretty Woman
+4260,film,1991,False,Best Motion Picture - Musical or Comedy,Home Alone
+4261,film,1991,False,Best Motion Picture - Musical or Comedy,Ghost
+4262,film,1991,False,Best Motion Picture - Musical or Comedy,Dick Tracy
+4263,film,1991,True,Best Motion Picture - Drama,Dances with Wolves
+4264,film,1991,False,Best Motion Picture - Drama,Reversal of Fortune
+4265,film,1991,False,Best Motion Picture - Drama,GoodFellas
+4266,film,1991,False,Best Motion Picture - Drama,The Godfather Part III
+4267,film,1991,False,Best Motion Picture - Drama,Avalon
+4305,film,1991,True,Best Motion Picture – Non-English Language,Cyrano De Bergerac (1990)
+4308,film,1991,False,Best Motion Picture – Non-English Language,Taxi Blues
+4315,film,1991,False,Best Motion Picture – Non-English Language,Akira Kurosawa's Dreams
+4316,film,1991,False,Best Motion Picture – Non-English Language,The Nasty Girl
+4317,film,1991,False,Best Motion Picture – Non-English Language,Requiem For Dominic
+4318,film,1990,False,Best Motion Picture – Non-English Language,My Uncle's Legacy
+4322,film,1990,True,Best Motion Picture – Non-English Language,Cinema Paradiso
+4323,film,1990,False,Best Motion Picture – Non-English Language,Story of Women
+4325,film,1990,False,Best Motion Picture – Non-English Language,Jesus of Montreal
+4326,film,1990,False,Best Motion Picture – Non-English Language,Camille Claudel
+4350,film,1990,False,Best Motion Picture - Drama,Glory
+4367,film,1990,False,Best Motion Picture - Drama,Crimes and Misdemeanors
+4369,film,1990,False,Best Motion Picture - Drama,Dead Poets Society
+4370,film,1990,False,Best Motion Picture - Drama,Do The Right Thing
+4371,film,1990,True,Best Motion Picture - Drama,Born on the Fourth of July
+4372,film,1990,False,Best Motion Picture - Musical or Comedy,The Little Mermaid
+4373,film,1990,False,Best Motion Picture - Musical or Comedy,Shirley Valentine
+4374,film,1990,False,Best Motion Picture - Musical or Comedy,The War of The Roses
+4375,film,1990,False,Best Motion Picture - Musical or Comedy,When Harry Met Sally
+4376,film,1990,True,Best Motion Picture - Musical or Comedy,Driving Miss Daisy
+4386,tv-show,1990,False,Best Television Series - Musical or Comedy,The Wonder Years
+4389,tv-show,1990,False,Best Television Series - Drama,In The Heat of the Night (TV)
+4390,tv-show,1990,False,Best Television Series - Drama,L.A. Law
+4391,tv-show,1990,False,Best Television Series - Drama,"Murder, She Wrote"
+4392,tv-show,1990,False,Best Television Series - Drama,thirtysomething
+4393,tv-show,1990,False,Best Television Series - Drama,Wiseguy
+4394,tv-show,1990,True,Best Television Series - Drama,China Beach
+4395,tv-show,1990,False,Best Television Series - Musical or Comedy,Cheers
+4396,tv-show,1990,False,Best Television Series - Musical or Comedy,Designing Women
+4397,tv-show,1990,False,Best Television Series - Musical or Comedy,Empty Nest
+4398,tv-show,1990,False,Best Television Series - Musical or Comedy,The Golden Girls
+4399,tv-show,1990,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",I Know My First Name Is Steven
+4401,tv-show,1990,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",My Name is Bill W.
+4402,tv-show,1990,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Roe vs. Wade
+4403,tv-show,1990,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Small Sacrifices
+4404,tv-show,1990,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Lonesome Dove
+4414,tv-show,1990,True,Best Television Series - Musical or Comedy,Murphy Brown
+4484,tv-show,1989,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",War and Remembrance (Parts I - VII)
+4485,tv-show,1989,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Tenth Man
+4486,tv-show,1989,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Murder of Mary Phagan
+4487,tv-show,1989,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Jack the Ripper
+4488,tv-show,1989,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Hemingway
+4489,tv-show,1989,True,Best Television Series - Musical or Comedy,The Wonder Years
+4490,tv-show,1989,False,Best Television Series - Musical or Comedy,Roseanne
+4491,tv-show,1989,False,Best Television Series - Musical or Comedy,Murphy Brown
+4492,tv-show,1989,False,Best Television Series - Musical or Comedy,The Golden Girls
+4493,tv-show,1989,False,Best Television Series - Musical or Comedy,Cheers
+4494,tv-show,1989,True,Best Television Series - Drama,thirtysomething
+4495,tv-show,1989,False,Best Television Series - Drama,Wiseguy
+4496,tv-show,1989,False,Best Television Series - Drama,"Murder, She Wrote"
+4497,tv-show,1989,False,Best Television Series - Drama,L.A. Law
+4498,tv-show,1989,False,Best Television Series - Drama,Beauty and the Beast (TV)
+4511,film,1989,True,Best Motion Picture - Musical or Comedy,Working Girl
+4512,film,1989,False,Best Motion Picture - Musical or Comedy,Who Framed Roger Rabbit
+4513,film,1989,False,Best Motion Picture - Musical or Comedy,Midnight Run
+4514,film,1989,False,Best Motion Picture - Musical or Comedy,"Fish Called Wanda, A"
+4515,film,1989,False,Best Motion Picture - Musical or Comedy,Big
+4516,film,1989,True,Best Motion Picture - Drama,Rain Man
+4517,film,1989,False,Best Motion Picture - Drama,The Unbearable Lightness of Being
+4518,film,1989,False,Best Motion Picture - Drama,Running on Empty
+4519,film,1989,False,Best Motion Picture - Drama,Mississippi Burning
+4520,film,1989,False,Best Motion Picture - Drama,Gorillas in the Mist: The Adventure of Dian Fossey
+4521,film,1989,False,Best Motion Picture - Drama,"Cry in the Dark, A"
+4522,film,1989,False,Best Motion Picture - Drama,The Accidental Tourist
+4557,film,1989,True,Best Motion Picture – Non-English Language,Pelle the Conqueror
+4558,film,1989,False,Best Motion Picture – Non-English Language,Women on the Verge of a Nervous Breakdown
+4559,film,1989,False,Best Motion Picture – Non-English Language,Salaam Bombay!
+4560,film,1989,False,Best Motion Picture – Non-English Language,Hanussen
+4561,film,1989,False,Best Motion Picture – Non-English Language,Babette's Feast
+4574,tv-show,1988,False,Best Television Series - Musical or Comedy,Hooperman
+4575,tv-show,1988,False,Best Television Series - Musical or Comedy,Moonlighting
+4576,tv-show,1988,True,Best Television Series - Musical or Comedy,The Golden Girls
+4577,tv-show,1988,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",After the Promise
+4578,tv-show,1988,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Echoes in the Darkness
+4579,tv-show,1988,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Foxfire
+4580,tv-show,1988,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Escape From Sobibor
+4581,tv-show,1988,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Poor Little Rich Girl: The Barbara Hutton Story
+4588,tv-show,1988,False,Best Television Series - Musical or Comedy,Family Ties
+4602,tv-show,1988,False,Best Television Series - Musical or Comedy,Frank's Place
+4603,tv-show,1988,False,Best Television Series - Musical or Comedy,Cheers
+4620,tv-show,1988,True,Best Television Series - Drama,L.A. Law
+4629,tv-show,1988,False,Best Television Series - Drama,Beauty and the Beast (TV)
+4630,tv-show,1988,False,Best Television Series - Drama,"Murder, She Wrote"
+4631,tv-show,1988,False,Best Television Series - Drama,St. Elsewhere
+4632,tv-show,1988,False,Best Television Series - Drama,thirtysomething
+4633,tv-show,1988,False,Best Television Series - Drama,"Year in the Life, A"
+4639,film,1988,True,Best Motion Picture - Musical or Comedy,Hope and Glory
+4640,film,1988,False,Best Motion Picture - Musical or Comedy,Moonstruck
+4641,film,1988,False,Best Motion Picture - Musical or Comedy,Dirty Dancing
+4642,film,1988,False,Best Motion Picture - Musical or Comedy,Broadcast News
+4643,film,1988,False,Best Motion Picture - Musical or Comedy,Baby Boom
+4644,film,1988,True,Best Motion Picture - Drama,The Last Emperor
+4645,film,1988,False,Best Motion Picture - Drama,Nuts
+4646,film,1988,False,Best Motion Picture - Drama,La Bamba
+4647,film,1988,False,Best Motion Picture - Drama,Fatal Attraction
+4648,film,1988,False,Best Motion Picture - Drama,Empire of the Sun
+4649,film,1988,False,Best Motion Picture - Drama,Cry Freedom
+4683,film,1988,True,Best Motion Picture – Non-English Language,My Life as a Dog
+4685,film,1988,False,Best Motion Picture – Non-English Language,Repentance
+4686,film,1988,False,Best Motion Picture – Non-English Language,Jean De Florette
+4687,film,1988,False,Best Motion Picture – Non-English Language,"Goodbye, Children"
+4688,film,1988,False,Best Motion Picture – Non-English Language,Dark Eyes
+4699,tv-show,1987,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Promise
+4733,tv-show,1987,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Anastasia: The Mystery of Anna
+4736,film,1987,False,Best Motion Picture - Musical or Comedy,Crocodile Dundee
+4743,tv-show,1987,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Unnatural Causes
+4744,tv-show,1987,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Peter The Great
+4745,tv-show,1987,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Nobody's Child
+4746,tv-show,1987,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Christmas Eve
+4747,tv-show,1987,True,Best Television Series - Musical or Comedy,The Golden Girls
+4749,tv-show,1987,False,Best Television Series - Musical or Comedy,Moonlighting
+4750,tv-show,1987,False,Best Television Series - Musical or Comedy,Family Ties
+4751,tv-show,1987,False,Best Television Series - Musical or Comedy,The Cosby Show
+4752,tv-show,1987,False,Best Television Series - Musical or Comedy,Cheers
+4753,tv-show,1987,True,Best Television Series - Drama,L.A. Law
+4754,tv-show,1987,False,Best Television Series - Drama,St. Elsewhere
+4755,tv-show,1987,False,Best Television Series - Drama,"Murder, She Wrote"
+4756,tv-show,1987,False,Best Television Series - Drama,Miami Vice
+4757,tv-show,1987,False,Best Television Series - Drama,Dynasty (1981-1989)
+4758,tv-show,1987,False,Best Television Series - Drama,Cagney & Lacey
+4768,film,1987,True,Best Motion Picture - Musical or Comedy,Hannah and Her Sisters
+4769,film,1987,False,Best Motion Picture - Musical or Comedy,Peggy Sue Got Married
+4770,film,1987,False,Best Motion Picture - Musical or Comedy,Little Shop of Horrors
+4771,film,1987,False,Best Motion Picture - Musical or Comedy,Down and Out In Beverly Hills
+4772,film,1987,False,Best Motion Picture - Musical or Comedy,Crimes of the Heart
+4773,film,1987,True,Best Motion Picture - Drama,Platoon
+4775,film,1987,False,Best Motion Picture - Drama,"Room with a View, A"
+4776,film,1987,False,Best Motion Picture - Drama,Mona Lisa
+4777,film,1987,False,Best Motion Picture - Drama,The Mission
+4778,film,1987,False,Best Motion Picture - Drama,Children of a Lesser God
+4797,film,1987,False,Best Motion Picture - Drama,Stand By Me
+4799,film,1987,False,Best Motion Picture – Non-English Language,Ginger & Fred
+4812,film,1987,True,Best Motion Picture – Non-English Language,The Assault
+4813,film,1987,False,Best Motion Picture – Non-English Language,3 Men and a Cradle
+4814,film,1987,False,Best Motion Picture – Non-English Language,Otello
+4822,film,1987,False,Best Motion Picture – Non-English Language,Betty Blue
+4857,tv-show,1986,False,Best Television Series - Musical or Comedy,Family Ties
+4866,tv-show,1986,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Jewel in the Crown
+4867,tv-show,1986,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",An Early Frost
+4868,tv-show,1986,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Do You Remember Love?
+4869,tv-show,1986,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Death of a Salesman
+4870,tv-show,1986,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Amos
+4871,tv-show,1986,True,Best Television Series - Musical or Comedy,The Golden Girls
+4872,tv-show,1986,False,Best Television Series - Musical or Comedy,Moonlighting
+4873,tv-show,1986,False,Best Television Series - Musical or Comedy,Kate & Allie
+4874,tv-show,1986,False,Best Television Series - Musical or Comedy,The Cosby Show
+4875,tv-show,1986,True,Best Television Series - Drama,"Murder, She Wrote"
+4876,tv-show,1986,False,Best Television Series - Drama,St. Elsewhere
+4877,tv-show,1986,False,Best Television Series - Drama,Miami Vice
+4878,tv-show,1986,False,Best Television Series - Drama,Dynasty (1981-1989)
+4879,tv-show,1986,False,Best Television Series - Drama,Cagney & Lacey
+4892,film,1986,False,Best Motion Picture - Musical or Comedy,The Purple Rose of Cairo
+4893,film,1986,False,Best Motion Picture - Drama,Runaway Train
+4894,film,1986,False,Best Motion Picture - Drama,Witness
+4895,film,1986,True,Best Motion Picture - Drama,Out of Africa
+4896,film,1986,False,Best Motion Picture - Musical or Comedy,Back to the Future
+4897,film,1986,False,Best Motion Picture - Musical or Comedy,"Chorus Line: The Movie, A"
+4898,film,1986,False,Best Motion Picture - Musical or Comedy,Cocoon
+4899,film,1986,True,Best Motion Picture - Musical or Comedy,Prizzi's Honor
+4900,film,1986,False,Best Motion Picture - Drama,The Color Purple
+4907,film,1986,False,Best Motion Picture - Drama,Kiss of the Spider Woman
+4941,film,1986,False,Best Motion Picture – Non-English Language,Ran
+4942,film,1986,True,Best Motion Picture – Non-English Language,The Official Story
+4946,film,1986,False,Best Motion Picture – Non-English Language,Colonel Redl
+4948,film,1986,False,Best Motion Picture – Non-English Language,"Year of the Quiet Sun, A"
+4949,film,1986,False,Best Motion Picture – Non-English Language,When Father Was Away on Business
+4990,tv-show,1985,False,Best Television Series - Musical or Comedy,The Jeffersons
+4991,tv-show,1985,False,Best Television Series - Musical or Comedy,Kate & Allie
+4992,tv-show,1985,True,Best Television Series - Musical or Comedy,The Cosby Show
+4996,tv-show,1985,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Burning Bed
+4998,tv-show,1985,False,Best Television Series - Musical or Comedy,Cheers
+5002,tv-show,1985,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Something About Amelia
+5003,tv-show,1985,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",A Streetcar Named Desire (1984)
+5004,tv-show,1985,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Sakharov
+5005,tv-show,1985,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Dollmaker
+5006,tv-show,1985,False,Best Television Series - Musical or Comedy,Fame
+5007,tv-show,1985,True,Best Television Series - Drama,"Murder, She Wrote"
+5018,tv-show,1985,False,Best Television Series - Drama,St. Elsewhere
+5023,tv-show,1985,False,Best Television Series - Drama,Cagney & Lacey
+5024,tv-show,1985,False,Best Television Series - Drama,Dynasty (1981-1989)
+5025,tv-show,1985,False,Best Television Series - Drama,Hill Street Blues
+5031,film,1985,True,Best Motion Picture - Musical or Comedy,Romancing the Stone
+5032,film,1985,False,Best Motion Picture - Musical or Comedy,Splash
+5033,film,1985,False,Best Motion Picture - Musical or Comedy,Micki & Maude
+5034,film,1985,False,Best Motion Picture - Musical or Comedy,Ghostbusters
+5035,film,1985,False,Best Motion Picture - Musical or Comedy,Beverly Hills Cop
+5036,film,1985,True,Best Motion Picture - Drama,Amadeus
+5038,film,1985,False,Best Motion Picture - Drama,Places in the Heart
+5039,film,1985,False,Best Motion Picture - Drama,The Killing Fields
+5040,film,1985,False,Best Motion Picture - Drama,The Cotton Club
+5059,film,1985,False,Best Motion Picture - Drama,"Soldier's Story, A"
+5065,film,1985,True,Best Motion Picture – Non-English Language,"Passage to India, A"
+5067,film,1985,False,Best Motion Picture – Non-English Language,"Paris, Texas"
+5068,film,1985,False,Best Motion Picture – Non-English Language,Dangerous Moves
+5069,film,1985,False,Best Motion Picture – Non-English Language,Carmen (1984)
+5070,film,1985,False,Best Motion Picture – Non-English Language,"Sunday in the Country, A"
+5096,film,1984,False,Best Motion Picture – Non-English Language,Carmen
+5104,film,1984,True,Best Motion Picture – Non-English Language,Fanny & Alexander
+5105,film,1984,False,Best Motion Picture – Non-English Language,The Grey Fox
+5106,film,1984,False,Best Motion Picture – Non-English Language,Educating Rita
+5107,film,1984,False,Best Motion Picture – Non-English Language,The Dresser
+5122,film,1984,False,Best Motion Picture - Musical or Comedy,Zelig
+5140,film,1984,True,Best Motion Picture - Musical or Comedy,Yentl
+5142,film,1984,False,Best Motion Picture - Musical or Comedy,Trading Places
+5151,tv-show,1984,False,Best Television Series - Drama,Cagney & Lacey
+5152,tv-show,1984,False,Best Television Series - Drama,Dallas
+5153,tv-show,1984,False,Best Television Series - Drama,Hart to Hart
+5154,tv-show,1984,False,Best Television Series - Drama,Hill Street Blues
+5155,tv-show,1984,True,Best Television Series - Drama,Dynasty (1981-1989)
+5156,tv-show,1984,False,Best Television Series - Musical or Comedy,Buffalo Bill
+5157,tv-show,1984,False,Best Television Series - Musical or Comedy,Cheers
+5158,film,1984,False,Best Motion Picture - Musical or Comedy,Flashdance
+5159,tv-show,1984,False,Best Television Series - Musical or Comedy,Newhart
+5160,tv-show,1984,False,Best Television Series - Musical or Comedy,Taxi
+5161,tv-show,1984,True,Best Television Series - Musical or Comedy,Fame - TV Show
+5162,tv-show,1984,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Heart of Steel
+5163,tv-show,1984,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Kennedy
+5164,tv-show,1984,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Winds of War
+5165,tv-show,1984,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Who Will Love My Children?
+5166,tv-show,1984,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The Thorn Birds
+5176,film,1984,False,Best Motion Picture - Musical or Comedy,The Big Chill
+5177,film,1984,True,Best Motion Picture - Drama,Terms of Endearment
+5178,film,1984,False,Best Motion Picture - Drama,Tender Mercies
+5179,film,1984,False,Best Motion Picture - Drama,Silkwood
+5180,film,1984,False,Best Motion Picture - Drama,The Right Stuff
+5181,film,1984,False,Best Motion Picture - Drama,"Reuben, Reuben"
+5208,film,1983,False,Best Motion Picture - Musical or Comedy,My Favorite Year
+5209,film,1983,False,Best Motion Picture - Musical or Comedy,Victor Victoria
+5210,film,1983,True,Best Motion Picture - Musical or Comedy,Tootsie
+5212,tv-show,1983,False,Best Television Series - Drama,"Magnum, P. I."
+5213,tv-show,1983,False,Best Television Series - Drama,Hart to Hart
+5214,tv-show,1983,False,Best Television Series - Drama,Dynasty (1981-1989)
+5221,tv-show,1983,False,Best Television Series - Drama,Dallas
+5223,film,1983,False,Best Motion Picture - Musical or Comedy,The Best Little Whorehouse In Texas
+5238,film,1983,False,Best Motion Picture - Musical or Comedy,Diner
+5239,film,1983,True,Best Motion Picture - Drama,E. T. The Extra-Terrestrial
+5241,tv-show,1983,False,Best Television Series - Musical or Comedy,M*A*S*H (TV Show)
+5249,tv-show,1983,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Brideshead Revisited
+5250,tv-show,1983,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television","Woman Called Golda, A"
+5251,tv-show,1983,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Two of a Kind
+5252,tv-show,1983,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",In the Custody of Strangers
+5253,tv-show,1983,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television","Eleanor, First Lady of the World"
+5254,tv-show,1983,True,Best Television Series - Musical or Comedy,Fame - TV Show
+5255,tv-show,1983,False,Best Television Series - Musical or Comedy,Taxi
+5256,tv-show,1983,False,Best Television Series - Musical or Comedy,"Love, Sidney"
+5257,film,1983,False,Best Motion Picture - Drama,The Verdict
+5258,tv-show,1983,False,Best Television Series - Musical or Comedy,Cheers
+5259,tv-show,1983,True,Best Television Series - Drama,Hill Street Blues
+5269,film,1983,False,Best Motion Picture - Drama,Missing
+5270,film,1983,False,Best Motion Picture - Drama,"Officer and a Gentleman, An"
+5271,film,1983,False,Best Motion Picture - Drama,Sophie's Choice
+5276,film,1983,False,Best Motion Picture – Non-English Language,Quest For Fire
+5277,film,1983,False,Best Motion Picture – Non-English Language,The Man from Snowy River
+5278,film,1983,False,Best Motion Picture – Non-English Language,Fitzcarraldo
+5291,film,1983,False,Best Motion Picture – Non-English Language,Yol
+5306,film,1983,False,Best Motion Picture – Non-English Language,"Traviata, La"
+5308,film,1983,True,Best Motion Picture – Non-English Language,Gandhi
+5339,film,1982,False,Best Motion Picture - Drama,Prince of the City
+5358,film,1982,False,Best Motion Picture - Drama,Reds
+5359,film,1982,False,Best Motion Picture - Drama,Ragtime
+5360,film,1982,False,Best Motion Picture - Drama,The French Lieutenant's Woman
+5361,film,1982,True,Best Motion Picture - Drama,On Golden Pond
+5389,tv-show,1982,False,Best Television Series - Drama,Dallas
+5394,tv-show,1982,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",East of Eden (TV)
+5395,tv-show,1982,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Bill
+5396,tv-show,1982,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Murder In Texas
+5397,tv-show,1982,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Masada
+5398,tv-show,1982,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television","Long Way Home, A"
+5399,tv-show,1982,True,Television Special - Variety Or Musical,The Kennedy Center Honors: a Celebration
+5400,tv-show,1982,False,Television Special - Variety Or Musical,"Lincoln Center Special: Beverly!, A"
+5401,tv-show,1982,False,Television Special - Variety Or Musical,Lily: Sold Out
+5402,tv-show,1982,False,Television Special - Variety Or Musical,Diana
+5403,tv-show,1982,False,Television Special - Variety Or Musical,AFI Salute To Fred Astaire
+5404,tv-show,1982,True,Best Television Series - Musical or Comedy,M*A*S*H (TV Show)
+5405,tv-show,1982,False,Best Television Series - Musical or Comedy,Taxi
+5406,tv-show,1982,False,Best Television Series - Musical or Comedy,Private Benjamin (TV)
+5407,tv-show,1982,False,Best Television Series - Musical or Comedy,The Love Boat
+5408,tv-show,1982,False,Best Television Series - Musical or Comedy,Barbara Mandrell and the Mandrell Sisters
+5409,tv-show,1982,True,Best Television Series - Drama,Hill Street Blues
+5410,tv-show,1982,False,Best Television Series - Drama,Lou Grant
+5411,tv-show,1982,False,Best Television Series - Drama,Hart to Hart
+5412,tv-show,1982,False,Best Television Series - Drama,Dynasty (1981-1989)
+5413,film,1982,False,Best Motion Picture - Musical or Comedy,The Four Seasons
+5422,film,1982,True,Best Motion Picture – Non-English Language,Chariots of Fire
+5423,film,1982,False,Best Motion Picture – Non-English Language,Pixote
+5424,film,1982,False,Best Motion Picture – Non-English Language,Gallipoli
+5425,film,1982,False,Best Motion Picture – Non-English Language,Das Boot
+5426,film,1982,False,Best Motion Picture – Non-English Language,Atlantic City
+5437,film,1982,True,Best Motion Picture - Musical or Comedy,Arthur
+5438,film,1982,False,Best Motion Picture - Musical or Comedy,Zoot Suit
+5439,film,1982,False,Best Motion Picture - Musical or Comedy,S. O. B.
+5440,film,1982,False,Best Motion Picture - Musical or Comedy,Pennies from Heaven
+5474,tv-show,1981,False,Best Television Series - Musical or Comedy,The Love Boat
+5475,tv-show,1981,False,Television Movie,Playing for Time
+5476,tv-show,1981,False,Television Movie,"Tale of Two Cities, A"
+5477,tv-show,1981,True,Television Movie,The Shadow Box
+5478,tv-show,1981,False,Best Television Series - Drama,Dallas
+5479,tv-show,1981,False,Best Television Series - Drama,Hart to Hart
+5480,tv-show,1981,False,Best Television Series - Drama,Lou Grant
+5481,tv-show,1981,False,Best Television Series - Drama,Moviola
+5482,tv-show,1981,False,Best Television Series - Drama,Vega$
+5483,tv-show,1981,True,Best Television Series - Drama,Shōgun
+5484,tv-show,1981,False,Best Television Series - Musical or Comedy,Alice
+5485,tv-show,1981,False,Best Television Series - Musical or Comedy,M*A*S*H (TV Show)
+5487,tv-show,1981,False,Best Television Series - Musical or Comedy,Soap
+5488,tv-show,1981,True,Best Television Series - Musical or Comedy,Taxi
+5497,tv-show,1981,False,Television Movie,The Ordeal of Dr. Mudd
+5498,tv-show,1981,False,Television Movie,The (1980) Diary of Anne Frank
+5526,film,1981,False,Best Motion Picture - Musical or Comedy,Airplane!
+5528,film,1981,False,Best Motion Picture - Drama,The Stunt Man
+5529,film,1981,False,Best Motion Picture - Drama,Raging Bull
+5530,film,1981,False,Best Motion Picture - Drama,The Ninth Configuration
+5531,film,1981,False,Best Motion Picture - Drama,The Elephant Man
+5533,film,1981,False,Best Motion Picture - Musical or Comedy,The Idolmaker
+5540,film,1981,False,Best Motion Picture - Musical or Comedy,Fame
+5541,film,1981,False,Best Motion Picture - Musical or Comedy,Melvin and Howard
+5551,film,1981,True,Best Motion Picture - Musical or Comedy,Coal Miner's Daughter
+5559,film,1981,True,Best Motion Picture - Drama,Ordinary People
+5580,film,1981,True,Best Motion Picture – Non-English Language,Tess
+5588,film,1981,False,Best Motion Picture – Non-English Language,Kagemusha (The Shadow Warrior)
+5589,film,1981,False,Best Motion Picture – Non-English Language,The Last Metro
+5590,film,1981,False,Best Motion Picture – Non-English Language,My Brilliant Career
+5591,film,1981,False,Best Motion Picture – Non-English Language,Special Treatment
+5592,film,1981,False,Best Motion Picture – Non-English Language,Breaker Morant
