@@ -21,12 +21,12 @@ public partial class AddGoldenGlobes : Migration
 
         migrationBuilder.CreateTable("golden_globe_awards", table => new
         {
-            id = table.Column<long>(type: "bigint", nullable: false).Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn()),
+            id = table.Column<long>(type: "bigint", nullable: false).Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
             name = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false)
         }, constraints: table => table.PrimaryKey("pk_golden_globe_awards", x => x.id));
         migrationBuilder.CreateTable("golden_globe_nominations", table => new
         {
-            id = table.Column<long>(type: "bigint", nullable: false).Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn()),
+            id = table.Column<long>(type: "bigint", nullable: false).Annotation("Npgsql:ValueGenerationStrategy", Npgsql.EntityFrameworkCore.PostgreSQL.Metadata.NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
             import_key = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
             year = table.Column<int>(type: "integer", nullable: false),
             winner = table.Column<bool>(type: "boolean", nullable: false),
