@@ -259,7 +259,6 @@ export function enqueueGoldenGlobeImport(file: File, yearAfter: number, fetcher?
   body.append('YearAfter', String(yearAfter))
   return requestJson<BackgroundJobAccepted>('/background-jobs/golden-globe-import', { method: 'POST', body }, fetcher)
 }
-}
 
 export function importPersonalRatings(file: File, fetcher?: typeof fetch) {
   const body = new FormData()
