@@ -230,7 +230,39 @@ internal sealed class BackgroundJobDispatcher(
                 job.Id,
                 exception.GetType().Name,
                 errorCode);
-            await CompleteJobAsync(dbContext, job, "failed", null, errorCode, CancellationToken.None);
+            try
+            {
+                await CompleteJobAsync(dbContext, job, "failed", null, errorCode, CancellationToken.None);
+            }
+            catch (Exception completionException)
+            {
+                // A failed transaction/connection must not leave the job looking active forever.
+                logger.LogError(completionException, "Could not persist failed state for background job {JobId}.", job.Id);
+                await MarkJobFailedWithFreshContextAsync(job.Id, errorCode);
+            }
+        }
+    }
+
+    private async Task MarkJobFailedWithFreshContextAsync(long jobId, string errorCode)
+    {
+        try
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<MediaDockDbContext>();
+            var job = await dbContext.BackgroundJobs.SingleOrDefaultAsync(item => item.Id == jobId);
+            if (job is null || job.Status is not ("queued" or "running")) return;
+            var now = timeProvider.GetUtcNow();
+            job.Status = "failed";
+            job.FinishedAt = now;
+            job.CurrentStage = "failed";
+            job.ErrorCode = errorCode;
+            job.ProgressUpdatedAt = now;
+            job.InputBytes = null;
+            await dbContext.SaveChangesAsync();
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Could not recover failed state for background job {JobId}.", jobId);
         }
     }
 
@@ -304,6 +336,9 @@ internal sealed class BackgroundJobDispatcher(
         using var options = JsonDocument.Parse(job.ResultSummary);
         var yearAfter = options.RootElement.GetProperty("yearAfter").GetInt32();
         await SetStageAsync(dbContext, job, "golden_globe_import", "Golden Globes dataset import started.", cancellationToken);
+        job.CurrentStage = "golden_globe_parsing";
+        job.ProgressUpdatedAt = timeProvider.GetUtcNow();
+        await dbContext.SaveChangesAsync(cancellationToken);
         var summary = await services.GetRequiredService<GoldenGlobeDatasetImporter>().ImportAsync(job.InputBytes, yearAfter, cancellationToken);
         await CompleteJobAsync(dbContext, job, "succeeded", summary, null, CancellationToken.None);
     }

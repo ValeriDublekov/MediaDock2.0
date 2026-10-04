@@ -38,7 +38,8 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
             if (fields.Length != headers.Length) throw new InvalidDataException($"Golden Globes dataset row {parser.LineNumber} has an invalid field count.");
             string Field(string name) => fields[indexes[name]].Trim();
             if (!int.TryParse(Field("year"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var year) || year <= yearAfter) { skippedYear++; continue; }
-            var type = Field("nominee_type"); if (!type.Equals("tv-show", StringComparison.OrdinalIgnoreCase) && !type.Equals("film", StringComparison.OrdinalIgnoreCase)) { skippedType++; continue; }
+            var type = Field("nominee_type").ToLowerInvariant();
+            if (type is not ("tv-show" or "film" or "movie" or "series")) { skippedType++; continue; }
             var title = Field("title"); if (string.IsNullOrWhiteSpace(title)) { skippedTitle++; continue; }
             rows.Add(new(year, ParseBool(Field("winner")), Field("award"), title));
         }
@@ -54,6 +55,19 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
             if (!awards.TryGetValue(row.Award, out var award)) { award = new GoldenGlobeAward { Name = row.Award }; db.GoldenGlobeAwards.Add(award); awards.Add(row.Award, award); awardsCreated++; }
             var key = Key(row); if (existing.ContainsKey(key)) continue;
             db.GoldenGlobeNominations.Add(new GoldenGlobeNomination { ImportKey = key, Year = row.Year, Winner = row.Winner, Award = award, Title = row.Title }); nominationsCreated++;
+        }
+        // Keep the import responsive and avoid one very large EF change-detection pass.
+        // Awards are shared tracked entities, so only nominations are flushed in batches.
+        var pending = 0;
+        foreach (var nomination in db.ChangeTracker.Entries<GoldenGlobeNomination>().Where(x => x.State == EntityState.Added).ToArray())
+        {
+            pending++;
+            if (pending % 500 == 0)
+            {
+                await db.SaveChangesAsync(cancellationToken);
+                foreach (var entry in db.ChangeTracker.Entries<GoldenGlobeNomination>().Where(x => x.State == EntityState.Unchanged).ToArray())
+                    entry.State = EntityState.Detached;
+            }
         }
         await db.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
         return new(read, skippedYear, skippedType, skippedTitle, awardsCreated, nominationsCreated);
