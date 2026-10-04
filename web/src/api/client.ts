@@ -43,9 +43,11 @@ export class ApiError extends Error {
 }
 
 function problemMessage(problem: unknown): string {
+  if (typeof problem === 'string' && problem.trim()) return problem.trim()
   if (problem && typeof problem === 'object') {
     const fields = problem as Record<string, unknown>
     if (typeof fields.detail === 'string' && fields.detail.trim()) return fields.detail
+    if (typeof fields.message === 'string' && fields.message.trim()) return fields.message
     if (fields.errors && typeof fields.errors === 'object') {
       const messages = Object.values(fields.errors as Record<string, unknown>)
         .flatMap((value) => Array.isArray(value) ? value : [value])
@@ -75,14 +77,16 @@ export async function requestJson<T>(
 
   if (!response.ok) {
     let problem: unknown
+    let responseText = ''
     try {
-      problem = await response.json()
+      responseText = await response.text()
+      problem = responseText ? JSON.parse(responseText) : undefined
     } catch {
-      problem = undefined
+      problem = responseText
     }
-    throw new ApiError(response.status === 502 && !problem
+    throw new ApiError(response.status === 502 && !responseText
       ? 'The local API is unavailable. Check the server connection and retry.'
-      : problemMessage(problem), response.status)
+      : problemMessage(problem) || `The API request failed with status ${response.status}.`, response.status)
   }
 
   if (response.status === 204) return undefined as T

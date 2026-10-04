@@ -68,7 +68,18 @@ internal static class BackgroundJobEndpoints
         app.MapPost("/api/background-jobs/golden-globe-enrichment", async (BackgroundJobApiService service, CancellationToken token) =>
         {
             var result = await service.EnqueueGoldenGlobeEnrichmentAsync(token);
-            if (!result.Accepted) return Results.Conflict(new ProblemDetails { Status = 409, Title = "Golden Globes enrichment is already queued or running." });
+            if (!result.Accepted)
+            {
+                var problem = new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Title = "Golden Globes enrichment is already queued or running.",
+                    Detail = "Wait for the active Golden Globes enrichment job to finish before requesting another."
+                };
+                problem.Extensions["activeJobId"] = result.Job.Id;
+                problem.Extensions["activeJobStatusUrl"] = $"/api/background-jobs/{result.Job.Id}";
+                return Results.Conflict(problem);
+            }
             var statusUrl = $"/api/background-jobs/{result.Job.Id}";
             return Results.Accepted(statusUrl, new BackgroundJobAcceptedResponse(result.Job.Id, result.Job.Status, statusUrl));
         }).WithName("EnqueueGoldenGlobeEnrichment").WithSummary("Queue a manual Golden Globes metadata enrichment run.");

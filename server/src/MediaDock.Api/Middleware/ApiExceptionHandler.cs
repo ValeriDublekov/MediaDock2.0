@@ -10,7 +10,7 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
         Exception exception,
         CancellationToken cancellationToken)
     {
-        ProblemDetails? problemDetails = exception switch
+        ProblemDetails problemDetails = exception switch
         {
             ApiValidationException validationException => new ValidationProblemDetails(validationException.Errors)
             {
@@ -32,15 +32,16 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
                 Detail = conflictException.Message,
                 Instance = httpContext.Request.Path
             },
-            _ => null
+            _ => new ProblemDetails
+            {
+                Status = StatusCodes.Status500InternalServerError,
+                Title = "Internal Server Error",
+                Detail = exception.Message,
+                Instance = httpContext.Request.Path
+            }
         };
 
-        if (problemDetails is null)
-        {
-            return false;
-        }
-
-        logger.LogWarning(exception, "Handled API request error with status {StatusCode}.", problemDetails.Status);
+        logger.LogError(exception, "API request failed with status {StatusCode}.", problemDetails.Status);
         httpContext.Response.StatusCode = problemDetails.Status ?? StatusCodes.Status500InternalServerError;
         httpContext.Response.ContentType = "application/problem+json";
         await httpContext.Response.WriteAsJsonAsync(

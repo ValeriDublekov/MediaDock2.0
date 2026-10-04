@@ -47,6 +47,11 @@ function counter(summary: Record<string, unknown>, camelName: string, pascalName
   return typeof value === 'number' ? String(value) : '0'
 }
 
+function jobError(job: BackgroundJob): string | null {
+  const value = job.resultSummary?.error ?? job.resultSummary?.message
+  return typeof value === 'string' && value.trim() ? value : null
+}
+
 export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionPanelProps) {
   const [job, setJob] = useState<BackgroundJob | null>(null)
   const [events, setEvents] = useState<BackgroundJobEvent[]>([])
@@ -309,6 +314,12 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
                 </>}
                 {job.errorCode && <div><dt>ERROR</dt><dd>{formatWords(job.errorCode)}</dd></div>}
               </dl>
+              {(job.errorCode || jobError(job)) && (
+                <div className="ingestion-error" role="alert">
+                  <strong>{job.errorCode ? formatWords(job.errorCode) : 'Job failed'}</strong>
+                  {jobError(job) && <span>{jobError(job)}</span>}
+                </div>
+              )}
               {job.resultSummary && <pre className="background-job-summary">{JSON.stringify(job.resultSummary, null, 2)}</pre>}
               <div>
                 <h3 className="background-job-events-title">Recent events</h3>
