@@ -8,7 +8,9 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
 {
     public async Task<IReadOnlyList<GoldenGlobeEnrichmentCandidate>> GetEligibleCandidatesAsync(DateTimeOffset now, CancellationToken cancellationToken = default) =>
         await db.GoldenGlobeNominations.AsNoTracking()
-            .Where(x => x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Pending || x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.TemporaryError)
+            .Where(x => x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Pending
+                || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.TemporaryError
+                    && (x.NextEnrichmentAttemptAt == null || x.NextEnrichmentAttemptAt <= now)))
             .GroupBy(x => new { x.Title, x.Year })
             .Select(x => new GoldenGlobeEnrichmentCandidate(x.Key.Title, x.Key.Year, x.Max(y => y.EnrichmentAttemptCount)))
             .OrderByDescending(x => x.CeremonyYear).ThenBy(x => x.Title)

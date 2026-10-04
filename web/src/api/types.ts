@@ -41,7 +41,7 @@ export interface TitleDetails extends CatalogTitle {
   updatedAt: string
 }
 
-export type OscarEnrichmentStatus = 'pending' | 'enriched' | 'not_found' | 'temporary_error'
+export type OscarEnrichmentStatus = 'pending' | 'enriched' | 'problem' | 'not_found' | 'temporary_error'
 
 export interface OscarNomination {
   id: number

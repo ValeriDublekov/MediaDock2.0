@@ -48,7 +48,11 @@ public sealed class GoldenGlobeEnrichmentService(
             if (resolution.Status == MetadataLookupStatus.Found && resolution.Metadata is not null)
             {
                 imdb = ImdbIdNormalizer.Normalize(resolution.Metadata.ImdbId);
-                if (resolution.Metadata.Year is int foundYear && foundYear != candidate.CeremonyYear && foundYear != candidate.CeremonyYear - 1)
+                if (imdb is null)
+                { status = GoldenGlobeEnrichmentStatuses.Problem; error = "missing_imdb_id"; next = null; problems++; }
+                else if (resolution.Metadata.Year is not int foundYear)
+                { status = GoldenGlobeEnrichmentStatuses.Problem; error = "missing_year"; next = null; problems++; }
+                else if (foundYear != candidate.CeremonyYear && foundYear != candidate.CeremonyYear - 1)
                 { status = GoldenGlobeEnrichmentStatuses.Problem; error = $"year_mismatch:{foundYear}"; next = null; problems++; }
                 else { status = GoldenGlobeEnrichmentStatuses.Enriched; error = null; next = null; enriched++; }
             }
