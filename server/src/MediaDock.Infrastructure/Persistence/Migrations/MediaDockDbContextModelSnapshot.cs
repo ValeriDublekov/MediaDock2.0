@@ -206,6 +206,11 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ux_background_jobs_active_oscar_enrichment")
                         .HasFilter("job_type = 'oscar_enrichment' AND status IN ('queued', 'running')");
 
+                    b.HasIndex(new[] { "JobType" }, "ux_background_jobs_active_golden_globe_enrichment")
+                        .IsUnique()
+                        .HasDatabaseName("ux_background_jobs_active_golden_globe_enrichment")
+                        .HasFilter("job_type = 'golden_globe_enrichment' AND status IN ('queued', 'running')");
+
                     b.HasIndex(new[] { "JobType" }, "ux_background_jobs_active_rss_scan")
                         .IsUnique()
                         .HasDatabaseName("ux_background_jobs_active_rss_scan")
@@ -213,7 +218,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.ToTable("background_jobs", null, t =>
                         {
-                            t.HasCheckConstraint("ck_background_jobs_input_type", "(job_type IN ('oscar_import', 'golden_globe_import') AND (input_bytes IS NOT NULL OR status IN ('succeeded', 'partial', 'failed'))) OR (job_type IN ('rss_scan', 'oscar_enrichment') AND input_bytes IS NULL)");
+                            t.HasCheckConstraint("ck_background_jobs_input_type", "(job_type IN ('oscar_import', 'golden_globe_import') AND (input_bytes IS NOT NULL OR status IN ('succeeded', 'partial', 'failed'))) OR (job_type IN ('rss_scan', 'oscar_enrichment', 'golden_globe_enrichment') AND input_bytes IS NULL)");
 
                             t.HasCheckConstraint("ck_background_jobs_lifecycle", "(status = 'queued' AND started_at IS NULL AND finished_at IS NULL) OR (status = 'running' AND started_at IS NOT NULL AND finished_at IS NULL) OR (status IN ('succeeded', 'partial', 'failed') AND started_at IS NOT NULL AND finished_at IS NOT NULL)");
 
@@ -221,9 +226,9 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_background_jobs_trigger", "trigger IN ('manual', 'schedule')");
 
-                            t.HasCheckConstraint("ck_background_jobs_type", "job_type IN ('rss_scan', 'oscar_import', 'golden_globe_import', 'oscar_enrichment')");
+                            t.HasCheckConstraint("ck_background_jobs_type", "job_type IN ('rss_scan', 'oscar_import', 'golden_globe_import', 'oscar_enrichment', 'golden_globe_enrichment')");
 
-                            t.HasCheckConstraint("ck_background_jobs_type_trigger", "(job_type = 'rss_scan' AND trigger IN ('manual', 'schedule')) OR (job_type IN ('oscar_import', 'golden_globe_import', 'oscar_enrichment') AND trigger = 'manual')");
+                            t.HasCheckConstraint("ck_background_jobs_type_trigger", "(job_type = 'rss_scan' AND trigger IN ('manual', 'schedule')) OR (job_type IN ('oscar_import', 'golden_globe_import', 'oscar_enrichment', 'golden_globe_enrichment') AND trigger = 'manual')");
                         });
                 });
 
@@ -369,6 +374,16 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("award_id");
 
+                    b.Property<int>("EnrichmentAttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("enrichment_attempt_count");
+
+                    b.Property<string>("EnrichmentStatus")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("enrichment_status");
+
                     b.Property<string>("ImdbId")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
@@ -379,6 +394,18 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("import_key");
+
+                    b.Property<string>("LastEnrichmentError")
+                        .HasColumnType("text")
+                        .HasColumnName("last_enrichment_error");
+
+                    b.Property<DateTimeOffset?>("LastEnrichmentAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_enrichment_attempt_at");
+
+                    b.Property<DateTimeOffset?>("NextEnrichmentAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_enrichment_attempt_at");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -406,7 +433,11 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.HasIndex("Year", "AwardId")
                         .HasDatabaseName("ix_golden_globe_nominations_year_award");
 
-                    b.ToTable("golden_globe_nominations", (string)null);
+                    b.ToTable("golden_globe_nominations", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_golden_globe_nominations_enrichment_attempt_count", "enrichment_attempt_count >= 0");
+                            t.HasCheckConstraint("ck_golden_globe_nominations_enrichment_status", "enrichment_status IN ('pending', 'enriched', 'problem', 'not_found', 'temporary_error')");
+                        });
                 });
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.MetadataCacheEntry", b =>

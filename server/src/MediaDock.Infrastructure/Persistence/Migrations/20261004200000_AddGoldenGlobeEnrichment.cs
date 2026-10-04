@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 #nullable disable
 namespace MediaDock.Infrastructure.Persistence.Migrations;
 
+[Migration("20261004200000_AddGoldenGlobeEnrichment")]
 public partial class AddGoldenGlobeEnrichment : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
