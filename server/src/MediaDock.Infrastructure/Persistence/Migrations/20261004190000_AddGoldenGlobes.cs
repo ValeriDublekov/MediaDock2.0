@@ -1,13 +1,9 @@
-using MediaDock.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace MediaDock.Infrastructure.Persistence.Migrations;
 
-[DbContext(typeof(MediaDockDbContext))]
-[Migration("20261004190000_AddGoldenGlobes")]
 public partial class AddGoldenGlobes : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
