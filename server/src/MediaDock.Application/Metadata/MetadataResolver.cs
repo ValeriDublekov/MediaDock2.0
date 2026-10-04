@@ -23,10 +23,12 @@ public sealed class MetadataResolver
         string sourceType,
         DateTimeOffset now,
         CancellationToken cancellationToken = default,
-        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
+        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion,
+        string? imdbId = null)
     {
         var normalizedTitle = NormalizeTitle(title);
         var normalizedSourceType = sourceType.Trim().ToLowerInvariant();
+        var normalizedImdbId = ImdbIdNormalizer.Normalize(imdbId);
         if (normalizedTitle.Length == 0 || normalizedSourceType is not ("movie" or "series"))
         {
             return new MetadataResolution(
@@ -39,7 +41,7 @@ public sealed class MetadataResolver
 
         var yearSemantics = normalizedSourceType == "series" ? "series_title" : "movie_release_year";
         var lookupYear = normalizedSourceType == "series" ? null : year;
-        var cacheKey = CreateCacheKey(normalizedTitle, lookupYear, normalizedSourceType, yearSemantics);
+        var cacheKey = CreateCacheKey(normalizedTitle, lookupYear, normalizedSourceType, yearSemantics, normalizedImdbId);
         var cached = await _cache.GetAsync(cacheKey, cancellationToken);
         if (cached is not null && cached.ExpiresAt > now)
         {
@@ -51,7 +53,21 @@ public sealed class MetadataResolver
             lookupYear,
             normalizedSourceType,
             cancellationToken,
-            requestPurpose);
+            requestPurpose,
+            normalizedImdbId);
+        if (result.Status == MetadataLookupStatus.Found
+            && result.Metadata is not null
+            && normalizedImdbId is not null
+            && !ImdbIdNormalizer.IsCompatible(normalizedImdbId, result.Metadata.ImdbId))
+        {
+            result = result with
+            {
+                Status = MetadataLookupStatus.ProviderFailure,
+                Metadata = null,
+                ErrorCode = "imdb_id_mismatch"
+            };
+        }
+
         if (result.Status == MetadataLookupStatus.Found && result.Metadata is not null)
         {
             await StoreAsync(
@@ -127,9 +143,12 @@ public sealed class MetadataResolver
         string title,
         int? year,
         string sourceType,
-        string yearSemantics)
+        string yearSemantics,
+        string? imdbId)
     {
-        var identity = $"v2:{title}:{year?.ToString() ?? ""}:{sourceType}:{yearSemantics}";
+        var identity = imdbId is null
+            ? $"v2:{title}:{year?.ToString() ?? ""}:{sourceType}:{yearSemantics}"
+            : $"v3:{sourceType}:imdb:{imdbId}";
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity))).ToLowerInvariant();
     }
 

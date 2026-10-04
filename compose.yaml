@@ -33,6 +33,12 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__MediaDock: "Host=db;Port=5432;Database=${POSTGRES_DB:-mediadock};Username=${POSTGRES_USER:-mediadock};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env or the host environment}"
+      DeploymentControl__SocketPath: /run/mediadock-next-deploy-control/control.sock
+    volumes:
+      - type: bind
+        source: ${DEPLOY_CONTROL_SOCKET_DIR:-./.deploy-control}
+        target: /run/mediadock-next-deploy-control
+        read_only: true
     ports:
       - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}:8080"
     restart: unless-stopped

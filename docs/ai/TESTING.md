@@ -30,6 +30,13 @@ npm run build
 
 The [web package scripts](../../web/package.json) define `lint` as Oxlint, `test` as Vitest with jsdom, and `build` as TypeScript project build followed by Vite build. The web tests use mocked API calls, so they need no running API or database; see the [API client tests](../../web/src/api/client.test.ts), [catalog view tests](../../web/src/features/catalog/CatalogView.test.tsx), [configuration view test](../../web/src/features/sources/SourceSettingsView.test.tsx), and [ingestion panel tests](../../web/src/features/sources/BackgroundIngestionPanel.test.tsx).
 
+The host deployment-control bridge uses only Python's standard library and can
+be checked without systemd or Docker:
+
+```powershell
+python -B -m unittest deploy.test_deploy_control
+```
+
 ## .NET Unit Tests
 
 Run from the repository root after solution restore. The [unit-test project](../../server/tests/MediaDock.UnitTests/MediaDock.UnitTests.csproj) has focused xUnit categories:

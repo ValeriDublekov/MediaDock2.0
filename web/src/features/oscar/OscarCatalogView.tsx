@@ -11,8 +11,9 @@ import { Pagination } from '../../components/Pagination'
 import { Poster } from '../../components/Poster'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatWords } from '../../shared/format'
-import { OscarFilmDetailsDialog } from './OscarFilmDetailsDialog'
 import { FavoriteControls } from '../favorites/FavoriteControls'
+import { OscarAwardsTooltip } from './OscarAwardsTooltip'
+import { OscarFilmDetailsDialog } from './OscarFilmDetailsDialog'
 
 interface OscarFilters {
   search: string
@@ -47,16 +48,34 @@ function buildQuery(page: number, filters: OscarFilters): OscarCatalogQuery {
   }
 }
 
+function OscarImdbRating({ film }: { film: OscarFilm }) {
+  const rating = film.imdbRating === null ? 'Not rated' : `IMDb ${film.imdbRating.toFixed(1)}`
+  if (!film.imdbId) return <span className="tile-rating">{rating}</span>
+
+  return (
+    <a
+      aria-label={`Open ${film.title} on IMDb (opens in new tab)`}
+      className="tile-rating oscar-imdb-rating"
+      href={`https://www.imdb.com/title/${film.imdbId}/`}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      {rating}
+    </a>
+  )
+}
+
 function OscarRow({ film, onSelect }: { film: OscarFilm; onSelect: (id: number) => void }) {
   const categories = [...new Set(film.nominations.map((nomination) => nomination.category))]
   const winCount = film.nominations.filter((nomination) => nomination.isWinner).length
+  const nominationCount = film.nominations.length
 
   return (
     <tr>
       <td>
         <div className="title-cell">
           <Poster className="poster-small" label="OSC" src={film.posterUrl} title={film.title} />
-          <span>
+          <span className="oscar-row-details">
             <button
               aria-label={`View ${film.title} Oscar details`}
               className="title-link"
@@ -66,8 +85,11 @@ function OscarRow({ film, onSelect }: { film: OscarFilm; onSelect: (id: number) 
               {film.title}
             </button>
             <span className="subtle-line">
-              {film.filmYear} | {film.imdbId ?? 'IMDb ID unavailable'}
+              {film.filmYear}
             </span>
+            <span className="subtle-line">Director: {film.director ?? 'Not listed'}</span>
+            <span className="subtle-line">{film.genres.join(' · ') || 'Genres unavailable'}</span>
+            {film.plot && <span className="oscar-row-plot">{film.plot}</span>}
           </span>
         </div>
       </td>
@@ -78,17 +100,16 @@ function OscarRow({ film, onSelect }: { film: OscarFilm; onSelect: (id: number) 
         {categories.length > 2 && <span className="subtle-line">+{categories.length - 2} more</span>}
       </td>
       <td>
-        {winCount > 0 ? (
-          <span className="state-pill is-winner">{winCount} {winCount === 1 ? 'win' : 'wins'}</span>
-        ) : (
-          <span className="type-label">Nominated</span>
-        )}
+        <span className={`state-pill ${winCount > 0 ? 'is-winner' : 'is-muted'}`}>
+          {winCount > 0 ? 'Winner' : 'Nominee'}
+        </span>
         <span className="subtle-line">
-          {film.nominations.length} {film.nominations.length === 1 ? 'nomination' : 'nominations'}
+          {winCount > 0 && `${winCount} ${winCount === 1 ? 'win' : 'wins'} · `}
+          {nominationCount} {nominationCount === 1 ? 'nomination' : 'nominations'}
         </span>
       </td>
       <td className="rating-value">
-        {film.imdbRating === null ? 'Not rated' : film.imdbRating.toFixed(1)}
+        <OscarImdbRating film={film} />
         {film.imdbVotes !== null && <span className="subtle-line">{film.imdbVotes.toLocaleString()} votes</span>}
       </td>
       <td>
@@ -240,17 +261,36 @@ export function OscarCatalogView() {
           {viewMode === 'posters' ? <div className="poster-grid">
             {result.items.map((film) => {
               const wins = film.nominations.filter((nomination) => nomination.isWinner).length
+              const nominationCount = film.nominations.length
               return <article className="movie-tile" key={film.id}>
-                <button aria-label={`View ${film.title} Oscar details`} className="poster-action" onClick={() => setSelectedFilmId(film.id)} type="button">
+                <button
+                  aria-describedby={`oscar-award-tooltip-${film.id}`}
+                  aria-label={`View ${film.title} Oscar details`}
+                  className="poster-action"
+                  onClick={() => setSelectedFilmId(film.id)}
+                  type="button"
+                >
                   <Poster label="OSC" src={film.posterUrl} title={film.title} />
-                  {wins > 0 && <span className="winner-badge">{wins} {wins === 1 ? 'win' : 'wins'}</span>}
+                  <span className={`winner-badge${wins === 0 ? ' nominee-badge' : ''}`}>
+                    {wins > 0
+                      ? `Winner · ${wins} ${wins === 1 ? 'win' : 'wins'}`
+                      : `Nominee · ${nominationCount} ${nominationCount === 1 ? 'nomination' : 'nominations'}`}
+                  </span>
+                  <OscarAwardsTooltip id={`oscar-award-tooltip-${film.id}`} nominations={film.nominations} />
                 </button>
                 <div className="movie-tile-info">
                   <button className="tile-title" onClick={() => setSelectedFilmId(film.id)} type="button">{film.title}</button>
-                  <div className="tile-meta">{film.filmYear} <span aria-hidden="true">·</span> {film.nominations.length} {film.nominations.length === 1 ? 'nomination' : 'nominations'}</div>
-                  <div className="tile-genres">{film.genres.slice(0, 2).join(' · ') || 'Genres unavailable'}</div>
+                  <div className="tile-meta oscar-tile-meta">
+                    <span>{film.filmYear}</span>
+                    <span className="oscar-nomination-count">
+                      {nominationCount} {nominationCount === 1 ? 'nomination' : 'nominations'}
+                    </span>
+                  </div>
+                  <div className="oscar-tile-director">Director: {film.director ?? 'Not listed'}</div>
+                  <div className="tile-genres">{film.genres.join(' · ') || 'Genres unavailable'}</div>
+                  {film.plot && <p className="oscar-tile-plot">{film.plot}</p>}
                   <div className="tile-footer">
-                    <span className="tile-rating">{film.imdbRating === null ? 'Not rated' : `IMDb ${film.imdbRating.toFixed(1)}`}</span>
+                    <OscarImdbRating film={film} />
                     <FavoriteControls from="oscar" mediaType={film.mediaType} occurrenceCount={0} titleId={film.titleId} />
                   </div>
                 </div>

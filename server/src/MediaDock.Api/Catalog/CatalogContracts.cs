@@ -20,6 +20,9 @@ public sealed record CatalogQuery
     [RegularExpression("^(movie|series)$")]
     public string? SourceType { get; init; }
 
+    [RegularExpression("^(movie|series_complete|series_ongoing)(,(movie|series_complete|series_ongoing))*$")]
+    public string? FeedTypes { get; init; }
+
     [RegularExpression("^(standard|documentary|short)$")]
     public string? ContentKind { get; init; }
 
@@ -57,6 +60,7 @@ public sealed record CatalogTitleResponse(
     string MediaType,
     string? SourceType,
     string? ContentKind,
+    string? ImdbId,
     decimal? ImdbRating,
     string? PosterUrl,
     IReadOnlyList<string> Genres,

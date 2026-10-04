@@ -158,6 +158,46 @@ with the target SHA, last-good SHA, and exact validated dump path. A failed
 migration leaves this marker in place; later deployments refuse to proceed
 until an operator restores and verifies the previous state.
 
+### Web Deployment Control
+
+The optional Configuration panel reads status and requests runs through a
+host-only Unix socket. The host service runs as root but accepts only status,
+an immediate start of `mediadock-next-deploy.service`, or a retry that clears
+the `gate-failed` marker. It never clears `deploy-failed`. Keep the API
+firewall restricted to the trusted LAN: every allowed client can start the
+full staging, backup, migration, and restart pipeline.
+
+Install and enable the control service on the host:
+
+```sh
+sudo install -o root -g root -m 0750 deploy/deploy-control.py /usr/local/sbin/mediadock-next-deploy-control
+sudo install -o root -g root -m 0644 deploy/systemd/mediadock-next-deploy-control.service /etc/systemd/system/mediadock-next-deploy-control.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now mediadock-next-deploy-control.service
+sudo systemctl status --no-pager mediadock-next-deploy-control.service
+```
+
+In the production checkout's ignored `.env`, set the Compose bind source to
+the persistent systemd state directory:
+
+```ini
+DEPLOY_CONTROL_SOCKET_DIR=/var/lib/mediadock-deploy-control
+```
+
+Deploy a release containing the API socket client and Compose mount, or
+recreate the API after setting the path so the container receives the
+read-only socket-directory mount. The local Compose default is
+`./.deploy-control`; without the host service, deployment status is unavailable
+and deployment buttons cannot start a run.
+
+The panel polls while a run is active and shows the last result, deployed SHA,
+gate/recovery markers, and recent unit output. **Check and deploy now** starts
+the normal runner immediately; if GitHub `main` is already deployed it is a
+no-op. **Retry failed gate** clears only a valid staging-gate failure marker
+and then starts the runner. It does not bypass the staging gate or the shared
+operation lock. A `deploy-failed` marker disables scheduled and manual starts;
+use the recovery procedure below instead of retrying.
+
 For a new host, install the files and host-only bind configuration, but keep
 the timer disabled until the clean-main gate and unit validation have passed:
 

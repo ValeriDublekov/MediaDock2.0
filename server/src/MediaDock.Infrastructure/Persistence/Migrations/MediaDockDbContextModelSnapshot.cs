@@ -188,16 +188,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_background_jobs");
 
-                    b.HasIndex("JobType", "ux_background_jobs_active_rss_scan")
-                        .IsUnique()
-                        .HasDatabaseName("ux_background_jobs_active_rss_scan")
-                        .HasFilter("job_type = 'rss_scan' AND status IN ('queued', 'running')");
-
-                    b.HasIndex("JobType", "ux_background_jobs_active_oscar_enrichment")
-                        .IsUnique()
-                        .HasDatabaseName("ux_background_jobs_active_oscar_enrichment")
-                        .HasFilter("job_type = 'oscar_enrichment' AND status IN ('queued', 'running')");
-
                     b.HasIndex("ScanRunId")
                         .IsUnique()
                         .HasDatabaseName("ux_background_jobs_scan_run_id")
@@ -210,6 +200,16 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("Status", "EnqueuedAt")
                         .HasDatabaseName("ix_background_jobs_status_enqueued_at");
+
+                    b.HasIndex(new[] { "JobType" }, "ux_background_jobs_active_oscar_enrichment")
+                        .IsUnique()
+                        .HasDatabaseName("ux_background_jobs_active_oscar_enrichment")
+                        .HasFilter("job_type = 'oscar_enrichment' AND status IN ('queued', 'running')");
+
+                    b.HasIndex(new[] { "JobType" }, "ux_background_jobs_active_rss_scan")
+                        .IsUnique()
+                        .HasDatabaseName("ux_background_jobs_active_rss_scan")
+                        .HasFilter("job_type = 'rss_scan' AND status IN ('queued', 'running')");
 
                     b.ToTable("background_jobs", null, t =>
                         {
@@ -496,16 +496,16 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("date")
                         .HasColumnName("utc_date");
 
-                    b.Property<string>("LastErrorCode")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("last_error_code");
-
                     b.Property<bool>("DailyRequestLimitReached")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("daily_request_limit_reached");
+
+                    b.Property<string>("LastErrorCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("last_error_code");
 
                     b.Property<int>("OscarRequests")
                         .HasColumnType("integer")
@@ -903,6 +903,30 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_parse_logs_attempt_count", "attempt_count >= 0");
 
                             t.HasCheckConstraint("ck_parse_logs_retry_state", "retry_state IN ('retryable', 'terminal', 'resolved')");
+                        });
+                });
+
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.PersonalRating", b =>
+                {
+                    b.Property<string>("ImdbId")
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)")
+                        .HasColumnName("imdb_id");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer")
+                        .HasColumnName("rating");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("ImdbId")
+                        .HasName("pk_personal_ratings");
+
+                    b.ToTable("personal_ratings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_personal_ratings_rating", "rating BETWEEN 1 AND 10");
                         });
                 });
 

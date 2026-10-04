@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, getCatalog } from '../../api/client'
+import { ApiError, getCatalog, getTitle } from '../../api/client'
 import type { CatalogTitle, PageResponse } from '../../api/types'
 import { CatalogView } from './CatalogView'
 
@@ -9,6 +9,7 @@ vi.mock('../../api/client', () => ({
   getCatalog: vi.fn(),
   getTitle: vi.fn(),
   getTitleOccurrences: vi.fn(),
+  getTitleOscars: vi.fn().mockResolvedValue([]),
 }))
 
 const catalogRequest = vi.mocked(getCatalog)
@@ -24,6 +25,7 @@ const title: CatalogTitle = {
   mediaType: 'series',
   sourceType: 'series',
   contentKind: 'standard',
+  imdbId: 'tt1234567',
   imdbRating: 8.1,
   posterUrl: null,
   genres: ['Drama'],
@@ -51,13 +53,61 @@ describe('CatalogView', () => {
     expect(catalogRequest).toHaveBeenCalledTimes(1)
   })
 
+  it('associates the IMDb rating with its title and opens that title at its torrent sources', async () => {
+    catalogRequest.mockResolvedValue(page([{ ...title, occurrenceCount: 3 }]))
+    render(<CatalogView />)
+
+    expect(await screen.findByRole('group', { name: 'IMDb rating for Quiet River: 8.1 out of 10' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'View torrent sources for Quiet River (3)' }))
+
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    expect(getTitle).toHaveBeenCalledWith(title.id)
+  })
+
+  it('opens the title directly on IMDb from the catalog card', async () => {
+    catalogRequest.mockResolvedValue(page([title]))
+    render(<CatalogView />)
+
+    const imdbLink = await screen.findByRole('link', { name: 'Open Quiet River on IMDb (opens in new tab)' })
+    expect(imdbLink.getAttribute('href')).toBe('https://www.imdb.com/title/tt1234567/')
+    expect(imdbLink.getAttribute('target')).toBe('_blank')
+    expect(imdbLink.getAttribute('rel')).toBe('noopener noreferrer')
+  })
+
   it('requests the next page from the pagination controls', async () => {
     catalogRequest.mockResolvedValue(page([title], 1, 2))
     render(<CatalogView />)
 
     expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
-    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 2,
+      pageSize: 20,
+      feedTypes: ['movie', 'series_complete', 'series_ongoing'],
+    }))
+  })
+
+  it('defaults to the three main categories and switches categories with one click', async () => {
+    catalogRequest.mockResolvedValue(page([]))
+    render(<CatalogView />)
+
+    expect(await screen.findByText('No titles found')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Main categories' }).getAttribute('aria-pressed')).toBe('true')
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
+      feedTypes: ['movie', 'series_complete', 'series_ongoing'],
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Movies' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, feedTypes: ['movie'] }))
+    fireEvent.click(screen.getByRole('button', { name: 'Series' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, feedTypes: ['series_complete'] }))
+    fireEvent.click(screen.getByRole('button', { name: 'Series in progress' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, feedTypes: ['series_ongoing'] }))
+    fireEvent.click(screen.getByRole('button', { name: 'All' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 }))
+    expect(screen.getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe('true')
   })
 
   it('applies search and filters and renders an empty result state', async () => {
@@ -75,6 +125,7 @@ describe('CatalogView', () => {
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
       page: 1,
       pageSize: 20,
+      feedTypes: ['movie', 'series_complete', 'series_ongoing'],
       search: 'quiet river',
       mediaType: 'series',
       genre: 'drama',

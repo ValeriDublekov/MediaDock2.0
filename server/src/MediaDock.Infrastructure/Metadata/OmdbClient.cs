@@ -18,7 +18,6 @@ public sealed class OmdbClient : IOmdbClient
     private readonly int _maximumResponseBytes;
     private readonly IOmdbRequestBudget? _requestBudget;
     private readonly int _dailyRequestLimit;
-    private readonly int _oscarDailyRequestLimit;
     private readonly TimeProvider _timeProvider;
 
     public OmdbClient(
@@ -28,7 +27,6 @@ public sealed class OmdbClient : IOmdbClient
         int maximumResponseBytes = DefaultMaximumResponseBytes,
         IOmdbRequestBudget? requestBudget = null,
         int dailyRequestLimit = int.MaxValue,
-        int oscarDailyRequestLimit = int.MaxValue,
         TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(httpClient);
@@ -42,7 +40,7 @@ public sealed class OmdbClient : IOmdbClient
             throw new ArgumentOutOfRangeException(nameof(timeout));
         }
 
-        if (requestBudget is not null && (dailyRequestLimit <= 0 || oscarDailyRequestLimit < 0))
+        if (requestBudget is not null && dailyRequestLimit <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(dailyRequestLimit));
         }
@@ -53,7 +51,6 @@ public sealed class OmdbClient : IOmdbClient
         _maximumResponseBytes = maximumResponseBytes;
         _requestBudget = requestBudget;
         _dailyRequestLimit = dailyRequestLimit;
-        _oscarDailyRequestLimit = oscarDailyRequestLimit;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
@@ -62,20 +59,25 @@ public sealed class OmdbClient : IOmdbClient
         int? year,
         string sourceType,
         CancellationToken cancellationToken = default,
-        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
+        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion,
+        string? imdbId = null)
     {
         if (string.IsNullOrWhiteSpace(title) || sourceType is not ("movie" or "series"))
         {
             return new MetadataLookupResult(MetadataLookupStatus.InvalidRequest, ErrorCode: "invalid_lookup");
         }
 
-        var first = await RequestAsync(title.Trim(), year, sourceType, requestPurpose, cancellationToken);
-        if (first.Status != MetadataLookupStatus.ConfirmedNotFound || year is null || sourceType == "series")
+        var normalizedImdbId = ImdbIdNormalizer.Normalize(imdbId);
+        var first = await RequestAsync(title.Trim(), year, sourceType, requestPurpose, cancellationToken, normalizedImdbId);
+        if (normalizedImdbId is not null
+            || first.Status != MetadataLookupStatus.ConfirmedNotFound
+            || year is null
+            || sourceType == "series")
         {
             return first;
         }
 
-        var fallback = await RequestAsync(title.Trim(), null, sourceType, requestPurpose, cancellationToken);
+        var fallback = await RequestAsync(title.Trim(), null, sourceType, requestPurpose, cancellationToken, null);
         return fallback with { HttpAttempts = first.HttpAttempts + fallback.HttpAttempts };
     }
 
@@ -84,23 +86,16 @@ public sealed class OmdbClient : IOmdbClient
         int? year,
         string sourceType,
         OmdbRequestPurpose requestPurpose,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? imdbId)
     {
         var utcDate = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
         if (_requestBudget is not null)
         {
-            if (requestPurpose == OmdbRequestPurpose.OscarEnrichment && _oscarDailyRequestLimit == 0)
-            {
-                return new MetadataLookupResult(
-                    MetadataLookupStatus.RequestBudgetExhausted,
-                    ErrorCode: "daily_budget_exhausted");
-            }
-
             var reserved = await _requestBudget.TryReserveAsync(
                 utcDate,
                 requestPurpose,
                 _dailyRequestLimit,
-                _oscarDailyRequestLimit,
                 cancellationToken);
             if (!reserved)
             {
@@ -111,12 +106,19 @@ public sealed class OmdbClient : IOmdbClient
         }
 
         var query = new StringBuilder()
-            .Append("apikey=").Append(Uri.EscapeDataString(_apiKey))
-            .Append("&t=").Append(Uri.EscapeDataString(title))
-            .Append("&type=").Append(Uri.EscapeDataString(sourceType));
-        if (year is not null && sourceType != "series")
+            .Append("apikey=").Append(Uri.EscapeDataString(_apiKey));
+        if (imdbId is not null)
         {
-            query.Append("&y=").Append(year.Value.ToString(CultureInfo.InvariantCulture));
+            query.Append("&i=").Append(Uri.EscapeDataString(imdbId));
+        }
+        else
+        {
+            query.Append("&t=").Append(Uri.EscapeDataString(title))
+                .Append("&type=").Append(Uri.EscapeDataString(sourceType));
+            if (year is not null && sourceType != "series")
+            {
+                query.Append("&y=").Append(year.Value.ToString(CultureInfo.InvariantCulture));
+            }
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Get, Endpoint + "?" + query);

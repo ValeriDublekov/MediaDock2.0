@@ -28,6 +28,7 @@ public sealed class MediaDockDbContext : DbContext
     public DbSet<BackgroundJob> BackgroundJobs => Set<BackgroundJob>();
     public DbSet<BackgroundJobEvent> BackgroundJobEvents => Set<BackgroundJobEvent>();
     public DbSet<BackgroundSchedulerState> BackgroundSchedulerStates => Set<BackgroundSchedulerState>();
+    public DbSet<PersonalRating> PersonalRatings => Set<PersonalRating>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

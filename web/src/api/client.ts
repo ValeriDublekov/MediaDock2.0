@@ -4,8 +4,11 @@ import type {
   BackgroundJob,
   BackgroundJobAccepted,
   BackgroundJobEvents,
+  DeploymentActionResult,
+  DeploymentStatus,
   FavoriteMovie,
   OmdbDailyUsage,
+  PersonalRatingsImportResult,
   OscarCatalogQuery,
   OscarFilm,
   Occurrence,
@@ -92,6 +95,10 @@ function withQuery(path: string, query: object): string {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(query)) {
     if (value === undefined || value === null || value === '') continue
+    if (Array.isArray(value)) {
+      if (value.length > 0) params.set(key, value.join(','))
+      continue
+    }
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
       params.set(key, String(value))
     }
@@ -188,6 +195,17 @@ export function getVersion(fetcher?: typeof fetch) {
   return requestJson<SystemVersion>('/version', {}, fetcher)
 }
 
+export function getDeploymentStatus(fetcher?: typeof fetch) {
+  return requestJson<DeploymentStatus>('/deployment', {}, fetcher)
+}
+
+export function runDeploymentAction(action: 'check' | 'retry_failed_gate', fetcher?: typeof fetch) {
+  return requestJson<DeploymentActionResult>('/deployment/run', {
+    method: 'POST',
+    body: JSON.stringify({ action }),
+  }, fetcher)
+}
+
 export function updateProviderSettings(input: ProviderSettingsInput, fetcher?: typeof fetch) {
   return requestJson<ProviderSettings>(
     '/settings/providers/omdb',
@@ -240,4 +258,11 @@ export function enqueueGoldenGlobeImport(file: File, yearAfter: number, fetcher?
   body.append('File', file)
   body.append('YearAfter', String(yearAfter))
   return requestJson<BackgroundJobAccepted>('/background-jobs/golden-globe-import', { method: 'POST', body }, fetcher)
+}
+}
+
+export function importPersonalRatings(file: File, fetcher?: typeof fetch) {
+  const body = new FormData()
+  body.append('File', file)
+  return requestJson<PersonalRatingsImportResult>('/personal-ratings/import', { method: 'POST', body }, fetcher)
 }

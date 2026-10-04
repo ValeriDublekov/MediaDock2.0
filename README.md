@@ -101,13 +101,18 @@ dispatcher starts.
 
 Configure the OMDb key, confirmed shared daily quota, Oscar per-run cap, and
 Oscar daily cap in Configuration. RSS and Oscar attempts share the UTC-day
-budget; the Oscar cap is additional, not reserved capacity. Every non-cache
-HTTP attempt reserves before sending, including fallbacks and retries. Cache
-hits use no slot. Provider quota exhaustion stops further attempts for that
-UTC day and leaves unprocessed Oscar candidates eligible. Each enrichment
+budget, which stops at 50 requests below the configured shared quota (950 for
+a quota of 1,000); the Oscar cap is additional, not reserved capacity. Every
+non-cache HTTP attempt reserves before sending, including fallbacks and
+retries. Cache hits use no slot. Provider quota exhaustion stops further
+attempts for that UTC day and leaves unprocessed Oscar candidates eligible. Each enrichment
 continues to write its separate `oscar_enrichment_runs` audit record, while RSS
 `scan_runs` and `parse_logs` retain their existing meanings. Status, safe events,
 and scan/parse history are available in the UI and the background-job API.
+
+### Import personal IMDb ratings
+
+In Configuration, upload each `.json` ratings export under **Personal IMDb ratings**. The importer accepts arrays of `{ "id": "tt14452776", "rating": 8 }` entries, up to 5 MiB and 50,000 rows. Imports merge by IMDb ID: new ratings are added, changed ratings are updated, unchanged ratings remain untouched, and IDs missing from a later file are retained. Invalid files are rejected before any ratings are changed.
 
 ### Import Oscar dataset
 
@@ -139,6 +144,14 @@ It fetches only GitHub `main`, runs the clean staging gate, creates a
 pre-migration dump, uses versioned images, and checks readiness after startup.
 On a new host, keep its timer disabled until the manual deployment and rollback
 procedure have been reviewed.
+
+After installing the optional host deployment-control service, use
+**Configuration > Deployment > Check and deploy now** to trigger the same full
+pipeline immediately instead of waiting for the five-minute timer. If the
+staging gate failed for a transient host issue, **Retry failed gate** retries
+that commit. This is a deployment operation, not a standalone `git pull`; a
+post-migration recovery marker still blocks retries. See the systemd runbook
+for the one-time host socket setup in [deploy/systemd/README.md](deploy/systemd/README.md).
 
 Create a plain SQL backup inside the container, then copy it to the host:
 

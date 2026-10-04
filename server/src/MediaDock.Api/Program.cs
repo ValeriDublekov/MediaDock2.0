@@ -5,11 +5,13 @@ using MediaDock.Api.Health;
 using MediaDock.Api.Middleware;
 using MediaDock.Api.OscarAwards;
 using MediaDock.Api.Operations;
+using MediaDock.Api.PersonalRatings;
 using MediaDock.Api.Sources;
 using MediaDock.Api.Versioning;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Ingestion;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Sockets;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,10 +29,33 @@ builder.Services.AddScoped<BackgroundJobScheduler>();
 builder.Services.AddHostedService<BackgroundJobDispatcher>();
 builder.Services.AddScoped<ICatalogApiService, CatalogApiService>();
 builder.Services.AddScoped<FavoriteApiService>();
+builder.Services.AddScoped<PersonalRatingsApiService>();
 builder.Services.AddScoped<IOscarApiService, OscarApiService>();
 builder.Services.AddScoped<ISourceSettingsApiService, SourceSettingsApiService>();
 builder.Services.AddScoped<IOperationalHistoryApiService, OperationalHistoryApiService>();
 builder.Services.AddScoped<IReadinessService, ReadinessService>();
+builder.Services.AddHttpClient<DeploymentControlApiService>(client =>
+	client.BaseAddress = new Uri("http://mediadock-deploy-control"))
+	.ConfigurePrimaryHttpMessageHandler(serviceProvider => new SocketsHttpHandler
+	{
+		ConnectCallback = async (_, cancellationToken) =>
+		{
+			var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+			var socketPath = configuration["DeploymentControl:SocketPath"]
+				?? "/run/mediadock-next-deploy-control/control.sock";
+			var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+			try
+			{
+				await socket.ConnectAsync(new UnixDomainSocketEndPoint(socketPath), cancellationToken);
+				return new NetworkStream(socket, ownsSocket: true);
+			}
+			catch
+			{
+				socket.Dispose();
+				throw;
+			}
+		}
+	});
 
 var app = builder.Build();
 var maximumUploadBytes = Math.Clamp(
@@ -63,10 +88,12 @@ if (app.Environment.IsDevelopment())
 app.MapHealthEndpoints();
 app.MapCatalogEndpoints();
 app.MapFavoriteEndpoints();
+app.MapPersonalRatingsEndpoints();
 app.MapOscarEndpoints();
 app.MapSourceSettingsEndpoints();
 app.MapOperationalHistoryEndpoints();
 app.MapBackgroundJobEndpoints(maximumUploadBytes);
+app.MapDeploymentControlEndpoints();
 app.MapVersionEndpoints();
 
 if (app.Environment.IsProduction())

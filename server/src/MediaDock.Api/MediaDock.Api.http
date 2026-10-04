@@ -89,9 +89,7 @@ Content-Type: application/json
 {
 	"omdbApiKey": "replace-with-local-key",
 	"clearOmdbApiKey": false,
-	"omdbDailyRequestLimit": 100,
-	"oscarEnrichmentMaxFilmsPerRun": 0,
-	"oscarEnrichmentMaxRequestsPerDay": 0
+	"omdbDailyRequestLimit": 100
 }
 
 ###

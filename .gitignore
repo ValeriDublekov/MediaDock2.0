@@ -5,4 +5,5 @@
 **/obj/
 web/node_modules/
 web/dist/
+.deploy-control/web/dist/
 .fake

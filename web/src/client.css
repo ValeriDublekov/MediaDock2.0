@@ -180,24 +180,68 @@ button:disabled { cursor: not-allowed; }
 .poster-small { width: 34px; flex: 0 0 34px; }
 .poster-small .poster-fallback { font-size: 9px; }
 .poster-small .poster-fallback span { padding: 3px; }
-.poster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 22px 16px; border-top: 1px solid #d4ded5; padding-top: 20px; }
-.movie-tile { min-width: 0; }
+.poster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); align-items: stretch; gap: 22px 16px; border-top: 1px solid #d4ded5; padding-top: 20px; }
+.movie-tile { display: flex; min-width: 0; flex-direction: column; overflow: hidden; border: 1px solid #343a37; border-radius: 5px; color: #f3f2ec; background: #202524; box-shadow: 0 2px 7px rgba(24, 31, 28, 0.12); }
 .poster-action { position: relative; display: block; width: 100%; border: 0; padding: 0; background: transparent; text-align: left; }
-.winner-badge { position: absolute; right: 8px; bottom: 8px; padding: 5px 8px; color: #fff4d4; background: #624421; font-size: 11px; font-weight: 700; }
+.poster-type-badge { position: absolute; top: 10px; left: 10px; border: 1px solid rgba(255, 255, 255, 0.32); border-radius: 3px; padding: 4px 7px; color: #fff; background: rgba(20, 24, 23, 0.88); font-size: 10px; font-weight: 700; }
+.winner-badge { position: absolute; right: 8px; bottom: 8px; max-width: calc(100% - 16px); border-radius: 3px; padding: 5px 8px; color: #fff4d4; background: #624421; font-size: 11px; font-weight: 700; overflow-wrap: anywhere; }
+.nominee-badge { color: #f0f2ec; background: #394c43; }
+.oscar-award-tooltip { position: absolute; z-index: 3; display: grid; gap: 8px; visibility: hidden; border: 1px solid #59665d; border-radius: 4px; padding: 10px; color: #f3f2ec; background: rgba(25, 32, 29, 0.98); box-shadow: 0 5px 16px rgba(0, 0, 0, 0.38); font-size: 11px; line-height: 1.35; text-align: left; opacity: 0; pointer-events: none; transition: opacity 120ms ease, visibility 120ms ease; }
+.poster-action .oscar-award-tooltip { right: 8px; bottom: 42px; left: 8px; }
+.oscar-award-tooltip-heading { color: #f0bd62; font-size: 10px; font-weight: 700; }
+.oscar-award-tooltip-list { display: grid; gap: 5px; }
+.oscar-award-tooltip-row { display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: center; gap: 8px; border-top: 1px solid #414b44; padding-top: 5px; }
+.oscar-award-tooltip-status { border-radius: 2px; padding: 3px 4px; font-size: 9px; font-weight: 700; text-align: center; }
+.oscar-award-tooltip-status.is-winner { color: #ffe0a0; background: #624421; }
+.oscar-award-tooltip-status.is-nominee { color: #d5e8dd; background: #394c43; }
+.oscar-award-tooltip-category { color: #f3f2ec; font-size: 11px; font-weight: 600; text-transform: capitalize; overflow-wrap: anywhere; }
+.oscar-award-tooltip-empty { color: #c2cbc5; }
+.poster-action:hover .oscar-award-tooltip, .poster-action:focus-visible .oscar-award-tooltip, .oscar-award-summary:hover .oscar-award-tooltip, .oscar-award-summary:focus-visible .oscar-award-tooltip { visibility: visible; opacity: 1; }
 .poster-action .poster { transition: filter 150ms ease; }
 .poster-action:hover .poster { filter: brightness(0.91); }
-.movie-tile-info { padding: 10px 2px 0; }
-.tile-title { display: block; width: 100%; border: 0; padding: 0; color: #1d2524; background: transparent; font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 17px; font-weight: 700; line-height: 1.22; text-align: left; overflow-wrap: anywhere; }
-.tile-title:hover { color: #ae4934; }
-.tile-meta, .tile-genres { margin-top: 5px; color: #52665b; font-size: 12px; line-height: 1.4; }
-.tile-meta span { padding: 0 3px; }
-.tile-genres { min-height: 18px; color: #69786c; }
-.tile-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 10px; border-top: 1px solid #d9e0d7; padding-top: 9px; }
-.tile-rating { color: #9b5329; font-size: 12px; font-weight: 700; }
-.tile-footer .favorite-controls { margin-left: auto; }
-.movie-tile-info > .favorite-controls { margin-top: 8px; border-top: 1px solid #d9e0d7; padding-top: 8px; }
+.movie-tile-info { display: flex; flex: 1; flex-direction: column; align-items: flex-start; gap: 9px; padding: 13px 13px 12px; }
+.oscar-tile-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #aeb8b1; font-size: 11px; }
+.oscar-nomination-count { display: inline-flex; align-items: center; border: 1px solid #56645a; border-radius: 3px; padding: 3px 7px; color: #d8e2d8; background: #2c3931; font-size: 10px; font-weight: 600; line-height: 1.2; }
+.tile-heading { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.tile-title { display: block; min-width: 0; flex: 1; border: 0; padding: 0; color: #f5f3ed; background: transparent; font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 17px; font-weight: 700; line-height: 1.22; text-align: left; overflow-wrap: anywhere; }
+.tile-title:hover { color: #f0bd62; }
+.tile-year { flex: 0 0 auto; border: 1px solid #555d58; border-radius: 3px; padding: 2px 6px; color: #e0e4de; background: #303633; font-size: 10px; font-variant-numeric: tabular-nums; }
+.tile-genres { color: #c2cbc5; font-size: 12px; line-height: 1.4; }
+.tile-genres { display: flex; min-height: 23px; flex-wrap: wrap; gap: 5px; color: #b9c2bc; }
+.tile-genre { border: 1px solid #454d48; border-radius: 3px; padding: 2px 6px; color: #dce1dc; background: #2a302d; font-size: 10px; }
+.oscar-tile-director { color: #c2cbc5; font-size: 11px; line-height: 1.35; }
+.oscar-tile-plot, .oscar-row-plot { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; color: #b9c2bc; font-size: 11px; line-height: 1.4; }
+.oscar-tile-plot { margin: 0; }
+.oscar-row-details { display: grid; min-width: 0; gap: 3px; }
+.oscar-row-plot { -webkit-line-clamp: 2; }
+.tile-rating { display: inline-flex; min-height: 28px; align-items: center; gap: 6px; border: 1px solid #efad39; border-radius: 3px; padding: 3px 8px; color: #171b19; background: #f0aa32; font-size: 11px; font-weight: 700; }
+.oscar-imdb-rating { text-decoration: none; }
+.oscar-imdb-rating:hover { border-color: #ffc45f; background: #ffc45f; }
+.tile-rating strong { font-size: 14px; font-variant-numeric: tabular-nums; }
+.tile-rating-scale { color: #473617; font-size: 10px; font-weight: 600; }
+.tile-observations { display: grid; width: 100%; gap: 4px; color: #b4beb7; font-size: 10px; line-height: 1.35; }
+.tile-actions { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 7px; margin-top: auto; border-top: 1px solid #414844; padding-top: 10px; }
+.tile-action { display: inline-flex; min-width: 0; min-height: 36px; align-items: center; justify-content: center; gap: 5px; border: 1px solid #535a56; border-radius: 3px; padding: 0 7px; color: #e2e4df; background: #2b302e; font-size: 11px; font-weight: 700; }
+.tile-action:hover { border-color: #818a83; background: #363d39; }
+.tile-action-imdb { border-color: #f0aa32; color: #171b19; background: #f0aa32; text-decoration: none; }
+.tile-action-imdb:hover { border-color: #ffc45f; color: #171b19; background: #ffc45f; }
+.tile-action-primary { border-color: #f0aa32; color: #171b19; background: #f0aa32; }
+.tile-action-primary:hover { border-color: #ffc45f; background: #ffc45f; }
+.tile-action span { font-variant-numeric: tabular-nums; }
+.movie-tile-info > .favorite-controls { width: 100%; margin-top: 0; border-top: 1px solid #414844; padding-top: 9px; }
 .movie-tile .favorite-controls { flex-wrap: wrap; min-width: 0; }
+.movie-tile .favorite-controls label { color: #d1d8d1; }
+.movie-tile .favorite-controls input { accent-color: #f0aa32; }
+.movie-tile .favorite-controls .text-button { color: #f0bd62; }
+.movie-tile .favorite-controls .text-button:hover { color: #fff; }
+.movie-tile .favorite-controls [role="alert"] { color: #ff9a83; }
+.imdb-detail-link { width: fit-content; min-height: 34px; border-color: #efad39; color: #171b19; background: #f0aa32; text-decoration: none; }
+.imdb-detail-link:hover { border-color: #ffc45f; color: #171b19; background: #ffc45f; }
 .filter-form.browse-filters { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; margin-bottom: 18px; border: 0; padding: 0; }
+.catalog-category-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 17px; }
+.catalog-category-nav button { min-height: 38px; border: 1px solid #cbd4cc; border-radius: 2px; padding: 0 13px; color: #43544b; background: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.catalog-category-nav button:hover { border-color: #9caea1; color: #203a30; background: #edf2ec; }
+.catalog-category-nav button.is-active { border-color: #283631; color: #fff; background: #283631; }
 .browse-filters .filter-search { grid-column: 1; grid-row: 1; }
 .browse-filters .filter-search input { min-height: 44px; font-size: 14px; }
 .browse-filters .filter-actions { grid-column: 2; grid-row: 1; }
@@ -226,6 +270,9 @@ button:disabled { cursor: not-allowed; }
 .detail-poster { width: 112px; }
 .film-details-summary { display: grid; align-content: start; gap: 9px; min-width: 0; color: #53665a; font-size: 12px; }
 .film-details-summary strong { color: #8a5428; font-size: 15px; }
+.film-details-summary .oscar-award-summary { position: relative; width: fit-content; text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.oscar-award-summary .oscar-award-tooltip { top: calc(100% + 8px); left: 0; width: max-content; max-width: min(280px, calc(100vw - 48px)); }
+.film-details-summary .oscar-award-summary:focus-visible { outline: 2px solid #ad593a; outline-offset: 3px; }
 .film-details-summary .detail-description { font-size: 13px; }
 button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {
@@ -295,6 +342,10 @@ button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offs
   .occurrence-row { align-items: flex-start; flex-direction: column; gap: 8px; }
 }
 
+@media (max-width: 420px) {
+  .poster-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 .ingestion-section { margin-top: 30px; }
 .ingestion-current { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 34px; border-top: 1px solid #d4ded5; padding: 11px 2px; color: #40574a; font-size: 11px; }
 .ingestion-current .section-caption { margin: 0; }
@@ -311,6 +362,12 @@ button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offs
 .background-job-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; color: #435a4d; font-size: 12px; }
 .background-job-state strong { overflow-wrap: anywhere; }
 .background-job-summary { max-height: 180px; overflow: auto; margin: 0; border-left: 2px solid #b6cbbb; padding: 8px 12px; color: #43564a; background: #eef3ed; font: 10px/1.5 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.deployment-status-grid { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 12px; }
+.deployment-status-grid .section-caption { margin: 0; }
+.deployment-status-grid code, .deployment-control code { font-family: Consolas, monospace; }
+.deployment-output { margin-top: 12px; color: #43564a; font-size: 11px; }
+.deployment-output summary { width: fit-content; cursor: pointer; }
+.deployment-output pre { max-height: 240px; overflow: auto; margin: 8px 0 0; border-left: 2px solid #b6cbbb; padding: 8px 12px; color: #43564a; background: #eef3ed; font: 10px/1.5 Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 .background-job-events-title { margin: 0 0 8px; color: #203a30; font-family: Georgia, "Times New Roman", serif; font-size: 17px; font-weight: 400; }
 .background-job-events { display: grid; max-height: 260px; overflow: auto; margin: 0; border-top: 1px solid #d4ded5; padding: 0; list-style: none; }
 .background-job-events li { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 4px 12px; border-bottom: 1px solid #d4ded5; padding: 9px 2px; color: #40574a; font-size: 11px; }

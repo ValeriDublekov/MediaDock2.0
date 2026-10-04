@@ -66,7 +66,6 @@ public interface IOscarEnrichmentRepository
 {
     Task<IReadOnlyList<OscarEnrichmentCandidate>> GetEligibleCandidatesAsync(
         DateTimeOffset now,
-        int limit,
         CancellationToken cancellationToken = default);
 
     Task SaveOutcomeAsync(

@@ -11,7 +11,6 @@ public sealed class PostgresOscarEnrichmentRepository(MediaDockDbContext dbConte
 {
     public async Task<IReadOnlyList<OscarEnrichmentCandidate>> GetEligibleCandidatesAsync(
         DateTimeOffset now,
-        int limit,
         CancellationToken cancellationToken = default) =>
         await dbContext.OscarFilms
             .AsNoTracking()
@@ -21,7 +20,6 @@ public sealed class PostgresOscarEnrichmentRepository(MediaDockDbContext dbConte
             .OrderByDescending(film => film.FilmYear)
             .ThenBy(film => film.StableKey)
             .ThenBy(film => film.Id)
-            .Take(limit)
             .Select(film => new OscarEnrichmentCandidate(
                 film.Id,
                 film.FilmTitle,

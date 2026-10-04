@@ -71,7 +71,7 @@ const film: OscarFilm = {
   imdbRating: 7.3,
   imdbVotes: 450000,
   metascore: 87,
-  genres: ['Drama', 'Fantasy'],
+  genres: ['Drama', 'Fantasy', 'Romance'],
   countries: ['USA'],
   director: 'Guillermo del Toro',
   plot: 'A woman discovers a mysterious amphibious creature.',
@@ -94,14 +94,42 @@ describe('OscarCatalogView', () => {
   })
   afterEach(() => cleanup())
 
-  it('shows a win on the poster and retains the table without refetching', async () => {
+  it('shows the winner, film details, and IMDb link in both list modes', async () => {
     filmRequest.mockResolvedValue(page([film]))
     render(<OscarCatalogView />)
 
-    expect(await screen.findByText('1 win')).toBeTruthy()
+    expect(await screen.findByText('Winner · 1 win')).toBeTruthy()
+    const posterButton = screen.getByRole('button', { name: 'View The Shape of Water Oscar details' })
+    const posterTooltip = screen.getByRole('tooltip')
+    expect(within(posterTooltip).getByText('Oscar category results')).toBeTruthy()
+    expect(within(posterTooltip).getByRole('listitem', { name: 'Won Best Picture' })).toBeTruthy()
+    expect(within(posterTooltip).getByRole('listitem', { name: 'Nominated for Directing' })).toBeTruthy()
+    expect(posterButton.getAttribute('aria-describedby')).toBe(posterTooltip.id)
+    expect(screen.getByText('2 nominations').className).toContain('oscar-nomination-count')
+    expect(screen.getByText(film.plot!)).toBeTruthy()
+    expect(screen.getByText(`Director: ${film.director}`)).toBeTruthy()
+    expect(screen.getByText('Drama · Fantasy · Romance')).toBeTruthy()
+    const posterRatingLink = screen.getByRole('link', { name: 'Open The Shape of Water on IMDb (opens in new tab)' })
+    expect(posterRatingLink.getAttribute('href')).toBe('https://www.imdb.com/title/tt5580390/')
+    expect(posterRatingLink.getAttribute('target')).toBe('_blank')
+
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(screen.getByRole('columnheader', { name: 'OMDB' })).toBeTruthy()
+    expect(screen.getByText('Winner')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Open The Shape of Water on IMDb (opens in new tab)' })).toBeTruthy()
     expect(filmRequest).toHaveBeenCalledTimes(1)
+  })
+
+  it('labels a film with no winning nomination as a nominee', async () => {
+    filmRequest.mockResolvedValue(page([{
+      ...film,
+      nominations: film.nominations.map((nomination) => ({ ...nomination, isWinner: false })),
+    }]))
+    render(<OscarCatalogView />)
+
+    expect(await screen.findByText('Nominee · 2 nominations')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+    expect(screen.getByText('Nominee')).toBeTruthy()
   })
 
   it('applies award filters and renders the empty state', async () => {
@@ -132,19 +160,46 @@ describe('OscarCatalogView', () => {
   })
 
   it('opens the film details and displays all nominations and winners', async () => {
+    const awardFilm: OscarFilm = {
+      ...film,
+      awards: '2 wins & 14 nominations total',
+      nominations: [
+        ...nominations,
+        {
+          ...nominations[0], id: 13, canonicalCategory: 'WRITING (Original Screenplay)',
+          category: 'Writing (Original Screenplay)', isWinner: true,
+        },
+        {
+          ...nominations[1], id: 14, canonicalCategory: 'WRITING (Adapted Screenplay)',
+          category: 'Writing (Adapted Screenplay)', isWinner: false,
+        },
+        {
+          ...nominations[1], id: 15, canonicalCategory: 'CINEMATOGRAPHY',
+          category: 'Cinematography', isWinner: false,
+        },
+      ],
+    }
     filmRequest.mockResolvedValue(page([film]))
-    detailsRequest.mockResolvedValue(film)
-    titleOscarsRequest.mockResolvedValue([film])
+    detailsRequest.mockResolvedValue(awardFilm)
+    titleOscarsRequest.mockResolvedValue([awardFilm])
     occurrencesRequest.mockResolvedValue({ items: [], page: 1, pageSize: 5, totalCount: 0, totalPages: 0 })
     render(<OscarCatalogView />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'View The Shape of Water Oscar details' }))
     const dialog = await screen.findByRole('dialog')
     expect(detailsRequest).toHaveBeenCalledWith(film.id)
-    expect(await within(dialog).findByText('Guillermo del Toro and J. Miles Dale')).toBeTruthy()
-    expect(within(dialog).getByText('Fox Searchlight Pictures')).toBeTruthy()
-    expect(within(dialog).getByText('Winner')).toBeTruthy()
-    expect(within(dialog).getByText('Nominee')).toBeTruthy()
+    const awardSummary = within(dialog).getByText('2 wins & 3 nominations')
+    const detailTooltip = within(dialog).getByRole('tooltip')
+    expect(awardSummary.getAttribute('aria-describedby')).toBe(detailTooltip.id)
+    expect(within(detailTooltip).getByRole('listitem', { name: 'Won Best Picture' })).toBeTruthy()
+    expect(within(detailTooltip).getByRole('listitem', { name: 'Nominated for Directing' })).toBeTruthy()
+    expect(within(detailTooltip).getByRole('listitem', { name: 'Nominated for Writing (Adapted Screenplay)' })).toBeTruthy()
+    expect(within(dialog).queryByText('2 wins & 14 nominations total')).toBeNull()
+    expect(await within(dialog).findAllByText('Guillermo del Toro and J. Miles Dale')).toHaveLength(2)
+    expect(within(dialog).getAllByText('Fox Searchlight Pictures')).toHaveLength(2)
+    const nominationsSection = within(dialog).getByRole('heading', { name: 'Nominations' }).closest('section')
+    expect(within(nominationsSection as HTMLElement).getAllByText('Winner')).toHaveLength(2)
+    expect(within(nominationsSection as HTMLElement).getAllByText('Nominee')).toHaveLength(3)
   })
 
   it('requests the next page from the pagination controls', async () => {

@@ -12,7 +12,7 @@ namespace MediaDock.IntegrationTests;
 public sealed class OscarEnrichmentRepositoryTests
 {
     [Fact]
-    public async Task RequestBudgetAtomicallyAppliesSharedAndOscarDailyLimits()
+    public async Task RequestBudgetAtomicallyAppliesConfiguredSharedDailyLimit()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_omdb_budget_test").Build();
         await postgres.StartAsync();
@@ -33,7 +33,7 @@ public sealed class OscarEnrichmentRepositoryTests
                 ? OmdbRequestPurpose.OscarEnrichment
                 : OmdbRequestPurpose.RssIngestion;
             return await new PostgresOmdbRequestBudget(db)
-                .TryReserveAsync(dayOne, purpose, 6, 2);
+                .TryReserveAsync(dayOne, purpose, 6);
         }));
 
         Assert.Equal(6, concurrentReservations.Count(reserved => reserved));
@@ -41,10 +41,10 @@ public sealed class OscarEnrichmentRepositoryTests
         {
             var usage = await db.OmdbDailyUsage.SingleAsync(row => row.UtcDate == dayOne);
             Assert.Equal(6, usage.TotalRequests);
-            Assert.InRange(usage.OscarRequests, 0, 2);
+            Assert.InRange(usage.OscarRequests, 0, 6);
             Assert.True(usage.DailyRequestLimitReached);
             Assert.False(await new PostgresOmdbRequestBudget(db)
-                .TryReserveAsync(dayOne, OmdbRequestPurpose.RssIngestion, 6, 2));
+                .TryReserveAsync(dayOne, OmdbRequestPurpose.RssIngestion, 6));
         }
 
         var dayTwo = dayOne.AddDays(1);
@@ -52,7 +52,7 @@ public sealed class OscarEnrichmentRepositoryTests
         {
             await using var db = new MediaDockDbContext(options);
             return await new PostgresOmdbRequestBudget(db)
-                .TryReserveAsync(dayTwo, OmdbRequestPurpose.OscarEnrichment, 20, 3);
+                .TryReserveAsync(dayTwo, OmdbRequestPurpose.OscarEnrichment, 3);
         }));
 
         Assert.Equal(3, oscarReservations.Count(reserved => reserved));
@@ -63,15 +63,44 @@ public sealed class OscarEnrichmentRepositoryTests
 
         var dayThree = dayTwo.AddDays(1);
         var budget = new PostgresOmdbRequestBudget(resultDb);
-        Assert.True(await budget.TryReserveAsync(dayThree, OmdbRequestPurpose.RssIngestion, 10, 5));
+        Assert.True(await budget.TryReserveAsync(dayThree, OmdbRequestPurpose.RssIngestion, 60));
         await budget.RecordProviderErrorAsync(dayThree, "quota_exceeded", providerQuotaExceeded: true);
-        Assert.False(await budget.TryReserveAsync(dayThree, OmdbRequestPurpose.OscarEnrichment, 10, 5));
+        Assert.False(await budget.TryReserveAsync(dayThree, OmdbRequestPurpose.OscarEnrichment, 60));
         var quotaUsage = await resultDb.OmdbDailyUsage.SingleAsync(row => row.UtcDate == dayThree);
         Assert.Equal(1, quotaUsage.TotalRequests);
         Assert.Equal(0, quotaUsage.OscarRequests);
         Assert.True(quotaUsage.ProviderQuotaExceeded);
         Assert.Equal("quota_exceeded", quotaUsage.LastErrorCode);
-        Assert.False(await budget.TryReserveAsync(dayThree, OmdbRequestPurpose.RssIngestion, 10, 5));
+        Assert.False(await budget.TryReserveAsync(dayThree, OmdbRequestPurpose.RssIngestion, 60));
+
+        var bufferDay = dayThree.AddDays(1);
+        await using (var seedDb = new MediaDockDbContext(options))
+        {
+            seedDb.OmdbDailyUsage.Add(new OmdbDailyUsage
+            {
+                UtcDate = bufferDay,
+                TotalRequests = 999
+            });
+            await seedDb.SaveChangesAsync();
+        }
+
+        await using (var boundaryDb = new MediaDockDbContext(options))
+        {
+            var boundaryBudget = new PostgresOmdbRequestBudget(boundaryDb);
+            Assert.True(await boundaryBudget.TryReserveAsync(
+                bufferDay,
+                OmdbRequestPurpose.RssIngestion,
+                1000));
+            Assert.False(await boundaryBudget.TryReserveAsync(
+                bufferDay,
+                OmdbRequestPurpose.OscarEnrichment,
+                1000));
+        }
+
+        await using var boundaryResultDb = new MediaDockDbContext(options);
+        var boundaryUsage = await boundaryResultDb.OmdbDailyUsage.SingleAsync(row => row.UtcDate == bufferDay);
+        Assert.Equal(1000, boundaryUsage.TotalRequests);
+        Assert.True(boundaryUsage.DailyRequestLimitReached);
     }
 
     [Fact]
@@ -101,9 +130,9 @@ public sealed class OscarEnrichmentRepositoryTests
         await db.SaveChangesAsync();
 
         var candidates = await new PostgresOscarEnrichmentRepository(db)
-            .GetEligibleCandidatesAsync(now, 3);
+            .GetEligibleCandidatesAsync(now);
 
-        Assert.Equal(["Film Z", "Film A", "Film B"], candidates.Select(candidate => candidate.FilmTitle));
+        Assert.Equal(["Film Z", "Film A", "Film B", "Film C"], candidates.Select(candidate => candidate.FilmTitle));
     }
 
     [Fact]

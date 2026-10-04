@@ -85,8 +85,11 @@ deterministic across DST. One partial unique index prevents more than one
 queued/running RSS job, while a unique slot index makes schedule enqueue
 idempotent.
 
-The RSS handler loads the OMDb key and shared limit from the singleton `settings` row
-inside the job scope; credentials never enter job payloads or API responses.
+RSS and Oscar handlers load the OMDb key and shared daily limit from the singleton
+`settings` row inside the job scope. The atomic budget allows requests up to that
+configured limit, with no separate Oscar caps or safety buffer; an OMDb quota error
+also blocks further requests for that UTC day. Credentials never enter job payloads
+or API responses.
 `RssIngestionService` reports stage/source/counter snapshots at feed boundaries
 and periodically during processing. New parse logs store their `scan_run_id`;
 older rows remain unassociated. Oscar enrichment is a separate manual job using
@@ -117,6 +120,12 @@ The [Compose file](../../compose.yaml) defines PostgreSQL (`db`), the API (`api`
 API startup registers `MediaDockDbContext` with Npgsql from `ConnectionStrings:MediaDock`. `/health/live` reports process liveness; `/health/ready` calls `Database.CanConnectAsync` and returns 503 when PostgreSQL is unavailable, as implemented by [HealthEndpoints](../../server/src/MediaDock.Api/Health/HealthEndpoints.cs) and [ReadinessService](../../server/src/MediaDock.Api/Health/ReadinessService.cs). Compose configures a healthcheck for `db`, not an API healthcheck; the readiness endpoint is not currently wired as a Compose healthcheck.
 
 The API image serves the bundled React app only in Production, via the default/static-file middleware and SPA fallback in `Program.cs`; its assets are produced by the [server Dockerfile](../../server/Dockerfile). Compose binds the API host port to loopback. This is an unauthenticated local MVP; keep the deployment boundary described in [project context](PROJECT_CONTEXT.md).
+
+The Configuration deployment panel proxies status and start requests through
+the API to a root-owned host control service over a read-only-mounted Unix
+socket. That service accepts only status, immediate start of the fixed deploy
+unit, or a retry of a failed staging gate. It does not expose a shell or Docker
+socket; see the [systemd runbook](../../deploy/systemd/README.md) for host setup.
 
 ## Where to Change Things
 

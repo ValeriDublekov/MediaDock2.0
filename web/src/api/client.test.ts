@@ -6,10 +6,13 @@ import {
   getActiveBackgroundJob,
   getBackgroundJobEvents,
   getCatalog,
+  getDeploymentStatus,
   getOscarFilm,
   getOscarFilms,
   getProviderSettings,
+  importPersonalRatings,
   requestJson,
+  runDeploymentAction,
   updateProviderSettings,
 } from './client'
 import type { CatalogTitle, OscarFilm, PageResponse, ProviderSettings, ProviderSettingsInput } from './types'
@@ -33,12 +36,13 @@ describe('typed API client', () => {
     const page: PageResponse<CatalogTitle> = { items: [], page: 2, pageSize: 20, totalCount: 0, totalPages: 0 }
     const stub = fetchStub(response(200, page))
 
-    await getCatalog({ page: 2, pageSize: 20, search: 'quiet river', mediaType: 'series', yearFrom: 1998, genre: 'drama' }, stub.fetcher)
+    await getCatalog({ page: 2, pageSize: 20, feedTypes: ['series_complete', 'series_ongoing'], search: 'quiet river', mediaType: 'series', yearFrom: 1998, genre: 'drama' }, stub.fetcher)
 
     const requestUrl = new URL(String(stub.calls[0]?.input), 'http://localhost')
     expect(requestUrl.pathname).toBe('/api/catalog')
     expect(requestUrl.searchParams.get('page')).toBe('2')
     expect(requestUrl.searchParams.get('pageSize')).toBe('20')
+    expect(requestUrl.searchParams.get('feedTypes')).toBe('series_complete,series_ongoing')
     expect(requestUrl.searchParams.get('search')).toBe('quiet river')
     expect(requestUrl.searchParams.get('mediaType')).toBe('series')
     expect(requestUrl.searchParams.get('yearFrom')).toBe('1998')
@@ -75,16 +79,12 @@ describe('typed API client', () => {
     const providerSettings: ProviderSettings = {
       omdbApiKeyConfigured: true,
       omdbDailyRequestLimit: 25,
-      oscarEnrichmentMaxFilmsPerRun: 10,
-      oscarEnrichmentMaxRequestsPerDay: 8,
       updatedAt: null,
     }
     const input: ProviderSettingsInput = {
       omdbApiKey: 'new-key-value',
       clearOmdbApiKey: false,
       omdbDailyRequestLimit: 25,
-      oscarEnrichmentMaxFilmsPerRun: 10,
-      oscarEnrichmentMaxRequestsPerDay: 8,
     }
     const stub = fetchStub(response(200, providerSettings))
 
@@ -110,6 +110,19 @@ describe('typed API client', () => {
     expect(eventsUrl.searchParams.get('pageSize')).toBe('25')
   })
 
+  it('loads deployment status and sends only the selected deployment action', async () => {
+    const status = { activeState: 'inactive', deployedSha: 'a'.repeat(40) }
+    const stub = fetchStub(response(200, status))
+
+    await getDeploymentStatus(stub.fetcher)
+    await runDeploymentAction('retry_failed_gate', stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/deployment')
+    expect(String(stub.calls[1]?.input)).toBe('/api/deployment/run')
+    expect(stub.calls[1]?.init?.method).toBe('POST')
+    expect(JSON.parse(String(stub.calls[1]?.init?.body))).toEqual({ action: 'retry_failed_gate' })
+  })
+
   it('sends Oscar files as multipart without setting a boundary-less content type', async () => {
     const stub = fetchStub(response(202, { id: 9, status: 'queued', statusUrl: '/api/background-jobs/9' }))
     const file = new File(['csv contents'], 'awards.csv', { type: 'text/csv' })
@@ -122,6 +135,29 @@ describe('typed API client', () => {
     expect(body).toBeInstanceOf(FormData)
     expect(new Headers(init?.headers).has('Content-Type')).toBe(false)
     expect((body as FormData).get('YearAfter')).toBe('1980')
+    expect((body as FormData).get('File')).toBe(file)
+  })
+
+  it('sends one personal ratings JSON file as multipart', async () => {
+    const stub = fetchStub(response(200, {
+      ratingsInFile: 1,
+      added: 1,
+      updated: 0,
+      unchanged: 0,
+      totalRatings: 1,
+      importedAt: '2026-10-02T10:00:00Z',
+      errors: [],
+    }))
+    const file = new File(['[{"id":"tt14452776","rating":8}]'], 'ratings.json', { type: 'application/json' })
+
+    await importPersonalRatings(file, stub.fetcher)
+
+    const init = stub.calls[0]?.init
+    const body = init?.body
+    expect(String(stub.calls[0]?.input)).toBe('/api/personal-ratings/import')
+    expect(init?.method).toBe('POST')
+    expect(body).toBeInstanceOf(FormData)
+    expect(new Headers(init?.headers).has('Content-Type')).toBe(false)
     expect((body as FormData).get('File')).toBe(file)
   })
 

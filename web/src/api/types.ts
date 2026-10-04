@@ -17,6 +17,7 @@ export interface CatalogTitle {
   mediaType: MediaType
   sourceType: MediaSourceType | null
   contentKind: string | null
+  imdbId: string | null
   imdbRating: number | null
   posterUrl: string | null
   genres: string[]
@@ -29,7 +30,6 @@ export interface TitleDetails extends CatalogTitle {
   broadcastRangeStartYear: number | null
   broadcastRangeEndYear: number | null
   broadcastRangeRaw: string | null
-  imdbId: string | null
   imdbVotes: number | null
   metascore: number | null
   director: string | null
@@ -134,8 +134,6 @@ export interface SettingsInput {
 export interface ProviderSettings {
   omdbApiKeyConfigured: boolean
   omdbDailyRequestLimit: number
-  oscarEnrichmentMaxFilmsPerRun: number
-  oscarEnrichmentMaxRequestsPerDay: number
   updatedAt: string | null
 }
 
@@ -153,8 +151,19 @@ export interface ProviderSettingsInput {
   omdbApiKey: string | null
   clearOmdbApiKey: boolean
   omdbDailyRequestLimit: number
-  oscarEnrichmentMaxFilmsPerRun: number
-  oscarEnrichmentMaxRequestsPerDay: number
+}
+
+export interface PersonalRatingsImportResult {
+  ratingsInFile: number
+  added: number
+  updated: number
+  unchanged: number
+  totalRatings: number
+  importedAt: string
+  errors: Array<{
+    id: string
+    message: string
+  }>
 }
 
 export interface ParseLog {
@@ -203,6 +212,7 @@ export interface ScanRun {
 export interface CatalogQuery {
   page: number
   pageSize: number
+  feedTypes?: FeedType[]
   search?: string
   mediaType?: MediaType
   sourceType?: MediaSourceType
@@ -266,6 +276,25 @@ export interface SystemVersion {
   version: string
   commitSha: string
   commitDateUtc: string | null
+}
+
+export interface DeploymentStatus {
+  isRunning: boolean
+  activeState: string
+  subState: string
+  result: string
+  exitCode: string
+  startedAt: string
+  finishedAt: string
+  deployedSha: string | null
+  gateFailedSha: string | null
+  recoveryRequired: boolean
+  failureTargetSha: string | null
+  recentOutput: string[]
+}
+
+export interface DeploymentActionResult {
+  message: string
 }
 
 export type BackgroundJobStatus = 'queued' | 'running' | 'succeeded' | 'partial' | 'failed'

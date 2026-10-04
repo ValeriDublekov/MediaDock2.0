@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { getTitle, getTitleOccurrences, getTitleOscars } from '../../api/client'
 import type { Occurrence, OscarFilm, PageResponse, TitleDetails } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
@@ -8,16 +8,18 @@ import { FavoriteControls } from '../favorites/FavoriteControls'
 
 interface TitleDetailsDialogProps {
   titleId: number
+  initialSection?: 'details' | 'torrents'
   onClose: () => void
 }
 
-export function TitleDetailsDialog({ titleId, onClose }: TitleDetailsDialogProps) {
+export function TitleDetailsDialog({ titleId, initialSection = 'details', onClose }: TitleDetailsDialogProps) {
   const [title, setTitle] = useState<TitleDetails | null>(null)
   const [occurrences, setOccurrences] = useState<PageResponse<Occurrence> | null>(null)
   const [oscars, setOscars] = useState<OscarFilm[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const torrentSectionRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     let current = true
@@ -36,6 +38,12 @@ export function TitleDetailsDialog({ titleId, onClose }: TitleDetailsDialogProps
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
   }, [titleId, attempt])
+
+  useEffect(() => {
+    if (initialSection === 'torrents' && !loading && title) {
+      torrentSectionRef.current?.scrollIntoView?.({ block: 'start' })
+    }
+  }, [initialSection, loading, title])
 
   return (
     <div className="detail-backdrop" onMouseDown={(event) => {
@@ -62,6 +70,7 @@ export function TitleDetailsDialog({ titleId, onClose }: TitleDetailsDialogProps
                   <strong>{title.imdbRating === null ? 'Not rated' : `IMDb ${title.imdbRating.toFixed(1)}`}</strong>
                   <span>{title.genres.join(' · ') || 'Genres unavailable'}</span>
                   {title.plot && <p className="detail-description">{title.plot}</p>}
+                  {title.imdbId && <a aria-label={`Open ${title.title} on IMDb (opens in new tab)`} className="button imdb-detail-link" href={`https://www.imdb.com/title/${title.imdbId}/`} rel="noopener noreferrer" target="_blank">Open on IMDb</a>}
                 </div>
               </div>
               <dl className="detail-facts">
@@ -79,14 +88,14 @@ export function TitleDetailsDialog({ titleId, onClose }: TitleDetailsDialogProps
                   {film.nominations.map((nomination) => <span key={nomination.id}>{nomination.category}: {nomination.isWinner ? 'Winner' : 'Nominee'} · {nomination.nominees}</span>)}
                 </div>)}
               </section>}
-              <div>
+              <section ref={torrentSectionRef}>
                 <div className="section-title-row"><div><h2>Torrent sources</h2><p>Most recently seen occurrences</p></div></div>
                 {occurrences?.items.length ? (
                   <div className="occurrence-list">{occurrences.items.map((item) => <OccurrenceRow item={item} key={item.id} />)}</div>
                 ) : (
                   <EmptyState title="No observations recorded" message="This title has no linked feed occurrences yet." />
                 )}
-              </div>
+              </section>
             </>
           )}
         </div>
