@@ -11,6 +11,8 @@ import type {
   PersonalRatingsImportResult,
   OscarCatalogQuery,
   OscarFilm,
+  GoldenGlobeCatalogQuery,
+  GoldenGlobeFilm,
   Occurrence,
   PageResponse,
   ParseLog,
@@ -258,6 +260,10 @@ export function enqueueGoldenGlobeImport(file: File, yearAfter: number, fetcher?
   body.append('File', file)
   body.append('YearAfter', String(yearAfter))
   return requestJson<BackgroundJobAccepted>('/background-jobs/golden-globe-import', { method: 'POST', body }, fetcher)
+}
+
+export function getGoldenGlobeFilms(query: GoldenGlobeCatalogQuery, fetcher?: typeof fetch) {
+  return requestJson<PageResponse<GoldenGlobeFilm>>(withQuery('/golden-globes', query), {}, fetcher)
 }
 
 export function importPersonalRatings(file: File, fetcher?: typeof fetch) {

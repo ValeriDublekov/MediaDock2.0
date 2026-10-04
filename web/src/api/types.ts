@@ -84,6 +84,21 @@ export interface OscarFilm {
   nominations: OscarNomination[]
 }
 
+export interface GoldenGlobeNomination {
+  id: number
+  year: number
+  award: string
+  isWinner: boolean
+}
+
+export interface GoldenGlobeFilm {
+  id: string
+  title: string
+  year: number
+  imdbId: string | null
+  nominations: GoldenGlobeNomination[]
+}
+
 export interface Occurrence {
   id: number
   titleId: number
@@ -233,6 +248,16 @@ export interface OscarCatalogQuery {
   category?: string
   result?: 'winner' | 'nominee'
   enrichmentStatus?: OscarEnrichmentStatus
+}
+
+export interface GoldenGlobeCatalogQuery {
+  page: number
+  pageSize: number
+  search?: string
+  yearFrom?: number
+  yearTo?: number
+  award?: string
+  result?: 'winner' | 'nominee'
 }
 
 export interface ParseLogQuery {

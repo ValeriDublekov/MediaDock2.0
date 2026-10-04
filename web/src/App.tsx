@@ -2,18 +2,20 @@ import { useState } from 'react'
 import { CatalogView } from './features/catalog/CatalogView'
 import { HistoryView } from './features/history/HistoryView'
 import { OscarCatalogView } from './features/oscar/OscarCatalogView'
+import { GoldenGlobeCatalogView } from './features/golden-globes/GoldenGlobeCatalogView'
 import { FavoriteProvider } from './features/favorites/FavoriteContext'
 import { FavoritesView } from './features/favorites/FavoritesView'
 import { SourceSettingsView } from './features/sources/SourceSettingsView'
 
-type Section = 'catalog' | 'oscar' | 'favorites' | 'sources' | 'history'
+type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'sources' | 'history'
 
 const sections: { id: Section; number: string; label: string }[] = [
   { id: 'catalog', number: '01', label: 'Catalog' },
   { id: 'oscar', number: '02', label: 'Oscar catalog' },
-  { id: 'favorites', number: '03', label: 'Favorites' },
-  { id: 'sources', number: '04', label: 'Configuration' },
-  { id: 'history', number: '05', label: 'Scan history' },
+  { id: 'golden-globes', number: '03', label: 'Golden Globes catalog' },
+  { id: 'favorites', number: '04', label: 'Favorites' },
+  { id: 'sources', number: '05', label: 'Configuration' },
+  { id: 'history', number: '06', label: 'Scan history' },
 ]
 
 const sectionContent: Record<Section, { eyebrow: string; title: string; description: string }> = {
@@ -26,6 +28,11 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
     eyebrow: 'ACADEMY AWARDS',
     title: 'Oscar catalog',
     description: 'Browse nominated films, award outcomes, and available metadata.',
+  },
+  'golden-globes': {
+    eyebrow: 'GOLDEN GLOBES',
+    title: 'Golden Globes catalog',
+    description: 'Browse Golden Globes nominees, winners, and award categories.',
   },
   favorites: {
     eyebrow: 'MY MOVIES',
@@ -96,6 +103,7 @@ function AppContent() {
 
           {section === 'catalog' && <CatalogView />}
           {section === 'oscar' && <OscarCatalogView />}
+          {section === 'golden-globes' && <GoldenGlobeCatalogView />}
           {section === 'favorites' && <FavoritesView />}
           {section === 'sources' && <SourceSettingsView onOpenHistory={(scanRunId) => { setHistoryScanRunId(scanRunId); setSection('history') }} />}
           {section === 'history' && <HistoryView scanRunId={historyScanRunId} onClearScanRun={() => setHistoryScanRunId(null)} />}
