@@ -4,6 +4,7 @@ using MediaDock.Application.OscarAwards;
 using MediaDock.Application.GoldenGlobes;
 using MediaDock.Infrastructure.Metadata;
 using MediaDock.Infrastructure.OscarAwards;
+using MediaDock.Infrastructure.GoldenGlobes;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Rss;
 using Microsoft.EntityFrameworkCore;

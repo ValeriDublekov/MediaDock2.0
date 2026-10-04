@@ -72,6 +72,5 @@ class DeploymentControlTests(unittest.TestCase):
         self.assertEqual(status["failureTargetSha"], "e" * 40)
         self.assertEqual(status["recentOutput"], ["The gate failed"])
 
-
 if __name__ == "__main__":
     unittest.main()

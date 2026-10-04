@@ -156,8 +156,11 @@ class DeploymentControlHandler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             if length < 1 or length > 128:
                 raise ValueError("Invalid request size.")
-            request = json.loads(self.rfile.read(length))
-            action = request.get("action") if isinstance(request, dict) else None
+            raw_body = self.rfile.read(length)
+            request = json.loads(raw_body.decode("utf-8-sig"))
+            action = None
+            if isinstance(request, dict):
+                action = request.get("action") or request.get("Action")
             if not isinstance(action, str):
                 raise ValueError("Invalid deployment action.")
         except (ValueError, json.JSONDecodeError):
