@@ -231,31 +231,24 @@ internal sealed class BackgroundJobDispatcher(
                 job.Id,
                 exception.GetType().Name,
                 errorCode);
-            try
-            {
-                await CompleteJobAsync(
-                    dbContext,
-                    job,
-                    "failed",
-                    new
-                    {
-                        error = exception.Message,
-                        exceptionType = exception.GetType().FullName,
-                        innerError = exception.InnerException?.Message
-                    },
-                    errorCode,
-                    CancellationToken.None);
-            }
-            catch (Exception completionException)
-            {
-                // A failed transaction/connection must not leave the job looking active forever.
-                logger.LogError(completionException, "Could not persist failed state for background job {JobId}.", job.Id);
-                await MarkJobFailedWithFreshContextAsync(job.Id, errorCode);
-            }
+            // The import may have left the request-scoped DbContext with failed tracked
+            // entities or a broken transaction. Persist the failure through a fresh context
+            // so the original exception is not replaced by a generic fallback message.
+            await MarkJobFailedWithFreshContextAsync(
+                job.Id,
+                errorCode,
+                exception.Message,
+                exception.GetType().FullName,
+                exception.InnerException?.Message);
         }
     }
 
-    private async Task MarkJobFailedWithFreshContextAsync(long jobId, string errorCode)
+    private async Task MarkJobFailedWithFreshContextAsync(
+        long jobId,
+        string errorCode,
+        string? errorMessage = null,
+        string? exceptionType = null,
+        string? innerError = null)
     {
         try
         {
@@ -269,7 +262,12 @@ internal sealed class BackgroundJobDispatcher(
             job.CurrentStage = "failed";
             job.ErrorCode = errorCode;
             job.ProgressUpdatedAt = now;
-            job.ResultSummary = JsonSerializer.Serialize(new { error = "The job failed before its error details could be persisted." });
+            job.ResultSummary = JsonSerializer.Serialize(new
+            {
+                error = errorMessage ?? "The job failed before its error details could be persisted.",
+                exceptionType,
+                innerError
+            });
             job.InputBytes = null;
             await dbContext.SaveChangesAsync();
         }
