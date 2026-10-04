@@ -12,7 +12,7 @@ public sealed class PostgresOmdbRequestBudget(MediaDockDbContext dbContext) : IO
         int dailyRequestLimit,
         CancellationToken cancellationToken = default)
     {
-        if (requestPurpose is not (OmdbRequestPurpose.RssIngestion or OmdbRequestPurpose.OscarEnrichment))
+        if (requestPurpose is not (OmdbRequestPurpose.RssIngestion or OmdbRequestPurpose.OscarEnrichment or OmdbRequestPurpose.GoldenGlobeEnrichment))
         {
             throw new ArgumentOutOfRangeException(nameof(requestPurpose));
         }

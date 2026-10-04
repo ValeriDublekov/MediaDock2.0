@@ -18,6 +18,8 @@ public sealed record GoldenGlobeFilmResponse(
     string Title,
     int Year,
     string? ImdbId,
+    string? EnrichmentStatus,
+    string? EnrichmentError,
     IReadOnlyList<GoldenGlobeNominationResponse> Nominations);
 
 public sealed record GoldenGlobeNominationResponse(

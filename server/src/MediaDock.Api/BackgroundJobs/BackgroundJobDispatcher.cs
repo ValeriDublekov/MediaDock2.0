@@ -1,6 +1,7 @@
 using System.Data.Common;
 using System.Text.Json;
 using MediaDock.Application.Ingestion;
+using MediaDock.Application.GoldenGlobes;
 using MediaDock.Application.OscarAwards;
 using MediaDock.Infrastructure.Ingestion;
 using MediaDock.Infrastructure.OscarAwards;
@@ -189,6 +190,11 @@ internal sealed class BackgroundJobDispatcher(
                 await ExecuteOscarEnrichmentAsync(services, dbContext, job, stoppingToken);
                 return;
             }
+            if (job.JobType == "golden_globe_enrichment")
+            {
+                await ExecuteGoldenGlobeEnrichmentAsync(services, dbContext, job, stoppingToken);
+                return;
+            }
 
             await LoadProviderSettingsAsync(services, dbContext, stoppingToken);
             var ingestion = services.GetRequiredService<RssIngestionService>();
@@ -320,6 +326,14 @@ internal sealed class BackgroundJobDispatcher(
             new { enrichment.RunId, enrichment.Status, enrichment.Summary },
             null,
             CancellationToken.None);
+    }
+
+    private async Task ExecuteGoldenGlobeEnrichmentAsync(IServiceProvider services, MediaDockDbContext dbContext, BackgroundJob job, CancellationToken cancellationToken)
+    {
+        await LoadProviderSettingsAsync(services, dbContext, cancellationToken);
+        await SetStageAsync(dbContext, job, "golden_globe_enrichment", "Golden Globes enrichment started.", cancellationToken);
+        var result = await services.GetRequiredService<GoldenGlobeEnrichmentService>().RunAsync(cancellationToken);
+        await CompleteJobAsync(dbContext, job, result.Status, result.Summary, null, CancellationToken.None);
     }
 
     private async Task ExecuteOscarImportAsync(

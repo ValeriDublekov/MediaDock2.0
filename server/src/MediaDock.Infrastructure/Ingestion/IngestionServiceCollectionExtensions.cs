@@ -1,6 +1,7 @@
 using MediaDock.Application.Ingestion;
 using MediaDock.Application.Metadata;
 using MediaDock.Application.OscarAwards;
+using MediaDock.Application.GoldenGlobes;
 using MediaDock.Infrastructure.Metadata;
 using MediaDock.Infrastructure.OscarAwards;
 using MediaDock.Infrastructure.Persistence;
@@ -33,6 +34,8 @@ public static class IngestionServiceCollectionExtensions
         services.AddScoped<MetadataResolver>();
         services.AddScoped<RssIngestionService>();
         services.AddScoped<OscarEnrichmentService>();
+        services.AddScoped<IGoldenGlobeEnrichmentRepository, PostgresGoldenGlobeEnrichmentRepository>();
+        services.AddScoped<GoldenGlobeEnrichmentService>();
         services.AddScoped<OscarDatasetImporter>();
         services.AddScoped<IOmdbClient>(serviceProvider =>
         {

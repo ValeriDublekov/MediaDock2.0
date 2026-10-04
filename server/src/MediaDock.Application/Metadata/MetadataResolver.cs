@@ -113,6 +113,33 @@ public sealed class MetadataResolver
             result.ErrorCode);
     }
 
+    public async Task<MetadataResolution> ResolveByTitleAsync(
+        string title,
+        string sourceType,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default,
+        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
+    {
+        var normalizedTitle = NormalizeTitle(title);
+        var normalizedSourceType = sourceType.Trim().ToLowerInvariant();
+        if (normalizedTitle.Length == 0 || normalizedSourceType is not ("movie" or "series"))
+            return new(MetadataLookupStatus.InvalidRequest, null, false, 0, "invalid_lookup");
+
+        var cached = await _cache.GetByTitleAsync(normalizedTitle, normalizedSourceType, cancellationToken);
+        if (cached is not null && cached.ExpiresAt > now)
+            return new(cached.Status, cached.Metadata, true, 0);
+
+        var result = await _client.LookupAsync(title.Trim(), null, normalizedSourceType, cancellationToken, requestPurpose);
+        if (result.Status is MetadataLookupStatus.Found or MetadataLookupStatus.ConfirmedNotFound)
+        {
+            await StoreAsync(
+                CreateCacheKey(normalizedTitle, null, normalizedSourceType, "title", null),
+                normalizedTitle, null, "title", normalizedSourceType, result.Status, result.Metadata,
+                now, result.Status == MetadataLookupStatus.Found ? FoundTtl : NotFoundTtl, cancellationToken);
+        }
+        return new(result.Status, result.Metadata, false, result.HttpAttempts, result.ErrorCode);
+    }
+
     private async Task StoreAsync(
         string cacheKey,
         string normalizedTitle,

@@ -29,6 +29,11 @@ internal sealed class GoldenGlobeNominationConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.AwardId).HasColumnName("award_id");
         builder.Property(x => x.Title).HasColumnName("title").HasMaxLength(1000).IsRequired();
         builder.Property(x => x.ImdbId).HasColumnName("imdb_id").HasMaxLength(32);
+        builder.Property(x => x.EnrichmentStatus).HasColumnName("enrichment_status").HasMaxLength(24).IsRequired();
+        builder.Property(x => x.EnrichmentAttemptCount).HasColumnName("enrichment_attempt_count");
+        builder.Property(x => x.LastEnrichmentAttemptAt).HasColumnName("last_enrichment_attempt_at");
+        builder.Property(x => x.NextEnrichmentAttemptAt).HasColumnName("next_enrichment_attempt_at");
+        builder.Property(x => x.LastEnrichmentError).HasColumnName("last_enrichment_error");
         builder.HasIndex(x => x.ImportKey).IsUnique().HasDatabaseName("ux_golden_globe_nominations_import_key");
         builder.HasIndex(x => new { x.Year, x.AwardId }).HasDatabaseName("ix_golden_globe_nominations_year_award");
         builder.HasOne(x => x.Award).WithMany(x => x.Nominations).HasForeignKey(x => x.AwardId)

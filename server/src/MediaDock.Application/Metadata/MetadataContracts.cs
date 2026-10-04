@@ -17,7 +17,8 @@ public enum MetadataLookupStatus
 public enum OmdbRequestPurpose
 {
     RssIngestion,
-    OscarEnrichment
+    OscarEnrichment,
+    GoldenGlobeEnrichment
 }
 
 public sealed record MetadataDetails(
@@ -102,6 +103,11 @@ public interface IMetadataCacheStore
     Task<MetadataCacheValue?> GetAsync(
         string cacheKey,
         CancellationToken cancellationToken = default);
+
+    async Task<MetadataCacheValue?> GetByTitleAsync(
+        string normalizedTitle,
+        string sourceType,
+        CancellationToken cancellationToken = default) => null;
 
     Task StoreAsync(
         string cacheKey,

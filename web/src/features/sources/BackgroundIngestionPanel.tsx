@@ -3,6 +3,7 @@ import {
   ApiError,
   enqueueManualScan,
   enqueueOscarEnrichment,
+  enqueueGoldenGlobeEnrichment,
   enqueueOscarImport,
   enqueueGoldenGlobeImport,
   getActiveBackgroundJob,
@@ -37,6 +38,7 @@ function jobLabel(job: BackgroundJob): string {
   if (job.jobType === 'rss_scan') return 'RSS scan'
   if (job.jobType === 'oscar_enrichment') return 'Oscar film metadata'
   if (job.jobType === 'golden_globe_import') return 'Golden Globes dataset import'
+  if (job.jobType === 'golden_globe_enrichment') return 'Golden Globes film metadata'
   return 'Oscar dataset import'
 }
 
@@ -194,6 +196,14 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
     }
   }
 
+  async function startGoldenGlobeEnrichment() {
+    if (!window.confirm('Start Golden Globes film metadata extraction? It may send OMDb requests within the saved limits.')) return
+    setBusy(true); setError(null)
+    try { const accepted = await enqueueGoldenGlobeEnrichment(); await showJob(accepted.id) }
+    catch (requestError: unknown) { setError(requestError instanceof Error ? requestError.message : 'Could not queue Golden Globes enrichment.') }
+    finally { setBusy(false) }
+  }
+
   async function startGoldenGlobeImport() {
     const file = goldenGlobeFileInput.current?.files?.[0]
     setUploadError(null)
@@ -223,6 +233,9 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
           </button>
           <button className="button button-secondary" disabled={busy || (job?.jobType === 'oscar_enrichment' && active)} onClick={() => { void startOscarEnrichment() }} type="button">
             Enrich Oscar films
+          </button>
+          <button className="button button-secondary" disabled={busy || (job?.jobType === 'golden_globe_enrichment' && active)} onClick={() => { void startGoldenGlobeEnrichment() }} type="button">
+            Enrich Golden Globes films
           </button>
           {job && <button className="button button-secondary" onClick={() => { void showJob(job.id) }} type="button">View job</button>}
         </div>

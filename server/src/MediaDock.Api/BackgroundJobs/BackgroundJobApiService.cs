@@ -250,6 +250,23 @@ internal sealed class BackgroundJobApiService(
         return ToResponse(job);
     }
 
+    public async Task<EnqueuedBackgroundJob> EnqueueGoldenGlobeEnrichmentAsync(CancellationToken cancellationToken)
+    {
+        var active = await dbContext.BackgroundJobs.AsNoTracking().Where(job => job.JobType == "golden_globe_enrichment" && (job.Status == "queued" || job.Status == "running")).OrderByDescending(job => job.EnqueuedAt).FirstOrDefaultAsync(cancellationToken);
+        if (active is not null) return new(ToResponse(active), false);
+        var now = timeProvider.GetUtcNow();
+        var job = new BackgroundJob { JobType = "golden_globe_enrichment", Trigger = "manual", Status = "queued", EnqueuedAt = now, CurrentStage = "queued" };
+        job.Events.Add(new BackgroundJobEvent { OccurredAt = now, Level = "information", EventCode = "job_queued", Message = "Golden Globes enrichment queued." });
+        dbContext.BackgroundJobs.Add(job);
+        try { await dbContext.SaveChangesAsync(cancellationToken); return new(ToResponse(job), true); }
+        catch (DbUpdateException exception) when (IsActiveGoldenGlobeEnrichmentConflict(exception))
+        {
+            dbContext.ChangeTracker.Clear();
+            var existing = await dbContext.BackgroundJobs.AsNoTracking().Where(item => item.JobType == "golden_globe_enrichment" && (item.Status == "queued" || item.Status == "running")).OrderByDescending(item => item.EnqueuedAt).SingleAsync(cancellationToken);
+            return new(ToResponse(existing), false);
+        }
+    }
+
     public async Task<BackgroundJobResponse> EnqueueGoldenGlobeImportAsync(
         GoldenGlobeImportForm form,
         CancellationToken cancellationToken)
@@ -350,4 +367,7 @@ internal sealed class BackgroundJobApiService(
             SqlState: PostgresErrorCodes.UniqueViolation,
             ConstraintName: "ux_background_jobs_active_oscar_enrichment"
         };
+
+    private static bool IsActiveGoldenGlobeEnrichmentConflict(DbUpdateException exception) =>
+        exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "ux_background_jobs_active_golden_globe_enrichment" };
 }

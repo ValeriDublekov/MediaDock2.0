@@ -72,6 +72,24 @@ public sealed class PostgresMetadataCacheStore(MediaDockDbContext dbContext) : I
             entity.ExpiresAt);
     }
 
+    public async Task<MetadataCacheValue?> GetByTitleAsync(
+        string normalizedTitle,
+        string sourceType,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await dbContext.MetadataCache
+            .Where(entry => entry.LookupTitle == normalizedTitle
+                && entry.SourceType == sourceType
+                && entry.Status == "found"
+                && entry.ExpiresAt > DateTimeOffset.UtcNow)
+            .OrderByDescending(entry => entry.FetchedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (entity is null || string.IsNullOrWhiteSpace(entity.PayloadJson)) return null;
+        var metadata = JsonSerializer.Deserialize<MetadataDetails>(entity.PayloadJson);
+        return metadata is null ? null : new(entity.LookupTitle, entity.LookupYear, entity.LookupYearSemantics, entity.SourceType,
+            MetadataLookupStatus.Found, metadata, entity.FetchedAt, entity.ExpiresAt);
+    }
+
     public async Task StoreAsync(
         string cacheKey,
         MetadataCacheValue value,

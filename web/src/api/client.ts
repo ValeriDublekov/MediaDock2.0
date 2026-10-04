@@ -248,6 +248,10 @@ export function enqueueOscarEnrichment(fetcher?: typeof fetch) {
   return requestJson<BackgroundJobAccepted>('/background-jobs/oscar-enrichment', { method: 'POST' }, fetcher)
 }
 
+export function enqueueGoldenGlobeEnrichment(fetcher?: typeof fetch) {
+  return requestJson<BackgroundJobAccepted>('/background-jobs/golden-globe-enrichment', { method: 'POST' }, fetcher)
+}
+
 export function enqueueOscarImport(file: File, yearAfter: number, fetcher?: typeof fetch) {
   const body = new FormData()
   body.append('File', file)

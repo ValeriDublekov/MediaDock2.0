@@ -9,6 +9,11 @@ public sealed class GoldenGlobeNomination
     public long AwardId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? ImdbId { get; set; }
+    public string EnrichmentStatus { get; set; } = "pending";
+    public int EnrichmentAttemptCount { get; set; }
+    public DateTimeOffset? LastEnrichmentAttemptAt { get; set; }
+    public DateTimeOffset? NextEnrichmentAttemptAt { get; set; }
+    public string? LastEnrichmentError { get; set; }
 
     public GoldenGlobeAward Award { get; set; } = null!;
 }
