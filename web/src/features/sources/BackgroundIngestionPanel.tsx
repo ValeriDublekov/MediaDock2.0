@@ -4,6 +4,7 @@ import {
   enqueueManualScan,
   enqueueOscarEnrichment,
   enqueueOscarImport,
+  enqueueGoldenGlobeImport,
   getActiveBackgroundJob,
   getBackgroundJob,
   getBackgroundJobEvents,
@@ -35,6 +36,7 @@ function progressSummary(job: BackgroundJob): Record<string, unknown> {
 function jobLabel(job: BackgroundJob): string {
   if (job.jobType === 'rss_scan') return 'RSS scan'
   if (job.jobType === 'oscar_enrichment') return 'Oscar film metadata'
+  if (job.jobType === 'golden_globe_import') return 'Golden Globes dataset import'
   return 'Oscar dataset import'
 }
 
@@ -55,6 +57,7 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
   const [uploadError, setUploadError] = useState<string | null>(null)
   const eventsCursor = useRef(0)
   const fileInput = useRef<HTMLInputElement>(null)
+  const goldenGlobeFileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let current = true
@@ -191,6 +194,22 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
     }
   }
 
+  async function startGoldenGlobeImport() {
+    const file = goldenGlobeFileInput.current?.files?.[0]
+    setUploadError(null)
+    if (!file) { setUploadError('Choose a Golden Globes CSV or TSV file.'); return }
+    const parsedYearAfter = Number(yearAfter)
+    if (!Number.isInteger(parsedYearAfter) || parsedYearAfter < 0 || parsedYearAfter >= 9999) { setUploadError('Enter a year between 0 and 9998.'); return }
+    setBusy(true)
+    try {
+      const accepted = await enqueueGoldenGlobeImport(file, parsedYearAfter)
+      if (goldenGlobeFileInput.current) goldenGlobeFileInput.current.value = ''
+      await showJob(accepted.id)
+    } catch (requestError: unknown) {
+      setUploadError(requestError instanceof Error ? requestError.message : 'Could not queue the Golden Globes import.')
+    } finally { setBusy(false) }
+  }
+
   const summary = job ? progressSummary(job) : {}
   const active = isActive(job)
 
@@ -233,6 +252,10 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
         </div>
         <button className="button button-secondary" disabled={busy} type="submit">Queue import</button>
         {uploadError && <p className="form-error" role="alert">{uploadError}</p>}
+      </form>
+      <form className="ingestion-upload" onSubmit={(event) => { event.preventDefault(); void startGoldenGlobeImport() }}>
+        <div className="field"><label htmlFor="golden-globe-dataset-file">Golden Globes dataset</label><input accept=".csv,.tsv,text/csv,text/tab-separated-values" id="golden-globe-dataset-file" ref={goldenGlobeFileInput} type="file" /></div>
+        <button className="button button-secondary" disabled={busy} type="submit">Queue Golden Globes import</button>
       </form>
 
       {dialogOpen && job && (

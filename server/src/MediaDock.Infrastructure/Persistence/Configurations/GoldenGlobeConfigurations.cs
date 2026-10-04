@@ -1,0 +1,37 @@
+using MediaDock.Infrastructure.Persistence.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace MediaDock.Infrastructure.Persistence.Configurations;
+
+internal sealed class GoldenGlobeAwardConfiguration : IEntityTypeConfiguration<GoldenGlobeAward>
+{
+    public void Configure(EntityTypeBuilder<GoldenGlobeAward> builder)
+    {
+        builder.ToTable("golden_globe_awards");
+        builder.HasKey(x => x.Id).HasName("pk_golden_globe_awards");
+        builder.Property(x => x.Id).UseIdentityByDefaultColumn().HasColumnName("id");
+        builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(500).IsRequired();
+        builder.HasIndex(x => x.Name).IsUnique().HasDatabaseName("ux_golden_globe_awards_name");
+    }
+}
+
+internal sealed class GoldenGlobeNominationConfiguration : IEntityTypeConfiguration<GoldenGlobeNomination>
+{
+    public void Configure(EntityTypeBuilder<GoldenGlobeNomination> builder)
+    {
+        builder.ToTable("golden_globe_nominations");
+        builder.HasKey(x => x.Id).HasName("pk_golden_globe_nominations");
+        builder.Property(x => x.Id).UseIdentityByDefaultColumn().HasColumnName("id");
+        builder.Property(x => x.ImportKey).HasColumnName("import_key").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.Year).HasColumnName("year");
+        builder.Property(x => x.Winner).HasColumnName("winner");
+        builder.Property(x => x.AwardId).HasColumnName("award_id");
+        builder.Property(x => x.Title).HasColumnName("title").HasMaxLength(1000).IsRequired();
+        builder.Property(x => x.ImdbId).HasColumnName("imdb_id").HasMaxLength(32);
+        builder.HasIndex(x => x.ImportKey).IsUnique().HasDatabaseName("ux_golden_globe_nominations_import_key");
+        builder.HasIndex(x => new { x.Year, x.AwardId }).HasDatabaseName("ix_golden_globe_nominations_year_award");
+        builder.HasOne(x => x.Award).WithMany(x => x.Nominations).HasForeignKey(x => x.AwardId)
+            .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_golden_globe_nominations_awards_award_id");
+    }
+}

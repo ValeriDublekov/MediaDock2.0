@@ -50,4 +50,12 @@ public sealed class OscarImportForm
     public int YearAfter { get; init; } = 1980;
 }
 
+public sealed class GoldenGlobeImportForm
+{
+    public IFormFile? File { get; init; }
+
+    [Range(0, 9998)]
+    public int YearAfter { get; init; } = 1980;
+}
+
 internal sealed record EnqueuedBackgroundJob(BackgroundJobResponse Job, bool Accepted);

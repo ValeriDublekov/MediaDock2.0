@@ -21,6 +21,7 @@ builder.Services.AddDbContext<MediaDockDbContext>(options =>
 	options.UseNpgsql(builder.Configuration.GetConnectionString("MediaDock")
 		?? throw new InvalidOperationException("ConnectionStrings:MediaDock must be configured.")));
 builder.Services.AddIngestionInfrastructure();
+builder.Services.AddScoped<MediaDock.Infrastructure.GoldenGlobes.GoldenGlobeDatasetImporter>();
 builder.Services.AddScoped<BackgroundJobApiService>();
 builder.Services.AddScoped<BackgroundJobScheduler>();
 builder.Services.AddHostedService<BackgroundJobDispatcher>();

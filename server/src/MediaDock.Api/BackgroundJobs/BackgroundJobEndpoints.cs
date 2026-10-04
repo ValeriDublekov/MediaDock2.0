@@ -81,6 +81,22 @@ internal static class BackgroundJobEndpoints
             .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        app.MapPost("/api/background-jobs/golden-globe-import", async (
+            [FromForm] GoldenGlobeImportForm form,
+            BackgroundJobApiService service,
+            CancellationToken token) =>
+        {
+            var job = await service.EnqueueGoldenGlobeImportAsync(form, token);
+            var statusUrl = $"/api/background-jobs/{job.Id}";
+            return Results.Accepted(statusUrl, new BackgroundJobAcceptedResponse(job.Id, job.Status, statusUrl));
+        })
+            .WithName("EnqueueGoldenGlobeImport")
+            .WithSummary("Queue a CSV or TSV Golden Globes dataset import.")
+            .WithMetadata(new RequestSizeLimitAttribute(maximumUploadBytes + 1024 * 1024))
+            .DisableAntiforgery()
+            .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
         app.MapGet("/api/background-jobs/{id:long}", async (
             long id,
             BackgroundJobApiService service,

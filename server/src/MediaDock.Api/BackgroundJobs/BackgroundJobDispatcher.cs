@@ -4,6 +4,7 @@ using MediaDock.Application.Ingestion;
 using MediaDock.Application.OscarAwards;
 using MediaDock.Infrastructure.Ingestion;
 using MediaDock.Infrastructure.OscarAwards;
+using MediaDock.Infrastructure.GoldenGlobes;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -177,6 +178,12 @@ internal sealed class BackgroundJobDispatcher(
                 return;
             }
 
+            if (job.JobType == "golden_globe_import")
+            {
+                await ExecuteGoldenGlobeImportAsync(services, dbContext, job, stoppingToken);
+                return;
+            }
+
             if (job.JobType == "oscar_enrichment")
             {
                 await ExecuteOscarEnrichmentAsync(services, dbContext, job, stoppingToken);
@@ -314,6 +321,16 @@ internal sealed class BackgroundJobDispatcher(
         await SetStageAsync(dbContext, job, "oscar_import", "Oscar dataset import started.", cancellationToken);
         var summary = await services.GetRequiredService<OscarDatasetImporter>()
             .ImportAsync(job.InputBytes, yearAfter, cancellationToken);
+        await CompleteJobAsync(dbContext, job, "succeeded", summary, null, CancellationToken.None);
+    }
+
+    private async Task ExecuteGoldenGlobeImportAsync(IServiceProvider services, MediaDockDbContext dbContext, BackgroundJob job, CancellationToken cancellationToken)
+    {
+        if (job.InputBytes is null || job.ResultSummary is null) throw new InvalidDataException("The queued import payload is unavailable.");
+        using var options = JsonDocument.Parse(job.ResultSummary);
+        var yearAfter = options.RootElement.GetProperty("yearAfter").GetInt32();
+        await SetStageAsync(dbContext, job, "golden_globe_import", "Golden Globes dataset import started.", cancellationToken);
+        var summary = await services.GetRequiredService<GoldenGlobeDatasetImporter>().ImportAsync(job.InputBytes, yearAfter, cancellationToken);
         await CompleteJobAsync(dbContext, job, "succeeded", summary, null, CancellationToken.None);
     }
 

@@ -5,3 +5,4 @@
 **/obj/
 web/node_modules/
 web/dist/
+.fake

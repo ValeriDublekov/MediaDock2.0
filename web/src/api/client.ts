@@ -234,3 +234,10 @@ export function enqueueOscarImport(file: File, yearAfter: number, fetcher?: type
   body.append('YearAfter', String(yearAfter))
   return requestJson<BackgroundJobAccepted>('/background-jobs/oscar-import', { method: 'POST', body }, fetcher)
 }
+
+export function enqueueGoldenGlobeImport(file: File, yearAfter: number, fetcher?: typeof fetch) {
+  const body = new FormData()
+  body.append('File', file)
+  body.append('YearAfter', String(yearAfter))
+  return requestJson<BackgroundJobAccepted>('/background-jobs/golden-globe-import', { method: 'POST', body }, fetcher)
+}

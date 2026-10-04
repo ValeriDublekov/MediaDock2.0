@@ -250,6 +250,24 @@ internal sealed class BackgroundJobApiService(
         return ToResponse(job);
     }
 
+    public async Task<BackgroundJobResponse> EnqueueGoldenGlobeImportAsync(
+        GoldenGlobeImportForm form,
+        CancellationToken cancellationToken)
+    {
+        if (form.File is not { } file || file.Length == 0) throw ValidationError("file", "Select a non-empty CSV or TSV file.");
+        if (file.Length > _maximumUploadBytes) throw ValidationError("file", $"The upload exceeds the {_maximumUploadBytes}-byte limit.");
+        if (form.YearAfter is < 0 or >= 9999) throw ValidationError("yearAfter", "YearAfter must be between 0 and 9998.");
+        var fileName = SanitizeFileName(file.FileName);
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        if (extension is not (".csv" or ".tsv")) throw ValidationError("file", "Only CSV or tab-separated CSV uploads are supported.");
+        await using var buffer = new MemoryStream((int)file.Length);
+        await file.CopyToAsync(buffer, cancellationToken);
+        var now = timeProvider.GetUtcNow();
+        var job = new BackgroundJob { JobType = "golden_globe_import", Trigger = "manual", Status = "queued", EnqueuedAt = now, CurrentStage = "queued", InputFileName = fileName, InputContentType = file.ContentType, InputBytes = buffer.ToArray(), ResultSummary = JsonSerializer.Serialize(new { yearAfter = form.YearAfter }) };
+        job.Events.Add(new BackgroundJobEvent { OccurredAt = now, Level = "information", EventCode = "job_queued", Message = "Golden Globes dataset import queued." });
+        dbContext.BackgroundJobs.Add(job); await dbContext.SaveChangesAsync(cancellationToken); return ToResponse(job);
+    }
+
     private static BackgroundJobResponse ToResponse(BackgroundJobStatusProjection job) => new(
         job.Id,
         job.JobType,

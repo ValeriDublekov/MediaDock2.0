@@ -22,6 +22,8 @@ public sealed class MediaDockDbContext : DbContext
     public DbSet<OscarFilm> OscarFilms => Set<OscarFilm>();
     public DbSet<OscarNomination> OscarNominations => Set<OscarNomination>();
     public DbSet<OscarEnrichmentRun> OscarEnrichmentRuns => Set<OscarEnrichmentRun>();
+    public DbSet<GoldenGlobeAward> GoldenGlobeAwards => Set<GoldenGlobeAward>();
+    public DbSet<GoldenGlobeNomination> GoldenGlobeNominations => Set<GoldenGlobeNomination>();
     public DbSet<FavoriteMovie> FavoriteMovies => Set<FavoriteMovie>();
     public DbSet<BackgroundJob> BackgroundJobs => Set<BackgroundJob>();
     public DbSet<BackgroundJobEvent> BackgroundJobEvents => Set<BackgroundJobEvent>();
