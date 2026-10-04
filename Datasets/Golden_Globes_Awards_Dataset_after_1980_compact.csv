@@ -48,7 +48,6 @@ id,nominee_type,year,winner,award,title
 127,tv-show,2024,False,Best Performance in Stand-Up Comedy on Television,Trevor Noah: Where Was I
 129,tv-show,2024,True,Best Performance in Stand-Up Comedy on Television,Ricky Gervais: Armageddon
 139,film,2024,True,Cinematic and Box Office Achievement,Barbie
-140,film,2024,False,Cinematic and Box Office Achievement,Mission: Impossible - Dead Reckoning Part 1
 141,tv-show,2024,False,Best Television Series - Drama,The Last of Us
 142,film,2024,False,Cinematic and Box Office Achievement,Taylor Swift: The Eras Tour
 143,film,2024,False,Cinematic and Box Office Achievement,John Wick: Chapter 4
@@ -56,15 +55,6 @@ id,nominee_type,year,winner,award,title
 145,film,2024,False,Cinematic and Box Office Achievement,Guardians of the Galaxy Vol. 3
 146,film,2024,False,Cinematic and Box Office Achievement,Spider-Man: Across the Spider-Verse
 147,film,2024,False,Cinematic and Box Office Achievement,Oppenheimer
-148,film,2024,True,Cinematic and Box Office Achievement,Barbie
-159,tv-show,2024,True,Best Television Series - Drama,Succession
-161,film,2024,False,Cinematic and Box Office Achievement,Oppenheimer
-163,film,2024,False,Cinematic and Box Office Achievement,The Super Mario Bros. Movie
-164,film,2024,False,Cinematic and Box Office Achievement,John Wick: Chapter 4
-165,film,2024,False,Cinematic and Box Office Achievement,Taylor Swift: The Eras Tour
-166,tv-show,2024,False,Best Television Series - Drama,The Last of Us
-168,film,2024,False,Cinematic and Box Office Achievement,Spider-Man: Across the Spider-Verse
-173,film,2024,False,Cinematic and Box Office Achievement,Guardians of the Galaxy Vol. 3
 186,tv-show,2023,True,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",The White Lotus
 196,tv-show,2023,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Pam & Tommy
 200,tv-show,2023,False,"Best Television Limited Series, Anthology Series, or Motion Picture Made for Television",Black Bird

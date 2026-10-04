@@ -33,7 +33,8 @@ def main() -> None:
         raise SystemExit(f"Output file already exists: {output}")
 
     output.parent.mkdir(parents=True, exist_ok=True)
-    source_rows = year_rows = exported = skipped_type = skipped_invalid = 0
+    source_rows = year_rows = exported = skipped_type = skipped_invalid = skipped_duplicate = 0
+    seen_keys: set[tuple[int, bool, str, str]] = set()
 
     with source.open("r", encoding="utf-8-sig", newline="") as input_file:
         sample = input_file.read(8192)
@@ -75,11 +76,17 @@ def main() -> None:
                 if not title or not award:
                     skipped_invalid += 1
                     continue
+                winner = (row.get("winner") or "").strip()
+                key = (year, winner.lower() in {"true", "yes", "1"}, award, title)
+                if key in seen_keys:
+                    skipped_duplicate += 1
+                    continue
+                seen_keys.add(key)
                 writer.writerow({
                     "id": (row.get("id") or "").strip(),
                     "nominee_type": nominee_type,
                     "year": year,
-                    "winner": (row.get("winner") or "").strip(),
+                    "winner": winner,
                     "award": award,
                     "title": title,
                 })
@@ -90,6 +97,7 @@ def main() -> None:
     print(f"Rows with Year > {args.year_after}: {year_rows}")
     print(f"Rows excluded by nominee type: {skipped_type}")
     print(f"Rows excluded as invalid: {skipped_invalid}")
+    print(f"Rows excluded as duplicates: {skipped_duplicate}")
     print(f"Exported nomination rows: {exported}")
 
 

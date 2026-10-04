@@ -49,11 +49,12 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
         var awards = await db.GoldenGlobeAwards.Where(x => awardNames.Contains(x.Name)).ToDictionaryAsync(x => x.Name, StringComparer.Ordinal, cancellationToken);
         var keys = rows.Select(Key).Distinct().ToArray();
         var existing = await db.GoldenGlobeNominations.Where(x => keys.Contains(x.ImportKey)).ToDictionaryAsync(x => x.ImportKey, StringComparer.Ordinal, cancellationToken);
+        var seenKeys = new HashSet<string>(existing.Keys, StringComparer.Ordinal);
         var awardsCreated = 0; var nominationsCreated = 0;
         foreach (var row in rows)
         {
             if (!awards.TryGetValue(row.Award, out var award)) { award = new GoldenGlobeAward { Name = row.Award }; db.GoldenGlobeAwards.Add(award); awards.Add(row.Award, award); awardsCreated++; }
-            var key = Key(row); if (existing.ContainsKey(key)) continue;
+            var key = Key(row); if (!seenKeys.Add(key)) continue;
             db.GoldenGlobeNominations.Add(new GoldenGlobeNomination { ImportKey = key, Year = row.Year, Winner = row.Winner, Award = award, Title = row.Title }); nominationsCreated++;
         }
         // Keep the import responsive and avoid one very large EF change-detection pass.
