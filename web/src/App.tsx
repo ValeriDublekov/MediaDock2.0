@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Navigate, NavLink, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { CatalogView } from './features/catalog/CatalogView'
 import { HistoryView } from './features/history/HistoryView'
 import { OscarCatalogView } from './features/oscar/OscarCatalogView'
@@ -9,13 +9,13 @@ import { SourceSettingsView } from './features/sources/SourceSettingsView'
 
 type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'sources' | 'history'
 
-const sections: { id: Section; number: string; label: string }[] = [
-  { id: 'catalog', number: '01', label: 'Catalog' },
-  { id: 'oscar', number: '02', label: 'Oscar catalog' },
-  { id: 'golden-globes', number: '03', label: 'Golden Globes catalog' },
-  { id: 'favorites', number: '04', label: 'Favorites' },
-  { id: 'sources', number: '05', label: 'Configuration' },
-  { id: 'history', number: '06', label: 'Scan history' },
+const sections: { id: Section; path: string; number: string; label: string }[] = [
+  { id: 'catalog', path: '/catalog', number: '01', label: 'Catalog' },
+  { id: 'oscar', path: '/oscar', number: '02', label: 'Oscar catalog' },
+  { id: 'golden-globes', path: '/golden-globes', number: '03', label: 'Golden Globes catalog' },
+  { id: 'favorites', path: '/favorites', number: '04', label: 'Favorites' },
+  { id: 'sources', path: '/configuration', number: '05', label: 'Configuration' },
+  { id: 'history', path: '/history', number: '06', label: 'Scan history' },
 ]
 
 const sectionContent: Record<Section, { eyebrow: string; title: string; description: string }> = {
@@ -52,31 +52,37 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
 }
 
 function AppContent() {
-  const [section, setSection] = useState<Section>('catalog')
-  const [historyScanRunId, setHistoryScanRunId] = useState<number | null>(null)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const section = sections.find((item) => item.path === location.pathname)?.id ?? 'catalog'
+  const requestedScanRunId = Number(searchParams.get('scanRunId'))
+  const historyScanRunId = Number.isSafeInteger(requestedScanRunId) && requestedScanRunId > 0
+    ? requestedScanRunId
+    : null
   const content = sectionContent[section]
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <a className="brand" href="#catalog" onClick={() => setSection('catalog')}>
+        <NavLink className="brand" to="/catalog">
           <span className="brand-mark" aria-hidden="true">MD</span>
           <span className="brand-name">MediaDock</span>
-        </a>
+        </NavLink>
 
         <div className="sidebar-label">LIBRARY</div>
         <nav className="primary-nav" aria-label="Main navigation">
           {sections.map((item) => (
-            <button
+            <NavLink
               aria-current={section === item.id ? 'page' : undefined}
-              className={`nav-item${section === item.id ? ' is-active' : ''}`}
+              className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
+              end
               key={item.id}
-              onClick={() => { setHistoryScanRunId(null); setSection(item.id) }}
-              type="button"
+              to={item.path}
             >
               <span className="nav-number">{item.number}</span>
               <span>{item.label}</span>
-            </button>
+            </NavLink>
           ))}
         </nav>
 
@@ -101,12 +107,16 @@ function AppContent() {
             </div>
           </div>
 
-          {section === 'catalog' && <CatalogView />}
-          {section === 'oscar' && <OscarCatalogView />}
-          {section === 'golden-globes' && <GoldenGlobeCatalogView />}
-          {section === 'favorites' && <FavoritesView />}
-          {section === 'sources' && <SourceSettingsView onOpenHistory={(scanRunId) => { setHistoryScanRunId(scanRunId); setSection('history') }} />}
-          {section === 'history' && <HistoryView scanRunId={historyScanRunId} onClearScanRun={() => setHistoryScanRunId(null)} />}
+          <Routes>
+            <Route path="/" element={<Navigate replace to="/catalog" />} />
+            <Route path="/catalog" element={<CatalogView />} />
+            <Route path="/oscar" element={<OscarCatalogView />} />
+            <Route path="/golden-globes" element={<GoldenGlobeCatalogView />} />
+            <Route path="/favorites" element={<FavoritesView />} />
+            <Route path="/configuration" element={<SourceSettingsView onOpenHistory={(scanRunId) => navigate(`/history?scanRunId=${scanRunId}`)} />} />
+            <Route path="/history" element={<HistoryView scanRunId={historyScanRunId} onClearScanRun={() => setSearchParams({})} />} />
+            <Route path="*" element={<Navigate replace to="/catalog" />} />
+          </Routes>
         </div>
       </main>
     </div>
