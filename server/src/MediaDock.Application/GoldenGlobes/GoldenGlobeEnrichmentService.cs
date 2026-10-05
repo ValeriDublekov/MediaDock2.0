@@ -2,7 +2,7 @@ using MediaDock.Application.Metadata;
 
 namespace MediaDock.Application.GoldenGlobes;
 
-public sealed record GoldenGlobeEnrichmentCandidate(string Title, int CeremonyYear, int AttemptCount);
+public sealed record GoldenGlobeEnrichmentCandidate(string Title, int CeremonyYear, int AttemptCount, string SourceType = "movie");
 public sealed record GoldenGlobeEnrichmentUpdate(string Status, int AttemptCount, DateTimeOffset AttemptedAt, DateTimeOffset? NextAttemptAt, string? ErrorCode, string? ImdbId);
 public sealed record GoldenGlobeEnrichmentSummary(int EligibleTitles, int AttemptedTitles, int EnrichedTitles, int ProblemTitles, int NotFoundTitles, int TemporaryErrors, int CacheHits, int HttpAttempts, bool StoppedForQuota);
 public sealed record GoldenGlobeEnrichmentResult(GoldenGlobeEnrichmentSummary Summary, string Status);
@@ -19,7 +19,7 @@ public static class GoldenGlobeEnrichmentStatuses
 public interface IGoldenGlobeEnrichmentRepository
 {
     Task<IReadOnlyList<GoldenGlobeEnrichmentCandidate>> GetEligibleCandidatesAsync(DateTimeOffset now, CancellationToken cancellationToken = default);
-    Task SaveOutcomeAsync(string title, int ceremonyYear, GoldenGlobeEnrichmentUpdate update, CancellationToken cancellationToken = default);
+    Task SaveOutcomeAsync(string title, int ceremonyYear, string sourceType, GoldenGlobeEnrichmentUpdate update, CancellationToken cancellationToken = default);
 }
 
 public sealed class GoldenGlobeEnrichmentService(
@@ -37,7 +37,7 @@ public sealed class GoldenGlobeEnrichmentService(
         {
             cancellationToken.ThrowIfCancellationRequested();
             var attemptedAt = clock.GetUtcNow();
-            var resolution = await metadataResolver.ResolveByTitleAsync(candidate.Title, "movie", attemptedAt, cancellationToken, OmdbRequestPurpose.GoldenGlobeEnrichment);
+            var resolution = await metadataResolver.ResolveByTitleAsync(candidate.Title, candidate.SourceType, attemptedAt, cancellationToken, OmdbRequestPurpose.GoldenGlobeEnrichment);
             http += resolution.HttpAttempts; cacheHits += resolution.CacheHit ? 1 : 0;
             if (resolution.Status == MetadataLookupStatus.RequestBudgetExhausted) { quota = true; break; }
             var attempt = candidate.AttemptCount + 1;
@@ -50,15 +50,18 @@ public sealed class GoldenGlobeEnrichmentService(
                 imdb = ImdbIdNormalizer.Normalize(resolution.Metadata.ImdbId);
                 if (imdb is null)
                 { status = GoldenGlobeEnrichmentStatuses.Problem; error = "missing_imdb_id"; next = null; problems++; }
-                else if (resolution.Metadata.Year is not int foundYear)
+                else if (candidate.SourceType == "movie" && resolution.Metadata.Year is not int)
                 { status = GoldenGlobeEnrichmentStatuses.Problem; error = "missing_year"; next = null; problems++; }
-                else if (foundYear != candidate.CeremonyYear && foundYear != candidate.CeremonyYear - 1)
+                else if (candidate.SourceType == "movie"
+                    && resolution.Metadata.Year is int foundYear
+                    && foundYear != candidate.CeremonyYear
+                    && foundYear != candidate.CeremonyYear - 1)
                 { status = GoldenGlobeEnrichmentStatuses.Problem; error = $"year_mismatch:{foundYear}"; next = null; problems++; }
                 else { status = GoldenGlobeEnrichmentStatuses.Enriched; error = null; next = null; enriched++; }
             }
             else if (resolution.Status == MetadataLookupStatus.ConfirmedNotFound) { status = GoldenGlobeEnrichmentStatuses.NotFound; error = "not_found"; next = null; notFound++; }
             else errors++;
-            await repository.SaveOutcomeAsync(candidate.Title, candidate.CeremonyYear, new(status, attempt, attemptedAt, next, error, imdb), cancellationToken);
+            await repository.SaveOutcomeAsync(candidate.Title, candidate.CeremonyYear, candidate.SourceType, new(status, attempt, attemptedAt, next, error, imdb), cancellationToken);
             attempted++;
             if (resolution.Status == MetadataLookupStatus.QuotaExceeded) { quota = true; break; }
         }

@@ -413,6 +413,12 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("title");
 
+                    b.Property<string>("NomineeType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("nominee_type");
+
                     b.Property<bool>("Winner")
                         .HasColumnType("boolean")
                         .HasColumnName("winner");
@@ -437,6 +443,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_golden_globe_nominations_enrichment_attempt_count", "enrichment_attempt_count >= 0");
                             t.HasCheckConstraint("ck_golden_globe_nominations_enrichment_status", "enrichment_status IN ('pending', 'enriched', 'problem', 'not_found', 'temporary_error')");
+                            t.HasCheckConstraint("ck_golden_globe_nominations_nominee_type", "nominee_type IN ('movie', 'series')");
                         });
                 });
 

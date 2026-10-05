@@ -74,6 +74,23 @@ public sealed class GoldenGlobeEnrichmentServiceTests
     }
 
     [Fact]
+    public async Task RunAsyncLooksUpSeriesAndDoesNotComparePremiereYearToCeremonyYear()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        var repository = new FakeGoldenGlobeEnrichmentRepository(
+        [new("The Crown", 2024, 0, "series")]);
+        var client = new StubOmdbClient(
+        [new(MetadataLookupStatus.Found, CreateMetadata("The Crown", 2016, "tt4786824"), 1)]);
+
+        var result = await CreateService(repository, client, now).RunAsync();
+
+        Assert.Equal(1, result.Summary.EnrichedTitles);
+        Assert.Equal((null, "series"), Assert.Single(client.Requests));
+        Assert.Equal("The Crown", Assert.Single(repository.SavedOutcomes).Title);
+        Assert.Equal("enriched", Assert.Single(repository.SavedOutcomes).Update.Status);
+    }
+
+    [Fact]
     public async Task RunAsyncLeavesCandidatesPendingWhenDailyBudgetDeniesRequest()
     {
         var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
@@ -130,6 +147,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         public Task SaveOutcomeAsync(
             string title,
             int ceremonyYear,
+            string sourceType,
             GoldenGlobeEnrichmentUpdate update,
             CancellationToken cancellationToken = default)
         {

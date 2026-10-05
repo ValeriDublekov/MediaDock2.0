@@ -8,6 +8,7 @@ public sealed class GoldenGlobeNomination
     public bool Winner { get; set; }
     public long AwardId { get; set; }
     public string Title { get; set; } = string.Empty;
+    public string NomineeType { get; set; } = "movie";
     public string? ImdbId { get; set; }
     public string EnrichmentStatus { get; set; } = "pending";
     public int EnrichmentAttemptCount { get; set; }

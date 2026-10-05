@@ -10,7 +10,7 @@ namespace MediaDock.Infrastructure.GoldenGlobes;
 
 public sealed record GoldenGlobeImportSummary(int RowsRead, int RowsSkippedByYear, int RowsSkippedByType, int RowsSkippedWithoutTitle, int AwardsCreated, int NominationsCreated);
 
-internal sealed record GoldenGlobeRow(int Year, bool Winner, string Award, string Title);
+internal sealed record GoldenGlobeRow(int Year, bool Winner, string Award, string Title, string NomineeType);
 
 public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
 {
@@ -41,7 +41,8 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
             var type = Field("nominee_type").ToLowerInvariant();
             if (type is not ("tv-show" or "film" or "movie" or "series")) { skippedType++; continue; }
             var title = Field("title"); if (string.IsNullOrWhiteSpace(title)) { skippedTitle++; continue; }
-            rows.Add(new(year, ParseBool(Field("winner")), Field("award"), title));
+            var nomineeType = type is "tv-show" or "series" ? "series" : "movie";
+            rows.Add(new(year, ParseBool(Field("winner")), Field("award"), title, nomineeType));
         }
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -54,8 +55,34 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
         foreach (var row in rows)
         {
             if (!awards.TryGetValue(row.Award, out var award)) { award = new GoldenGlobeAward { Name = row.Award }; db.GoldenGlobeAwards.Add(award); awards.Add(row.Award, award); awardsCreated++; }
-            var key = Key(row); if (!seenKeys.Add(key)) continue;
-            db.GoldenGlobeNominations.Add(new GoldenGlobeNomination { ImportKey = key, Year = row.Year, Winner = row.Winner, Award = award, Title = row.Title }); nominationsCreated++;
+            var key = Key(row);
+            if (!seenKeys.Add(key))
+            {
+                if (existing.TryGetValue(key, out var existingNomination)
+                    && existingNomination.NomineeType != row.NomineeType)
+                {
+                    existingNomination.NomineeType = row.NomineeType;
+                    existingNomination.EnrichmentStatus = "pending";
+                    existingNomination.EnrichmentAttemptCount = 0;
+                    existingNomination.LastEnrichmentAttemptAt = null;
+                    existingNomination.NextEnrichmentAttemptAt = null;
+                    existingNomination.LastEnrichmentError = null;
+                    existingNomination.ImdbId = null;
+                }
+
+                continue;
+            }
+
+            db.GoldenGlobeNominations.Add(new GoldenGlobeNomination
+            {
+                ImportKey = key,
+                Year = row.Year,
+                Winner = row.Winner,
+                Award = award,
+                Title = row.Title,
+                NomineeType = row.NomineeType
+            });
+            nominationsCreated++;
         }
         // Keep the import responsive and avoid one very large EF change-detection pass.
         // Awards are shared tracked entities, so only nominations are flushed in batches.
