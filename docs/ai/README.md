@@ -27,4 +27,5 @@ Start here for work in this repository. Use the [local operations runbook](../..
 - [Database model review](DATABASE_MODEL_REVIEW.md)
 - [Torrent title recognition plan](TORRENT_TITLE_RECOGNITION_PLAN.md)
 - [Favorite movies plan](FAVORITE_MOVIES_PLAN.md)
+- [Users and access control plan](USERS_AND_ACCESS_CONTROL_PLAN.md)
 - [Server-hosted background ingestion](BACKGROUND_INGESTION_PLAN.md) (implemented in source; production rollout pending)

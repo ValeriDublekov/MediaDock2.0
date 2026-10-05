@@ -16,7 +16,8 @@ import { formatDate, formatWords } from '../../shared/format'
 const maximumUploadBytes = 10 * 1024 * 1024
 
 interface BackgroundIngestionPanelProps {
-  onOpenHistory: (scanRunId: number | null) => void
+  mode: 'torrent' | 'awards'
+  onOpenHistory?: (scanRunId: number | null) => void
 }
 
 function isActive(job: BackgroundJob | null): boolean {
@@ -52,7 +53,7 @@ function jobError(job: BackgroundJob): string | null {
   return typeof value === 'string' && value.trim() ? value : null
 }
 
-export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionPanelProps) {
+export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundIngestionPanelProps) {
   const [job, setJob] = useState<BackgroundJob | null>(null)
   const [events, setEvents] = useState<BackgroundJobEvent[]>([])
   const [loading, setLoading] = useState(true)
@@ -231,17 +232,24 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
   return (
     <section aria-labelledby="ingestion-heading" className="management-section ingestion-section">
       <div className="section-title-row">
-        <div><h2 id="ingestion-heading">Ingestion</h2><p>RSS parsing and Oscar film metadata</p></div>
+        <div>
+          <h2 id="ingestion-heading">{mode === 'torrent' ? 'RSS scan' : 'Awards ingestion'}</h2>
+          <p>{mode === 'torrent' ? 'Scan the configured RSS profiles.' : 'Import award datasets and enrich their films.'}</p>
+        </div>
         <div className="form-actions">
-          <button className="button" disabled={busy || (job?.jobType === 'rss_scan' && active)} onClick={() => { void startScan() }} type="button">
-            {busy ? 'Working...' : 'Start scan'}
-          </button>
-          <button className="button button-secondary" disabled={busy || (job?.jobType === 'oscar_enrichment' && active)} onClick={() => { void startOscarEnrichment() }} type="button">
-            Enrich Oscar films
-          </button>
-          <button className="button button-secondary" disabled={busy || (job?.jobType === 'golden_globe_enrichment' && active)} onClick={() => { void startGoldenGlobeEnrichment() }} type="button">
-            Enrich Golden Globes films
-          </button>
+          {mode === 'torrent' && (
+            <button className="button" disabled={busy || (job?.jobType === 'rss_scan' && active)} onClick={() => { void startScan() }} type="button">
+              {busy ? 'Working...' : 'Start scan'}
+            </button>
+          )}
+          {mode === 'awards' && <>
+            <button className="button button-secondary" disabled={busy || (job?.jobType === 'oscar_enrichment' && active)} onClick={() => { void startOscarEnrichment() }} type="button">
+              Enrich Oscar films
+            </button>
+            <button className="button button-secondary" disabled={busy || (job?.jobType === 'golden_globe_enrichment' && active)} onClick={() => { void startGoldenGlobeEnrichment() }} type="button">
+              Enrich Golden Globes films
+            </button>
+          </>}
           {job && <button className="button button-secondary" onClick={() => { void showJob(job.id) }} type="button">View job</button>}
         </div>
       </div>
@@ -259,22 +267,24 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
       )}
       {error && <div className="ingestion-error" role="alert"><span>{error}</span><button className="text-button" onClick={() => { void refreshActiveJob() }} type="button">Retry</button></div>}
 
-      <form className="ingestion-upload" onSubmit={(event) => { event.preventDefault(); void startImport() }}>
-        <div className="field">
-          <label htmlFor="oscar-dataset-file">Oscar dataset</label>
-          <input accept=".csv,.tsv,text/csv,text/tab-separated-values" id="oscar-dataset-file" ref={fileInput} type="file" />
-        </div>
-        <div className="field ingestion-year-field">
-          <label htmlFor="oscar-year-after">Film year after</label>
-          <input id="oscar-year-after" max="9998" min="0" onChange={(event) => setYearAfter(event.target.value)} type="number" value={yearAfter} />
-        </div>
-        <button className="button button-secondary" disabled={busy} type="submit">Queue import</button>
-        {uploadError && <p className="form-error" role="alert">{uploadError}</p>}
-      </form>
-      <form className="ingestion-upload" onSubmit={(event) => { event.preventDefault(); void startGoldenGlobeImport() }}>
-        <div className="field"><label htmlFor="golden-globe-dataset-file">Golden Globes dataset</label><input accept=".csv,.tsv,text/csv,text/tab-separated-values" id="golden-globe-dataset-file" ref={goldenGlobeFileInput} type="file" /></div>
-        <button className="button button-secondary" disabled={busy} type="submit">Queue Golden Globes import</button>
-      </form>
+      {mode === 'awards' && <>
+        <form className="ingestion-upload" onSubmit={(event) => { event.preventDefault(); void startImport() }}>
+          <div className="field">
+            <label htmlFor="oscar-dataset-file">Oscar dataset</label>
+            <input accept=".csv,.tsv,text/csv,text/tab-separated-values" id="oscar-dataset-file" ref={fileInput} type="file" />
+          </div>
+          <div className="field ingestion-year-field">
+            <label htmlFor="oscar-year-after">Film year after</label>
+            <input id="oscar-year-after" max="9998" min="0" onChange={(event) => setYearAfter(event.target.value)} type="number" value={yearAfter} />
+          </div>
+          <button className="button button-secondary" disabled={busy} type="submit">Queue import</button>
+          {uploadError && <p className="form-error" role="alert">{uploadError}</p>}
+        </form>
+        <form className="ingestion-upload" onSubmit={(event) => { event.preventDefault(); void startGoldenGlobeImport() }}>
+          <div className="field"><label htmlFor="golden-globe-dataset-file">Golden Globes dataset</label><input accept=".csv,.tsv,text/csv,text/tab-separated-values" id="golden-globe-dataset-file" ref={goldenGlobeFileInput} type="file" /></div>
+          <button className="button button-secondary" disabled={busy} type="submit">Queue Golden Globes import</button>
+        </form>
+      </>}
 
       {dialogOpen && job && (
         <div className="detail-backdrop" onClick={(event) => { if (event.target === event.currentTarget) setDialogOpen(false) }}>
@@ -336,8 +346,8 @@ export function BackgroundIngestionPanel({ onOpenHistory }: BackgroundIngestionP
                 )}
               </div>
               <div className="form-actions">
-                {job.scanRunId && <button className="text-button" onClick={() => { setDialogOpen(false); onOpenHistory(job.scanRunId) }} type="button">Open scan and parse history</button>}
-                {!job.scanRunId && <button className="text-button" onClick={() => { setDialogOpen(false); onOpenHistory(null) }} type="button">Open scan history</button>}
+                {mode === 'torrent' && job.scanRunId && onOpenHistory && <button className="text-button" onClick={() => { setDialogOpen(false); onOpenHistory(job.scanRunId) }} type="button">Open scan and parse history</button>}
+                {mode === 'torrent' && !job.scanRunId && onOpenHistory && <button className="text-button" onClick={() => { setDialogOpen(false); onOpenHistory(null) }} type="button">Open scan history</button>}
                 {error && <button className="text-button" onClick={() => { void refreshActiveJob() }} type="button">Retry status</button>}
               </div>
             </div>

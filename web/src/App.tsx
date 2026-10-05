@@ -6,6 +6,7 @@ import { GoldenGlobeCatalogView } from './features/golden-globes/GoldenGlobeCata
 import { FavoriteProvider } from './features/favorites/FavoriteContext'
 import { FavoritesView } from './features/favorites/FavoritesView'
 import { SourceSettingsView } from './features/sources/SourceSettingsView'
+import { IngestionSettingsView, OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './features/sources/ConfigurationSettingsViews'
 
 type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'sources' | 'history'
 
@@ -14,8 +15,16 @@ const sections: { id: Section; path: string; number: string; label: string }[] =
   { id: 'oscar', path: '/oscar', number: '02', label: 'Oscar catalog' },
   { id: 'golden-globes', path: '/golden-globes', number: '03', label: 'Golden Globes catalog' },
   { id: 'favorites', path: '/favorites', number: '04', label: 'Favorites' },
-  { id: 'sources', path: '/configuration', number: '05', label: 'Configuration' },
+  { id: 'sources', path: '/configuration/torrent', number: '05', label: 'Configuration' },
   { id: 'history', path: '/history', number: '06', label: 'Scan history' },
+]
+
+const configurationPages = [
+  { path: '/configuration/torrent', label: 'Torrent settings', description: 'Manage RSS profiles and matching rules.' },
+  { path: '/configuration/ingestion', label: 'Ingestion', description: 'Import and enrich award datasets.' },
+  { path: '/configuration/personal-ratings', label: 'Personal IMDb ratings', description: 'Import and maintain your IMDb ratings.' },
+  { path: '/configuration/omdb', label: 'OMDb provider', description: 'Configure provider credentials and shared request limits.' },
+  { path: '/configuration/system', label: 'System', description: 'Review deployment controls and the running version.' },
 ]
 
 const sectionContent: Record<Section, { eyebrow: string; title: string; description: string }> = {
@@ -42,7 +51,7 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
   sources: {
     eyebrow: 'CONFIGURATION',
     title: 'Configuration',
-    description: 'Manage feed sources, matching rules, and OMDb provider settings.',
+    description: 'Configure feeds, metadata, and system operations.',
   },
   history: {
     eyebrow: 'OPERATIONS',
@@ -55,16 +64,21 @@ function AppContent() {
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const section = sections.find((item) => item.path === location.pathname)?.id ?? 'catalog'
+  const section = sections.find((item) => item.id === 'sources'
+    ? location.pathname.startsWith('/configuration')
+    : item.path === location.pathname)?.id ?? 'catalog'
+  const configurationPage = configurationPages.find((page) => page.path === location.pathname)
   const requestedScanRunId = Number(searchParams.get('scanRunId'))
   const historyScanRunId = Number.isSafeInteger(requestedScanRunId) && requestedScanRunId > 0
     ? requestedScanRunId
     : null
   const content = sectionContent[section]
+  const title = configurationPage?.label ?? content.title
+  const description = configurationPage?.description ?? content.description
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className={`sidebar${section === 'sources' ? ' is-configuration' : ''}`}>
         <NavLink className="brand" to="/catalog">
           <span className="brand-mark" aria-hidden="true">MD</span>
           <span className="brand-name">MediaDock</span>
@@ -85,6 +99,20 @@ function AppContent() {
             </NavLink>
           ))}
         </nav>
+        {section === 'sources' && (
+          <nav aria-label="Configuration navigation" className="configuration-nav">
+            {configurationPages.map((page) => (
+              <NavLink
+                className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
+                end
+                key={page.path}
+                to={page.path}
+              >
+                {page.label}
+              </NavLink>
+            ))}
+          </nav>
+        )}
 
         <div className="sidebar-footer">
           <span className="status-mark" aria-hidden="true" />
@@ -95,15 +123,15 @@ function AppContent() {
 
       <main className="main-shell">
         <header className="topbar">
-          <div className="breadcrumb">MEDIADOCK <span>/</span> {content.eyebrow}</div>
+          <div className="breadcrumb">MEDIADOCK <span>/</span> {content.eyebrow}{configurationPage && <> <span>/</span> {configurationPage.label.toUpperCase()}</>}</div>
         </header>
 
         <div className="page-content">
           <div className="page-heading">
             <div>
               <p className="eyebrow">{content.eyebrow}</p>
-              <h1>{content.title}</h1>
-              <p className="page-description">{content.description}</p>
+              <h1>{title}</h1>
+              <p className="page-description">{description}</p>
             </div>
           </div>
 
@@ -113,7 +141,12 @@ function AppContent() {
             <Route path="/oscar" element={<OscarCatalogView />} />
             <Route path="/golden-globes" element={<GoldenGlobeCatalogView />} />
             <Route path="/favorites" element={<FavoritesView />} />
-            <Route path="/configuration" element={<SourceSettingsView onOpenHistory={(scanRunId) => navigate(`/history?scanRunId=${scanRunId}`)} />} />
+            <Route path="/configuration" element={<Navigate replace to="/configuration/torrent" />} />
+            <Route path="/configuration/torrent" element={<SourceSettingsView onOpenHistory={(scanRunId) => navigate(scanRunId ? `/history?scanRunId=${scanRunId}` : '/history')} />} />
+            <Route path="/configuration/ingestion" element={<IngestionSettingsView />} />
+            <Route path="/configuration/personal-ratings" element={<PersonalRatingsView />} />
+            <Route path="/configuration/omdb" element={<OmdbProviderView />} />
+            <Route path="/configuration/system" element={<SystemSettingsView />} />
             <Route path="/history" element={<HistoryView scanRunId={historyScanRunId} onClearScanRun={() => setSearchParams({})} />} />
             <Route path="*" element={<Navigate replace to="/catalog" />} />
           </Routes>

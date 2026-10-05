@@ -19,6 +19,7 @@ import {
   updateSettings,
 } from '../../api/client'
 import type { OmdbDailyUsage, ProviderSettings, Settings, SourceProfile, SystemVersion } from '../../api/types'
+import { OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './ConfigurationSettingsViews'
 import { SourceSettingsView } from './SourceSettingsView'
 
 vi.mock('../../api/client', () => ({
@@ -86,7 +87,7 @@ describe('SourceSettingsView', () => {
   afterEach(() => cleanup())
 
   it('shows the deployed system version and source commit', async () => {
-    render(<SourceSettingsView />)
+    render(<SystemSettingsView />)
 
     expect(await screen.findByText('Version 2026.10.01+abc1234')).toBeTruthy()
     expect(screen.getByText('Commit 0123456789ab')).toBeTruthy()
@@ -104,7 +105,7 @@ describe('SourceSettingsView', () => {
       lastErrorCode: 'quota_exceeded',
     } satisfies OmdbDailyUsage])
 
-    render(<SourceSettingsView />)
+    render(<OmdbProviderView />)
 
     expect(await screen.findByText('2026-10-01')).toBeTruthy()
     expect(screen.getByText('OMDb quota exceeded; blocked for day')).toBeTruthy()
@@ -112,7 +113,7 @@ describe('SourceSettingsView', () => {
   })
 
   it('keeps the saved key write-only and clears a replacement after saving', async () => {
-    render(<SourceSettingsView />)
+    render(<OmdbProviderView />)
 
     const keyInput = await screen.findByLabelText('OMDb API key') as HTMLInputElement
     expect(keyInput.type).toBe('password')
@@ -143,7 +144,7 @@ describe('SourceSettingsView', () => {
       errors: [{ id: 'tt1234567', message: 'Missing rating.' }],
     })
 
-    render(<SourceSettingsView />)
+    render(<PersonalRatingsView />)
 
     const file = new File(['[{"id":"tt14452776","rating":8}]'], 'ratings.json', { type: 'application/json' })
     const fileInput = await screen.findByLabelText('IMDb ratings JSON')
@@ -153,5 +154,17 @@ describe('SourceSettingsView', () => {
     await waitFor(() => expect(importPersonalRatings).toHaveBeenCalledWith(file))
     expect((await screen.findByRole('status')).textContent).toContain('1 added, 1 updated, 1 unchanged. 12 ratings stored.')
     expect((await screen.findByText(/Skipped entries with missing ratings:/)).textContent).toContain('tt1234567 (Missing rating.)')
+  })
+
+  it('loads only RSS and matching data on torrent settings', async () => {
+    render(<SourceSettingsView />)
+
+    expect(await screen.findByRole('heading', { name: 'RSS profiles' })).toBeTruthy()
+    expect(getSources).toHaveBeenCalledOnce()
+    expect(getSettings).toHaveBeenCalledOnce()
+    expect(getProviderSettings).not.toHaveBeenCalled()
+    expect(getOmdbDailyUsage).not.toHaveBeenCalled()
+    expect(getVersion).not.toHaveBeenCalled()
+    expect(importPersonalRatings).not.toHaveBeenCalled()
   })
 })

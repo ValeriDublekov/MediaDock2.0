@@ -16,6 +16,12 @@ vi.mock('./features/sources/SourceSettingsView', () => ({
     <button onClick={() => onOpenHistory(42)} type="button">Open scan 42</button>
   ),
 }))
+vi.mock('./features/sources/ConfigurationSettingsViews', () => ({
+  IngestionSettingsView: () => <div>Ingestion route content</div>,
+  OmdbProviderView: () => <div>OMDb route content</div>,
+  PersonalRatingsView: () => <div>Ratings route content</div>,
+  SystemSettingsView: () => <div>System route content</div>,
+}))
 vi.mock('./features/history/HistoryView', () => ({
   HistoryView: ({ scanRunId, onClearScanRun }: { scanRunId: number | null; onClearScanRun: () => void }) => (
     <div>History scan: {scanRunId ?? 'all'}<button onClick={onClearScanRun} type="button">Clear scan</button></div>
@@ -39,13 +45,34 @@ describe('App routes', () => {
     ['/oscar', 'Oscar catalog'],
     ['/golden-globes', 'Golden Globes catalog'],
     ['/favorites', 'Favorites'],
-    ['/configuration', 'Configuration'],
+    ['/configuration/torrent', 'Torrent settings'],
+    ['/configuration/ingestion', 'Ingestion'],
+    ['/configuration/personal-ratings', 'Personal IMDb ratings'],
+    ['/configuration/omdb', 'OMDb provider'],
+    ['/configuration/system', 'System'],
     ['/history', 'Scan history'],
   ])('opens %s directly', (path, heading) => {
     renderAt(path)
 
     expect(screen.getByRole('heading', { name: heading })).toBeTruthy()
     expect(screen.getByTestId('location').textContent).toBe(path)
+  })
+
+  it('redirects the configuration root to torrent settings', async () => {
+    renderAt('/configuration')
+
+    expect(await screen.findByRole('heading', { name: 'Torrent settings' })).toBeTruthy()
+    expect(screen.getByTestId('location').textContent).toBe('/configuration/torrent')
+  })
+
+  it('shows configuration subnavigation and opens its pages', () => {
+    renderAt('/catalog')
+
+    fireEvent.click(screen.getByRole('link', { name: /Configuration/ }))
+    expect(screen.getByTestId('location').textContent).toBe('/configuration/torrent')
+    fireEvent.click(screen.getByRole('link', { name: 'OMDb provider' }))
+    expect(screen.getByTestId('location').textContent).toBe('/configuration/omdb')
+    expect(screen.getByRole('heading', { name: 'OMDb provider' })).toBeTruthy()
   })
 
   it('updates the URL through navigation and preserves a selected scan in history', () => {

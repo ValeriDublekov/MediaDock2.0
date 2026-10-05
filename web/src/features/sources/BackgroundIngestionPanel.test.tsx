@@ -66,7 +66,7 @@ describe('BackgroundIngestionPanel', () => {
 
   it('queues a scan after confirmation and opens its job details', async () => {
     vi.stubGlobal('confirm', vi.fn(() => true))
-    render(<BackgroundIngestionPanel onOpenHistory={vi.fn()} />)
+    render(<BackgroundIngestionPanel mode="torrent" onOpenHistory={vi.fn()} />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Start scan' }))
 
@@ -78,7 +78,7 @@ describe('BackgroundIngestionPanel', () => {
   it('restores an existing active job and stops polling when details close', async () => {
     vi.mocked(getActiveBackgroundJob).mockResolvedValue({ ...queuedJob, status: 'running' })
     const clearInterval = vi.spyOn(window, 'clearInterval')
-    render(<BackgroundIngestionPanel onOpenHistory={vi.fn()} />)
+    render(<BackgroundIngestionPanel mode="awards" />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'View job' }))
     await screen.findByRole('dialog')
@@ -94,7 +94,7 @@ describe('BackgroundIngestionPanel', () => {
     vi.mocked(getActiveBackgroundJob)
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ ...queuedJob, status: 'running' })
-    render(<BackgroundIngestionPanel onOpenHistory={vi.fn()} />)
+    render(<BackgroundIngestionPanel mode="torrent" onOpenHistory={vi.fn()} />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Start scan' }))
 
@@ -104,7 +104,7 @@ describe('BackgroundIngestionPanel', () => {
   })
 
   it('rejects an oversized upload before submitting it', async () => {
-    render(<BackgroundIngestionPanel onOpenHistory={vi.fn()} />)
+    render(<BackgroundIngestionPanel mode="awards" />)
     await screen.findByText('No active ingestion job.')
     const file = new File(['x'], 'large.csv', { type: 'text/csv' })
     Object.defineProperty(file, 'size', { value: 10 * 1024 * 1024 + 1 })
@@ -117,7 +117,7 @@ describe('BackgroundIngestionPanel', () => {
 
   it('queues Golden Globes enrichment after confirmation', async () => {
     vi.stubGlobal('confirm', vi.fn(() => true))
-    render(<BackgroundIngestionPanel onOpenHistory={vi.fn()} />)
+    render(<BackgroundIngestionPanel mode="awards" />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Enrich Golden Globes films' }))
 
@@ -126,7 +126,7 @@ describe('BackgroundIngestionPanel', () => {
   })
 
   it('queues a selected Golden Globes dataset for import', async () => {
-    render(<BackgroundIngestionPanel onOpenHistory={vi.fn()} />)
+    render(<BackgroundIngestionPanel mode="awards" />)
     await screen.findByText('No active ingestion job.')
     const file = new File(['nominee_type,year,winner,award,title'], 'globes.csv', { type: 'text/csv' })
 
@@ -135,5 +135,22 @@ describe('BackgroundIngestionPanel', () => {
 
     await screen.findByRole('dialog')
     expect(enqueueGoldenGlobeImport).toHaveBeenCalledWith(file, 1980)
+  })
+
+  it('keeps RSS scan controls out of awards ingestion', async () => {
+    render(<BackgroundIngestionPanel mode="awards" />)
+
+    expect(await screen.findByText('No active ingestion job.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Start scan' })).toBeNull()
+    expect(screen.getByLabelText('Oscar dataset')).toBeTruthy()
+  })
+
+  it('keeps award imports and enrichment out of torrent settings', async () => {
+    render(<BackgroundIngestionPanel mode="torrent" onOpenHistory={vi.fn()} />)
+
+    expect(await screen.findByText('No active ingestion job.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Start scan' })).toBeTruthy()
+    expect(screen.queryByLabelText('Oscar dataset')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Enrich Golden Globes films' })).toBeNull()
   })
 })
