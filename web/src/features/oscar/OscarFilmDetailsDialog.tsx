@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import { getMovieAwards, getOscarFilm, getTitleOccurrences, getTitleOscars } from '../../api/client'
 import type { MovieAwardRecognition, OscarFilm } from '../../api/types'
 import { ErrorState, LoadingState } from '../../components/Feedback'
-import { MovieAwardsList, MovieImdbLink } from '../../components/MoviePresentation'
-import { Poster } from '../../components/Poster'
+import { MovieAwardsList, MovieDetailsIntro } from '../../components/MoviePresentation'
 import { formatDate, formatWords } from '../../shared/format'
 import { combineMovieAwards, getOscarRecognitions } from '../../shared/movieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
@@ -71,13 +70,9 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
           {!loading && error && <ErrorState message={error} onRetry={retry} />}
           {!loading && !error && film && (
             <>
-              <div className="film-details-intro">
-                <Poster className="detail-poster" label="OSC" src={film.posterUrl} title={film.title} />
-                <div className="film-details-summary">
-                  <MovieImdbLink imdbId={film.imdbId} rating={film.imdbRating} title={film.title} />
-                  {film.plot && <p className="detail-description">{film.plot}</p>}
-                </div>
-              </div>
+              <MovieDetailsIntro imdbId={film.imdbId} imdbRating={film.imdbRating} posterLabel="OSC" posterUrl={film.posterUrl} title={film.title}>
+                {film.plot && <p className="detail-description">{film.plot}</p>}
+              </MovieDetailsIntro>
               <dl className="detail-facts oscar-detail-facts">
                 <div><dt>IMDb</dt><dd>{film.imdbId ?? 'Not listed'}</dd></div>
                 <div><dt>IMDb votes</dt><dd>{film.imdbVotes?.toLocaleString() ?? 'Not listed'}</dd></div>

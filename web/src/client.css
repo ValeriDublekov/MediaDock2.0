@@ -219,7 +219,7 @@ button:disabled { cursor: not-allowed; }
 .oscar-tile-director { color: #c2cbc5; font-size: 11px; line-height: 1.35; }
 .oscar-tile-plot, .oscar-row-plot { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; color: #b9c2bc; font-size: 11px; line-height: 1.4; }
 .oscar-tile-plot { margin: 0; }
-.oscar-row-details { display: grid; min-width: 0; gap: 3px; }
+.movie-table-title-details { display: grid; min-width: 0; gap: 3px; }
 .oscar-row-plot { -webkit-line-clamp: 2; }
 .tile-rating { display: inline-flex; min-height: 28px; align-items: center; gap: 6px; border: 1px solid #efad39; border-radius: 3px; padding: 3px 8px; color: #171b19; background: #f0aa32; font-size: 11px; font-weight: 700; }
 .oscar-imdb-rating { text-decoration: none; }

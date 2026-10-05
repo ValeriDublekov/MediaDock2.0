@@ -12,7 +12,7 @@ interface MoviePosterCardProps {
   imdbRating: number | null
   posterUrl: string | null
   posterLabel?: string
-  genres: string[]
+  genres?: string[]
   awards: MovieAwardRecognition[]
   onOpen?: () => void
   openLabel?: string
@@ -59,7 +59,7 @@ export function MoviePosterCard({
       </div>
       <MovieImdbLink imdbId={imdbId} rating={imdbRating} title={title} />
       <div className="tile-genres">
-        {genres.length > 0
+        {genres === undefined ? null : genres.length > 0
           ? genres.slice(0, 3).map((genre) => <span className="tile-genre" key={genre}>{genre}</span>)
           : <span>Genres unavailable</span>}
       </div>
@@ -69,6 +69,46 @@ export function MoviePosterCard({
       {footer}
     </div>
   </article>
+}
+
+interface MovieTableTitleProps {
+  title: string
+  posterUrl: string | null
+  posterLabel: string
+  openLabel: string
+  subtitle?: ReactNode
+  onOpen: () => void
+  children?: ReactNode
+}
+
+export function MovieTableTitle({ title, posterUrl, posterLabel, openLabel, subtitle, onOpen, children }: MovieTableTitleProps) {
+  return <div className="title-cell">
+    <Poster className="poster-small" label={posterLabel} src={posterUrl} title={title} />
+    <span className="movie-table-title-details">
+      <button aria-label={openLabel} className="title-link" onClick={onOpen} type="button">{title}</button>
+      {subtitle !== undefined && <span className="subtle-line">{subtitle}</span>}
+      {children}
+    </span>
+  </div>
+}
+
+interface MovieDetailsIntroProps {
+  title: string
+  posterUrl: string | null
+  posterLabel: string
+  imdbId: string | null
+  imdbRating: number | null
+  children?: ReactNode
+}
+
+export function MovieDetailsIntro({ title, posterUrl, posterLabel, imdbId, imdbRating, children }: MovieDetailsIntroProps) {
+  return <div className="film-details-intro">
+    <Poster className="detail-poster" label={posterLabel} src={posterUrl} title={title} />
+    <div className="film-details-summary">
+      <MovieImdbLink imdbId={imdbId} rating={imdbRating} title={title} />
+      {children}
+    </div>
+  </div>
 }
 
 interface MovieImdbLinkProps {

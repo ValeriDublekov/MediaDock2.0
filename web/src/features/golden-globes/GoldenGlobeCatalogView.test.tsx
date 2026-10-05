@@ -39,10 +39,16 @@ describe('GoldenGlobeCatalogView', () => {
 
     expect(await screen.findByRole('button', { name: 'A Film' })).toBeTruthy()
     expect(screen.getByRole('img', { name: 'Poster for A Film' }).getAttribute('src')).toBe('https://example.test/a-film.jpg')
+    expect(screen.queryByText('Genres unavailable')).toBeNull()
     expect(screen.getByText('2025')).toBeTruthy()
     const awardSummary = within(screen.getByLabelText('Awards and nominations'))
     expect(awardSummary.getByText('Golden Globes')).toBeTruthy()
     expect(awardSummary.getByText('1 win · 1 nomination')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+    expect(screen.getByRole('img', { name: 'Poster for A Film' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'View A Film Golden Globes details' })).toBeTruthy()
+    expect(within(screen.getByLabelText('Awards and nominations')).getByText('Golden Globes')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: '  A Film  ' } })
     fireEvent.change(screen.getByLabelText('Year from'), { target: { value: '2025' } })

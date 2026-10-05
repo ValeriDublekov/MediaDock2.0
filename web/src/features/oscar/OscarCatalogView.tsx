@@ -8,8 +8,7 @@ import type {
 } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
-import { Poster } from '../../components/Poster'
-import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard } from '../../components/MoviePresentation'
+import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatWords } from '../../shared/format'
 import { combineMovieAwards, getOscarRecognitions, movieAwardsRequestKey } from '../../shared/movieAwards'
@@ -58,25 +57,18 @@ function OscarRow({ film, onSelect, awards }: { film: OscarFilm; onSelect: (id: 
   return (
     <tr>
       <td>
-        <div className="title-cell">
-          <Poster className="poster-small" label="OSC" src={film.posterUrl} title={film.title} />
-          <span className="oscar-row-details">
-            <button
-              aria-label={`View ${film.title} Oscar details`}
-              className="title-link"
-              onClick={() => onSelect(film.id)}
-              type="button"
-            >
-              {film.title}
-            </button>
-            <span className="subtle-line">
-              {film.filmYear}
-            </span>
+        <MovieTableTitle
+          onOpen={() => onSelect(film.id)}
+          openLabel={`View ${film.title} Oscar details`}
+          posterLabel="OSC"
+          posterUrl={film.posterUrl}
+          subtitle={film.filmYear}
+          title={film.title}
+        >
             <span className="subtle-line">Director: {film.director ?? 'Not listed'}</span>
             <span className="subtle-line">{film.genres.join(' · ') || 'Genres unavailable'}</span>
             {film.plot && <span className="oscar-row-plot">{film.plot}</span>}
-          </span>
-        </div>
+        </MovieTableTitle>
       </td>
       <td>
         <span className="oscar-categories">

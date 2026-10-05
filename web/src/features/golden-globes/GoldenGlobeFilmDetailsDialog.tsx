@@ -1,6 +1,5 @@
 import type { GoldenGlobeFilm, MovieAwardRecognition } from '../../api/types'
-import { MovieAwardsList, MovieImdbLink } from '../../components/MoviePresentation'
-import { Poster } from '../../components/Poster'
+import { MovieAwardsList, MovieDetailsIntro } from '../../components/MoviePresentation'
 import { formatWords } from '../../shared/format'
 
 interface GoldenGlobeFilmDetailsDialogProps {
@@ -23,13 +22,9 @@ export function GoldenGlobeFilmDetailsDialog({ film, awards, onClose }: GoldenGl
         <button aria-label="Close Golden Globes details" className="button button-secondary" onClick={onClose} type="button">Close</button>
       </header>
       <div className="detail-body">
-        <div className="film-details-intro">
-          <Poster className="detail-poster" label="GLO" src={film.posterUrl} title={film.title} />
-          <div className="film-details-summary">
-            <MovieImdbLink imdbId={film.imdbId} rating={film.imdbRating} title={film.title} />
-            {film.enrichmentError && <p className="golden-globe-enrichment-error">{formatWords(film.enrichmentError.replaceAll('_', ' '))}</p>}
-          </div>
-        </div>
+        <MovieDetailsIntro imdbId={film.imdbId} imdbRating={film.imdbRating} posterLabel="GLO" posterUrl={film.posterUrl} title={film.title}>
+          {film.enrichmentError && <p className="golden-globe-enrichment-error">{formatWords(film.enrichmentError.replaceAll('_', ' '))}</p>}
+        </MovieDetailsIntro>
         <dl className="detail-facts">
           <div><dt>IMDb ID</dt><dd>{film.imdbId ?? 'Not listed'}</dd></div>
           <div><dt>IMDb rating</dt><dd>{film.imdbRating?.toFixed(1) ?? 'Not rated'}</dd></div>

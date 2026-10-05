@@ -3,8 +3,7 @@ import { getCatalog } from '../../api/client'
 import type { CatalogQuery, CatalogTitle, FeedType, MediaType, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
-import { Poster } from '../../components/Poster'
-import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard } from '../../components/MoviePresentation'
+import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatDate, formatWords } from '../../shared/format'
 import { combineMovieAwards, movieAwardsRequestKey } from '../../shared/movieAwards'
@@ -62,13 +61,14 @@ function CatalogRow({ title, onSelect, awards }: { title: CatalogTitle; onSelect
   return (
     <tr>
       <td>
-        <div className="title-cell">
-          <Poster className="poster-small" label={title.mediaType.slice(0, 3).toUpperCase()} src={title.posterUrl} title={title.title} />
-          <span>
-            <button aria-label={`View ${title.title} details`} className="title-link" onClick={() => onSelect(title.id)} type="button">{title.title}</button>
-            <span className="subtle-line">{title.year ?? 'Year unknown'} | {title.occurrenceCount} observations</span>
-          </span>
-        </div>
+        <MovieTableTitle
+          onOpen={() => onSelect(title.id)}
+          openLabel={`View ${title.title} details`}
+          posterLabel={title.mediaType.slice(0, 3).toUpperCase()}
+          posterUrl={title.posterUrl}
+          subtitle={`${title.year ?? 'Year unknown'} | ${title.occurrenceCount} observations`}
+          title={title.title}
+        />
       </td>
       <td><span className="type-label">{formatWords(title.mediaType)}</span>{title.contentKind && <span className="subtle-line">{formatWords(title.contentKind)}</span>}</td>
       <td><MovieImdbLink imdbId={title.imdbId} rating={title.imdbRating} title={title.title} /></td>

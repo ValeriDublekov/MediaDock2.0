@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { getMovieAwards, getTitle, getTitleOccurrences, getTitleOscars } from '../../api/client'
 import type { MovieAwardRecognition, Occurrence, OscarFilm, PageResponse, TitleDetails } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
-import { MovieAwardsList, MovieImdbLink } from '../../components/MoviePresentation'
-import { Poster } from '../../components/Poster'
+import { MovieAwardsList, MovieDetailsIntro } from '../../components/MoviePresentation'
 import { formatDate, formatWords } from '../../shared/format'
 import { combineMovieAwards, getOscarRecognitions } from '../../shared/movieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
@@ -79,14 +78,10 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
           {!loading && error && <ErrorState message={error} onRetry={() => setAttempt((current) => current + 1)} />}
           {!loading && !error && title && (
             <>
-              <div className="film-details-intro">
-                <Poster className="detail-poster" label={title.mediaType.slice(0, 3).toUpperCase()} src={title.posterUrl} title={title.title} />
-                <div className="film-details-summary">
-                  <MovieImdbLink imdbId={title.imdbId} rating={title.imdbRating} title={title.title} />
-                  <span>{title.genres.join(' · ') || 'Genres unavailable'}</span>
-                  {title.plot && <p className="detail-description">{title.plot}</p>}
-                </div>
-              </div>
+              <MovieDetailsIntro imdbId={title.imdbId} imdbRating={title.imdbRating} posterLabel={title.mediaType.slice(0, 3).toUpperCase()} posterUrl={title.posterUrl} title={title.title}>
+                <span>{title.genres.join(' · ') || 'Genres unavailable'}</span>
+                {title.plot && <p className="detail-description">{title.plot}</p>}
+              </MovieDetailsIntro>
               <dl className="detail-facts">
                 <div><dt>IMDb votes</dt><dd>{title.imdbVotes?.toLocaleString() ?? 'Not listed'}</dd></div>
                 <div><dt>Director</dt><dd>{title.director ?? 'Not listed'}</dd></div>

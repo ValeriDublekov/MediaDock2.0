@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { getGoldenGlobeFilms } from '../../api/client'
 import type { GoldenGlobeCatalogQuery, GoldenGlobeEnrichmentStatus, GoldenGlobeFilm, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
-import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard } from '../../components/MoviePresentation'
+import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { Pagination } from '../../components/Pagination'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatWords } from '../../shared/format'
@@ -91,7 +91,6 @@ export function GoldenGlobeCatalogView() {
       {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
       {viewMode === 'posters' ? <div className="poster-grid">{result.items.map((film) => <MoviePosterCard
         awards={combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId)}
-        genres={[]}
         imdbId={film.imdbId}
         imdbRating={film.imdbRating}
         key={film.id}
@@ -104,7 +103,7 @@ export function GoldenGlobeCatalogView() {
         yearLabel="Ceremony year"
       >
         <EnrichmentStatus film={film} />
-      </MoviePosterCard>)}</div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>FILM</th><th>IMDB</th><th>AWARDS</th><th>RESULT</th><th>OMDb status</th></tr></thead><tbody>{result.items.map((film) => { const wins = film.nominations.filter((nomination) => nomination.isWinner).length; const awards = combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId); return <tr key={film.id}><td><div className="title-cell"><span className="golden-globe-row-details"><button aria-label={`View ${film.title} Golden Globes details`} className="title-link" onClick={() => setSelectedFilm(film)} type="button">{film.title}</button><span className="subtle-line">Ceremony year {film.year}</span></span></div></td><td><MovieImdbLink imdbId={film.imdbId} rating={film.imdbRating} title={film.title} /></td><td><MovieAwardsSummary awards={awards} compact /></td><td><span className={`state-pill ${wins > 0 ? 'is-winner' : 'is-muted'}`}>{wins > 0 ? 'Winner' : 'Nominee'}</span></td><td><EnrichmentStatus film={film} /></td></tr> })}</tbody></table></div>}
+      </MoviePosterCard>)}</div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>FILM</th><th>IMDB</th><th>AWARDS</th><th>RESULT</th><th>OMDb status</th></tr></thead><tbody>{result.items.map((film) => { const wins = film.nominations.filter((nomination) => nomination.isWinner).length; const awards = combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId); return <tr key={film.id}><td><MovieTableTitle onOpen={() => setSelectedFilm(film)} openLabel={`View ${film.title} Golden Globes details`} posterLabel="GLO" posterUrl={film.posterUrl} subtitle={`Ceremony year ${film.year}`} title={film.title} /></td><td><MovieImdbLink imdbId={film.imdbId} rating={film.imdbRating} title={film.title} /></td><td><MovieAwardsSummary awards={awards} compact /></td><td><span className={`state-pill ${wins > 0 ? 'is-winner' : 'is-muted'}`}>{wins > 0 ? 'Winner' : 'Nominee'}</span></td><td><EnrichmentStatus film={film} /></td></tr> })}</tbody></table></div>}
       <Pagination onPageChange={(nextPage) => { setLoading(true); setError(null); setPage(nextPage) }} page={result} />
     </>}
     {selectedFilm && <GoldenGlobeFilmDetailsDialog

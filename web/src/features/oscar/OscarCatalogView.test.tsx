@@ -114,6 +114,7 @@ describe('OscarCatalogView', () => {
     expect(posterRatingLink.getAttribute('target')).toBe('_blank')
 
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+    expect(screen.getByRole('img', { name: 'Poster for The Shape of Water' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: 'OMDB' })).toBeTruthy()
     expect(screen.getByText('Winner')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Open The Shape of Water on IMDb (opens in new tab)' })).toBeTruthy()
