@@ -152,6 +152,7 @@ button:disabled { cursor: not-allowed; }
 .state-pill.is-winner { border-color: #dbc292; color: #77531e; background: #f7f0df; }
 .state-pill.is-pending { border-color: #e1d1a5; color: #796322; background: #faf5e5; }
 .state-pill.is-enriched { border-color: #c3d8c8; color: #386247; background: #edf5ed; }
+.state-pill.is-problem { border-color: #e5b5a3; color: #a64e35; background: #fff4ef; }
 .state-pill.is-not-found { border-color: #d6dcd7; color: #717c75; background: #f2f4f1; }
 .state-pill.is-temporary-error { border-color: #e5b5a3; color: #a64e35; background: #fff4ef; }
 .oscar-detail-dialog { width: min(900px, 100%); }

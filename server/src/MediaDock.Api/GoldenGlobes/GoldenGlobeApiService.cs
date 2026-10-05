@@ -1,5 +1,7 @@
 using MediaDock.Api.Common;
 using MediaDock.Api.Middleware;
+using MediaDock.Application.GoldenGlobes;
+using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +13,7 @@ internal interface IGoldenGlobeApiService
     Task<PageResponse<GoldenGlobeFilmResponse>> GetFilmsAsync(GoldenGlobeCatalogQuery query, CancellationToken cancellationToken);
 }
 
-internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext) : IGoldenGlobeApiService
+internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetadataCacheStore metadataCacheStore) : IGoldenGlobeApiService
 {
     public async Task<PageResponse<GoldenGlobeFilmResponse>> GetFilmsAsync(GoldenGlobeCatalogQuery query, CancellationToken cancellationToken)
     {
@@ -34,10 +36,53 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext) : IGol
         var groups = rows.GroupBy(x => new { x.Title, x.Year })
             .Select(group => new GoldenGlobeFilmResponse(
                 $"{group.Key.Year}:{group.Key.Title}", group.Key.Title, group.Key.Year, group.Select(x => x.ImdbId).FirstOrDefault(x => x != null),
-                group.Select(x => x.EnrichmentStatus).Distinct().SingleOrDefault() ?? "pending",
+                null,
+                GetEnrichmentStatus(group.Select(x => x.EnrichmentStatus)),
                 group.Select(x => x.LastEnrichmentError).FirstOrDefault(x => x != null),
                 group.OrderBy(x => x.Award.Name).ThenBy(x => x.Id).Select(x => new GoldenGlobeNominationResponse(x.Id, x.Year, x.Award.Name, x.Winner)).ToArray()))
             .OrderByDescending(x => x.Year).ThenBy(x => x.Title, StringComparer.OrdinalIgnoreCase).ToArray();
-        return new PageResponse<GoldenGlobeFilmResponse>(groups.Skip((page - 1) * pageSize).Take(pageSize).ToArray(), page, pageSize, groups.Length, groups.Length == 0 ? 0 : (groups.Length + pageSize - 1) / pageSize);
+        var filteredGroups = string.IsNullOrWhiteSpace(query.EnrichmentStatus)
+            ? groups
+            : groups.Where(film => film.EnrichmentStatus == query.EnrichmentStatus).ToArray();
+        var pageFilms = filteredGroups.Skip((page - 1) * pageSize).Take(pageSize).ToArray();
+        var items = new List<GoldenGlobeFilmResponse>(pageFilms.Length);
+        foreach (var film in pageFilms)
+        {
+            if (film.EnrichmentStatus != GoldenGlobeEnrichmentStatuses.Enriched || film.ImdbId is null)
+            {
+                items.Add(film);
+                continue;
+            }
+
+            var metadata = await metadataCacheStore.GetByTitleAsync(NormalizeTitle(film.Title), "movie", cancellationToken);
+            var posterUrl = metadata?.Metadata is { } details
+                && ImdbIdNormalizer.IsCompatible(film.ImdbId, details.ImdbId)
+                    ? details.PosterUrl
+                    : null;
+            items.Add(film with { PosterUrl = posterUrl });
+        }
+
+        return new PageResponse<GoldenGlobeFilmResponse>(items, page, pageSize, filteredGroups.Length, filteredGroups.Length == 0 ? 0 : (filteredGroups.Length + pageSize - 1) / pageSize);
     }
+
+    private static string GetEnrichmentStatus(IEnumerable<string> statuses)
+    {
+        var distinct = statuses.ToHashSet(StringComparer.Ordinal);
+        foreach (var status in new[]
+        {
+            GoldenGlobeEnrichmentStatuses.Pending,
+            GoldenGlobeEnrichmentStatuses.TemporaryError,
+            GoldenGlobeEnrichmentStatuses.Problem,
+            GoldenGlobeEnrichmentStatuses.NotFound,
+            GoldenGlobeEnrichmentStatuses.Enriched
+        })
+        {
+            if (distinct.Contains(status)) return status;
+        }
+
+        return GoldenGlobeEnrichmentStatuses.Pending;
+    }
+
+    private static string NormalizeTitle(string title) =>
+        string.Join(' ', title.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
 }

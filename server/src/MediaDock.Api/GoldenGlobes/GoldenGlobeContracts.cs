@@ -11,6 +11,7 @@ public sealed record GoldenGlobeCatalogQuery
     [Range(1800, 2200)] public int? YearTo { get; init; }
     [MaxLength(100)] public string? Award { get; init; }
     [RegularExpression("^(winner|nominee)$")] public string? Result { get; init; }
+    [RegularExpression("^(pending|enriched|problem|not_found|temporary_error)$")] public string? EnrichmentStatus { get; init; }
 }
 
 public sealed record GoldenGlobeFilmResponse(
@@ -18,6 +19,7 @@ public sealed record GoldenGlobeFilmResponse(
     string Title,
     int Year,
     string? ImdbId,
+    string? PosterUrl,
     string? EnrichmentStatus,
     string? EnrichmentError,
     IReadOnlyList<GoldenGlobeNominationResponse> Nominations);

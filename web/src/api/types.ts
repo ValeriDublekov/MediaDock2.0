@@ -42,6 +42,7 @@ export interface TitleDetails extends CatalogTitle {
 }
 
 export type OscarEnrichmentStatus = 'pending' | 'enriched' | 'problem' | 'not_found' | 'temporary_error'
+export type GoldenGlobeEnrichmentStatus = OscarEnrichmentStatus
 
 export interface OscarNomination {
   id: number
@@ -96,6 +97,7 @@ export interface GoldenGlobeFilm {
   title: string
   year: number
   imdbId: string | null
+  posterUrl: string | null
   enrichmentStatus: OscarEnrichmentStatus
   enrichmentError: string | null
   nominations: GoldenGlobeNomination[]
@@ -260,6 +262,7 @@ export interface GoldenGlobeCatalogQuery {
   yearTo?: number
   award?: string
   result?: 'winner' | 'nominee'
+  enrichmentStatus?: GoldenGlobeEnrichmentStatus
 }
 
 export interface ParseLogQuery {

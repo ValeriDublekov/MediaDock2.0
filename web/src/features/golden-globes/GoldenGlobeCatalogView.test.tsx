@@ -11,6 +11,7 @@ const film: GoldenGlobeFilm = {
   title: 'A Film',
   year: 2025,
   imdbId: null,
+  posterUrl: 'https://example.test/a-film.jpg',
   enrichmentStatus: 'pending',
   enrichmentError: null,
   nominations: [{ id: 1, year: 2025, award: 'Best Picture', isWinner: true }],
@@ -35,12 +36,16 @@ describe('GoldenGlobeCatalogView', () => {
     render(<GoldenGlobeCatalogView />)
 
     expect(await screen.findByRole('button', { name: 'A Film' })).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'Poster for A Film' }).getAttribute('src')).toBe('https://example.test/a-film.jpg')
+    expect(screen.getByText('2025')).toBeTruthy()
+    expect(screen.getByText('1 nomination')).toBeTruthy()
     expect(screen.getByText('Winner · 1 win')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: '  A Film  ' } })
     fireEvent.change(screen.getByLabelText('Year from'), { target: { value: '2025' } })
     fireEvent.change(screen.getByLabelText('Award'), { target: { value: 'Best Picture' } })
     fireEvent.change(screen.getByLabelText('Award result'), { target: { value: 'winner' } })
+    fireEvent.change(screen.getByLabelText('OMDb status'), { target: { value: 'not_found' } })
     fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
 
     await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({
@@ -50,6 +55,7 @@ describe('GoldenGlobeCatalogView', () => {
       yearFrom: 2025,
       award: 'Best Picture',
       result: 'winner',
+      enrichmentStatus: 'not_found',
     }))
   })
 })

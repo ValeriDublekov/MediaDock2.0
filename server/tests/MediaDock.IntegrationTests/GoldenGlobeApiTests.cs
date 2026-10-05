@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using MediaDock.Api.Common;
 using MediaDock.Api.GoldenGlobes;
+using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.AspNetCore.Hosting;
@@ -34,10 +36,24 @@ public sealed class GoldenGlobeApiTests
             var bestPicture = new GoldenGlobeAward { Name = "Best Motion Picture" };
             var bestDirector = new GoldenGlobeAward { Name = "Best Director" };
             db.GoldenGlobeNominations.AddRange(
-                CreateNomination("a-picture", "A Film", 2025, true, "tt12345678", bestPicture),
-                CreateNomination("a-director", "A Film", 2025, false, "tt12345678", bestDirector),
-                CreateNomination("b-picture", "B Film", 2025, false, null, bestPicture),
-                CreateNomination("older-picture", "Older Film", 2024, true, null, bestPicture));
+                CreateNomination("a-picture", "A Film", 2025, true, "tt12345678", bestPicture, "enriched"),
+                CreateNomination("a-director", "A Film", 2025, false, "tt12345678", bestDirector, "enriched"),
+                CreateNomination("b-picture", "B Film", 2025, false, null, bestPicture, "not_found"),
+                CreateNomination("older-picture", "Older Film", 2024, true, null, bestPicture, "problem"));
+            var fetchedAt = DateTimeOffset.UtcNow;
+            db.MetadataCache.Add(new MetadataCacheEntry
+            {
+                CacheKey = "golden-globe-film-cache",
+                LookupTitle = "a film",
+                LookupYearSemantics = "title",
+                SourceType = "movie",
+                Status = "found",
+                PayloadJson = JsonSerializer.Serialize(new MetadataDetails(
+                    "A Film", 2024, "tt12345678", "movie", "movie", "standard", null,
+                    8.0m, 1000, 80m, [], [], null, null, "https://example.test/a-film.jpg", null, null, null)),
+                FetchedAt = fetchedAt,
+                ExpiresAt = fetchedAt.AddDays(30)
+            });
             await db.SaveChangesAsync();
         }
 
@@ -53,6 +69,7 @@ public sealed class GoldenGlobeApiTests
         var firstFilm = Assert.Single(firstPage.Items);
         Assert.Equal("A Film", firstFilm.Title);
         Assert.Equal("tt12345678", firstFilm.ImdbId);
+        Assert.Equal("https://example.test/a-film.jpg", firstFilm.PosterUrl);
         Assert.Equal(new[] { "Best Director", "Best Motion Picture" }, firstFilm.Nominations.Select(row => row.Award));
 
         using var filteredResponse = await client.GetAsync(
@@ -62,6 +79,16 @@ public sealed class GoldenGlobeApiTests
         var filteredFilm = Assert.Single(filteredPage.Items);
         Assert.Equal("A Film", filteredFilm.Title);
         Assert.True(Assert.Single(filteredFilm.Nominations).IsWinner);
+
+        using var notFoundResponse = await client.GetAsync("/api/golden-globes?enrichmentStatus=not_found");
+        var notFoundPage = await notFoundResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
+        Assert.NotNull(notFoundPage);
+        Assert.Equal("B Film", Assert.Single(notFoundPage.Items).Title);
+
+        using var problemResponse = await client.GetAsync("/api/golden-globes?enrichmentStatus=problem");
+        var problemPage = await problemResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
+        Assert.NotNull(problemPage);
+        Assert.Equal("Older Film", Assert.Single(problemPage.Items).Title);
 
         using var invalidRangeResponse = await client.GetAsync("/api/golden-globes?yearFrom=2026&yearTo=2025");
         Assert.Equal(HttpStatusCode.BadRequest, invalidRangeResponse.StatusCode);
@@ -73,13 +100,15 @@ public sealed class GoldenGlobeApiTests
         int year,
         bool winner,
         string? imdbId,
-        GoldenGlobeAward award) => new()
+        GoldenGlobeAward award,
+        string enrichmentStatus = "pending") => new()
     {
         ImportKey = importKey,
         Title = title,
         Year = year,
         Winner = winner,
         ImdbId = imdbId,
+        EnrichmentStatus = enrichmentStatus,
         Award = award
     };
 
