@@ -5,6 +5,25 @@ namespace MediaDock.UnitTests;
 public sealed class MetadataResolverTests
 {
     [Fact]
+    public async Task ResolveByTitleUsesConfirmedNotFoundCacheWithoutCallingProvider()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var cache = new InMemoryMetadataCacheStore();
+        await cache.StoreAsync("negative-title", new MetadataCacheValue(
+            "unlisted film", null, "movie_release_year", "movie", MetadataLookupStatus.ConfirmedNotFound,
+            null, now, now.AddDays(2)));
+        var client = new RecordingOmdbClient();
+        var resolver = new MetadataResolver(client, cache);
+
+        var result = await resolver.ResolveByTitleAsync("Unlisted Film", "movie", now);
+
+        Assert.Equal(MetadataLookupStatus.ConfirmedNotFound, result.Status);
+        Assert.True(result.CacheHit);
+        Assert.Equal(0, result.HttpAttempts);
+        Assert.Empty(client.RequestedImdbIds);
+    }
+
+    [Fact]
     public async Task ResolveAsyncSeparatesCacheEntriesByImdbId()
     {
         var now = new DateTimeOffset(2026, 10, 2, 8, 0, 0, TimeSpan.Zero);
@@ -77,6 +96,17 @@ public sealed class MetadataResolverTests
             string cacheKey,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(_values.GetValueOrDefault(cacheKey));
+
+        public Task<MetadataCacheValue?> GetByTitleAsync(
+            string normalizedTitle,
+            string sourceType,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(_values.Values
+                .Where(value => value.LookupTitle == normalizedTitle
+                    && value.SourceType == sourceType
+                    && value.ExpiresAt > DateTimeOffset.UtcNow)
+                .OrderByDescending(value => value.FetchedAt)
+                .FirstOrDefault());
 
         public Task StoreAsync(
             string cacheKey,

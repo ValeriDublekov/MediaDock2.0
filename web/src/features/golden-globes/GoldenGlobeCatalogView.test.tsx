@@ -58,4 +58,15 @@ describe('GoldenGlobeCatalogView', () => {
       enrichmentStatus: 'not_found',
     }))
   })
+
+  it('shows the reason for Golden Globes enrichment problems', async () => {
+    vi.mocked(getGoldenGlobeFilms).mockResolvedValue({
+      ...page,
+      items: [{ ...film, enrichmentStatus: 'problem', enrichmentError: 'year_mismatch:2016' }],
+    })
+
+    render(<GoldenGlobeCatalogView />)
+
+    expect(await screen.findByText('year mismatch: 2016')).toBeTruthy()
+  })
 })

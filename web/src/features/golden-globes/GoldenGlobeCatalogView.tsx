@@ -22,7 +22,14 @@ function AwardSummary({ film }: { film: GoldenGlobeFilm }) {
       {wins > 0 ? `Winner · ${wins} ${wins === 1 ? 'win' : 'wins'}` : `Nominee · ${film.nominations.length} ${film.nominations.length === 1 ? 'nomination' : 'nominations'}`}
     </span>
     <div className="tile-genres">{awards.slice(0, 2).join(' · ')}{awards.length > 2 ? ` · +${awards.length - 2}` : ''}</div>
+    <EnrichmentStatus film={film} />
+  </>
+}
+
+function EnrichmentStatus({ film }: { film: GoldenGlobeFilm }) {
+  return <>
     <span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span>
+    {film.enrichmentError && <span className="golden-globe-enrichment-error">{formatWords(film.enrichmentError).replace(':', ': ')}</span>}
   </>
 }
 
@@ -66,7 +73,7 @@ export function GoldenGlobeCatalogView() {
     {!loading && error && <ErrorState message={error} onRetry={refresh} />}
     {!loading && !error && result && result.items.length === 0 && <EmptyState title="No Golden Globes films found" message="Try changing the search or filters, or import the Golden Globes dataset." />}
     {!loading && !error && result && result.items.length > 0 && <>
-      {viewMode === 'posters' ? <div className="poster-grid">{result.items.map((film) => <article className="movie-tile" key={film.id}><Poster label="GLO" src={film.posterUrl} title={film.title} /><div className="movie-tile-info"><button className="tile-title" type="button">{film.title}</button><div className="tile-meta"><span>{film.year}</span><span aria-hidden="true">·</span><span>{film.nominations.length} {film.nominations.length === 1 ? 'nomination' : 'nominations'}</span></div><AwardSummary film={film} /></div></article>)}</div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>FILM</th><th>AWARDS</th><th>RESULT</th><th>OMDb status</th></tr></thead><tbody>{result.items.map((film) => { const wins = film.nominations.filter((nomination) => nomination.isWinner).length; return <tr key={film.id}><td><div className="title-cell"><Poster className="poster-small" label="GLO" src={film.posterUrl} title={film.title} /><span><span className="title-link">{film.title}</span><span className="subtle-line">{film.year}</span></span></div></td><td>{[...new Set(film.nominations.map((nomination) => nomination.award))].join(', ')}</td><td><span className={`state-pill ${wins > 0 ? 'is-winner' : 'is-muted'}`}>{wins > 0 ? 'Winner' : 'Nominee'}</span></td><td><span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span></td></tr> })}</tbody></table></div>}
+      {viewMode === 'posters' ? <div className="poster-grid">{result.items.map((film) => <article className="movie-tile" key={film.id}><Poster label="GLO" src={film.posterUrl} title={film.title} /><div className="movie-tile-info"><button className="tile-title" type="button">{film.title}</button><div className="tile-meta"><span>{film.year}</span><span aria-hidden="true">·</span><span>{film.nominations.length} {film.nominations.length === 1 ? 'nomination' : 'nominations'}</span></div><AwardSummary film={film} /></div></article>)}</div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>FILM</th><th>AWARDS</th><th>RESULT</th><th>OMDb status</th></tr></thead><tbody>{result.items.map((film) => { const wins = film.nominations.filter((nomination) => nomination.isWinner).length; return <tr key={film.id}><td><div className="title-cell"><Poster className="poster-small" label="GLO" src={film.posterUrl} title={film.title} /><span><span className="title-link">{film.title}</span><span className="subtle-line">{film.year}</span></span></div></td><td>{[...new Set(film.nominations.map((nomination) => nomination.award))].join(', ')}</td><td><span className={`state-pill ${wins > 0 ? 'is-winner' : 'is-muted'}`}>{wins > 0 ? 'Winner' : 'Nominee'}</span></td><td><EnrichmentStatus film={film} /></td></tr> })}</tbody></table></div>}
       <Pagination onPageChange={(nextPage) => { setLoading(true); setError(null); setPage(nextPage) }} page={result} />
     </>}
   </section>

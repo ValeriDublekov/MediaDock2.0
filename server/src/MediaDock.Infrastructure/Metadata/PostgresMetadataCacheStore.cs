@@ -80,11 +80,15 @@ public sealed class PostgresMetadataCacheStore(MediaDockDbContext dbContext) : I
         var entity = await dbContext.MetadataCache
             .Where(entry => entry.LookupTitle == normalizedTitle
                 && entry.SourceType == sourceType
-                && entry.Status == "found"
+                && (entry.Status == "found" || entry.Status == "confirmed_not_found")
                 && entry.ExpiresAt > DateTimeOffset.UtcNow)
             .OrderByDescending(entry => entry.FetchedAt)
             .FirstOrDefaultAsync(cancellationToken);
-        if (entity is null || string.IsNullOrWhiteSpace(entity.PayloadJson)) return null;
+        if (entity is null) return null;
+        if (entity.Status == "confirmed_not_found")
+            return new(entity.LookupTitle, entity.LookupYear, entity.LookupYearSemantics, entity.SourceType,
+                MetadataLookupStatus.ConfirmedNotFound, null, entity.FetchedAt, entity.ExpiresAt);
+        if (string.IsNullOrWhiteSpace(entity.PayloadJson)) return null;
         var metadata = JsonSerializer.Deserialize<MetadataDetails>(entity.PayloadJson);
         return metadata is null ? null : new(entity.LookupTitle, entity.LookupYear, entity.LookupYearSemantics, entity.SourceType,
             MetadataLookupStatus.Found, metadata, entity.FetchedAt, entity.ExpiresAt);

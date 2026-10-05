@@ -22,6 +22,37 @@ public sealed class IngestionTests
     private const string PartialFeedUrl = "https://feed.rutracker.cc/partial.atom";
 
     [Fact]
+    public async Task TitleCacheLookupReturnsConfirmedNotFoundEntries()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_metadata_negative_cache_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString()).Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+
+        var fetchedAt = DateTimeOffset.UtcNow;
+        db.MetadataCache.Add(new MetadataCacheEntry
+        {
+            CacheKey = "confirmed-negative-title-cache",
+            LookupTitle = "unlisted film",
+            LookupYear = 2024,
+            LookupYearSemantics = "movie_release_year",
+            SourceType = "movie",
+            Status = "confirmed_not_found",
+            FetchedAt = fetchedAt,
+            ExpiresAt = fetchedAt.AddDays(2)
+        });
+        await db.SaveChangesAsync();
+
+        var result = await new PostgresMetadataCacheStore(db).GetByTitleAsync("unlisted film", "movie");
+
+        Assert.NotNull(result);
+        Assert.Equal(MetadataLookupStatus.ConfirmedNotFound, result.Status);
+        Assert.Null(result.Metadata);
+    }
+
+    [Fact]
     public async Task AmbiguousHitIsNotPersistedAndAlternateTitleIsBoundedAndAudited()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_title_match_test").Build();
