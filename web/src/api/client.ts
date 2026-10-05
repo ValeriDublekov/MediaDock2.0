@@ -13,6 +13,7 @@ import type {
   OscarFilm,
   GoldenGlobeCatalogQuery,
   GoldenGlobeFilm,
+  MovieAwardRecognition,
   Occurrence,
   PageResponse,
   ParseLog,
@@ -272,6 +273,10 @@ export function enqueueGoldenGlobeImport(file: File, yearAfter: number, fetcher?
 
 export function getGoldenGlobeFilms(query: GoldenGlobeCatalogQuery, fetcher?: typeof fetch) {
   return requestJson<PageResponse<GoldenGlobeFilm>>(withQuery('/golden-globes', query), {}, fetcher)
+}
+
+export function getMovieAwards(imdbIds: string[], fetcher?: typeof fetch) {
+  return requestJson<MovieAwardRecognition[]>(withQuery('/movie-awards', { imdbIds }), {}, fetcher)
 }
 
 export function importPersonalRatings(file: File, fetcher?: typeof fetch) {

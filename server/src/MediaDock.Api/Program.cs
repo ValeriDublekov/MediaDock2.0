@@ -1,4 +1,5 @@
 using MediaDock.Api.Catalog;
+using MediaDock.Api.Awards;
 using MediaDock.Api.BackgroundJobs;
 using MediaDock.Api.Favorites;
 using MediaDock.Api.Health;
@@ -29,6 +30,7 @@ builder.Services.AddScoped<BackgroundJobApiService>();
 builder.Services.AddScoped<BackgroundJobScheduler>();
 builder.Services.AddHostedService<BackgroundJobDispatcher>();
 builder.Services.AddScoped<ICatalogApiService, CatalogApiService>();
+builder.Services.AddScoped<IMovieAwardsApiService, MovieAwardsApiService>();
 builder.Services.AddScoped<FavoriteApiService>();
 builder.Services.AddScoped<PersonalRatingsApiService>();
 builder.Services.AddScoped<IOscarApiService, OscarApiService>();
@@ -89,6 +91,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapHealthEndpoints();
 app.MapCatalogEndpoints();
+app.MapMovieAwardsEndpoints();
 app.MapFavoriteEndpoints();
 app.MapPersonalRatingsEndpoints();
 app.MapOscarEndpoints();

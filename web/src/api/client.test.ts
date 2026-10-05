@@ -10,6 +10,7 @@ import {
   getCatalog,
   getDeploymentStatus,
   getGoldenGlobeFilms,
+  getMovieAwards,
   getOscarFilm,
   getOscarFilms,
   getProviderSettings,
@@ -40,6 +41,16 @@ function fetchStub(result: Response | Error) {
 }
 
 describe('typed API client', () => {
+  it('serializes IMDb IDs for the bounded combined-awards lookup', async () => {
+    const stub = fetchStub(response(200, []))
+
+    await getMovieAwards(['tt1234567', 'tt7654321'], stub.fetcher)
+
+    const requestUrl = new URL(String(stub.calls[0]?.input), 'http://localhost')
+    expect(requestUrl.pathname).toBe('/api/movie-awards')
+    expect(requestUrl.searchParams.get('imdbIds')).toBe('tt1234567,tt7654321')
+  })
+
   it('serializes pagination and catalog filters into the Step 6 query contract', async () => {
     const page: PageResponse<CatalogTitle> = { items: [], page: 2, pageSize: 20, totalCount: 0, totalPages: 0 }
     const stub = fetchStub(response(200, page))

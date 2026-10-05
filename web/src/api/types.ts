@@ -92,11 +92,28 @@ export interface GoldenGlobeNomination {
   isWinner: boolean
 }
 
+export type MovieAwardSource = 'oscars' | 'golden_globes'
+
+export interface MovieAwardRecognition {
+  id: number
+  imdbId: string | null
+  source: MovieAwardSource
+  filmYear: number | null
+  ceremonyYear: number | null
+  ceremony: number | null
+  award: string
+  name: string | null
+  nominees: string | null
+  detail: string | null
+  isWinner: boolean
+}
+
 export interface GoldenGlobeFilm {
   id: string
   title: string
   year: number
   imdbId: string | null
+  imdbRating: number | null
   posterUrl: string | null
   enrichmentStatus: OscarEnrichmentStatus
   enrichmentError: string | null

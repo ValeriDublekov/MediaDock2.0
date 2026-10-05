@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { getOscarFilm, getTitleOccurrences, getTitleOscars } from '../../api/client'
-import type { Occurrence, OscarFilm } from '../../api/types'
-import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
+import { getMovieAwards, getOscarFilm, getTitleOccurrences, getTitleOscars } from '../../api/client'
+import type { MovieAwardRecognition, OscarFilm } from '../../api/types'
+import { ErrorState, LoadingState } from '../../components/Feedback'
+import { MovieAwardsList, MovieImdbLink } from '../../components/MoviePresentation'
 import { Poster } from '../../components/Poster'
 import { formatDate, formatWords } from '../../shared/format'
+import { combineMovieAwards, getOscarRecognitions } from '../../shared/movieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
-import { OscarAwardsTooltip } from './OscarAwardsTooltip'
 
 interface OscarFilmDetailsDialogProps {
   filmId: number
@@ -14,23 +15,25 @@ interface OscarFilmDetailsDialogProps {
 
 export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDialogProps) {
   const [film, setFilm] = useState<OscarFilm | null>(null)
-  const [related, setRelated] = useState<OscarFilm[]>([])
-  const [occurrences, setOccurrences] = useState<Occurrence[]>([])
+  const [awards, setAwards] = useState<MovieAwardRecognition[]>([])
+  const [occurrenceCount, setOccurrenceCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
-  const winnerCount = film?.nominations.filter((nomination) => nomination.isWinner).length ?? 0
-  const nominationCount = film?.nominations.filter((nomination) => !nomination.isWinner).length ?? 0
-  const awardSummary = `${winnerCount} ${winnerCount === 1 ? 'win' : 'wins'} & ${nominationCount} ${nominationCount === 1 ? 'nomination' : 'nominations'}`
-
   useEffect(() => {
     let current = true
     getOscarFilm(filmId)
       .then(async (response) => {
-        const [awards, sources] = await Promise.all([
-          getTitleOscars(response.titleId), getTitleOccurrences(response.titleId, { page: 1, pageSize: 5 }),
+        const [relatedAwards, sources, combinedAwards] = await Promise.all([
+          getTitleOscars(response.titleId),
+          getTitleOccurrences(response.titleId, { page: 1, pageSize: 5 }),
+          response.imdbId ? getMovieAwards([response.imdbId]).catch(() => []) : Promise.resolve([]),
         ])
-        if (current) { setFilm(response); setRelated(awards); setOccurrences(sources.items) }
+        if (current) {
+          setFilm(response)
+          setAwards(combineMovieAwards([response, ...relatedAwards].flatMap(getOscarRecognitions), combinedAwards, response.imdbId))
+          setOccurrenceCount(sources.totalCount)
+        }
       })
       .catch((requestError: unknown) => {
         if (current) setError(requestError instanceof Error ? requestError.message : 'The Oscar film request failed.')
@@ -71,22 +74,13 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
               <div className="film-details-intro">
                 <Poster className="detail-poster" label="OSC" src={film.posterUrl} title={film.title} />
                 <div className="film-details-summary">
-                  <strong
-                    aria-label={awardSummary}
-                    aria-describedby={`oscar-detail-award-tooltip-${film.id}`}
-                    className="oscar-award-summary"
-                    tabIndex={0}
-                  >
-                    {awardSummary}
-                    <OscarAwardsTooltip id={`oscar-detail-award-tooltip-${film.id}`} nominations={film.nominations} />
-                  </strong>
-                  <span>{film.imdbRating === null ? 'Not rated' : `IMDb ${film.imdbRating.toFixed(1)}`}</span>
+                  <MovieImdbLink imdbId={film.imdbId} rating={film.imdbRating} title={film.title} />
                   {film.plot && <p className="detail-description">{film.plot}</p>}
                 </div>
               </div>
               <dl className="detail-facts oscar-detail-facts">
                 <div><dt>IMDb</dt><dd>{film.imdbId ?? 'Not listed'}</dd></div>
-                <div><dt>IMDb rating</dt><dd>{film.imdbRating?.toFixed(1) ?? 'Not rated'}{film.imdbVotes ? ` / ${film.imdbVotes.toLocaleString()} votes` : ''}</dd></div>
+                <div><dt>IMDb votes</dt><dd>{film.imdbVotes?.toLocaleString() ?? 'Not listed'}</dd></div>
                 <div><dt>Metascore</dt><dd>{film.metascore ?? 'Not listed'}</dd></div>
                 <div><dt>Director</dt><dd>{film.director ?? 'Not listed'}</dd></div>
                 <div><dt>Runtime</dt><dd>{film.runtime ?? 'Not listed'}</dd></div>
@@ -98,50 +92,9 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
                 <div><dt>Box office</dt><dd>{film.boxOffice ?? 'Not listed'}</dd></div>
                 {film.lastEnrichmentError && <div><dt>Last error</dt><dd>{film.lastEnrichmentError}</dd></div>}
               </dl>
-              <FavoriteControls from="oscar" mediaType={film.mediaType} occurrenceCount={occurrences.length} titleId={film.titleId} />
-              {related.filter((item) => item.id !== film.id).map((item) => <section key={item.id}>
-                <h2>{item.title} ({item.filmYear})</h2>
-                {item.nominations.map((nomination) => <p key={nomination.id}>{nomination.category}: {nomination.isWinner ? 'Winner' : 'Nominee'}</p>)}
-              </section>)}
-              <section><div className="section-title-row"><h2>Torrent sources</h2></div>
-                {occurrences.length ? occurrences.map((item) => <div className="occurrence-row" key={item.id}>
-                  <strong>{item.sourceName}</strong><a href={item.torrentUrl} rel="noreferrer" target="_blank">Open source</a>
-                </div>) : <EmptyState title="No torrent sources" message="No torrent occurrence has been observed for this film." />}
-              </section>
+              <FavoriteControls from="oscar" mediaType={film.mediaType} occurrenceCount={occurrenceCount} titleId={film.titleId} />
 
-              <section>
-                <div className="section-title-row">
-                  <div>
-                    <h2>Nominations</h2>
-                    <p>{film.nominations.length} selected-category records</p>
-                  </div>
-                </div>
-                {film.nominations.length > 0 ? (
-                  <div className="oscar-nomination-list">
-                    {film.nominations.map((nomination) => (
-                      <article className="oscar-nomination-row" key={nomination.id}>
-                        <div className="oscar-nomination-meta">
-                          <span>Ceremony {nomination.ceremony}</span>
-                          <span>{formatWords(nomination.class)}</span>
-                        </div>
-                        <div className="oscar-nomination-copy">
-                          <h3>{nomination.category}</h3>
-                          {nomination.nominees && <p>{nomination.nominees}</p>}
-                          {nomination.name && nomination.name !== nomination.nominees && (
-                            <p className="oscar-nomination-name">{nomination.name}</p>
-                          )}
-                          {nomination.detail && <p className="oscar-nomination-detail">{nomination.detail}</p>}
-                        </div>
-                        <span className={`state-pill oscar-nomination-outcome${nomination.isWinner ? ' is-winner' : ' is-muted'}`}>
-                          {nomination.isWinner ? 'Winner' : 'Nominee'}
-                        </span>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState title="No nominations listed" message="This film has no selected-category nomination rows." />
-                )}
-              </section>
+              <MovieAwardsList awards={awards} />
             </>
           )}
         </div>

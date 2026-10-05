@@ -4,8 +4,11 @@ import type { CatalogQuery, CatalogTitle, FeedType, MediaType, PageResponse } fr
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { Poster } from '../../components/Poster'
+import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard } from '../../components/MoviePresentation'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatDate, formatWords } from '../../shared/format'
+import { combineMovieAwards, movieAwardsRequestKey } from '../../shared/movieAwards'
+import { useMovieAwards } from '../../shared/useMovieAwards'
 import { TitleDetailsDialog } from './TitleDetailsDialog'
 import { FavoriteControls } from '../favorites/FavoriteControls'
 
@@ -55,7 +58,7 @@ function buildQuery(page: number, filters: CatalogFilters, category: CatalogCate
   }
 }
 
-function CatalogRow({ title, onSelect }: { title: CatalogTitle; onSelect: (id: number) => void }) {
+function CatalogRow({ title, onSelect, awards }: { title: CatalogTitle; onSelect: (id: number) => void; awards: ReturnType<typeof combineMovieAwards> }) {
   return (
     <tr>
       <td>
@@ -68,7 +71,8 @@ function CatalogRow({ title, onSelect }: { title: CatalogTitle; onSelect: (id: n
         </div>
       </td>
       <td><span className="type-label">{formatWords(title.mediaType)}</span>{title.contentKind && <span className="subtle-line">{formatWords(title.contentKind)}</span>}</td>
-      <td className="rating-value">{title.imdbRating === null ? 'Not rated' : title.imdbRating.toFixed(1)}</td>
+      <td><MovieImdbLink imdbId={title.imdbId} rating={title.imdbRating} title={title.title} /></td>
+      <td><MovieAwardsSummary awards={awards} compact /></td>
       <td>{title.genres.slice(0, 2).join(', ') || 'Not tagged'}</td>
       <td>{formatDate(title.lastSeenAt)}</td>
       <td><FavoriteControls from="catalog" mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} titleId={title.id} /></td>
@@ -88,6 +92,8 @@ export function CatalogView() {
   const [attempt, setAttempt] = useState(0)
   const [selectedTitleId, setSelectedTitleId] = useState<number | null>(null)
   const [detailsSection, setDetailsSection] = useState<'details' | 'torrents'>('details')
+  const awardsRequestKey = movieAwardsRequestKey(result?.items.map((title) => title.imdbId) ?? [])
+  const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
   const activeFilterCount = Object.entries(draftFilters).filter(([key, value]) => key !== 'search' && value !== '').length
 
   function openTitle(titleId: number, section: 'details' | 'torrents') {
@@ -192,48 +198,38 @@ export function CatalogView() {
       {!loading && !error && result && result.items.length === 0 && <EmptyState title="No titles found" message="Try changing the search or filters, or clear them to browse the full catalog." />}
       {!loading && !error && result && result.items.length > 0 && (
         <>
+          {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
           {viewMode === 'posters' ? <div className="poster-grid">
-            {result.items.map((title) => <article className="movie-tile" key={title.id}>
-              <button aria-label={`View ${title.title} details`} className="poster-action" onClick={() => openTitle(title.id, 'details')} type="button">
-                <Poster label={title.mediaType.slice(0, 3).toUpperCase()} src={title.posterUrl} title={title.title} />
-                <span className="poster-type-badge">{formatWords(title.mediaType)}</span>
-              </button>
-              <div className="movie-tile-info">
-                <div className="tile-heading">
-                  <button className="tile-title" onClick={() => openTitle(title.id, 'details')} type="button">{title.title}</button>
-                  <span className="tile-year" title={title.year ? `Release year ${title.year}` : 'Release year unknown'}>{title.year ?? '—'}</span>
-                </div>
-                <div aria-label={title.imdbRating === null
-                  ? `IMDb rating for ${title.title}: not rated`
-                  : `IMDb rating for ${title.title}: ${title.imdbRating.toFixed(1)} out of 10`} className="tile-rating" role="group">
-                  <span>IMDb</span>
-                  <strong>{title.imdbRating === null ? 'Not rated' : title.imdbRating.toFixed(1)}</strong>
-                  {title.imdbRating !== null && <span className="tile-rating-scale">/ 10</span>}
-                </div>
-                <div className="tile-genres">
-                  {title.genres.length > 0
-                    ? title.genres.slice(0, 3).map((genre) => <span className="tile-genre" key={genre}>{genre}</span>)
-                    : <span>Genres unavailable</span>}
-                </div>
-                <div className="tile-observations">
-                  <span>{title.occurrenceCount} feed observations</span>
-                  <span>Last seen {formatDate(title.lastSeenAt)}</span>
-                </div>
-                <div className="tile-actions">
-                  {title.imdbId
-                    ? <a aria-label={`Open ${title.title} on IMDb (opens in new tab)`} className="tile-action tile-action-imdb" href={`https://www.imdb.com/title/${title.imdbId}/`} rel="noopener noreferrer" target="_blank">IMDb</a>
-                    : <button aria-label={`Open details for ${title.title}`} className="tile-action" onClick={() => openTitle(title.id, 'details')} type="button">Details</button>}
-                  <button aria-label={`View torrent sources for ${title.title} (${title.occurrenceCount})`} className="tile-action tile-action-primary" onClick={() => openTitle(title.id, 'torrents')} type="button">
-                    Torrents <span>{title.occurrenceCount}</span>
-                  </button>
-                </div>
-                <FavoriteControls from="catalog" mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} titleId={title.id} />
+            {result.items.map((title) => <MoviePosterCard
+              actions={<>
+                <button aria-label={`Open details for ${title.title}`} className="tile-action" onClick={() => openTitle(title.id, 'details')} type="button">Details</button>
+                <button aria-label={`View torrent sources for ${title.title} (${title.occurrenceCount})`} className="tile-action tile-action-primary" onClick={() => openTitle(title.id, 'torrents')} type="button">
+                  Torrents <span>{title.occurrenceCount}</span>
+                </button>
+              </>}
+              awards={combineMovieAwards([], pageAwards, title.imdbId)}
+              footer={<FavoriteControls from="catalog" mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} titleId={title.id} />}
+              genres={title.genres}
+              imdbId={title.imdbId}
+              imdbRating={title.imdbRating}
+              key={title.id}
+              mediaType={title.mediaType}
+              onOpen={() => openTitle(title.id, 'details')}
+              openLabel={`View ${title.title} details`}
+              posterLabel={title.mediaType.slice(0, 3).toUpperCase()}
+              posterUrl={title.posterUrl}
+              title={title.title}
+              year={title.year}
+            >
+              <div className="tile-observations">
+                <span>{title.occurrenceCount} feed observations</span>
+                <span>Last seen {formatDate(title.lastSeenAt)}</span>
               </div>
-            </article>)}
+            </MoviePosterCard>)}
           </div> : <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th>TITLE</th><th>TYPE</th><th>IMDB</th><th>GENRES</th><th>LAST SEEN</th><th>FAVORITES</th></tr></thead>
-              <tbody>{result.items.map((title) => <CatalogRow key={title.id} onSelect={setSelectedTitleId} title={title} />)}</tbody>
+              <thead><tr><th>TITLE</th><th>TYPE</th><th>IMDB</th><th>AWARDS</th><th>GENRES</th><th>LAST SEEN</th><th>FAVORITES</th></tr></thead>
+              <tbody>{result.items.map((title) => <CatalogRow awards={combineMovieAwards([], pageAwards, title.imdbId)} key={title.id} onSelect={setSelectedTitleId} title={title} />)}</tbody>
             </table>
           </div>}
           <Pagination onPageChange={setPage} page={result} />

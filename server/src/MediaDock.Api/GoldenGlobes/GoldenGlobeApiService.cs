@@ -36,7 +36,7 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
         var groups = rows.GroupBy(x => new { x.Title, x.Year })
             .Select(group => new GoldenGlobeFilmResponse(
                 $"{group.Key.Year}:{group.Key.Title}", group.Key.Title, group.Key.Year, group.Select(x => x.ImdbId).FirstOrDefault(x => x != null),
-                null,
+                null, null,
                 GetEnrichmentStatus(group.Select(x => x.EnrichmentStatus)),
                 group.Select(x => x.LastEnrichmentError).FirstOrDefault(x => x != null),
                 group.OrderBy(x => x.Award.Name).ThenBy(x => x.Id).Select(x => new GoldenGlobeNominationResponse(x.Id, x.Year, x.Award.Name, x.Winner)).ToArray()))
@@ -55,11 +55,11 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
             }
 
             var metadata = await metadataCacheStore.GetByTitleAsync(NormalizeTitle(film.Title), "movie", cancellationToken);
-            var posterUrl = metadata?.Metadata is { } details
-                && ImdbIdNormalizer.IsCompatible(film.ImdbId, details.ImdbId)
-                    ? details.PosterUrl
+            var details = metadata?.Metadata is { } candidate
+                && ImdbIdNormalizer.IsCompatible(film.ImdbId, candidate.ImdbId)
+                    ? candidate
                     : null;
-            items.Add(film with { PosterUrl = posterUrl });
+            items.Add(film with { PosterUrl = details?.PosterUrl, ImdbRating = details?.ImdbRating });
         }
 
         return new PageResponse<GoldenGlobeFilmResponse>(items, page, pageSize, filteredGroups.Length, filteredGroups.Length == 0 ? 0 : (filteredGroups.Length + pageSize - 1) / pageSize);

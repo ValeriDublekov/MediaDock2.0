@@ -19,6 +19,7 @@ public sealed record GoldenGlobeFilmResponse(
     string Title,
     int Year,
     string? ImdbId,
+    decimal? ImdbRating,
     string? PosterUrl,
     string? EnrichmentStatus,
     string? EnrichmentError,

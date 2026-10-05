@@ -9,6 +9,7 @@ vi.mock('../../api/client', () => ({
   getOscarFilm: vi.fn(),
   getOscarFilms: vi.fn(),
   getTitleOscars: vi.fn(),
+  getMovieAwards: vi.fn().mockResolvedValue([]),
   getTitleOccurrences: vi.fn(),
   getFavorites: vi.fn(),
   addFavorite: vi.fn(),
@@ -94,21 +95,20 @@ describe('OscarCatalogView', () => {
   })
   afterEach(() => cleanup())
 
-  it('shows the winner, film details, and IMDb link in both list modes', async () => {
+  it('shows the common award summary, film details, and IMDb link in both list modes', async () => {
     filmRequest.mockResolvedValue(page([film]))
     render(<OscarCatalogView />)
 
-    expect(await screen.findByText('Winner · 1 win')).toBeTruthy()
-    const posterButton = screen.getByRole('button', { name: 'View The Shape of Water Oscar details' })
-    const posterTooltip = screen.getByRole('tooltip')
-    expect(within(posterTooltip).getByText('Oscar category results')).toBeTruthy()
-    expect(within(posterTooltip).getByRole('listitem', { name: 'Won Best Picture' })).toBeTruthy()
-    expect(within(posterTooltip).getByRole('listitem', { name: 'Nominated for Directing' })).toBeTruthy()
-    expect(posterButton.getAttribute('aria-describedby')).toBe(posterTooltip.id)
-    expect(screen.getByText('2 nominations').className).toContain('oscar-nomination-count')
+    expect(await screen.findByText('Awards and nominations')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'View The Shape of Water Oscar details' })).toBeTruthy()
+    const awardSummary = within(screen.getByLabelText('Awards and nominations'))
+    expect(awardSummary.getByText('Oscars')).toBeTruthy()
+    expect(awardSummary.getByText('1 win · 2 nominations')).toBeTruthy()
     expect(screen.getByText(film.plot!)).toBeTruthy()
     expect(screen.getByText(`Director: ${film.director}`)).toBeTruthy()
-    expect(screen.getByText('Drama · Fantasy · Romance')).toBeTruthy()
+    expect(screen.getByText('Drama')).toBeTruthy()
+    expect(screen.getByText('Fantasy')).toBeTruthy()
+    expect(screen.getByText('Romance')).toBeTruthy()
     const posterRatingLink = screen.getByRole('link', { name: 'Open The Shape of Water on IMDb (opens in new tab)' })
     expect(posterRatingLink.getAttribute('href')).toBe('https://www.imdb.com/title/tt5580390/')
     expect(posterRatingLink.getAttribute('target')).toBe('_blank')
@@ -127,7 +127,8 @@ describe('OscarCatalogView', () => {
     }]))
     render(<OscarCatalogView />)
 
-    expect(await screen.findByText('Nominee · 2 nominations')).toBeTruthy()
+    const awardSummary = within(await screen.findByLabelText('Awards and nominations'))
+    expect(awardSummary.getByText('0 wins · 2 nominations')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(screen.getByText('Nominee')).toBeTruthy()
   })
@@ -188,18 +189,13 @@ describe('OscarCatalogView', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'View The Shape of Water Oscar details' }))
     const dialog = await screen.findByRole('dialog')
     expect(detailsRequest).toHaveBeenCalledWith(film.id)
-    const awardSummary = within(dialog).getByText('2 wins & 3 nominations')
-    const detailTooltip = within(dialog).getByRole('tooltip')
-    expect(awardSummary.getAttribute('aria-describedby')).toBe(detailTooltip.id)
-    expect(within(detailTooltip).getByRole('listitem', { name: 'Won Best Picture' })).toBeTruthy()
-    expect(within(detailTooltip).getByRole('listitem', { name: 'Nominated for Directing' })).toBeTruthy()
-    expect(within(detailTooltip).getByRole('listitem', { name: 'Nominated for Writing (Adapted Screenplay)' })).toBeTruthy()
+    expect(within(dialog).getByRole('heading', { name: 'Awards and nominations' })).toBeTruthy()
     expect(within(dialog).queryByText('2 wins & 14 nominations total')).toBeNull()
     expect(await within(dialog).findAllByText('Guillermo del Toro and J. Miles Dale')).toHaveLength(2)
     expect(within(dialog).getAllByText('Fox Searchlight Pictures')).toHaveLength(2)
-    const nominationsSection = within(dialog).getByRole('heading', { name: 'Nominations' }).closest('section')
-    expect(within(nominationsSection as HTMLElement).getAllByText('Winner')).toHaveLength(2)
-    expect(within(nominationsSection as HTMLElement).getAllByText('Nominee')).toHaveLength(3)
+    const awardsSection = within(dialog).getByRole('heading', { name: 'Awards and nominations' }).closest('section')
+    expect(within(awardsSection as HTMLElement).getAllByText('Winner')).toHaveLength(2)
+    expect(within(awardsSection as HTMLElement).getAllByText('Nominee')).toHaveLength(3)
   })
 
   it('requests the next page from the pagination controls', async () => {

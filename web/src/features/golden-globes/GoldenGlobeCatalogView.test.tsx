@@ -1,16 +1,17 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getGoldenGlobeFilms } from '../../api/client'
-import type { GoldenGlobeFilm, PageResponse } from '../../api/types'
+import { getGoldenGlobeFilms, getMovieAwards } from '../../api/client'
+import type { GoldenGlobeFilm, MovieAwardRecognition, PageResponse } from '../../api/types'
 import { GoldenGlobeCatalogView } from './GoldenGlobeCatalogView'
 
-vi.mock('../../api/client', () => ({ getGoldenGlobeFilms: vi.fn() }))
+vi.mock('../../api/client', () => ({ getGoldenGlobeFilms: vi.fn(), getMovieAwards: vi.fn().mockResolvedValue([]) }))
 
 const film: GoldenGlobeFilm = {
   id: '2025:A Film',
   title: 'A Film',
   year: 2025,
   imdbId: null,
+  imdbRating: null,
   posterUrl: 'https://example.test/a-film.jpg',
   enrichmentStatus: 'pending',
   enrichmentError: null,
@@ -28,6 +29,7 @@ const page: PageResponse<GoldenGlobeFilm> = {
 describe('GoldenGlobeCatalogView', () => {
   beforeEach(() => {
     vi.mocked(getGoldenGlobeFilms).mockReset().mockResolvedValue(page)
+    vi.mocked(getMovieAwards).mockReset().mockResolvedValue([])
   })
 
   afterEach(() => cleanup())
@@ -38,8 +40,9 @@ describe('GoldenGlobeCatalogView', () => {
     expect(await screen.findByRole('button', { name: 'A Film' })).toBeTruthy()
     expect(screen.getByRole('img', { name: 'Poster for A Film' }).getAttribute('src')).toBe('https://example.test/a-film.jpg')
     expect(screen.getByText('2025')).toBeTruthy()
-    expect(screen.getByText('1 nomination')).toBeTruthy()
-    expect(screen.getByText('Winner · 1 win')).toBeTruthy()
+    const awardSummary = within(screen.getByLabelText('Awards and nominations'))
+    expect(awardSummary.getByText('Golden Globes')).toBeTruthy()
+    expect(awardSummary.getByText('1 win · 1 nomination')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: '  A Film  ' } })
     fireEvent.change(screen.getByLabelText('Year from'), { target: { value: '2025' } })
@@ -68,6 +71,25 @@ describe('GoldenGlobeCatalogView', () => {
     render(<GoldenGlobeCatalogView />)
 
     expect(await screen.findByText('OMDb matched a film from 2016; this ceremony accepts films from 2024 or 2025.')).toBeTruthy()
+  })
+
+  it('opens combined award details from the shared poster card', async () => {
+    const matchedFilm = { ...film, imdbId: 'tt1234567', imdbRating: 7.4 }
+    vi.mocked(getGoldenGlobeFilms).mockResolvedValue({ ...page, items: [matchedFilm] })
+    vi.mocked(getMovieAwards).mockResolvedValue([{
+      id: 12, imdbId: 'tt1234567', source: 'oscars', filmYear: 2024, ceremonyYear: null,
+      ceremony: 97, award: 'Best Picture', name: null, nominees: 'Producer', detail: null, isWinner: true,
+    } satisfies MovieAwardRecognition])
+    render(<GoldenGlobeCatalogView />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'View A Film details' }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: 'A Film' })).toBeTruthy()
+    expect(within(dialog).getByRole('heading', { name: 'Awards and nominations' })).toBeTruthy()
+    expect(within(dialog).getByText('Ceremony year 2025')).toBeTruthy()
+    expect(within(dialog).getByRole('link', { name: 'Open A Film on IMDb (opens in new tab)' }).textContent).toContain('7.4')
+    expect(within(dialog).getAllByText('Best Picture')).toHaveLength(2)
   })
 
   it('explains not-found and temporary provider errors', async () => {

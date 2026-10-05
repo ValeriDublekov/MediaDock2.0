@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { getTitle, getTitleOccurrences, getTitleOscars } from '../../api/client'
-import type { Occurrence, OscarFilm, PageResponse, TitleDetails } from '../../api/types'
+import { getMovieAwards, getTitle, getTitleOccurrences, getTitleOscars } from '../../api/client'
+import type { MovieAwardRecognition, Occurrence, OscarFilm, PageResponse, TitleDetails } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
+import { MovieAwardsList, MovieImdbLink } from '../../components/MoviePresentation'
 import { Poster } from '../../components/Poster'
 import { formatDate, formatWords } from '../../shared/format'
+import { combineMovieAwards, getOscarRecognitions } from '../../shared/movieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
 
 interface TitleDetailsDialogProps {
@@ -16,6 +18,8 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
   const [title, setTitle] = useState<TitleDetails | null>(null)
   const [occurrences, setOccurrences] = useState<PageResponse<Occurrence> | null>(null)
   const [oscars, setOscars] = useState<OscarFilm[]>([])
+  const [awards, setAwards] = useState<MovieAwardRecognition[]>([])
+  const [awardsError, setAwardsError] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -26,11 +30,22 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
     setLoading(true)
     setError(null)
     Promise.all([getTitle(titleId), getTitleOccurrences(titleId, { page: 1, pageSize: 5 }), getTitleOscars(titleId)])
-      .then(([details, page, awards]) => {
+      .then(async ([details, page, oscarFilms]) => {
+        let combinedAwards: MovieAwardRecognition[] = []
+        let lookupFailed = false
+        if (details.imdbId) {
+          try {
+            combinedAwards = await getMovieAwards([details.imdbId])
+          } catch {
+            lookupFailed = true
+          }
+        }
         if (!current) return
         setTitle(details)
         setOccurrences(page)
-        setOscars(awards)
+        setOscars(oscarFilms)
+        setAwards(combineMovieAwards(oscarFilms.flatMap(getOscarRecognitions), combinedAwards, details.imdbId))
+        setAwardsError(lookupFailed)
       })
       .catch((requestError: unknown) => {
         if (current) setError(requestError instanceof Error ? requestError.message : 'The title request failed.')
@@ -67,14 +82,13 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
               <div className="film-details-intro">
                 <Poster className="detail-poster" label={title.mediaType.slice(0, 3).toUpperCase()} src={title.posterUrl} title={title.title} />
                 <div className="film-details-summary">
-                  <strong>{title.imdbRating === null ? 'Not rated' : `IMDb ${title.imdbRating.toFixed(1)}`}</strong>
+                  <MovieImdbLink imdbId={title.imdbId} rating={title.imdbRating} title={title.title} />
                   <span>{title.genres.join(' · ') || 'Genres unavailable'}</span>
                   {title.plot && <p className="detail-description">{title.plot}</p>}
-                  {title.imdbId && <a aria-label={`Open ${title.title} on IMDb (opens in new tab)`} className="button imdb-detail-link" href={`https://www.imdb.com/title/${title.imdbId}/`} rel="noopener noreferrer" target="_blank">Open on IMDb</a>}
                 </div>
               </div>
               <dl className="detail-facts">
-                <div><dt>Rating</dt><dd>{title.imdbRating?.toFixed(1) ?? 'Not rated'}{title.imdbVotes ? ` / ${title.imdbVotes.toLocaleString()} votes` : ''}</dd></div>
+                <div><dt>IMDb votes</dt><dd>{title.imdbVotes?.toLocaleString() ?? 'Not listed'}</dd></div>
                 <div><dt>Director</dt><dd>{title.director ?? 'Not listed'}</dd></div>
                 <div><dt>Runtime</dt><dd>{title.runtime ?? 'Not listed'}</dd></div>
                 <div><dt>Genres</dt><dd>{title.genres.join(', ') || 'Not tagged'}</dd></div>
@@ -82,12 +96,8 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
                 <div><dt>First seen</dt><dd>{formatDate(title.firstSeenAt)}</dd></div>
               </dl>
               <FavoriteControls from={oscars.length ? 'oscar' : 'catalog'} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} titleId={titleId} />
-              {oscars.length > 0 && <section><div className="section-title-row"><h2>Oscar</h2></div>
-                {oscars.map((film) => <div className="favorite-award" key={film.id}>
-                  <strong>{film.title} ({film.filmYear})</strong>
-                  {film.nominations.map((nomination) => <span key={nomination.id}>{nomination.category}: {nomination.isWinner ? 'Winner' : 'Nominee'} · {nomination.nominees}</span>)}
-                </div>)}
-              </section>}
+              {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
+              <MovieAwardsList awards={awards} />
               <section ref={torrentSectionRef}>
                 <div className="section-title-row"><div><h2>Torrent sources</h2><p>Most recently seen occurrences</p></div></div>
                 {occurrences?.items.length ? (

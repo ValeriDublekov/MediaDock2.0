@@ -1,7 +1,7 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, getCatalog, getTitle } from '../../api/client'
-import type { CatalogTitle, PageResponse } from '../../api/types'
+import { ApiError, getCatalog, getMovieAwards, getTitle } from '../../api/client'
+import type { CatalogTitle, MovieAwardRecognition, PageResponse } from '../../api/types'
 import { CatalogView } from './CatalogView'
 
 vi.mock('../../api/client', () => ({
@@ -10,6 +10,7 @@ vi.mock('../../api/client', () => ({
   getTitle: vi.fn(),
   getTitleOccurrences: vi.fn(),
   getTitleOscars: vi.fn().mockResolvedValue([]),
+  getMovieAwards: vi.fn().mockResolvedValue([]),
 }))
 
 const catalogRequest = vi.mocked(getCatalog)
@@ -57,7 +58,8 @@ describe('CatalogView', () => {
     catalogRequest.mockResolvedValue(page([{ ...title, occurrenceCount: 3 }]))
     render(<CatalogView />)
 
-    expect(await screen.findByRole('group', { name: 'IMDb rating for Quiet River: 8.1 out of 10' })).toBeTruthy()
+    const imdbLink = await screen.findByRole('link', { name: 'Open Quiet River on IMDb (opens in new tab)' })
+    expect(imdbLink.textContent).toContain('8.1')
     fireEvent.click(screen.getByRole('button', { name: 'View torrent sources for Quiet River (3)' }))
 
     expect(await screen.findByRole('dialog')).toBeTruthy()
@@ -72,6 +74,26 @@ describe('CatalogView', () => {
     expect(imdbLink.getAttribute('href')).toBe('https://www.imdb.com/title/tt1234567/')
     expect(imdbLink.getAttribute('target')).toBe('_blank')
     expect(imdbLink.getAttribute('rel')).toBe('noopener noreferrer')
+  })
+
+  it('shows both award sources from the page-scoped IMDb lookup', async () => {
+    vi.mocked(getMovieAwards).mockResolvedValue([
+      {
+        id: 21, imdbId: 'tt1234567', source: 'oscars', filmYear: 2004, ceremonyYear: null,
+        ceremony: 77, award: 'Best Picture', name: null, nominees: 'Producer', detail: null, isWinner: true,
+      },
+      {
+        id: 22, imdbId: 'tt1234567', source: 'golden_globes', filmYear: null, ceremonyYear: 2005,
+        ceremony: null, award: 'Best Drama', name: null, nominees: null, detail: null, isWinner: false,
+      },
+    ] satisfies MovieAwardRecognition[])
+    catalogRequest.mockResolvedValue(page([title]))
+    render(<CatalogView />)
+
+    const awards = await screen.findByLabelText('Awards and nominations')
+    expect(within(awards).getByText('Oscars')).toBeTruthy()
+    expect(within(awards).getByText('Golden Globes')).toBeTruthy()
+    expect(getMovieAwards).toHaveBeenCalledWith(['tt1234567'])
   })
 
   it('requests the next page from the pagination controls', async () => {

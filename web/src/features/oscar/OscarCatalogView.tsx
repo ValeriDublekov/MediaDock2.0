@@ -9,10 +9,12 @@ import type {
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { Poster } from '../../components/Poster'
+import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard } from '../../components/MoviePresentation'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatWords } from '../../shared/format'
+import { combineMovieAwards, getOscarRecognitions, movieAwardsRequestKey } from '../../shared/movieAwards'
+import { useMovieAwards } from '../../shared/useMovieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
-import { OscarAwardsTooltip } from './OscarAwardsTooltip'
 import { OscarFilmDetailsDialog } from './OscarFilmDetailsDialog'
 
 interface OscarFilters {
@@ -48,24 +50,7 @@ function buildQuery(page: number, filters: OscarFilters): OscarCatalogQuery {
   }
 }
 
-function OscarImdbRating({ film }: { film: OscarFilm }) {
-  const rating = film.imdbRating === null ? 'Not rated' : `IMDb ${film.imdbRating.toFixed(1)}`
-  if (!film.imdbId) return <span className="tile-rating">{rating}</span>
-
-  return (
-    <a
-      aria-label={`Open ${film.title} on IMDb (opens in new tab)`}
-      className="tile-rating oscar-imdb-rating"
-      href={`https://www.imdb.com/title/${film.imdbId}/`}
-      rel="noopener noreferrer"
-      target="_blank"
-    >
-      {rating}
-    </a>
-  )
-}
-
-function OscarRow({ film, onSelect }: { film: OscarFilm; onSelect: (id: number) => void }) {
+function OscarRow({ film, onSelect, awards }: { film: OscarFilm; onSelect: (id: number) => void; awards: ReturnType<typeof combineMovieAwards> }) {
   const categories = [...new Set(film.nominations.map((nomination) => nomination.category))]
   const winCount = film.nominations.filter((nomination) => nomination.isWinner).length
   const nominationCount = film.nominations.length
@@ -108,10 +93,11 @@ function OscarRow({ film, onSelect }: { film: OscarFilm; onSelect: (id: number) 
           {nominationCount} {nominationCount === 1 ? 'nomination' : 'nominations'}
         </span>
       </td>
-      <td className="rating-value">
-        <OscarImdbRating film={film} />
+      <td>
+        <MovieImdbLink imdbId={film.imdbId} rating={film.imdbRating} title={film.title} />
         {film.imdbVotes !== null && <span className="subtle-line">{film.imdbVotes.toLocaleString()} votes</span>}
       </td>
+      <td><MovieAwardsSummary awards={awards} compact /></td>
       <td>
         <span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>
           {formatWords(film.enrichmentStatus)}
@@ -135,6 +121,8 @@ export function OscarCatalogView() {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selectedFilmId, setSelectedFilmId] = useState<number | null>(null)
+  const awardsRequestKey = movieAwardsRequestKey(result?.items.map((film) => film.imdbId) ?? [])
+  const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
   const activeFilterCount = Object.entries(draftFilters).filter(([key, value]) => key !== 'search' && value !== '').length
 
   useEffect(() => {
@@ -258,50 +246,35 @@ export function OscarCatalogView() {
       )}
       {!loading && !error && result && result.items.length > 0 && (
         <>
+          {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
           {viewMode === 'posters' ? <div className="poster-grid">
             {result.items.map((film) => {
-              const wins = film.nominations.filter((nomination) => nomination.isWinner).length
-              const nominationCount = film.nominations.length
-              return <article className="movie-tile" key={film.id}>
-                <button
-                  aria-describedby={`oscar-award-tooltip-${film.id}`}
-                  aria-label={`View ${film.title} Oscar details`}
-                  className="poster-action"
-                  onClick={() => setSelectedFilmId(film.id)}
-                  type="button"
-                >
-                  <Poster label="OSC" src={film.posterUrl} title={film.title} />
-                  <span className={`winner-badge${wins === 0 ? ' nominee-badge' : ''}`}>
-                    {wins > 0
-                      ? `Winner · ${wins} ${wins === 1 ? 'win' : 'wins'}`
-                      : `Nominee · ${nominationCount} ${nominationCount === 1 ? 'nomination' : 'nominations'}`}
-                  </span>
-                  <OscarAwardsTooltip id={`oscar-award-tooltip-${film.id}`} nominations={film.nominations} />
-                </button>
-                <div className="movie-tile-info">
-                  <button className="tile-title" onClick={() => setSelectedFilmId(film.id)} type="button">{film.title}</button>
-                  <div className="tile-meta oscar-tile-meta">
-                    <span>{film.filmYear}</span>
-                    <span className="oscar-nomination-count">
-                      {nominationCount} {nominationCount === 1 ? 'nomination' : 'nominations'}
-                    </span>
-                  </div>
-                  <div className="oscar-tile-director">Director: {film.director ?? 'Not listed'}</div>
-                  <div className="tile-genres">{film.genres.join(' · ') || 'Genres unavailable'}</div>
-                  {film.plot && <p className="oscar-tile-plot">{film.plot}</p>}
-                  <div className="tile-footer">
-                    <OscarImdbRating film={film} />
-                    <FavoriteControls from="oscar" mediaType={film.mediaType} occurrenceCount={0} titleId={film.titleId} />
-                  </div>
-                </div>
-              </article>
+              return <MoviePosterCard
+                awards={combineMovieAwards(getOscarRecognitions(film), pageAwards, film.imdbId)}
+                footer={<FavoriteControls from="oscar" mediaType={film.mediaType} occurrenceCount={0} titleId={film.titleId} />}
+                genres={film.genres}
+                imdbId={film.imdbId}
+                imdbRating={film.imdbRating}
+                key={film.id}
+                mediaType={film.mediaType}
+                onOpen={() => setSelectedFilmId(film.id)}
+                openLabel={`View ${film.title} Oscar details`}
+                posterLabel="OSC"
+                posterUrl={film.posterUrl}
+                title={film.title}
+                year={film.filmYear}
+              >
+                <div className="oscar-tile-director">Director: {film.director ?? 'Not listed'}</div>
+                {film.plot && <p className="oscar-tile-plot">{film.plot}</p>}
+                <span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span>
+              </MoviePosterCard>
             })}
           </div> : <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th>FILM</th><th>CATEGORIES</th><th>RESULT</th><th>IMDB</th><th>OMDB</th><th>FAVORITES</th></tr></thead>
+              <thead><tr><th>FILM</th><th>CATEGORIES</th><th>RESULT</th><th>IMDB</th><th>AWARDS</th><th>OMDB</th><th>FAVORITES</th></tr></thead>
               <tbody>
                 {result.items.map((film) => (
-                  <OscarRow film={film} key={film.id} onSelect={setSelectedFilmId} />
+                  <OscarRow awards={combineMovieAwards(getOscarRecognitions(film), pageAwards, film.imdbId)} film={film} key={film.id} onSelect={setSelectedFilmId} />
                 ))}
               </tbody>
             </table>

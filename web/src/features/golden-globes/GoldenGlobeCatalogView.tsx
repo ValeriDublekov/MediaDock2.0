@@ -2,28 +2,19 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { getGoldenGlobeFilms } from '../../api/client'
 import type { GoldenGlobeCatalogQuery, GoldenGlobeEnrichmentStatus, GoldenGlobeFilm, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
+import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard } from '../../components/MoviePresentation'
 import { Pagination } from '../../components/Pagination'
-import { Poster } from '../../components/Poster'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatWords } from '../../shared/format'
+import { combineMovieAwards, getGoldenGlobeRecognitions, movieAwardsRequestKey } from '../../shared/movieAwards'
+import { useMovieAwards } from '../../shared/useMovieAwards'
+import { GoldenGlobeFilmDetailsDialog } from './GoldenGlobeFilmDetailsDialog'
 
 interface Filters { search: string; yearFrom: string; yearTo: string; award: string; result: string; enrichmentStatus: string }
 const emptyFilters: Filters = { search: '', yearFrom: '', yearTo: '', award: '', result: '', enrichmentStatus: '' }
 
 function queryFor(page: number, filters: Filters): GoldenGlobeCatalogQuery {
   return { page, pageSize: 20, ...(filters.search.trim() ? { search: filters.search.trim() } : {}), ...(filters.yearFrom ? { yearFrom: Number(filters.yearFrom) } : {}), ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}), ...(filters.award ? { award: filters.award } : {}), ...(filters.result ? { result: filters.result as GoldenGlobeCatalogQuery['result'] } : {}), ...(filters.enrichmentStatus ? { enrichmentStatus: filters.enrichmentStatus as GoldenGlobeEnrichmentStatus } : {}) }
-}
-
-function AwardSummary({ film }: { film: GoldenGlobeFilm }) {
-  const wins = film.nominations.filter((nomination) => nomination.isWinner).length
-  const awards = [...new Set(film.nominations.map((nomination) => nomination.award))]
-  return <>
-    <span className={`winner-badge${wins === 0 ? ' nominee-badge' : ''}`}>
-      {wins > 0 ? `Winner · ${wins} ${wins === 1 ? 'win' : 'wins'}` : `Nominee · ${film.nominations.length} ${film.nominations.length === 1 ? 'nomination' : 'nominations'}`}
-    </span>
-    <div className="tile-genres">{awards.slice(0, 2).join(' · ')}{awards.length > 2 ? ` · +${awards.length - 2}` : ''}</div>
-    <EnrichmentStatus film={film} />
-  </>
 }
 
 function describeEnrichmentError(error: string, ceremonyYear: number) {
@@ -63,6 +54,9 @@ export function GoldenGlobeCatalogView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const [selectedFilm, setSelectedFilm] = useState<GoldenGlobeFilm | null>(null)
+  const awardsRequestKey = movieAwardsRequestKey(result?.items.map((film) => film.imdbId) ?? [])
+  const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
 
   useEffect(() => {
     let current = true
@@ -94,8 +88,29 @@ export function GoldenGlobeCatalogView() {
     {!loading && error && <ErrorState message={error} onRetry={refresh} />}
     {!loading && !error && result && result.items.length === 0 && <EmptyState title="No Golden Globes films found" message="Try changing the search or filters, or import the Golden Globes dataset." />}
     {!loading && !error && result && result.items.length > 0 && <>
-      {viewMode === 'posters' ? <div className="poster-grid">{result.items.map((film) => <article className="movie-tile" key={film.id}><Poster label="GLO" src={film.posterUrl} title={film.title} /><div className="movie-tile-info"><button className="tile-title" type="button">{film.title}</button><div className="tile-meta"><span>{film.year}</span><span aria-hidden="true">·</span><span>{film.nominations.length} {film.nominations.length === 1 ? 'nomination' : 'nominations'}</span></div><AwardSummary film={film} /></div></article>)}</div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>FILM</th><th>AWARDS</th><th>RESULT</th><th>OMDb status</th></tr></thead><tbody>{result.items.map((film) => { const wins = film.nominations.filter((nomination) => nomination.isWinner).length; return <tr key={film.id}><td><div className="title-cell"><Poster className="poster-small" label="GLO" src={film.posterUrl} title={film.title} /><span><span className="title-link">{film.title}</span><span className="subtle-line">{film.year}</span></span></div></td><td>{[...new Set(film.nominations.map((nomination) => nomination.award))].join(', ')}</td><td><span className={`state-pill ${wins > 0 ? 'is-winner' : 'is-muted'}`}>{wins > 0 ? 'Winner' : 'Nominee'}</span></td><td><EnrichmentStatus film={film} /></td></tr> })}</tbody></table></div>}
+      {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
+      {viewMode === 'posters' ? <div className="poster-grid">{result.items.map((film) => <MoviePosterCard
+        awards={combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId)}
+        genres={[]}
+        imdbId={film.imdbId}
+        imdbRating={film.imdbRating}
+        key={film.id}
+        mediaType={null}
+        onOpen={() => setSelectedFilm(film)}
+        posterLabel="GLO"
+        posterUrl={film.posterUrl}
+        title={film.title}
+        year={film.year}
+        yearLabel="Ceremony year"
+      >
+        <EnrichmentStatus film={film} />
+      </MoviePosterCard>)}</div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>FILM</th><th>IMDB</th><th>AWARDS</th><th>RESULT</th><th>OMDb status</th></tr></thead><tbody>{result.items.map((film) => { const wins = film.nominations.filter((nomination) => nomination.isWinner).length; const awards = combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId); return <tr key={film.id}><td><div className="title-cell"><span className="golden-globe-row-details"><button aria-label={`View ${film.title} Golden Globes details`} className="title-link" onClick={() => setSelectedFilm(film)} type="button">{film.title}</button><span className="subtle-line">Ceremony year {film.year}</span></span></div></td><td><MovieImdbLink imdbId={film.imdbId} rating={film.imdbRating} title={film.title} /></td><td><MovieAwardsSummary awards={awards} compact /></td><td><span className={`state-pill ${wins > 0 ? 'is-winner' : 'is-muted'}`}>{wins > 0 ? 'Winner' : 'Nominee'}</span></td><td><EnrichmentStatus film={film} /></td></tr> })}</tbody></table></div>}
       <Pagination onPageChange={(nextPage) => { setLoading(true); setError(null); setPage(nextPage) }} page={result} />
     </>}
+    {selectedFilm && <GoldenGlobeFilmDetailsDialog
+      awards={combineMovieAwards(getGoldenGlobeRecognitions(selectedFilm), pageAwards, selectedFilm.imdbId)}
+      film={selectedFilm}
+      onClose={() => setSelectedFilm(null)}
+    />}
   </section>
 }

@@ -70,6 +70,7 @@ public sealed class GoldenGlobeApiTests
         Assert.Equal("A Film", firstFilm.Title);
         Assert.Equal("tt12345678", firstFilm.ImdbId);
         Assert.Equal("https://example.test/a-film.jpg", firstFilm.PosterUrl);
+        Assert.Equal(8.0m, firstFilm.ImdbRating);
         Assert.Equal(new[] { "Best Director", "Best Motion Picture" }, firstFilm.Nominations.Select(row => row.Award));
 
         using var filteredResponse = await client.GetAsync(

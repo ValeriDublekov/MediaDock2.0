@@ -206,6 +206,7 @@ button:disabled { cursor: not-allowed; }
 .poster-action .poster { transition: filter 150ms ease; }
 .poster-action:hover .poster { filter: brightness(0.91); }
 .movie-tile-info { display: flex; flex: 1; flex-direction: column; align-items: flex-start; gap: 9px; padding: 13px 13px 12px; }
+.poster-display { position: relative; }
 .oscar-tile-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #aeb8b1; font-size: 11px; }
 .oscar-nomination-count { display: inline-flex; align-items: center; border: 1px solid #56645a; border-radius: 3px; padding: 3px 7px; color: #d8e2d8; background: #2c3931; font-size: 10px; font-weight: 600; line-height: 1.2; }
 .tile-heading { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; gap: 8px; }
@@ -225,6 +226,26 @@ button:disabled { cursor: not-allowed; }
 .oscar-imdb-rating:hover { border-color: #ffc45f; background: #ffc45f; }
 .tile-rating strong { font-size: 14px; font-variant-numeric: tabular-nums; }
 .tile-rating-scale { color: #473617; font-size: 10px; font-weight: 600; }
+.movie-imdb-link { width: fit-content; max-width: 100%; color: #171b19; text-decoration: none; }
+.movie-imdb-link:hover { border-color: #ffc45f; background: #ffc45f; }
+.movie-awards-summary { display: grid; width: 100%; gap: 6px; border-top: 1px solid #414844; padding-top: 8px; color: #d5ddd6; font-size: 10px; line-height: 1.35; }
+.movie-awards-summary-title { color: #f0bd62; font-size: 10px; }
+.movie-awards-empty { color: #aeb8b1; }
+.movie-awards-source { display: grid; gap: 2px; min-width: 0; }
+.movie-awards-source-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3px 8px; }
+.movie-awards-source-heading strong { color: #f3f2ec; }
+.movie-awards-source-heading span, .movie-awards-categories { color: #b9c2bc; }
+.movie-awards-summary.is-compact { min-width: 145px; border-top: 0; padding-top: 0; }
+.movie-awards-summary.is-compact .movie-awards-summary-title { display: none; }
+.movie-awards-warning { border-left: 3px solid #c58a35; padding: 7px 10px; color: #58441f; background: #fff5df; font-size: 12px; }
+.movie-awards-list { display: grid; gap: 12px; }
+.movie-awards-records { display: grid; gap: 8px; }
+.movie-award-record { border-top: 1px solid #414844; padding: 10px 0; }
+.movie-award-record h3 { margin: 7px 0 4px; font-size: 15px; }
+.movie-award-record p { margin: 4px 0 0; color: #c2cbc5; font-size: 13px; }
+.movie-award-record .movie-award-detail, .movie-award-record .movie-award-name { color: #9faea4; font-size: 12px; }
+.movie-award-record-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: #b9c2bc; font-size: 11px; }
+.movie-award-record-meta > span:not(.state-pill) { border-right: 1px solid #59645d; padding-right: 6px; }
 .tile-observations { display: grid; width: 100%; gap: 4px; color: #b4beb7; font-size: 10px; line-height: 1.35; }
 .tile-actions { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 7px; margin-top: auto; border-top: 1px solid #414844; padding-top: 10px; }
 .tile-action { display: inline-flex; min-width: 0; min-height: 36px; align-items: center; justify-content: center; gap: 5px; border: 1px solid #535a56; border-radius: 3px; padding: 0 7px; color: #e2e4df; background: #2b302e; font-size: 11px; font-weight: 700; }
