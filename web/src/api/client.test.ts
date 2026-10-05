@@ -18,7 +18,12 @@ import {
 import type { CatalogTitle, OscarFilm, PageResponse, ProviderSettings, ProviderSettingsInput } from './types'
 
 function response(status: number, value: unknown): Response {
-  return { ok: status >= 200 && status < 300, status, json: async () => value } as Response
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => value,
+    text: async () => value === undefined || value === null ? '' : JSON.stringify(value),
+  } as Response
 }
 
 function fetchStub(result: Response | Error) {
@@ -190,7 +195,7 @@ describe('typed API client', () => {
   })
 
   it('explains a non-JSON proxy failure without hiding the HTTP status', async () => {
-    const stub = fetchStub(Object.assign(response(502, null), { json: async () => { throw new SyntaxError('HTML response') } }))
+    const stub = fetchStub(response(502, null))
 
     await expect(requestJson('/oscars', {}, stub.fetcher)).rejects.toMatchObject({
       name: 'ApiError',
