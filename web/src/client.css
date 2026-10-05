@@ -24,6 +24,7 @@ button:disabled { cursor: not-allowed; }
 .brand-name { font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 21px; font-weight: 700; }
 .sidebar-label { margin: 58px 10px 12px; color: #a1adaa; font-size: 10px; font-weight: 700; letter-spacing: 1px; }
 .primary-nav { display: grid; gap: 5px; }
+.configuration-nav-group { display: grid; min-width: 0; }
 .nav-item { display: grid; min-height: 46px; grid-template-columns: 30px minmax(0, 1fr); align-items: center; border: 0; border-left: 3px solid transparent; padding: 0 10px; color: #c4cecb; background: transparent; text-align: left; text-decoration: none; transition: background-color 140ms ease, color 140ms ease; }
 .nav-item:hover { color: #fff; background: #303837; }
 .nav-item.is-active { border-left-color: #e0573e; color: #fff; background: #303837; }
@@ -302,6 +303,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offs
   .app-shell { display: block; }
   .sidebar { position: static; height: auto; min-height: 0; flex-direction: row; align-items: center; gap: 22px; padding: 13px 20px; }
   .sidebar.is-configuration { align-items: flex-start; flex-wrap: wrap; gap: 10px 22px; }
+  .sidebar.is-configuration .primary-nav { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; overflow: visible; }
+  .sidebar.is-configuration .configuration-nav-group { grid-column: 1 / -1; }
   .brand-mark { width: 34px; height: 34px; }
   .brand-name { font-size: 19px; }
   .sidebar-label, .sidebar-footer { display: none; }

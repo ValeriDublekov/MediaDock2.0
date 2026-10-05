@@ -20,11 +20,11 @@ const sections: { id: Section; path: string; number: string; label: string }[] =
 ]
 
 const configurationPages = [
+  { path: '/configuration/system', label: 'System', description: 'Review deployment controls and the running version.' },
   { path: '/configuration/torrent', label: 'Torrent settings', description: 'Manage RSS profiles and matching rules.' },
   { path: '/configuration/ingestion', label: 'Ingestion', description: 'Import and enrich award datasets.' },
   { path: '/configuration/personal-ratings', label: 'Personal IMDb ratings', description: 'Import and maintain your IMDb ratings.' },
   { path: '/configuration/omdb', label: 'OMDb provider', description: 'Configure provider credentials and shared request limits.' },
-  { path: '/configuration/system', label: 'System', description: 'Review deployment controls and the running version.' },
 ]
 
 const sectionContent: Record<Section, { eyebrow: string; title: string; description: string }> = {
@@ -86,7 +86,33 @@ function AppContent() {
 
         <div className="sidebar-label">LIBRARY</div>
         <nav className="primary-nav" aria-label="Main navigation">
-          {sections.map((item) => (
+          {sections.map((item) => item.id === 'sources' ? (
+            <div className="configuration-nav-group" key={item.id}>
+              <NavLink
+                aria-current={section === item.id ? 'page' : undefined}
+                className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
+                end
+                to={item.path}
+              >
+                <span className="nav-number">{item.number}</span>
+                <span>{item.label}</span>
+              </NavLink>
+              {section === 'sources' && (
+                <nav aria-label="Configuration navigation" className="configuration-nav">
+                  {configurationPages.map((page) => (
+                    <NavLink
+                      className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
+                      end
+                      key={page.path}
+                      to={page.path}
+                    >
+                      {page.label}
+                    </NavLink>
+                  ))}
+                </nav>
+              )}
+            </div>
+          ) : (
             <NavLink
               aria-current={section === item.id ? 'page' : undefined}
               className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
@@ -99,20 +125,6 @@ function AppContent() {
             </NavLink>
           ))}
         </nav>
-        {section === 'sources' && (
-          <nav aria-label="Configuration navigation" className="configuration-nav">
-            {configurationPages.map((page) => (
-              <NavLink
-                className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
-                end
-                key={page.path}
-                to={page.path}
-              >
-                {page.label}
-              </NavLink>
-            ))}
-          </nav>
-        )}
 
         <div className="sidebar-footer">
           <span className="status-mark" aria-hidden="true" />

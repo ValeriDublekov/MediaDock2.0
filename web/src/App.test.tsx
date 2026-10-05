@@ -70,6 +70,13 @@ describe('App routes', () => {
 
     fireEvent.click(screen.getByRole('link', { name: /Configuration/ }))
     expect(screen.getByTestId('location').textContent).toBe('/configuration/torrent')
+    const configurationLink = screen.getByRole('link', { name: /Configuration/ })
+    const configurationNavigation = screen.getByRole('navigation', { name: 'Configuration navigation' })
+    const historyLink = screen.getByRole('link', { name: /Scan history/ })
+    expect(configurationLink.compareDocumentPosition(configurationNavigation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(configurationNavigation.compareDocumentPosition(historyLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(configurationNavigation.querySelector('a')?.textContent).toBe('System')
+
     fireEvent.click(screen.getByRole('link', { name: 'OMDb provider' }))
     expect(screen.getByTestId('location').textContent).toBe('/configuration/omdb')
     expect(screen.getByRole('heading', { name: 'OMDb provider' })).toBeTruthy()
