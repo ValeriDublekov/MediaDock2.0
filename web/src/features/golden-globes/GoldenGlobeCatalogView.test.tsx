@@ -67,6 +67,21 @@ describe('GoldenGlobeCatalogView', () => {
 
     render(<GoldenGlobeCatalogView />)
 
-    expect(await screen.findByText('year mismatch: 2016')).toBeTruthy()
+    expect(await screen.findByText('OMDb matched a film from 2016; this ceremony accepts films from 2024 or 2025.')).toBeTruthy()
+  })
+
+  it('explains not-found and temporary provider errors', async () => {
+    vi.mocked(getGoldenGlobeFilms).mockResolvedValue({
+      ...page,
+      items: [
+        { ...film, enrichmentStatus: 'not_found', enrichmentError: 'not_found' },
+        { ...film, id: '2025:Timeout', title: 'Timeout', enrichmentStatus: 'temporary_error', enrichmentError: 'timeout' },
+      ],
+    })
+
+    render(<GoldenGlobeCatalogView />)
+
+    expect(await screen.findByText('OMDb did not find a matching title.')).toBeTruthy()
+    expect(await screen.findByText('The OMDb request timed out.')).toBeTruthy()
   })
 })

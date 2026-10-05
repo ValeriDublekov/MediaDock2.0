@@ -26,10 +26,31 @@ function AwardSummary({ film }: { film: GoldenGlobeFilm }) {
   </>
 }
 
+function describeEnrichmentError(error: string, ceremonyYear: number) {
+  const mismatch = /^year_mismatch:(\d{4})$/.exec(error)
+  if (mismatch) return `OMDb matched a film from ${mismatch[1]}; this ceremony accepts films from ${ceremonyYear - 1} or ${ceremonyYear}.`
+
+  const descriptions: Record<string, string> = {
+    not_found: 'OMDb did not find a matching title.',
+    missing_imdb_id: 'OMDb matched a title but returned no IMDb ID.',
+    missing_year: 'OMDb matched a film but returned no release year.',
+    timeout: 'The OMDb request timed out.',
+    transport_error: 'MediaDock could not connect to OMDb.',
+    http_error: 'OMDb returned an HTTP error.',
+    authentication_failed: 'OMDb rejected the configured API key.',
+    quota_exceeded: 'The OMDb provider quota has been exceeded.',
+    invalid_response: 'OMDb returned an invalid response.',
+    response_too_large: 'The OMDb response exceeded the configured size limit.',
+    invalid_metadata: 'OMDb returned incomplete title metadata.',
+    imdb_id_mismatch: 'The returned IMDb ID did not match the requested title.',
+  }
+  return descriptions[error] ?? formatWords(error).replace(':', ': ')
+}
+
 function EnrichmentStatus({ film }: { film: GoldenGlobeFilm }) {
   return <>
     <span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span>
-    {film.enrichmentError && <span className="golden-globe-enrichment-error">{formatWords(film.enrichmentError).replace(':', ': ')}</span>}
+    {film.enrichmentError && <span className="golden-globe-enrichment-error">{describeEnrichmentError(film.enrichmentError, film.year)}</span>}
   </>
 }
 

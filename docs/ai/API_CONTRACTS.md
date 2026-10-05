@@ -67,6 +67,8 @@ All paged query DTOs accept optional `Page` in `1..1,000,000` and `PageSize` in 
 
 Catalog titles with occurrences sort by `LastSeenAt` descending, then `Id` descending; Oscar films sort by film year descending, normalized title ascending, then `Id` ascending; occurrences use the catalog ordering. Oscar-only titles can still be opened through `GET /api/titles/{id}` when following an Oscar catalog link. Parse logs sort by `ProcessedAt` descending, then `Id` descending; scan runs sort by `StartedAt` descending, then `Id` descending. `PageResponse<T>` contains `Items`, `Page`, `PageSize`, `TotalCount`, and `TotalPages`; `TotalPages` is zero for an empty result and otherwise the ceiling of `TotalCount / PageSize`.
 
+Golden Globes enrichment looks up TV nominees as series and does not compare a show's premiere year with its ceremony year. Movie matches are accepted when the OMDb release year is the ceremony year or the preceding year; a different year is reported as `problem` with a `year_mismatch:<foundYear>` cause code. Other safe provider cause codes are rendered as readable explanations in the UI.
+
 ## Request DTOs
 
 | DTO | Fields and validation |
@@ -94,7 +96,7 @@ Nullable response fields are marked `?`; collection fields are returned as lists
 | `CatalogTitleResponse` | `Id`, `Title`, `Year?`, `MediaType`, `SourceType?`, `ContentKind?`, `ImdbId?`, `ImdbRating?`, `PosterUrl?`, `Genres`, `Countries`, `LastSeenAt?`, `OccurrenceCount` |
 | `OscarFilmResponse` | `Id`, `TitleId`, `Title` (CSV title), `MetadataTitle`, `MetadataYear?`, `FilmYear`, `ImdbId?`, `EnrichmentStatus`, `EnrichmentAttemptCount`, `LastEnrichmentAttemptAt?`, `NextEnrichmentAttemptAt?`, `LastEnrichmentError?`, `MediaType`, `ImdbRating?`, `ImdbVotes?`, `Metascore?`, `Genres`, `Countries`, `Director?`, `Plot?`, `PosterUrl?`, `Runtime?`, `Awards?`, `BoxOffice?`, `Nominations` |
 | `OscarNominationResponse` | `Id`, `Ceremony`, `Class`, `CanonicalCategory`, `Category`, `Name`, `Nominees`, `NomineeIds`, `Detail`, `IsWinner` |
-| `GoldenGlobeFilmResponse` | `Id` (`ceremonyYear:title`), `Title`, `Year`, `ImdbId?`, `PosterUrl?` (from unexpired OMDb metadata cache), `EnrichmentStatus?`, `EnrichmentError?`, `Nominations` |
+| `GoldenGlobeFilmResponse` | `Id` (`ceremonyYear:title`), `Title`, `Year`, `ImdbId?`, `PosterUrl?` (from unexpired OMDb metadata cache), `EnrichmentStatus?`, `EnrichmentError?` (safe cause code, shown as a readable reason in the UI), `Nominations` |
 | `GoldenGlobeNominationResponse` | `Id`, `Year`, `Award`, `IsWinner` |
 | `TitleDetailsResponse` | `Id`, `Title`, `Year?`, `MediaType`, `SourceType?`, `ContentKind?`, `BroadcastRangeStartYear?`, `BroadcastRangeEndYear?`, `BroadcastRangeRaw?`, `ImdbId?`, `ImdbRating?`, `ImdbVotes?`, `Metascore?`, `Genres`, `Countries`, `Director?`, `Plot?`, `PosterUrl?`, `Runtime?`, `Awards?`, `BoxOffice?`, `FirstSeenAt?`, `LastSeenAt?`, `UpdatedAt`, `OccurrenceCount` |
 | `OccurrenceResponse` | `Id`, `TitleId`, `SourceId`, `SourceName`, `SourceItemKey`, `FeedEntryId?`, `TorrentUrl`, `RawTitle`, `SourceFeedName`, `FeedType?`, `SourcePublishedAt?`, `ObservedAt?`, `Quality?`, `RipType?`, `FirstSeenAt`, `LastSeenAt` |
