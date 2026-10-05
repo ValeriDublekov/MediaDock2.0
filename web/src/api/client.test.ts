@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import {
   ApiError,
+  enqueueGoldenGlobeEnrichment,
+  enqueueGoldenGlobeImport,
   enqueueManualScan,
   enqueueOscarImport,
   getActiveBackgroundJob,
   getBackgroundJobEvents,
   getCatalog,
   getDeploymentStatus,
+  getGoldenGlobeFilms,
   getOscarFilm,
   getOscarFilms,
   getProviderSettings,
@@ -15,7 +18,7 @@ import {
   runDeploymentAction,
   updateProviderSettings,
 } from './client'
-import type { CatalogTitle, OscarFilm, PageResponse, ProviderSettings, ProviderSettingsInput } from './types'
+import type { CatalogTitle, GoldenGlobeFilm, OscarFilm, PageResponse, ProviderSettings, ProviderSettingsInput } from './types'
 
 function response(status: number, value: unknown): Response {
   return {
@@ -78,6 +81,27 @@ describe('typed API client', () => {
     expect(listUrl.searchParams.get('result')).toBe('winner')
     expect(listUrl.searchParams.get('enrichmentStatus')).toBe('pending')
     expect(String(stub.calls[1]?.input)).toBe('/api/oscars/42')
+  })
+
+  it('serializes Golden Globes catalog filters and queues import and enrichment jobs', async () => {
+    const page: PageResponse<GoldenGlobeFilm> = { items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 }
+    const stub = fetchStub(response(202, page))
+    const file = new File(['dataset'], 'golden-globes.csv', { type: 'text/csv' })
+
+    await getGoldenGlobeFilms({ page: 1, pageSize: 20, search: 'A Film', yearFrom: 2025, award: 'Best Picture', result: 'winner' }, stub.fetcher)
+    await enqueueGoldenGlobeEnrichment(stub.fetcher)
+    await enqueueGoldenGlobeImport(file, 1980, stub.fetcher)
+
+    const catalogUrl = new URL(String(stub.calls[0]?.input), 'http://localhost')
+    expect(catalogUrl.pathname).toBe('/api/golden-globes')
+    expect(catalogUrl.searchParams.get('yearFrom')).toBe('2025')
+    expect(catalogUrl.searchParams.get('award')).toBe('Best Picture')
+    expect(catalogUrl.searchParams.get('result')).toBe('winner')
+    expect(String(stub.calls[1]?.input)).toBe('/api/background-jobs/golden-globe-enrichment')
+    expect(String(stub.calls[2]?.input)).toBe('/api/background-jobs/golden-globe-import')
+    const formData = stub.calls[2]?.init?.body as FormData
+    expect(formData.get('File')).toBe(file)
+    expect(formData.get('YearAfter')).toBe('1980')
   })
 
   it('loads provider settings and sends a write-only key update', async () => {

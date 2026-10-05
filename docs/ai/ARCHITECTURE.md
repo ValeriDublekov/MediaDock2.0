@@ -54,12 +54,12 @@ For catalog behavior, start with the API endpoint, contract, or service that own
 
 ```mermaid
 flowchart TD
-    ui["Configuration UI"] -->|"RSS scan / Oscar enrichment / CSV upload"| routes["BackgroundJobEndpoints"]
+    ui["Configuration UI"] -->|"RSS scan / Oscar and Golden Globes enrichment / CSV uploads"| routes["BackgroundJobEndpoints"]
     scheduler["BackgroundJobDispatcher scheduler"] -->|"07:00 / 18:00 Europe/Sofia"| queue[("background_jobs")]
     routes -->|"durable enqueue"| queue
     queue -->|"atomic claim: FOR UPDATE SKIP LOCKED"| dispatcher["BackgroundJobDispatcher"]
     dispatcher --> lock["PostgresAdvisoryScanLock"]
-    lock --> handler["RSS scan / Oscar enrichment / import handler"]
+    lock --> handler["RSS scan / Oscar and Golden Globes enrichment / import handlers"]
     handler --> app["Application use cases"]
     app --> infra["Infrastructure adapters"]
     infra --> db[("PostgreSQL")]
@@ -81,28 +81,30 @@ The [scheduler](../../server/src/MediaDock.Api/BackgroundJobs/BackgroundJobSched
 persists a checkpoint and UTC schedule slots. Its first activation initializes
 the checkpoint without replaying historical slots; later downtime coalesces
 missed due slots into one job. The 07:00/18:00 `Europe/Sofia` conversion is
-deterministic across DST. One partial unique index prevents more than one
-queued/running RSS job, while a unique slot index makes schedule enqueue
-idempotent.
+deterministic across DST. Partial unique indexes prevent more than one
+queued/running RSS scan and more than one active Oscar or Golden Globes
+enrichment job, while a unique slot index makes schedule enqueue idempotent.
 
-RSS and Oscar handlers load the OMDb key and shared daily limit from the singleton
+RSS, Oscar, and Golden Globes handlers load the OMDb key and shared daily limit from the singleton
 `settings` row inside the job scope. The atomic budget allows requests up to that
-configured limit, with no separate Oscar caps or safety buffer; an OMDb quota error
+configured shared limit; Oscar and Golden Globes requests consume the same total
+budget, while only Oscar requests increment the separate `OscarRequests` counter. An OMDb quota error
 also blocks further requests for that UTC day. Credentials never enter job payloads
 or API responses.
 `RssIngestionService` reports stage/source/counter snapshots at feed boundaries
 and periodically during processing. New parse logs store their `scan_run_id`;
-older rows remain unassociated. Oscar enrichment is a separate manual job using
-the same lock and resolver/cache/shared budget. CSV uploads are bounded bytes stored
-with the queued import; the importer parses them without a host path and clears
-the bytes at terminal state.
+older rows remain unassociated. Oscar and Golden Globes enrichment are separate
+manual jobs using the same lock and resolver/cache/shared budget; Golden Globes
+enrichment does not write to RSS history or an enrichment-run audit table. CSV/TSV
+uploads are bounded bytes stored with queued imports; importers parse them without
+a host path and clear the bytes at terminal state.
 
 ### Advisory-Lock Boundary
 
 [PostgresAdvisoryScanLock](../../server/src/MediaDock.Infrastructure/Ingestion/PostgresAdvisoryScanLock.cs)
 uses PostgreSQL session-level `pg_try_advisory_lock` and releases it with
 `pg_advisory_unlock` when the async lease is disposed. The dispatcher holds the
-lease across queue claim and one RSS scan, Oscar enrichment, or Oscar import.
+lease across queue claim and one RSS scan, Oscar or Golden Globes enrichment, or either dataset import.
 If another cooperating runner holds the same lock, the job remains queued for
 a later poll. The lock does not serialize ordinary API writes or migrations.
 
@@ -132,6 +134,7 @@ socket; see the [systemd runbook](../../deploy/systemd/README.md) for host setup
 | Change | Start here |
 | --- | --- |
 | HTTP route, validation, response contract, or catalog query | [CatalogEndpoints](../../server/src/MediaDock.Api/Catalog/CatalogEndpoints.cs), [CatalogContracts](../../server/src/MediaDock.Api/Catalog/CatalogContracts.cs), [CatalogApiService](../../server/src/MediaDock.Api/Catalog/CatalogApiService.cs), and [API Program](../../server/src/MediaDock.Api/Program.cs) |
+| Golden Globes API catalog, import, or enrichment | [GoldenGlobeEndpoints](../../server/src/MediaDock.Api/GoldenGlobes/GoldenGlobeEndpoints.cs), [GoldenGlobeApiService](../../server/src/MediaDock.Api/GoldenGlobes/GoldenGlobeApiService.cs), [GoldenGlobeDatasetImporter](../../server/src/MediaDock.Infrastructure/GoldenGlobes/GoldenGlobeDatasetImporter.cs), and [GoldenGlobeEnrichmentService](../../server/src/MediaDock.Application/GoldenGlobes/GoldenGlobeEnrichmentService.cs) |
 | React screen, HTTP serialization, or browser types | [CatalogView](../../web/src/features/catalog/CatalogView.tsx), [API client](../../web/src/api/client.ts), and [api/types.ts](../../web/src/api/types.ts) |
 | Feed parsing, ingestion sequencing, matching, or metadata-resolution behavior | [RssIngestionService](../../server/src/MediaDock.Application/Ingestion/RssIngestionService.cs), [ingestion contracts](../../server/src/MediaDock.Application/Ingestion/RssIngestionContracts.cs), [RutrackerTitleParser](../../server/src/MediaDock.Application/Parsing/RutrackerTitleParser.cs), [MatchPolicy](../../server/src/MediaDock.Application/Matching/MatchPolicy.cs), and [MetadataResolver](../../server/src/MediaDock.Application/Metadata/MetadataResolver.cs) |
 | Oscar CSV import, nominated-film persistence, or category filtering | [BackgroundJobApiService](../../server/src/MediaDock.Api/BackgroundJobs/BackgroundJobApiService.cs), [OscarDatasetImporter](../../server/src/MediaDock.Infrastructure/OscarAwards/OscarDatasetImporter.cs), [OscarCsvDatasetReader](../../server/src/MediaDock.Infrastructure/OscarAwards/OscarCsvDatasetReader.cs), and Oscar persistence entities/configurations |

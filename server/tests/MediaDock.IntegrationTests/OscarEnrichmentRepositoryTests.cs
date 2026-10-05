@@ -101,6 +101,16 @@ public sealed class OscarEnrichmentRepositoryTests
         var boundaryUsage = await boundaryResultDb.OmdbDailyUsage.SingleAsync(row => row.UtcDate == bufferDay);
         Assert.Equal(1000, boundaryUsage.TotalRequests);
         Assert.True(boundaryUsage.DailyRequestLimitReached);
+
+        var goldenGlobeDay = bufferDay.AddDays(1);
+        await using var goldenGlobeDb = new MediaDockDbContext(options);
+        Assert.True(await new PostgresOmdbRequestBudget(goldenGlobeDb).TryReserveAsync(
+            goldenGlobeDay,
+            OmdbRequestPurpose.GoldenGlobeEnrichment,
+            10));
+        var goldenGlobeUsage = await goldenGlobeDb.OmdbDailyUsage.SingleAsync(row => row.UtcDate == goldenGlobeDay);
+        Assert.Equal(1, goldenGlobeUsage.TotalRequests);
+        Assert.Equal(0, goldenGlobeUsage.OscarRequests);
     }
 
     [Fact]

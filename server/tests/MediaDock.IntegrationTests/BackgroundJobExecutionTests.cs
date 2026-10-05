@@ -118,6 +118,59 @@ public sealed class BackgroundJobExecutionTests
         Assert.Null(storedJob.InputBytes);
     }
 
+    [Fact]
+    public async Task ApiHostedDispatcherExecutesQueuedGoldenGlobeImportAndCleansUploadBytes()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_job_execution_test").Build();
+        await postgres.StartAsync();
+
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+        }
+
+        using var factory = new BackgroundJobsApiFactory(connectionString);
+        using var client = factory.CreateClient();
+        using var upload = new MultipartFormDataContent();
+        var csv = new ByteArrayContent(Encoding.UTF8.GetBytes(
+            "nominee_type,year,winner,award,title\nfilm,2025,true,Best Picture,Queued Golden Globe Film\n"));
+        csv.Headers.ContentType = MediaTypeHeaderValue.Parse("text/csv");
+        upload.Add(csv, "File", "golden-globes.csv");
+        upload.Add(new StringContent("1980"), "YearAfter");
+
+        using var acceptedResponse = await client.PostAsync("/api/background-jobs/golden-globe-import", upload);
+        Assert.Equal(HttpStatusCode.Accepted, acceptedResponse.StatusCode);
+        var accepted = await acceptedResponse.Content.ReadFromJsonAsync<BackgroundJobAcceptedResponse>();
+        Assert.NotNull(accepted);
+
+        BackgroundJobResponse? completed = null;
+        for (var attempt = 0; attempt < 60; attempt++)
+        {
+            completed = await client.GetFromJsonAsync<BackgroundJobResponse>($"/api/background-jobs/{accepted.Id}");
+            if (completed?.Status is "succeeded" or "partial" or "failed")
+            {
+                break;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+        }
+
+        Assert.NotNull(completed);
+        Assert.Equal("succeeded", completed.Status);
+        Assert.Equal("golden-globes.csv", completed.InputFileName);
+
+        await using var verificationDb = new MediaDockDbContext(options);
+        var nomination = await verificationDb.GoldenGlobeNominations.Include(row => row.Award).SingleAsync();
+        Assert.Equal("Queued Golden Globe Film", nomination.Title);
+        Assert.Equal("Best Picture", nomination.Award.Name);
+        var storedJob = await verificationDb.BackgroundJobs.SingleAsync(job => job.Id == accepted.Id);
+        Assert.Null(storedJob.InputBytes);
+    }
+
     private sealed class BackgroundJobsApiFactory(string connectionString) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)

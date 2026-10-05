@@ -18,7 +18,7 @@ namespace MediaDock.IntegrationTests;
 public sealed class BackgroundJobApiTests
 {
     [Fact]
-    public async Task ScanQueueRejectsDuplicatesAndOscarUploadPersistsSanitizedBytes()
+    public async Task ScanQueueAndGoldenGlobeJobsPersistSafelyAndRejectDuplicates()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_background_jobs_api_test").Build();
         await postgres.StartAsync();
@@ -67,12 +67,44 @@ public sealed class BackgroundJobApiTests
         var importJob = await uploadResponse.Content.ReadFromJsonAsync<AcceptedJob>();
         Assert.NotNull(importJob);
 
+        using var goldenGlobeEnrichmentResponse = await client.PostAsync(
+            "/api/background-jobs/golden-globe-enrichment",
+            content: null);
+        Assert.Equal(HttpStatusCode.Accepted, goldenGlobeEnrichmentResponse.StatusCode);
+        var goldenGlobeEnrichmentJob = await goldenGlobeEnrichmentResponse.Content.ReadFromJsonAsync<AcceptedJob>();
+        Assert.NotNull(goldenGlobeEnrichmentJob);
+        using var duplicateGoldenGlobeEnrichmentResponse = await client.PostAsync(
+            "/api/background-jobs/golden-globe-enrichment",
+            content: null);
+        Assert.Equal(HttpStatusCode.Conflict, duplicateGoldenGlobeEnrichmentResponse.StatusCode);
+
+        using var goldenGlobeUpload = new MultipartFormDataContent();
+        var goldenGlobeCsv = new ByteArrayContent(Encoding.UTF8.GetBytes(
+            "nominee_type,year,winner,award,title\nfilm,2025,true,Best Picture,Queued Film\n"));
+        goldenGlobeCsv.Headers.ContentType = MediaTypeHeaderValue.Parse("text/csv");
+        goldenGlobeUpload.Add(goldenGlobeCsv, "File", "../GLOBES.CSV");
+        goldenGlobeUpload.Add(new StringContent("1980"), "YearAfter");
+        using var goldenGlobeUploadResponse = await client.PostAsync(
+            "/api/background-jobs/golden-globe-import",
+            goldenGlobeUpload);
+        Assert.Equal(HttpStatusCode.Accepted, goldenGlobeUploadResponse.StatusCode);
+        var goldenGlobeImportJob = await goldenGlobeUploadResponse.Content.ReadFromJsonAsync<AcceptedJob>();
+        Assert.NotNull(goldenGlobeImportJob);
+
         await using var verificationDb = new MediaDock.Infrastructure.Persistence.MediaDockDbContext(options);
         var savedImport = await verificationDb.BackgroundJobs.AsNoTracking().SingleAsync(job => job.Id == importJob.Id);
         Assert.Equal("WINNERS.CSV", savedImport.InputFileName);
         Assert.Equal(Encoding.UTF8.GetByteCount(
             "Ceremony,Year,Class,CanonicalCategory,Category,Film,FilmId,Name,Nominees,NomineeIds,Winner,Detail\n"),
             savedImport.InputBytes!.Length);
+        var savedGoldenGlobeImport = await verificationDb.BackgroundJobs.AsNoTracking()
+            .SingleAsync(job => job.Id == goldenGlobeImportJob.Id);
+        Assert.Equal("golden_globe_import", savedGoldenGlobeImport.JobType);
+        Assert.Equal("GLOBES.CSV", savedGoldenGlobeImport.InputFileName);
+        Assert.NotEmpty(savedGoldenGlobeImport.InputBytes!);
+        var savedGoldenGlobeEnrichment = await verificationDb.BackgroundJobs.AsNoTracking()
+            .SingleAsync(job => job.Id == goldenGlobeEnrichmentJob.Id);
+        Assert.Equal("golden_globe_enrichment", savedGoldenGlobeEnrichment.JobType);
     }
 
     private sealed record AcceptedJob(long Id, string Status, string StatusUrl);

@@ -2,6 +2,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ApiError,
+  enqueueGoldenGlobeEnrichment,
+  enqueueGoldenGlobeImport,
   enqueueManualScan,
   enqueueOscarImport,
   getActiveBackgroundJob,
@@ -20,6 +22,8 @@ vi.mock('../../api/client', () => ({
       this.status = status
     }
   },
+  enqueueGoldenGlobeEnrichment: vi.fn(),
+  enqueueGoldenGlobeImport: vi.fn(),
   enqueueManualScan: vi.fn(),
   enqueueOscarImport: vi.fn(),
   getActiveBackgroundJob: vi.fn(),
@@ -46,6 +50,8 @@ const queuedJob: BackgroundJob = {
 
 describe('BackgroundIngestionPanel', () => {
   beforeEach(() => {
+    vi.mocked(enqueueGoldenGlobeEnrichment).mockReset().mockResolvedValue({ id: 9, status: 'queued', statusUrl: '/api/background-jobs/9' })
+    vi.mocked(enqueueGoldenGlobeImport).mockReset().mockResolvedValue({ id: 10, status: 'queued', statusUrl: '/api/background-jobs/10' })
     vi.mocked(enqueueManualScan).mockReset().mockResolvedValue({ id: 7, status: 'queued', statusUrl: '/api/background-jobs/7' })
     vi.mocked(enqueueOscarImport).mockReset().mockResolvedValue({ id: 8, status: 'queued', statusUrl: '/api/background-jobs/8' })
     vi.mocked(getActiveBackgroundJob).mockReset().mockResolvedValue(null)
@@ -107,5 +113,27 @@ describe('BackgroundIngestionPanel', () => {
 
     expect(await screen.findByRole('alert')).toBeTruthy()
     expect(enqueueOscarImport).not.toHaveBeenCalled()
+  })
+
+  it('queues Golden Globes enrichment after confirmation', async () => {
+    vi.stubGlobal('confirm', vi.fn(() => true))
+    render(<BackgroundIngestionPanel onOpenHistory={vi.fn()} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Enrich Golden Globes films' }))
+
+    await screen.findByRole('dialog')
+    expect(enqueueGoldenGlobeEnrichment).toHaveBeenCalledOnce()
+  })
+
+  it('queues a selected Golden Globes dataset for import', async () => {
+    render(<BackgroundIngestionPanel onOpenHistory={vi.fn()} />)
+    await screen.findByText('No active ingestion job.')
+    const file = new File(['nominee_type,year,winner,award,title'], 'globes.csv', { type: 'text/csv' })
+
+    fireEvent.change(screen.getByLabelText('Golden Globes dataset'), { target: { files: [file] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Queue Golden Globes import' }))
+
+    await screen.findByRole('dialog')
+    expect(enqueueGoldenGlobeImport).toHaveBeenCalledWith(file, 1980)
   })
 })

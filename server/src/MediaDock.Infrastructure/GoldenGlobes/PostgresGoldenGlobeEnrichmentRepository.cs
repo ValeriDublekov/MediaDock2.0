@@ -6,15 +6,26 @@ namespace MediaDock.Infrastructure.GoldenGlobes;
 
 public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext db) : IGoldenGlobeEnrichmentRepository
 {
-    public async Task<IReadOnlyList<GoldenGlobeEnrichmentCandidate>> GetEligibleCandidatesAsync(DateTimeOffset now, CancellationToken cancellationToken = default) =>
-        await db.GoldenGlobeNominations.AsNoTracking()
+    public async Task<IReadOnlyList<GoldenGlobeEnrichmentCandidate>> GetEligibleCandidatesAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        var candidates = await db.GoldenGlobeNominations.AsNoTracking()
             .Where(x => x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Pending
                 || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.TemporaryError
                     && (x.NextEnrichmentAttemptAt == null || x.NextEnrichmentAttemptAt <= now)))
             .GroupBy(x => new { x.Title, x.Year })
-            .Select(x => new GoldenGlobeEnrichmentCandidate(x.Key.Title, x.Key.Year, x.Max(y => y.EnrichmentAttemptCount)))
+            .Select(x => new
+            {
+                x.Key.Title,
+                CeremonyYear = x.Key.Year,
+                AttemptCount = x.Max(y => y.EnrichmentAttemptCount)
+            })
             .OrderByDescending(x => x.CeremonyYear).ThenBy(x => x.Title)
             .ToListAsync(cancellationToken);
+
+        return candidates
+            .Select(x => new GoldenGlobeEnrichmentCandidate(x.Title, x.CeremonyYear, x.AttemptCount))
+            .ToArray();
+    }
 
     public async Task SaveOutcomeAsync(string title, int ceremonyYear, GoldenGlobeEnrichmentUpdate update, CancellationToken cancellationToken = default)
     {
