@@ -1,8 +1,12 @@
+using MediaDock.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 namespace MediaDock.Infrastructure.Persistence.Migrations;
 
+[DbContext(typeof(MediaDockDbContext))]
 [Migration("20261004200000_AddGoldenGlobeEnrichment")]
 public partial class AddGoldenGlobeEnrichment : Migration
 {

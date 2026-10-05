@@ -100,9 +100,11 @@ public sealed class PersistenceTests
             .ToArray();
         Assert.Contains("ux_background_jobs_active_rss_scan", backgroundJobIndexes);
         Assert.Contains("ux_background_jobs_active_oscar_enrichment", backgroundJobIndexes);
+        Assert.Contains("ux_background_jobs_active_golden_globe_enrichment", backgroundJobIndexes);
 
         var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
         Assert.Contains("20260930122500_InitialRelationalSchema", appliedMigrations);
+        Assert.Contains("20261004200000_AddGoldenGlobeEnrichment", appliedMigrations);
 
         await db.Database.OpenConnectionAsync();
         await using (var command = db.Database.GetDbConnection().CreateCommand())
@@ -119,7 +121,8 @@ public sealed class PersistenceTests
                 new[]
                 {
                     "titles", "sources", "occurrences", "scan_runs", "parse_logs", "settings", "metadata_cache",
-                    "oscar_films", "oscar_nominations", "oscar_enrichment_runs", "omdb_daily_usage"
+                    "oscar_films", "oscar_nominations", "oscar_enrichment_runs", "omdb_daily_usage",
+                    "golden_globe_awards", "golden_globe_nominations"
                 },
                 tableName => Assert.Contains(tableName, tables));
         }
