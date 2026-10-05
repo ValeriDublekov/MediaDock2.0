@@ -96,7 +96,7 @@ describe('OscarCatalogView', () => {
   afterEach(() => cleanup())
 
   it('shows the common award summary, film details, and IMDb link in both list modes', async () => {
-    filmRequest.mockResolvedValue(page([film]))
+    filmRequest.mockResolvedValue(page([{ ...film, posterUrl: 'https://example.test/poster.jpg' }]))
     render(<OscarCatalogView />)
 
     expect(await screen.findByText('Awards and nominations')).toBeTruthy()
