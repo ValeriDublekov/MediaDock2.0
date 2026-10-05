@@ -14,6 +14,6 @@ Group=root
 ProtectSystem=full
 ProtectHome=read-only
 NoNewPrivileges=true
-ReadWritePaths=/opt/docker /var/lib/mediadock /var/lib/mediadock-deploy /var/log /run/lock /usr/local/sbin/mediadock-next-deploy
+ReadWritePaths=/opt/docker /var/lib/mediadock /var/lib/mediadock-deploy /var/log /run/lock /usr/local/sbin
 TimeoutStartSec=infinity
 TimeoutStopSec=5min
