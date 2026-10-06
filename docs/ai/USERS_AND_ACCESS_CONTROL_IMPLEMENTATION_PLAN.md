@@ -3,7 +3,7 @@
 **Status:** Planned; implementation not started  
 **Source design:** [Users and access control plan](USERS_AND_ACCESS_CONTROL_PLAN.md)
 
-**Prerequisite:** Complete the [Google authentication and registration requests plan](GOOGLE_AUTHENTICATION_PLAN.md) first. That plan adds optional OIDC sign-in and identity persistence without enforcing authorization or changing shared personal data. Reuse its schema and sign-in flow; do not implement them a second time here.
+**Prerequisite:** The [Google authentication and registration requests plan](GOOGLE_AUTHENTICATION_PLAN.md) is complete for source implementation and documentation. It adds optional OIDC sign-in and identity persistence without enforcing authorization or changing shared personal data. Reuse its schema, session, linking, registration-request, and bootstrap flows; do not recreate them here. Google Cloud client provisioning and the production LAN HTTPS callback remain operator setup gates, not blockers to starting this plan's code work.
 
 This document turns the source design into bounded implementation sessions. Each session should end with its acceptance checks passing and a short handoff recording completed work, decisions, and the next session. Do not deploy or migrate production data as part of a coding session.
 
@@ -17,11 +17,11 @@ The original source design placed user/role management before enforcement. That 
 
 Treat these decisions as a gate, not implementation assumptions. Close them in Session 0:
 
-- Verify that the Google OIDC provider and same-origin server-managed session from the prerequisite plan match the implementation. Resolve any gap before enforcement; explicitly design CSRF protection if cookies authenticate API writes.
+- Verify the implemented Google OIDC provider and same-origin server-managed session against the prerequisite plan and source. Reuse its validated issuer/subject identity, verified-email policy, 12-hour non-sliding protected cookie, anti-forgery protection, account-link confirmation, and host-only bootstrap. Resolve implementation gaps before enforcement; do not duplicate the login flow.
 - Accepted email policy. Email is a normalized, unique account attribute, not durable provider identity. Persist provider identity by validated `issuer` plus `subject`.
-- Initial administrator bootstrap and account-linking procedure. No silent account linking from an unverified email or client-provided user ID; define how verified identity is explicitly bound to the provisioned account.
+- Reuse the existing operator-supplied one-shot `bootstrap-admin` Compose tool, populated only from the validated session response; it does not verify Google claims itself. Reuse the explicit one-time server-derived account-link confirmation. Do not add public bootstrap, approval, or role-management endpoints. Registration-request review remains host/operator-controlled until protected administration exists.
 - Deactivation and deletion policy. Recommended initial behavior: deactivate and retain personal rows; do not cascade-delete or reassign them implicitly.
-- Initial roles/capabilities. Recommended initial roles: `admin` and `user`; administrators do not read or edit another user's personal rows by default.
+- Initial roles/capabilities. The identity schema uses `admin` and `user`; administrators do not read or edit another user's personal rows by default. Authorization capabilities and enforcement remain to be decided here.
 - Exact routes available anonymously, the explicit authorization-disabled configuration, and the conditions under which enforcement may be enabled.
 
 Record the decisions in the source design or a short decision record before Session 1. If any decision changes the ownership or identity model, update this sequence before coding.
@@ -32,7 +32,7 @@ Record the decisions in the source design or a short decision record before Sess
 
 **Goal:** make the identity, bootstrap, retention, and rollout decisions above actionable.
 
-**Work:** inspect the current route inventory in [API contracts](API_CONTRACTS.md); confirm the authorization matrix in the source design; record the selected OIDC/session approach, email policy, account-linking flow, bootstrap procedure, deactivation behavior, and anonymous routes. Confirm the project remains loopback-bound by default and LAN access remains limited to the configured interface/firewall allowlist.
+**Work:** inspect the current route inventory in [API contracts](API_CONTRACTS.md); confirm the authorization matrix in the source design; record the remaining ownership, deactivation, and capability decisions. Verify the prerequisite OIDC/session, email policy, account-linking flow, bootstrap procedure, and registration-request boundary against source, and reuse them unless a concrete implementation gap is found. Confirm the project remains loopback-bound by default and LAN access remains limited to the configured interface/firewall allowlist.
 
 **Exit checks:** no unresolved decision affects the user schema, ownership migration, or authentication flow. No code or production changes are required.
 
@@ -48,7 +48,7 @@ Record the decisions in the source design or a short decision record before Sess
 
 **Goal:** verify and complete the trusted server-side user context from the prerequisite plan without yet turning on authorization enforcement.
 
-**Work:** verify the OIDC/session choice, validated issuer/audience/signature/nonce/state and verified claims, explicit bootstrap/account linking, sign-in/sign-out, and server-side `CurrentUser` mapping from provider identity to internal `users.id`. Close any gaps without duplicating the Google login flow. Resolve active state and role from current server-side data when authorization is enforced (or use an equivalently immediate revocation mechanism), rather than trusting stale client role state. If session cookies are used, include CSRF defenses for state-changing endpoints. When authorization is enabled, missing, unknown, or deactivated identity must fail closed; never fall back to the bootstrap owner. Keep the authorization-disabled mode explicitly configured and visibly unsafe.
+**Work:** reuse and verify the existing OIDC/session implementation, validated issuer/audience/signature/nonce/state and verified claims, explicit bootstrap/account linking, sign-in/sign-out, and server-side mapping from provider identity to internal `users.id`. The bootstrap tool trusts host-supplied values, so obtain them from the authenticated session response; do not duplicate the Google login flow or expose bootstrap, approval, or role mutation publicly. Close only identified gaps. Resolve active state and role from current server-side data when authorization is enforced (or use an equivalently immediate revocation mechanism), rather than trusting stale client role state. When authorization is enabled, missing, unknown, or deactivated identity must fail closed; never fall back to the bootstrap owner. Keep the authorization-disabled mode explicitly configured and visibly unsafe.
 
 **Exit checks:** automated tests cover valid/invalid provider identity, failed or repeated bootstrap/linking, unknown identity, deactivated account, logout, CSRF rejection where applicable, and the prohibition on client-selected user IDs. Use a test authentication handler or local test issuer; do not depend on live Google credentials.
 

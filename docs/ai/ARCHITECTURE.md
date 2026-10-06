@@ -48,6 +48,33 @@ The [catalog view](../../web/src/features/catalog/CatalogView.tsx) builds the qu
 
 Favorites follow the same direct API-to-EF pattern: [FavoriteApiService](../../server/src/MediaDock.Api/Favorites/FavoriteApiService.cs) owns filtering, page projection, source-checked atomic additions and independent marker updates. [FavoriteProvider](../../web/src/features/favorites/FavoriteContext.tsx) shares current favorites between catalogs, dialogs and the favorites screen; title detail requests separately load Oscar records and torrent occurrences by canonical `TitleId`.
 
+## Optional Google Identity Flow
+
+```mermaid
+sequenceDiagram
+    participant Browser as React client
+    participant Api as MediaDock.Api
+    participant Google as Google OIDC
+    participant Db as PostgreSQL
+    Browser->>Api: GET /api/auth/google/login
+    Api-->>Browser: Redirect to configured authorization endpoint
+    Browser->>Google: Authorization Code + PKCE
+    Google-->>Browser: Redirect to same-origin /signin-oidc
+    Browser->>Api: OIDC callback with code and middleware state
+    Api->>Google: Redeem code and validate identity
+    Google-->>Api: Signed identity claims
+    Api-->>Browser: Protected MediaDock session cookie
+    Browser->>Api: GET /api/auth/session
+    Api-->>Browser: Identity, linked account/request state, sign-in availability
+    Browser->>Api: POST /api/auth/registration-requests + anti-forgery token
+    Api->>Db: Atomically persist pending user, identity, and request
+    Api-->>Browser: Request status
+```
+
+Google OIDC uses the ASP.NET Core middleware with authorization code flow, PKCE, state/nonce/correlation checks, and server-side token validation. The callback is `/signin-oidc` on the configured same origin. The default local URI is `http://localhost:8080/signin-oidc`; local setup uses `localhost` consistently. Other configured callbacks must use HTTPS and a hostname. The session is held in a protected, host-only, `HttpOnly`, `Secure`, `SameSite=Lax` cookie with a 12-hour absolute lifetime and no sliding renewal. Provider tokens are neither saved nor returned to the browser. Link, registration-request, and logout mutations require anti-forgery validation.
+
+Sign-in is optional and disabled by default. The validated Google identity may be explicitly linked to a pre-provisioned account or submit one idempotent registration request; registration requires the separate given-name and family-name claims. The one-shot `bootstrap-admin` Compose tool is operator-only and trusts its supplied values, so the operator must copy the verified identity fields from `GET /api/auth/session`; the tool does not independently validate them. Request approval/rejection remains a controlled host-side database transaction, with no public endpoint, admin UI, or review command. These identity flows do not add authorization: the existing application APIs remain anonymously usable, and favorites/ratings remain shared-profile data. The UI warning and loopback/specific-interface-plus-firewall network boundary are still required. See [API contracts](API_CONTRACTS.md), [security and operations](SECURITY_AND_OPERATIONS.md), and the [local runbook](../../README.md) for endpoint and operator details.
+
 For catalog behavior, start with the API endpoint, contract, or service that owns the change. Keep the current query there unless the code gains a real shared use case; do not add an Application abstraction just to make the layers look uniform.
 
 ## API-Hosted Ingestion Flow
@@ -121,7 +148,7 @@ The [Compose file](../../compose.yaml) defines PostgreSQL (`db`), the API (`api`
 
 API startup registers `MediaDockDbContext` with Npgsql from `ConnectionStrings:MediaDock`. `/health/live` reports process liveness; `/health/ready` calls `Database.CanConnectAsync` and returns 503 when PostgreSQL is unavailable, as implemented by [HealthEndpoints](../../server/src/MediaDock.Api/Health/HealthEndpoints.cs) and [ReadinessService](../../server/src/MediaDock.Api/Health/ReadinessService.cs). Compose configures a healthcheck for `db`, not an API healthcheck; the readiness endpoint is not currently wired as a Compose healthcheck.
 
-The API image serves the bundled React app only in Production, via the default/static-file middleware and SPA fallback in `Program.cs`; its assets are produced by the [server Dockerfile](../../server/Dockerfile). Compose binds the API host port to loopback. This is an unauthenticated local MVP; keep the deployment boundary described in [project context](PROJECT_CONTEXT.md).
+The API image serves the bundled React app only in Production, via the default/static-file middleware and SPA fallback in `Program.cs`; its assets are produced by the [server Dockerfile](../../server/Dockerfile). Compose binds the API host port to loopback. Google identity is optional and does not authorize API access; preserve the open-mode warning and deployment boundary described in [project context](PROJECT_CONTEXT.md).
 
 The Configuration deployment panel proxies status and start requests through
 the API to a root-owned host control service over a read-only-mounted Unix

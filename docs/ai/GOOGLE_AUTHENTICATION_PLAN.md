@@ -1,6 +1,6 @@
 # Plan: Google Authentication and Registration Requests
 
-**Status:** Sessions 0, 1, 2, and 3 complete; documentation and handoff remain. Google Cloud client provisioning and a stable LAN hostname/TLS certificate remain operator setup gates.
+**Status:** Sessions 0 through 4 complete. Google Cloud client provisioning and a stable LAN hostname/TLS certificate remain operator setup gates.
 
 ## Purpose and sequencing
 
@@ -99,6 +99,8 @@ Add the optional login button and signed-in identity/request status. Let a succe
 Update API contracts, architecture, security and operations, and local setup documentation with callback configuration, secret handling, operator bootstrap/review, and the distinction between authentication and authorization. Update the later implementation plan to reuse this foundation.
 
 **Exit checks:** documented callback matches configuration; no secrets are committed; web and server focused tests/builds pass; the open-mode warning and network boundary are accurate.
+
+**Handoff:** Updated the API contracts, architecture, security and operations guide, root local runbook, and the later access-control implementation plan. The docs specify the exact localhost callback and host-only credential handling, the operator-supplied bootstrap procedure, transactional host-side registration review, and that authentication does not authorize or isolate application data. Review has no endpoint, admin UI, or CLI yet. Focused checks passed: Google authentication/OIDC integration tests (14/14), web authentication-status tests (6/6), server solution build, and web lint/build. The builds report existing dependency/lint warnings; no credentials were added. Relative Markdown links and `git diff --check` passed. Google Cloud consent/client setup and LAN HTTPS callback remain operator gates.
 
 ## Handoff to access-control implementation
 
