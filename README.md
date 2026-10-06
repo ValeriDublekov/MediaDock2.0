@@ -73,9 +73,21 @@ docker compose -f compose.yaml run --rm migrate
 docker compose -f compose.yaml up --build -d api
 ```
 
-The UI is at `http://127.0.0.1:8080/`; readiness is `http://127.0.0.1:8080/health/ready`, and the catalog API is `http://127.0.0.1:8080/api/catalog`. `APP_BIND_ADDRESS` defaults to `127.0.0.1`. For a LAN deployment, bind to that host's specific trusted IPv4 address and use a matching `DOCKER-USER` allowlist with a deny rule for other sources. Keep those host-specific values in a root-owned host configuration file, not in Git. Do not use a wildcard bind or expose the API through a proxy. PostgreSQL's host port remains bound to `127.0.0.1` and defaults to `5432` (override with `POSTGRES_PORT`). The existing `postgres_data` volume is retained across container stops and recreation.
+The UI is at `http://localhost:8080/`; readiness is `http://localhost:8080/health/ready`, and the catalog API is `http://localhost:8080/api/catalog`. Use `localhost` consistently in the browser for the planned Google sign-in callback; `127.0.0.1` is a different cookie origin. `APP_BIND_ADDRESS` defaults to `127.0.0.1`. For a LAN deployment, bind to that host's specific trusted IPv4 address and use a matching `DOCKER-USER` allowlist with a deny rule for other sources. Keep those host-specific values in a root-owned host configuration file, not in Git. Do not use a wildcard bind or expose the API through a proxy. PostgreSQL's host port remains bound to `127.0.0.1` and defaults to `5432` (override with `POSTGRES_PORT`). The existing `postgres_data` volume is retained across container stops and recreation.
 
 Schema changes are checked in as EF Core migrations under `server/src/MediaDock.Infrastructure/Persistence/Migrations/`. The API does not migrate on startup; run the one-shot `migrate` service after adding a migration and before starting the API. For the system-source-profile migration, create and validate a fresh database backup first. After the API is ready, verify `GET /api/sources` returns exactly the fixed `movie`, `series_complete`, and `series_ongoing` profiles and that each pre-migration URL appears under its expected profile; legacy `series` URLs belong under `series_ongoing`.
+
+### Initial administrator bootstrap
+
+The additive identity migration creates `users`, `external_identities`, and `registration_requests` but does not change or assign existing shared favorites or ratings. The `bootstrap-admin` Compose tool is host-only and creates the first active administrator plus its `(issuer, subject)` identity in one transaction; it does not expose an HTTP endpoint. It trusts the values supplied by the operator and does not itself verify Google claims. Do not run it until the Google sign-in flow is implemented and the profile values come from a successfully validated Google identity.
+
+For that later bootstrap, put the verified email, given name, family name, issuer, and subject in the ignored `.env` fields `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_GIVEN_NAME`, `BOOTSTRAP_ADMIN_FAMILY_NAME`, `BOOTSTRAP_ADMIN_ISSUER`, and `BOOTSTRAP_ADMIN_SUBJECT`, then run:
+
+```powershell
+docker compose --profile tools run --rm bootstrap-admin
+```
+
+The command is one-time, serializes concurrent attempts, and refuses an existing administrator, email, or provider-identity conflict. Clear the bootstrap profile values from `.env` after success. Never put Google tokens or secrets in these fields.
 
 ## Health and logs
 

@@ -92,8 +92,8 @@ describe('CatalogView', () => {
     render(<CatalogView />)
 
     const awards = await screen.findByLabelText('Awards and nominations')
-    expect(await within(awards).findByText('Oscars')).toBeTruthy()
-    expect(await within(awards).findByText('Golden Globes')).toBeTruthy()
+    expect(within(awards).getByText('Oscars')).toBeTruthy()
+    expect(within(awards).getByText('Golden Globes')).toBeTruthy()
     expect(getMovieAwards).toHaveBeenCalledWith(['tt1234567'])
   })
 

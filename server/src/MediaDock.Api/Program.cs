@@ -12,6 +12,7 @@ using MediaDock.Api.Sources;
 using MediaDock.Api.Versioning;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Ingestion;
+using MediaDock.Infrastructure.Users;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Sockets;
 
@@ -24,6 +25,7 @@ builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddDbContext<MediaDockDbContext>(options =>
 	options.UseNpgsql(builder.Configuration.GetConnectionString("MediaDock")
 		?? throw new InvalidOperationException("ConnectionStrings:MediaDock must be configured.")));
+builder.Services.AddScoped<InitialAdminBootstrapper>();
 builder.Services.AddIngestionInfrastructure();
 builder.Services.AddScoped<MediaDock.Infrastructure.GoldenGlobes.GoldenGlobeDatasetImporter>();
 builder.Services.AddScoped<BackgroundJobApiService>();
@@ -75,6 +77,20 @@ if (builder.Configuration.GetValue<bool>("migrate"))
 	return;
 }
 
+if (builder.Configuration.GetValue<bool>("bootstrap-admin"))
+{
+	await using var scope = app.Services.CreateAsyncScope();
+	var profile = new InitialAdminProfile(
+		GetRequiredBootstrapValue("BootstrapAdmin:Email"),
+		GetRequiredBootstrapValue("BootstrapAdmin:GivenName"),
+		GetRequiredBootstrapValue("BootstrapAdmin:FamilyName"),
+		GetRequiredBootstrapValue("BootstrapAdmin:Issuer"),
+		GetRequiredBootstrapValue("BootstrapAdmin:Subject"));
+	await scope.ServiceProvider.GetRequiredService<InitialAdminBootstrapper>()
+		.BootstrapAsync(profile);
+	return;
+}
+
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
@@ -108,6 +124,11 @@ if (app.Environment.IsProduction())
 }
 
 app.Run();
+
+string GetRequiredBootstrapValue(string key) =>
+	builder.Configuration[key] is { Length: > 0 } value
+		? value
+		: throw new InvalidOperationException($"{key} must be configured for administrator bootstrap.");
 
 /// <summary>Entry point exposed for API integration tests.</summary>
 public partial class Program;

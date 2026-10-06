@@ -3,19 +3,21 @@
 **Status:** Planned; implementation not started  
 **Source design:** [Users and access control plan](USERS_AND_ACCESS_CONTROL_PLAN.md)
 
+**Prerequisite:** Complete the [Google authentication and registration requests plan](GOOGLE_AUTHENTICATION_PLAN.md) first. That plan adds optional OIDC sign-in and identity persistence without enforcing authorization or changing shared personal data. Reuse its schema and sign-in flow; do not implement them a second time here.
+
 This document turns the source design into bounded implementation sessions. Each session should end with its acceptance checks passing and a short handoff recording completed work, decisions, and the next session. Do not deploy or migrate production data as part of a coding session.
 
 ## Analysis and Safety Decisions
 
-The current implementation has one shared `favorite_movies` row per `title_id` and one shared `personal_ratings` row per IMDb ID. The API has no authentication or authorization middleware. Consequently, adding a `users` table alone would not make these records private, and a client-supplied user ID would let callers impersonate another profile.
+Before the Google authentication foundation, the implementation has one shared `favorite_movies` row per `title_id` and one shared `personal_ratings` row per IMDb ID. After that foundation, optional authentication identifies a caller, but the API still has no authorization enforcement and those records remain shared. Consequently, adding identity or ownership columns alone does not make personal data private, and a client-supplied user ID must never establish ownership.
 
-The source design also proposes user/role management before authentication. In that state, any client that reaches the API could create accounts, change roles, or deactivate an account. A persistent warning explains the risk but does not prevent it.
+The original source design placed user/role management before enforcement. That would be unsafe even after optional sign-in exists: without authorization, any client that reaches the API could create accounts, change roles, or deactivate an account. A persistent warning explains the risk but does not prevent it.
 
-**Required safety adjustment:** while authorization is disabled, preserve the existing single-profile behavior under one bootstrap owner. Do not expose multi-user selection, user/role management, or APIs that accept an owner ID. The warning remains visible, and the existing loopback/LAN boundary remains mandatory. Provision and link the first administrator through an explicit operator-controlled bootstrap procedure; expose normal user administration only after authentication and authorization are enforced.
+**Required safety adjustment:** while authorization is disabled, preserve the existing single-profile behavior under one bootstrap owner. Do not expose multi-user selection, user/role management, or APIs that accept an owner ID. The warning remains visible, and the existing loopback/LAN boundary remains mandatory. Provision and link the first administrator through an explicit operator-controlled bootstrap procedure; expose normal user administration only after authorization is enforced. Registration requests created by the prerequisite plan do not grant permissions and must not be approved through an unprotected application endpoint.
 
 Treat these decisions as a gate, not implementation assumptions. Close them in Session 0:
 
-- Authentication provider and server/browser session model. Recommended starting point: Google OIDC with a same-origin server-managed session; explicitly design CSRF protection if cookies authenticate API writes.
+- Verify that the Google OIDC provider and same-origin server-managed session from the prerequisite plan match the implementation. Resolve any gap before enforcement; explicitly design CSRF protection if cookies authenticate API writes.
 - Accepted email policy. Email is a normalized, unique account attribute, not durable provider identity. Persist provider identity by validated `issuer` plus `subject`.
 - Initial administrator bootstrap and account-linking procedure. No silent account linking from an unverified email or client-provided user ID; define how verified identity is explicitly bound to the provisioned account.
 - Deactivation and deletion policy. Recommended initial behavior: deactivate and retain personal rows; do not cascade-delete or reassign them implicitly.
@@ -36,17 +38,17 @@ Record the decisions in the source design or a short decision record before Sess
 
 ### Session 1: Identity Schema and Legacy Ownership Migration
 
-**Goal:** add durable user and provider-identity persistence while preserving the current single-profile data exactly.
+**Goal:** add per-user ownership while preserving the current single-profile data exactly, reusing the identity schema from the prerequisite plan.
 
-**Work:** add `User` and external identity entities/configurations, normalized-email and `(issuer, subject)` uniqueness, active/deactivated state, role representation, and restrictive ownership foreign keys. Change favorites to `(user_id, title_id)` and ratings to `(user_id, imdb_id)`. Add an additive EF migration; leave baseline/old migrations unchanged. Backfill all existing favorites and ratings to exactly one explicitly provisioned bootstrap owner, preserving favorite markers, origin flags, timestamps, rating values, and rating timestamps. Fail safely if the bootstrap owner cannot be determined; never drop, duplicate, or distribute legacy rows. Keep existing API behavior single-profile during this intermediate session; do not add user administration or owner selection.
+**Work:** reuse the existing `User` and external identity entities/configurations, normalized-email and `(issuer, subject)` uniqueness, `given_name` and `family_name`, status, role, registration-request records, and OIDC login/session. Change favorites to `(user_id, title_id)` and ratings to `(user_id, imdb_id)`, adding restrictive ownership foreign keys. Add an additive EF migration; leave baseline/old migrations unchanged. Backfill all existing favorites and ratings to exactly one explicitly provisioned bootstrap owner, preserving favorite markers, origin flags, timestamps, rating values, and rating timestamps. Fail safely if the bootstrap owner cannot be determined; never drop, duplicate, or distribute legacy rows. Keep API behavior single-profile during this intermediate session; do not add user administration or owner selection.
 
 **Exit checks:** PostgreSQL integration tests apply migrations to a fresh database and upgrade a pre-change schema containing representative favorite/rating rows. Tests prove each old row is retained exactly once under the bootstrap owner, constraints reject duplicate ownership keys, and no unrelated catalog rows gain a user owner. Verify rollback/data-loss implications in a disposable database only.
 
 ### Session 2: Authentication and Controlled Bootstrap
 
-**Goal:** establish a trusted server-side user context without yet turning on enforcement in production.
+**Goal:** verify and complete the trusted server-side user context from the prerequisite plan without yet turning on authorization enforcement.
 
-**Work:** implement the Session 0 OIDC/session choice, validated issuer/audience/signature/nonce/state and verified claims, explicit bootstrap/account linking, sign-in/sign-out, and a server-side `CurrentUser` abstraction mapping provider identity to internal `users.id`. Resolve active state and role from current server-side data on each request (or an equivalently immediate revocation mechanism), rather than trusting stale client role state. If session cookies are used, include CSRF defenses for state-changing endpoints. When auth is enabled, missing, unknown, or deactivated identity must fail closed; never fall back to the bootstrap owner. Keep the authorization-disabled mode explicitly configured and visibly unsafe.
+**Work:** verify the OIDC/session choice, validated issuer/audience/signature/nonce/state and verified claims, explicit bootstrap/account linking, sign-in/sign-out, and server-side `CurrentUser` mapping from provider identity to internal `users.id`. Close any gaps without duplicating the Google login flow. Resolve active state and role from current server-side data when authorization is enforced (or use an equivalently immediate revocation mechanism), rather than trusting stale client role state. If session cookies are used, include CSRF defenses for state-changing endpoints. When authorization is enabled, missing, unknown, or deactivated identity must fail closed; never fall back to the bootstrap owner. Keep the authorization-disabled mode explicitly configured and visibly unsafe.
 
 **Exit checks:** automated tests cover valid/invalid provider identity, failed or repeated bootstrap/linking, unknown identity, deactivated account, logout, CSRF rejection where applicable, and the prohibition on client-selected user IDs. Use a test authentication handler or local test issuer; do not depend on live Google credentials.
 
@@ -82,11 +84,11 @@ Record the decisions in the source design or a short decision record before Sess
 
 **Exit checks:** API tests cover `user` denial, admin success, duplicate normalized email, invalid role, repeated deactivation, identity-link boundary, last-admin protection under concurrent changes, and retained personal rows. Confirm ordinary admins cannot inspect or edit another user's favorites/ratings unless an explicitly approved audited capability was added.
 
-### Session 7: Web Sign-In, User Management, and Open-Mode Warning
+### Session 7: Web User Management and Open-Mode Warning
 
-**Goal:** connect the frontend to the enforced identity and user-administration contracts.
+**Goal:** connect the existing optional sign-in UI to enforced authorization and add the protected user-administration workflow.
 
-**Work:** add sign-in/sign-out and authenticated-session loading; handle 401/403 without stale privileged UI; add the Users configuration view for authorized admins, including role/state, confirmation, and last-admin error handling. Show the persistent, non-dismissible access warning whenever authorization is disabled, with wording matching the actual loopback or LAN boundary. Do not show account/role controls as protected in disabled mode. Ensure existing favorites and ratings UI calls operate only on the current signed-in profile.
+**Work:** reuse the sign-in/sign-out and authenticated-session loading from the prerequisite plan; handle 401/403 without stale privileged UI. Add the Users configuration view for authorized admins, including registration-request review, role/state, confirmation, and last-admin error handling. Show the persistent, non-dismissible access warning whenever authorization is disabled, with wording matching the actual loopback or LAN boundary. Do not show account/role controls as protected in disabled mode. Ensure existing favorites and ratings UI calls operate only on the current signed-in profile.
 
 **Exit checks:** focused web tests cover signed-out, user, admin, deactivated/expired session, disabled-mode warning, user lifecycle actions, and API failures. Run web lint, tests, and build; verify no sensitive tokens or provider credentials are placed in browser storage or logs.
 

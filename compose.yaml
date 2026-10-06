@@ -64,5 +64,31 @@ services:
       - tools
     restart: "no"
 
+  bootstrap-admin:
+    image: ${API_IMAGE:-mediadock-next-api}
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      target: api
+      args:
+        MEDIADOCK_VERSION: ${MEDIADOCK_VERSION:-local}
+        MEDIADOCK_COMMIT_SHA: ${MEDIADOCK_COMMIT_SHA:-unknown}
+        MEDIADOCK_COMMIT_DATE_UTC: ${MEDIADOCK_COMMIT_DATE_UTC:-unknown}
+    command: ["--bootstrap-admin", "true"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__MediaDock: "Host=db;Port=5432;Database=${POSTGRES_DB:-mediadock};Username=${POSTGRES_USER:-mediadock};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env or the host environment}"
+      BootstrapAdmin__Email: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BootstrapAdmin__GivenName: ${BOOTSTRAP_ADMIN_GIVEN_NAME:-}
+      BootstrapAdmin__FamilyName: ${BOOTSTRAP_ADMIN_FAMILY_NAME:-}
+      BootstrapAdmin__Issuer: ${BOOTSTRAP_ADMIN_ISSUER:-}
+      BootstrapAdmin__Subject: ${BOOTSTRAP_ADMIN_SUBJECT:-}
+    profiles:
+      - tools
+    restart: "no"
+
 volumes:
   postgres_data:
