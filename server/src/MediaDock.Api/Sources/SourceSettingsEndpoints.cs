@@ -119,6 +119,19 @@ internal static class SourceSettingsEndpoints
             .WithSummary("Get the last 30 UTC days of OMDb request usage and safe error codes.")
             .Produces<IReadOnlyList<OmdbDailyUsageResponse>>(StatusCodes.Status200OK);
 
+        app.MapPost("/api/settings/providers/omdb/test", async Task<Ok<OmdbDiagnosticResponse>> (
+            ISourceSettingsApiService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.TestOmdbApiAsync(cancellationToken);
+            return TypedResults.Ok(result);
+        })
+            .WithName("TestOmdbProvider")
+            .WithSummary("Send one OMDb diagnostic request for a fixed IMDb ID.")
+            .WithDescription("LAN-trusted diagnostic endpoint. Sends exactly one request to OMDb without checking or consuming MediaDock's shared daily request budget.")
+            .Produces<OmdbDiagnosticResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
         app.MapPut("/api/settings/providers/omdb", async Task<Ok<ProviderSettingsResponse>> (
             UpdateProviderSettingsRequest request,
             ISourceSettingsApiService service,

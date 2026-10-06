@@ -7,6 +7,7 @@ import type {
   DeploymentActionResult,
   DeploymentStatus,
   FavoriteMovie,
+  OmdbDiagnostic,
   OmdbDailyUsage,
   PersonalRatingsImportResult,
   OscarCatalogQuery,
@@ -196,6 +197,10 @@ export function getProviderSettings(fetcher?: typeof fetch) {
 
 export function getOmdbDailyUsage(fetcher?: typeof fetch) {
   return requestJson<OmdbDailyUsage[]>('/settings/providers/omdb/usage', {}, fetcher)
+}
+
+export function testOmdbApi(fetcher?: typeof fetch) {
+  return requestJson<OmdbDiagnostic>('/settings/providers/omdb/test', { method: 'POST' }, fetcher)
 }
 
 export function getVersion(fetcher?: typeof fetch) {

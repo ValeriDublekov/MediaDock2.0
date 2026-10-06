@@ -183,6 +183,16 @@ export interface OmdbDailyUsage {
   lastErrorCode: string | null
 }
 
+export interface OmdbDiagnostic {
+  imdbId: string
+  status: string
+  isSuccessful: boolean
+  message: string
+  title: string | null
+  year: number | null
+  httpAttempts: number
+}
+
 export interface ProviderSettingsInput {
   omdbApiKey: string | null
   clearOmdbApiKey: boolean

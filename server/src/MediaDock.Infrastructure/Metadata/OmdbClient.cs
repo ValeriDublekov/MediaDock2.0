@@ -131,28 +131,29 @@ public sealed class OmdbClient : IOmdbClient
                 request,
                 HttpCompletionOption.ResponseHeadersRead,
                 timeoutSource.Token);
-            if (response.StatusCode == HttpStatusCode.TooManyRequests)
-            {
-                return await RecordProviderErrorAsync(
-                    utcDate,
-                    new MetadataLookupResult(MetadataLookupStatus.QuotaExceeded, HttpAttempts: 1, ErrorCode: "quota_exceeded"),
-                    cancellationToken);
-            }
-
-            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
-            {
-                return await RecordProviderErrorAsync(
-                    utcDate,
-                    new MetadataLookupResult(MetadataLookupStatus.AuthenticationFailure, HttpAttempts: 1, ErrorCode: "authentication_failed"),
-                    cancellationToken);
-            }
-
             if ((int)response.StatusCode is < 200 or >= 300)
             {
-                return await RecordProviderErrorAsync(
-                    utcDate,
-                    new MetadataLookupResult(MetadataLookupStatus.ProviderFailure, HttpAttempts: 1, ErrorCode: "http_error"),
-                    cancellationToken);
+                var errorBody = await ReadBoundedAsync(response.Content, timeoutSource.Token);
+                var providerMessage = ExtractProviderMessage(errorBody);
+                var fallbackStatus = response.StatusCode switch
+                {
+                    HttpStatusCode.TooManyRequests => MetadataLookupStatus.QuotaExceeded,
+                    HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => MetadataLookupStatus.AuthenticationFailure,
+                    _ => MetadataLookupStatus.ProviderFailure
+                };
+                var status = providerMessage is null ? fallbackStatus : ClassifyError(providerMessage);
+                if (status == MetadataLookupStatus.ProviderFailure && fallbackStatus != MetadataLookupStatus.ProviderFailure)
+                {
+                    status = fallbackStatus;
+                }
+
+                var errorResult = new MetadataLookupResult(
+                    status,
+                    HttpAttempts: 1,
+                    ErrorCode: status == MetadataLookupStatus.ProviderFailure ? "http_error" : ErrorCode(status),
+                    ProviderMessage: SanitizeProviderMessage(providerMessage)
+                        ?? $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}".Trim());
+                return await RecordProviderErrorAsync(utcDate, errorResult, cancellationToken);
             }
 
             var body = await ReadBoundedAsync(response.Content, timeoutSource.Token);
@@ -246,7 +247,7 @@ public sealed class OmdbClient : IOmdbClient
         return output.ToArray();
     }
 
-    private static MetadataLookupResult ParseResponse(byte[] body)
+    private MetadataLookupResult ParseResponse(byte[] body)
     {
         using var document = JsonDocument.Parse(body);
         var root = document.RootElement;
@@ -260,7 +261,11 @@ public sealed class OmdbClient : IOmdbClient
         {
             var error = GetString(root, "Error") ?? string.Empty;
             var status = ClassifyError(error);
-            return new MetadataLookupResult(status, HttpAttempts: 1, ErrorCode: ErrorCode(status));
+            return new MetadataLookupResult(
+                status,
+                HttpAttempts: 1,
+                ErrorCode: ErrorCode(status),
+                ProviderMessage: SanitizeProviderMessage(error));
         }
 
         if (!string.Equals(response, "True", StringComparison.OrdinalIgnoreCase))
@@ -352,6 +357,37 @@ public sealed class OmdbClient : IOmdbClient
         MetadataLookupStatus.InvalidRequest => "invalid_request",
         _ => "provider_error"
     };
+
+    private static string? ExtractProviderMessage(byte[] body)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            var providerMessage = GetString(document.RootElement, "Error")?.Trim();
+            if (!string.IsNullOrWhiteSpace(providerMessage))
+            {
+                return providerMessage;
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        var responseText = Encoding.UTF8.GetString(body).Trim();
+        return string.IsNullOrWhiteSpace(responseText) ? null : responseText;
+    }
+
+    private string? SanitizeProviderMessage(string? message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return null;
+        }
+
+        return message.Trim()
+            .Replace(_apiKey, "[redacted]", StringComparison.OrdinalIgnoreCase)
+            .Replace(Uri.EscapeDataString(_apiKey), "[redacted]", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static string? GetString(JsonElement element, string propertyName) =>
         element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String

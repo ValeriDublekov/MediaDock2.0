@@ -52,7 +52,17 @@ public sealed record ProviderSettingsResponse(
     int OmdbDailyRequestLimit,
     DateTimeOffset? UpdatedAt);
 
-/// <summary>One UTC day's OMDb request usage and most recent safe provider error code.</summary>
+/// <summary>Result of the fixed-ID OMDb diagnostics request.</summary>
+public sealed record OmdbDiagnosticResponse(
+    string ImdbId,
+    string Status,
+    bool IsSuccessful,
+    string Message,
+    string? Title,
+    int? Year,
+    int HttpAttempts);
+
+/// <summary>One UTC day's OMDb request usage and most recent provider error.</summary>
 public sealed record OmdbDailyUsageResponse(
     DateOnly UtcDate,
     int TotalRequests,

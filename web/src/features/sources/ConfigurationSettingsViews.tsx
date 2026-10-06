@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { getOmdbDailyUsage, getProviderSettings, getVersion, importPersonalRatings, updateProviderSettings } from '../../api/client'
-import type { OmdbDailyUsage, PersonalRatingsImportResult, ProviderSettings, ProviderSettingsInput, SystemVersion } from '../../api/types'
+import { getOmdbDailyUsage, getProviderSettings, getVersion, importPersonalRatings, testOmdbApi, updateProviderSettings } from '../../api/client'
+import type { OmdbDailyUsage, OmdbDiagnostic, PersonalRatingsImportResult, ProviderSettings, ProviderSettingsInput, SystemVersion } from '../../api/types'
 import { ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate } from '../../shared/format'
 import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
@@ -94,6 +94,9 @@ export function OmdbProviderView() {
   const [providerError, setProviderError] = useState<string | null>(null)
   const [savingProvider, setSavingProvider] = useState(false)
   const [providerSaved, setProviderSaved] = useState(false)
+  const [testingProvider, setTestingProvider] = useState(false)
+  const [diagnosticResult, setDiagnosticResult] = useState<OmdbDiagnostic | null>(null)
+  const [diagnosticError, setDiagnosticError] = useState<string | null>(null)
 
   useEffect(() => {
     let current = true
@@ -130,6 +133,21 @@ export function OmdbProviderView() {
       setProviderError(requestError instanceof Error ? requestError.message : 'Could not save provider settings.')
     } finally {
       setSavingProvider(false)
+    }
+  }
+
+  async function testProvider() {
+    setTestingProvider(true)
+    setDiagnosticResult(null)
+    setDiagnosticError(null)
+    try {
+      const result = await testOmdbApi()
+      setDiagnosticResult(result)
+      setOmdbUsage(await getOmdbDailyUsage())
+    } catch (requestError) {
+      setDiagnosticError(requestError instanceof Error ? requestError.message : 'Could not run the OMDb diagnostic request.')
+    } finally {
+      setTestingProvider(false)
     }
   }
 
@@ -183,7 +201,19 @@ export function OmdbProviderView() {
         {providerSettings?.updatedAt && <p className="section-caption">Last updated {formatDate(providerSettings.updatedAt)}</p>}
         {providerError && <p className="form-error" role="alert">{providerError}</p>}
         {providerSaved && <p className="form-message" role="status">Provider settings saved.</p>}
-        <div className="form-actions"><button className="button" disabled={savingProvider} type="submit">{savingProvider ? 'Saving...' : 'Save provider settings'}</button></div>
+        <div className="form-actions">
+          <button className="button" disabled={savingProvider} type="submit">{savingProvider ? 'Saving...' : 'Save provider settings'}</button>
+          <button className="button button-secondary" disabled={savingProvider || testingProvider || !providerSettings?.omdbApiKeyConfigured} onClick={testProvider} type="button">
+            {testingProvider ? 'Testing...' : 'Test OMDb with tt16311594'}
+          </button>
+        </div>
+        {diagnosticResult && (
+          <div className={diagnosticResult.isSuccessful ? 'form-message' : 'form-error'} role={diagnosticResult.isSuccessful ? 'status' : 'alert'}>
+            <strong>{diagnosticResult.isSuccessful ? 'OMDb responded' : 'OMDb test failed'}:</strong> {diagnosticResult.message}
+            {diagnosticResult.title && ` ${diagnosticResult.title}${diagnosticResult.year ? ` (${diagnosticResult.year})` : ''}.`}
+          </div>
+        )}
+        {diagnosticError && <p className="form-error" role="alert">{diagnosticError}</p>}
       </form>
       <div aria-label="OMDb daily request history" className="usage-history">
         <h3>Daily request history</h3>

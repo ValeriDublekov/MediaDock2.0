@@ -60,7 +60,8 @@ public sealed record MetadataLookupResult(
     MetadataLookupStatus Status,
     MetadataDetails? Metadata = null,
     int HttpAttempts = 0,
-    string? ErrorCode = null);
+    string? ErrorCode = null,
+    string? ProviderMessage = null);
 
 public interface IOmdbClient
 {

@@ -1,7 +1,9 @@
 using MediaDock.Api.Middleware;
 using MediaDock.Application.Ingestion;
+using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
+using MediaDock.Infrastructure.Metadata;
 using MediaDock.Infrastructure.Rss;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -35,13 +37,19 @@ internal interface ISourceSettingsApiService
 
     Task<IReadOnlyList<OmdbDailyUsageResponse>> GetOmdbDailyUsageAsync(CancellationToken cancellationToken);
 
+    Task<OmdbDiagnosticResponse> TestOmdbApiAsync(CancellationToken cancellationToken);
+
     Task<ProviderSettingsResponse> UpdateProviderSettingsAsync(
         UpdateProviderSettingsRequest request,
         CancellationToken cancellationToken);
 }
 
-internal sealed class SourceSettingsApiService(MediaDockDbContext dbContext) : ISourceSettingsApiService
+internal sealed class SourceSettingsApiService(
+    MediaDockDbContext dbContext,
+    HttpClient httpClient) : ISourceSettingsApiService
 {
+    private const string DiagnosticImdbId = "tt16311594";
+
     public async Task<IReadOnlyList<SourceProfileResponse>> GetSourceProfilesAsync(CancellationToken cancellationToken)
     {
         var sources = await dbContext.Sources
@@ -221,6 +229,60 @@ internal sealed class SourceSettingsApiService(MediaDockDbContext dbContext) : I
                 usage.LastErrorCode))
             .ToArrayAsync(cancellationToken);
     }
+
+    public async Task<OmdbDiagnosticResponse> TestOmdbApiAsync(CancellationToken cancellationToken)
+    {
+        var settings = await dbContext.Settings
+            .AsNoTracking()
+            .Where(setting => setting.Id == 1)
+            .Select(setting => new { setting.OmdbApiKey })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(settings?.OmdbApiKey))
+        {
+            throw new ApiConflictException("Configure an OMDb API key before running the diagnostic request.");
+        }
+
+        var client = new OmdbClient(
+            httpClient,
+            settings.OmdbApiKey);
+        var result = await client.LookupAsync(
+            "MediaDock diagnostic lookup",
+            null,
+            "movie",
+            cancellationToken: cancellationToken,
+            imdbId: DiagnosticImdbId);
+        var status = DiagnosticStatus(result.Status);
+        var message = result.ProviderMessage ?? result.ErrorCode switch
+        {
+            "daily_budget_exhausted" => "MediaDock's shared daily OMDb request limit is exhausted.",
+            "timeout" => "The OMDb request timed out.",
+            "transport_error" => "MediaDock could not connect to OMDb.",
+            _ => result.Status == MetadataLookupStatus.Found
+                ? "OMDb returned a title for the diagnostic IMDb ID."
+                : "OMDb did not return a provider message."
+        };
+
+        return new OmdbDiagnosticResponse(
+            DiagnosticImdbId,
+            status,
+            result.Status is MetadataLookupStatus.Found or MetadataLookupStatus.ConfirmedNotFound,
+            message,
+            result.Metadata?.Title,
+            result.Metadata?.Year,
+            result.HttpAttempts);
+    }
+
+    private static string DiagnosticStatus(MetadataLookupStatus status) => status switch
+    {
+        MetadataLookupStatus.Found => "found",
+        MetadataLookupStatus.ConfirmedNotFound => "not_found",
+        MetadataLookupStatus.QuotaExceeded => "quota_exceeded",
+        MetadataLookupStatus.RequestBudgetExhausted => "daily_budget_exhausted",
+        MetadataLookupStatus.TransportFailure => "transport_error",
+        MetadataLookupStatus.AuthenticationFailure => "authentication_failed",
+        MetadataLookupStatus.InvalidRequest => "invalid_request",
+        _ => "provider_error"
+    };
 
     public async Task<ProviderSettingsResponse> UpdateProviderSettingsAsync(
         UpdateProviderSettingsRequest request,

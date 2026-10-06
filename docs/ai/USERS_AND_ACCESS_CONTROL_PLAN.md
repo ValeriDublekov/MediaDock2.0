@@ -2,6 +2,8 @@
 
 **Статус:** планирано; не е реализирано
 
+Implementation sequencing is documented in the [English step-by-step implementation plan](USERS_AND_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md).
+
 ## Цел и граници
 
 Да се премине от един общ локален профил към потребителски акаунти, идентифицирани с Gmail адрес, така че личните данни и действията да принадлежат на конкретен потребител. Google authentication и реалното налагане на права са отделен, по-късен етап. До него системата трябва изрично да показва, че достъпът не е ограничен.
