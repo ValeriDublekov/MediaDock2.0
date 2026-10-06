@@ -10,6 +10,21 @@ This guide covers testing for the standalone application in this repository. See
 
 The .NET unit tests and web tests do not require PostgreSQL, Docker, RSS sources, or OMDb credentials.
 
+## Compact Test Runner
+
+Run the standard-library Python runner from the repository root. It suppresses passing-test output, summarizes failures from .NET TRX and Vitest JSON reports, and keeps full logs and reports in a temporary `mediadock-tests-*` directory.
+
+```powershell
+python -B scripts/run_tests.py all
+python -B scripts/run_tests.py server-unit --filter "Category=Parsing"
+python -B scripts/run_tests.py server-integration --filter "Category=Api"
+python -B scripts/run_tests.py web --filter CatalogView
+python -B scripts/run_tests.py deploy
+python -B scripts/run_tests.py runner
+```
+
+`all` runs both .NET projects, web tests, deploy-control tests, and the runner's own parser tests; integration tests still require Docker. `--filter` applies to one selected suite: it uses the VSTest filter expression for .NET, a Vitest file-path filter for web, or Python unittest's `-k` name pattern. .NET restore is skipped by default; pass `--restore` when package restore is needed. The runner exits nonzero if any selected suite fails.
+
 ## Restore and Build
 
 Run server commands from the repository root. The [solution](../../server/MediaDock.sln) includes the API, Application, Infrastructure, and both test projects.
