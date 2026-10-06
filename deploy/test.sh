@@ -81,6 +81,7 @@ printf 'Validating commit %s\n' "$APP_COMMIT"
 run_logged web docker run --rm \
     --user "$HOST_UID:$HOST_GID" \
     --env HOME=/tmp/npm-home \
+    --env NO_COLOR=1 \
     --env npm_config_cache=/tmp/npm-cache \
     --mount "type=bind,source=$APP_ROOT/web,target=/workspace" \
     --workdir /workspace \
