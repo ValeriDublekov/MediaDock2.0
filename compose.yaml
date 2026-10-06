@@ -33,6 +33,10 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__MediaDock: "Host=db;Port=5432;Database=${POSTGRES_DB:-mediadock};Username=${POSTGRES_USER:-mediadock};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env or the host environment}"
+      Authentication__Google__Enabled: ${GOOGLE_AUTH_ENABLED:-false}
+      Authentication__Google__ClientId: ${GOOGLE_AUTH_CLIENT_ID:-}
+      Authentication__Google__ClientSecret: ${GOOGLE_AUTH_CLIENT_SECRET:-}
+      Authentication__Google__CallbackUri: "${GOOGLE_AUTH_CALLBACK_URI:-http://localhost:8080/signin-oidc}"
       DeploymentControl__SocketPath: /run/mediadock-next-deploy-control/control.sock
     volumes:
       - type: bind

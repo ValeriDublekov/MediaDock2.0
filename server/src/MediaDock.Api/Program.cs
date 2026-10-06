@@ -1,5 +1,6 @@
 using MediaDock.Api.Catalog;
 using MediaDock.Api.Awards;
+using MediaDock.Api.Authentication;
 using MediaDock.Api.BackgroundJobs;
 using MediaDock.Api.Favorites;
 using MediaDock.Api.Health;
@@ -22,6 +23,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddValidation();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
+builder.Services.AddGoogleSignIn(builder.Configuration);
 builder.Services.AddDbContext<MediaDockDbContext>(options =>
 	options.UseNpgsql(builder.Configuration.GetConnectionString("MediaDock")
 		?? throw new InvalidOperationException("ConnectionStrings:MediaDock must be configured.")));
@@ -93,6 +95,7 @@ if (builder.Configuration.GetValue<bool>("bootstrap-admin"))
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseAuthentication();
 
 if (app.Environment.IsProduction())
 {
@@ -106,6 +109,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapHealthEndpoints();
+app.MapAuthenticationEndpoints();
 app.MapCatalogEndpoints();
 app.MapMovieAwardsEndpoints();
 app.MapFavoriteEndpoints();
