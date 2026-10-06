@@ -1,6 +1,6 @@
 # Plan: Google Authentication and Registration Requests
 
-**Status:** Sessions 0, 1, and 2 complete; registration-request workflow and login UI remain unimplemented. Google Cloud client provisioning and a stable LAN hostname/TLS certificate remain operator setup gates.
+**Status:** Sessions 0, 1, 2, and 3 complete; documentation and handoff remain. Google Cloud client provisioning and a stable LAN hostname/TLS certificate remain operator setup gates.
 
 ## Purpose and sequencing
 
@@ -91,6 +91,8 @@ Implement OIDC login/callback/logout, validated claims, server-managed session, 
 Add the optional login button and signed-in identity/request status. Let a successfully authenticated, otherwise-unmatched identity submit an idempotent registration request. Keep review and approval operator-controlled until a protected admin workflow is implemented in the later plan. Show the persistent warning that authentication is optional and no application permissions are enforced.
 
 **Exit checks:** web tests cover anonymous use, sign-in, linked account, registration request, duplicate/pending request, missing Google name claims, and sign-out. API tests prove registration cannot forge another email, provider identity, or user names. Existing anonymous route behavior remains unchanged.
+
+**Handoff:** Added the antiforgery-protected `POST /api/auth/registration-requests` endpoint. It derives email, names, issuer, and subject only from the validated Google session; atomically creates a pending user, external identity, and request; and returns the existing request on same-identity retries. The session response includes sign-in availability and the latest request status. The web shell now offers optional Google sign-in, explicit account-link confirmation, registration submission/status, and sign-out on every route, with a persistent warning that identity is not authorization. Focused API and web tests pass; no approval endpoint or application authorization was added.
 
 ### Session 4: Documentation and handoff
 

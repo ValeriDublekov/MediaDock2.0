@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import App from './App'
 
+vi.mock('./features/auth/AuthStatus', () => ({ AuthStatus: () => <div>Authentication status</div> }))
 vi.mock('./features/catalog/CatalogView', () => ({ CatalogView: () => <div>Catalog route content</div> }))
 vi.mock('./features/oscar/OscarCatalogView', () => ({ OscarCatalogView: () => <div>Oscar route content</div> }))
 vi.mock('./features/golden-globes/GoldenGlobeCatalogView', () => ({ GoldenGlobeCatalogView: () => <div>Golden Globes route content</div> }))
@@ -55,6 +56,7 @@ describe('App routes', () => {
     renderAt(path)
 
     expect(screen.getByRole('heading', { name: heading })).toBeTruthy()
+    expect(screen.getByRole('note').textContent).toContain('Application permissions are not enforced')
     expect(screen.getByTestId('location').textContent).toBe(path)
   })
 

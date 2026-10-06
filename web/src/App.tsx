@@ -7,6 +7,7 @@ import { FavoriteProvider } from './features/favorites/FavoriteContext'
 import { FavoritesView } from './features/favorites/FavoritesView'
 import { SourceSettingsView } from './features/sources/SourceSettingsView'
 import { IngestionSettingsView, OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './features/sources/ConfigurationSettingsViews'
+import { AuthStatus } from './features/auth/AuthStatus'
 
 type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'sources' | 'history'
 
@@ -136,7 +137,12 @@ function AppContent() {
       <main className="main-shell">
         <header className="topbar">
           <div className="breadcrumb">MEDIADOCK <span>/</span> {content.eyebrow}{configurationPage && <> <span>/</span> {configurationPage.label.toUpperCase()}</>}</div>
+          <AuthStatus />
         </header>
+
+        <aside className="open-mode-warning" role="note">
+          Sign-in is optional and verifies identity only. Application permissions are not enforced, and data remains accessible to clients within the configured network boundary.
+        </aside>
 
         <div className="page-content">
           <div className="page-heading">

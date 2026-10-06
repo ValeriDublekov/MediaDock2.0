@@ -158,7 +158,7 @@ public static class GoogleSignInServiceCollectionExtensions
         services.AddAntiforgery(options =>
         {
             options.HeaderName = "RequestVerificationToken";
-            options.Cookie.Name = "__Host-MediaDock.Antiforgery";
+            options.Cookie.Name = "MediaDock.Antiforgery";
             options.Cookie.Path = "/";
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;

@@ -48,6 +48,11 @@ public sealed class GoogleAuthenticationApiTests
 
         using var tokenResponse = await client.GetAsync("/api/auth/antiforgery");
         Assert.Equal(HttpStatusCode.OK, tokenResponse.StatusCode);
+        Assert.Contains(
+            tokenResponse.Headers.GetValues("Set-Cookie"),
+            value => value.StartsWith("MediaDock.Antiforgery=", StringComparison.Ordinal)
+                && value.Contains("httponly", StringComparison.OrdinalIgnoreCase)
+                && value.Contains("samesite=strict", StringComparison.OrdinalIgnoreCase));
         var token = await tokenResponse.Content.ReadFromJsonAsync<AntiforgeryTokenResponse>();
         Assert.NotNull(token);
 
@@ -158,6 +163,67 @@ public sealed class GoogleAuthenticationApiTests
     }
 
     [Fact]
+    public async Task RegistrationRequestUsesValidatedIdentityAndIsIdempotent()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_registration_request_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+        }
+
+        using var factory = new ApiFactory(connectionString, CreatePrincipal());
+        using var client = factory.CreateClient();
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        using var missingTokenResponse = await client.PostAsync(
+            "/api/auth/registration-requests",
+            new StringContent(string.Empty));
+        Assert.Equal(HttpStatusCode.BadRequest, missingTokenResponse.StatusCode);
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/registration-requests")
+        {
+            Content = new StringContent(
+                "{\"email\":\"attacker@example.com\",\"givenName\":\"Forged\",\"subject\":\"forged-subject\"}",
+                System.Text.Encoding.UTF8,
+                "application/json")
+        };
+        request.Headers.Add("RequestVerificationToken", token);
+        using var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<RegistrationRequestResponse>();
+        Assert.NotNull(result);
+        Assert.Equal("pending", result.Status);
+
+        using var repeatRequest = new HttpRequestMessage(HttpMethod.Post, "/api/auth/registration-requests");
+        repeatRequest.Headers.Add("RequestVerificationToken", token);
+        using var repeatResponse = await client.SendAsync(repeatRequest);
+        Assert.Equal(HttpStatusCode.OK, repeatResponse.StatusCode);
+        var repeatedResult = await repeatResponse.Content.ReadFromJsonAsync<RegistrationRequestResponse>();
+        Assert.Equal(result, repeatedResult);
+
+        using var sessionResponse = await client.GetAsync("/api/auth/session");
+        var session = await sessionResponse.Content.ReadFromJsonAsync<CurrentSessionResponse>();
+        Assert.Equal("linked", session?.AccountState);
+        Assert.Equal("person@example.com", session?.User?.Email);
+        Assert.Equal("Google", session?.User?.GivenName);
+        Assert.Equal("Profile", session?.User?.FamilyName);
+        Assert.Equal("pending", session?.RegistrationRequest?.Status);
+
+        await using var verifyDb = new MediaDockDbContext(options);
+        Assert.Equal("person@example.com", await verifyDb.Users.Select(user => user.NormalizedEmail).SingleAsync());
+        Assert.Equal("Google", await verifyDb.Users.Select(user => user.GivenName).SingleAsync());
+        Assert.Equal("Profile", await verifyDb.Users.Select(user => user.FamilyName).SingleAsync());
+        Assert.Equal("https://accounts.google.com", await verifyDb.ExternalIdentities.Select(identity => identity.Issuer).SingleAsync());
+        Assert.Equal("google-subject-1", await verifyDb.ExternalIdentities.Select(identity => identity.Subject).SingleAsync());
+        Assert.Single(await verifyDb.RegistrationRequests.ToListAsync());
+    }
+
+    [Fact]
     public async Task UnverifiedEmailIsRejectedAndMissingNamesRemainIncomplete()
     {
         using var unverifiedFactory = new ApiFactory(
@@ -171,8 +237,10 @@ public sealed class GoogleAuthenticationApiTests
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_google_names_test").Build();
         await postgres.StartAsync();
         var connectionString = postgres.GetConnectionString();
-        await using (var db = new MediaDockDbContext(
-            new DbContextOptionsBuilder<MediaDockDbContext>().UseNpgsql(connectionString).Options))
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        await using (var db = new MediaDockDbContext(options))
         {
             await db.Database.MigrateAsync();
         }
@@ -187,6 +255,16 @@ public sealed class GoogleAuthenticationApiTests
         Assert.False(incompleteSession.Identity.ProfileComplete);
         Assert.Null(incompleteSession.Identity.GivenName);
         Assert.Equal("unmatched", incompleteSession.AccountState);
+
+        var token = await GetAntiforgeryTokenAsync(incompleteClient);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/registration-requests");
+        request.Headers.Add("RequestVerificationToken", token);
+        using var response = await incompleteClient.SendAsync(request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        await using var verifyDb = new MediaDockDbContext(options);
+        Assert.Empty(await verifyDb.Users.ToListAsync());
+        Assert.Empty(await verifyDb.RegistrationRequests.ToListAsync());
     }
 
     [Fact]

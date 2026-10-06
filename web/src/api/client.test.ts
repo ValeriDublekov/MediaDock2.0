@@ -8,6 +8,7 @@ import {
   getActiveBackgroundJob,
   getBackgroundJobEvents,
   getCatalog,
+  getCurrentSession,
   getDeploymentStatus,
   getGoldenGlobeFilms,
   getMovieAwards,
@@ -16,6 +17,7 @@ import {
   getProviderSettings,
   importPersonalRatings,
   requestJson,
+  requestRegistration,
   runDeploymentAction,
   updateProviderSettings,
 } from './client'
@@ -134,6 +136,35 @@ describe('typed API client', () => {
     expect(String(stub.calls[0]?.input)).toBe('/api/settings/providers/omdb')
     expect(stub.calls[1]?.init?.method).toBe('PUT')
     expect(JSON.parse(String(stub.calls[1]?.init?.body))).toEqual(input)
+  })
+
+  it('loads the auth session and protects registration submission with an antiforgery token', async () => {
+    const session = {
+      authenticated: false,
+      identity: null,
+      user: null,
+      accountState: 'anonymous',
+      signInEnabled: true,
+      registrationRequest: null,
+    }
+    const stub = fetchStub(response(200, session))
+    const tokenStub = fetchStub(response(200, { requestToken: 'csrf-token' }))
+    const registrationStub = fetchStub(response(200, { status: 'pending', requestedAt: '2026-10-06T10:00:00Z', decidedAt: null }))
+    const fetcher: typeof fetch = async (input, init) => {
+      const path = String(input)
+      if (path === '/api/auth/session') return stub.fetcher(input, init)
+      if (path === '/api/auth/antiforgery') return tokenStub.fetcher(input, init)
+      return registrationStub.fetcher(input, init)
+    }
+
+    await getCurrentSession(fetcher)
+    await requestRegistration(fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/auth/session')
+    expect(String(tokenStub.calls[0]?.input)).toBe('/api/auth/antiforgery')
+    expect(String(registrationStub.calls[0]?.input)).toBe('/api/auth/registration-requests')
+    expect(registrationStub.calls[0]?.init?.method).toBe('POST')
+    expect(new Headers(registrationStub.calls[0]?.init?.headers).get('RequestVerificationToken')).toBe('csrf-token')
   })
 
   it('queues a scan and fetches job events with a cursor', async () => {

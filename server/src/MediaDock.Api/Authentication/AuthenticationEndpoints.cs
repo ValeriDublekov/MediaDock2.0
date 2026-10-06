@@ -34,12 +34,16 @@ internal static class AuthenticationEndpoints
 
         app.MapGet("/api/auth/session", async Task<Results<Ok<CurrentSessionResponse>, UnauthorizedHttpResult>> (
             HttpContext context,
+            GoogleSignInSettings signInSettings,
             GoogleSessionService sessionService,
             CancellationToken cancellationToken) =>
         {
             if (context.User.Identity?.IsAuthenticated != true)
             {
-                return TypedResults.Ok(CurrentSessionResponse.Anonymous);
+                return TypedResults.Ok(CurrentSessionResponse.Anonymous with
+                {
+                    SignInEnabled = signInSettings.Enabled
+                });
             }
 
             if (!ValidatedGoogleIdentity.TryCreate(context.User, out var identity))
@@ -47,7 +51,8 @@ internal static class AuthenticationEndpoints
                 return TypedResults.Unauthorized();
             }
 
-            return TypedResults.Ok(await sessionService.GetCurrentSessionAsync(identity!, cancellationToken));
+            var session = await sessionService.GetCurrentSessionAsync(identity!, cancellationToken);
+            return TypedResults.Ok(session with { SignInEnabled = signInSettings.Enabled });
         })
             .WithName("GetCurrentSession")
             .WithSummary("Return the optional Google identity associated with this browser session.")
@@ -98,6 +103,49 @@ internal static class AuthenticationEndpoints
             .ProducesProblem(StatusCodes.Status409Conflict)
             .Produces(StatusCodes.Status401Unauthorized);
 
+        app.MapPost("/api/auth/registration-requests", async Task<Results<Ok<RegistrationRequestResponse>, UnauthorizedHttpResult, ProblemHttpResult>> (
+            HttpContext context,
+            IAntiforgery antiforgery,
+            GoogleSessionService sessionService,
+            CancellationToken cancellationToken) =>
+        {
+            if (!await antiforgery.IsRequestValidAsync(context))
+            {
+                return TypedResults.Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "A valid anti-forgery token is required.");
+            }
+
+            if (context.User.Identity?.IsAuthenticated != true
+                || !ValidatedGoogleIdentity.TryCreate(context.User, out var identity))
+            {
+                return TypedResults.Unauthorized();
+            }
+
+            var result = await sessionService.RequestRegistrationAsync(identity!, cancellationToken);
+            if (result.Kind == RegistrationRequestResultKind.ProfileIncomplete)
+            {
+                return TypedResults.Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "Your Google profile must include both a given name and family name to request registration.");
+            }
+
+            if (result.Kind == RegistrationRequestResultKind.NotEligible)
+            {
+                return TypedResults.Problem(
+                    statusCode: StatusCodes.Status409Conflict,
+                    title: "This Google identity is not eligible to request registration.");
+            }
+
+            return TypedResults.Ok(result.Request!);
+        })
+            .WithName("RequestRegistration")
+            .WithSummary("Submit an idempotent registration request for the validated Google identity.")
+            .Produces<RegistrationRequestResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .Produces(StatusCodes.Status401Unauthorized);
+
         app.MapPost("/api/auth/logout", async Task<Results<NoContent, ProblemHttpResult>> (
             HttpContext context,
             IAntiforgery antiforgery) =>
@@ -134,6 +182,7 @@ public sealed record CurrentSessionIdentity(
 }
 
 public sealed record CurrentSessionUser(string Email, string GivenName, string FamilyName, string Status);
+public sealed record CurrentSessionRegistrationRequest(string Status, DateTimeOffset RequestedAt, DateTimeOffset? DecidedAt);
 
 public sealed record CurrentSessionResponse(
     bool Authenticated,
@@ -142,7 +191,11 @@ public sealed record CurrentSessionResponse(
     string AccountState)
 {
     public static CurrentSessionResponse Anonymous { get; } = new(false, null, null, "anonymous");
+    public bool SignInEnabled { get; init; }
+    public CurrentSessionRegistrationRequest? RegistrationRequest { get; init; }
 }
+
+public sealed record RegistrationRequestResponse(string Status, DateTimeOffset RequestedAt, DateTimeOffset? DecidedAt);
 
 internal static class ValidatedGoogleIdentityResponseExtensions
 {

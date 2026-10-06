@@ -335,6 +335,37 @@ export interface SystemVersion {
   commitDateUtc: string | null
 }
 
+export interface CurrentSessionIdentity {
+  issuer: string
+  subject: string
+  email: string
+  givenName: string | null
+  familyName: string | null
+  profileComplete: boolean
+}
+
+export interface CurrentSessionUser {
+  email: string
+  givenName: string
+  familyName: string
+  status: string
+}
+
+export interface RegistrationRequestStatus {
+  status: 'pending' | 'approved' | 'rejected'
+  requestedAt: string
+  decidedAt: string | null
+}
+
+export interface CurrentSession {
+  authenticated: boolean
+  identity: CurrentSessionIdentity | null
+  user: CurrentSessionUser | null
+  accountState: 'anonymous' | 'linked' | 'link_confirmation_required' | 'unmatched' | 'account_conflict'
+  signInEnabled: boolean
+  registrationRequest: RegistrationRequestStatus | null
+}
+
 export interface DeploymentStatus {
   isRunning: boolean
   activeState: string

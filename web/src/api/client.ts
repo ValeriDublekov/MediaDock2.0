@@ -1,6 +1,8 @@
 import type {
   CatalogQuery,
   CatalogTitle,
+  CurrentSession,
+  RegistrationRequestStatus,
   BackgroundJob,
   BackgroundJobAccepted,
   BackgroundJobEvents,
@@ -205,6 +207,35 @@ export function testOmdbApi(fetcher?: typeof fetch) {
 
 export function getVersion(fetcher?: typeof fetch) {
   return requestJson<SystemVersion>('/version', {}, fetcher)
+}
+
+export function getCurrentSession(fetcher?: typeof fetch) {
+  return requestJson<CurrentSession>('/auth/session', {}, fetcher)
+}
+
+async function getAuthRequestToken(fetcher?: typeof fetch) {
+  const response = await requestJson<{ requestToken: string }>('/auth/antiforgery', {}, fetcher)
+  return response.requestToken
+}
+
+async function postAuthChange<T>(path: string, fetcher?: typeof fetch) {
+  const requestToken = await getAuthRequestToken(fetcher)
+  return requestJson<T>(path, {
+    method: 'POST',
+    headers: { RequestVerificationToken: requestToken },
+  }, fetcher)
+}
+
+export function confirmGoogleAccountLink(fetcher?: typeof fetch) {
+  return postAuthChange<void>('/auth/google/link', fetcher)
+}
+
+export function requestRegistration(fetcher?: typeof fetch) {
+  return postAuthChange<RegistrationRequestStatus>('/auth/registration-requests', fetcher)
+}
+
+export function signOut(fetcher?: typeof fetch) {
+  return postAuthChange<void>('/auth/logout', fetcher)
 }
 
 export function getDeploymentStatus(fetcher?: typeof fetch) {
