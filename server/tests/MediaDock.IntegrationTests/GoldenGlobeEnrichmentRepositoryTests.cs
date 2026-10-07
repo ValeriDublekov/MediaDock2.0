@@ -80,6 +80,9 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
         var award = new GoldenGlobeAward { Name = "Best Motion Picture" };
         var healthyEnriched = CreateNomination("healthy-enriched", "Healthy Enriched Film", 2027, "enriched", 4, null, award);
         healthyEnriched.ImdbId = "tt12345678";
+        var pinnedProblem = CreateNomination("pinned-problem", "Pinned Problem", 2026, "problem", 3, null, award);
+        pinnedProblem.ImdbId = "tt87654321";
+        pinnedProblem.IsImdbIdManual = true;
         db.GoldenGlobeNominations.AddRange(
             CreateNomination("new-a-pending", "A New Film", 2026, "pending", 1, now.AddHours(1), award),
             CreateNomination("new-a-due", "A New Film", 2026, "temporary_error", 3, now, award),
@@ -88,6 +91,9 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
             CreateNomination("new-series", "A New Series", 2026, "pending", 0, null, award, "series"),
             CreateNomination("new-z-pending", "Z New Film", 2026, "pending", 4, null, award),
             CreateNomination("older-retry", "Older Film", 2025, "temporary_error", 2, null, award),
+            CreateNomination("old-not-found", "Old Not Found", 2026, "not_found", 5, null, award),
+            CreateNomination("old-problem", "Old Problem", 2026, "problem", 6, null, award),
+            pinnedProblem,
             CreateNomination("broken-enriched", "Enriched Film", 2027, "enriched", 8, null, award),
             healthyEnriched);
         await db.SaveChangesAsync();
@@ -101,6 +107,8 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
                 new GoldenGlobeEnrichmentCandidate("A New Film", 2026, 3),
                 new GoldenGlobeEnrichmentCandidate("A New Film", 2026, 0, "series"),
                 new GoldenGlobeEnrichmentCandidate("A New Series", 2026, 0, "series"),
+                new GoldenGlobeEnrichmentCandidate("Old Not Found", 2026, 5),
+                new GoldenGlobeEnrichmentCandidate("Old Problem", 2026, 6),
                 new GoldenGlobeEnrichmentCandidate("Z New Film", 2026, 4),
                 new GoldenGlobeEnrichmentCandidate("Older Film", 2025, 2)
             ],

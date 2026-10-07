@@ -99,7 +99,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         var client = new StubOmdbClient(
         [
             new(MetadataLookupStatus.Found, CreateMetadata("Film and Story", 2020, "tt11111111"), 1),
-            new(MetadataLookupStatus.Found, CreateMetadata("Film and Story", 2024, "tt22222222"), 1)
+            new(MetadataLookupStatus.Found, CreateMetadata("Film and Story", 2024, "tt22222222", "Nominated for 1 Golden Globe"), 1)
         ],
         [
             new(MetadataLookupStatus.ConfirmedNotFound, [], 0, 1, "not_found"),
@@ -128,7 +128,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         [
             new(MetadataLookupStatus.ConfirmedNotFound, HttpAttempts: 1),
             new(MetadataLookupStatus.Found,
-                CreateMetadata("Abbott Elementary", 2021, "tt14218830") with { SourceType = "series" }, 1)
+                CreateMetadata("Abbott Elementary", 2021, "tt14218830", "Nominated for 1 Golden Globe") with { SourceType = "series" }, 1)
         ],
         [new(MetadataLookupStatus.Found,
             [new MetadataSearchCandidate("Abbott Elementary", 2021, "tt14218830", "series")], 1, 1)]);
@@ -150,7 +150,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         var client = new StubOmdbClient(
         [
             new(MetadataLookupStatus.ConfirmedNotFound, HttpAttempts: 1),
-            new(MetadataLookupStatus.Found, CreateMetadata("Pagination Film", 2024, "tt33333333"), 1)
+            new(MetadataLookupStatus.Found, CreateMetadata("Pagination Film", 2024, "tt33333333", "Nominated for 1 Golden Globe"), 1)
         ],
         [
             new(MetadataLookupStatus.Found,
@@ -168,13 +168,43 @@ public sealed class GoldenGlobeEnrichmentServiceTests
     }
 
     [Fact]
-    public async Task RunAsyncDoesNotChooseBetweenEquallyRankedSearchCandidates()
+    public async Task RunAsyncUsesGoldenGlobeAwardsToResolveCloselyRankedCandidates()
     {
         var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
         var repository = new FakeGoldenGlobeEnrichmentRepository(
         [new("Shared Title", 2025, 0)]);
         var client = new StubOmdbClient(
-        [new(MetadataLookupStatus.ConfirmedNotFound, HttpAttempts: 1)],
+        [
+            new(MetadataLookupStatus.ConfirmedNotFound, HttpAttempts: 1),
+            new(MetadataLookupStatus.Found, CreateMetadata("Shared Title", 2025, "tt11111111", "2 wins & 3 nominations"), 1),
+            new(MetadataLookupStatus.Found, CreateMetadata("Shared Title", 2025, "tt22222222", "Nominated for 1 Golden Globe"), 1)
+        ],
+        [new(MetadataLookupStatus.Found,
+        [
+            new MetadataSearchCandidate("Shared Title", 2025, "tt11111111", "movie"),
+            new MetadataSearchCandidate("Shared Title", 2025, "tt22222222", "movie")
+        ], 2, 1)]);
+
+        var result = await CreateService(repository, client, now).RunAsync();
+
+        Assert.Equal(1, result.Summary.EnrichedTitles);
+        Assert.Equal("enriched", repository.SavedOutcomes[0].Update.Status);
+        Assert.Equal("tt22222222", repository.SavedOutcomes[0].Update.ImdbId);
+        Assert.Equal([null, "tt11111111", "tt22222222"], client.Requests.Select(request => request.ImdbId));
+    }
+
+    [Fact]
+    public async Task RunAsyncKeepsMultipleGoldenGlobeCandidatesAmbiguous()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        var repository = new FakeGoldenGlobeEnrichmentRepository(
+        [new("Shared Title", 2025, 0)]);
+        var client = new StubOmdbClient(
+        [
+            new(MetadataLookupStatus.ConfirmedNotFound, HttpAttempts: 1),
+            new(MetadataLookupStatus.Found, CreateMetadata("Shared Title", 2025, "tt11111111", "Nominated for 1 Golden Globe"), 1),
+            new(MetadataLookupStatus.Found, CreateMetadata("Shared Title", 2025, "tt22222222", "Nominated for 2 Golden Globes"), 1)
+        ],
         [new(MetadataLookupStatus.Found,
         [
             new MetadataSearchCandidate("Shared Title", 2025, "tt11111111", "movie"),
@@ -187,7 +217,28 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         Assert.Equal("problem", repository.SavedOutcomes[0].Update.Status);
         Assert.Equal("ambiguous_match", repository.SavedOutcomes[0].Update.ErrorCode);
         Assert.Null(repository.SavedOutcomes[0].Update.ImdbId);
-        Assert.Single(client.Requests);
+    }
+
+    [Fact]
+    public async Task RunAsyncRejectsSearchCandidateWithoutGoldenGlobeAwardEvidence()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        var repository = new FakeGoldenGlobeEnrichmentRepository(
+        [new("Candidate Film", 2025, 0)]);
+        var client = new StubOmdbClient(
+        [
+            new(MetadataLookupStatus.ConfirmedNotFound, HttpAttempts: 1),
+            new(MetadataLookupStatus.Found, CreateMetadata("Candidate Film", 2024, "tt11111111", "5 wins & 12 nominations"), 1)
+        ],
+        [new(MetadataLookupStatus.Found,
+            [new MetadataSearchCandidate("Candidate Film", 2024, "tt11111111", "movie")], 1, 1)]);
+
+        var result = await CreateService(repository, client, now).RunAsync();
+
+        Assert.Equal(1, result.Summary.ProblemTitles);
+        Assert.Equal("problem", repository.SavedOutcomes[0].Update.Status);
+        Assert.Equal("no_golden_globe_match", repository.SavedOutcomes[0].Update.ErrorCode);
+        Assert.Null(repository.SavedOutcomes[0].Update.ImdbId);
     }
 
     [Fact]
@@ -305,7 +356,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
             new MetadataResolver(client, new EmptyMetadataCacheStore()),
             new FrozenTimeProvider(now));
 
-    private static MetadataDetails CreateMetadata(string title, int? year, string imdbId) => new(
+    private static MetadataDetails CreateMetadata(string title, int? year, string imdbId, string? awards = null) => new(
         title,
         year,
         imdbId,
@@ -322,7 +373,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         null,
         null,
         null,
-        null,
+        awards,
         null);
 
     private sealed class FakeGoldenGlobeEnrichmentRepository(

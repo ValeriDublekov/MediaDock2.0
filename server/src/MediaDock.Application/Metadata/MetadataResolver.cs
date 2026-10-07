@@ -259,42 +259,73 @@ public sealed class MetadataResolver
             return new(MetadataLookupStatus.ProviderFailure, null, exact.CacheHit, attempts, "no_confident_match");
         }
 
-        if (ranked.Length > 1 && ranked[0].Score - ranked[1].Score < MinimumCandidateMargin)
+        var topScore = ranked[0].Score;
+        var contenders = ranked
+            .Where(candidate => topScore - candidate.Score < MinimumCandidateMargin)
+            .ToArray();
+        var matchingCandidates = new List<MetadataResolution>();
+        var cacheHit = exact.CacheHit;
+        var candidateMismatch = false;
+
+        foreach (var contender in contenders)
         {
-            return new(MetadataLookupStatus.ProviderFailure, null, exact.CacheHit, attempts, "ambiguous_match");
+            var candidate = contender.Candidate;
+            var details = await ResolveAsync(
+                title,
+                ceremonyYear,
+                normalizedSourceType,
+                now,
+                cancellationToken,
+                requestPurpose,
+                candidate.ImdbId);
+            attempts += details.HttpAttempts;
+            cacheHit |= details.CacheHit;
+
+            if (details.Status is MetadataLookupStatus.RequestBudgetExhausted or MetadataLookupStatus.QuotaExceeded)
+            {
+                return details with { CacheHit = cacheHit, HttpAttempts = attempts };
+            }
+
+            if (details.Status == MetadataLookupStatus.ConfirmedNotFound
+                || details.ErrorCode == "imdb_id_mismatch")
+            {
+                candidateMismatch = true;
+                continue;
+            }
+
+            if (details.Status != MetadataLookupStatus.Found || details.Metadata is not { } metadata)
+            {
+                return details with { CacheHit = cacheHit, HttpAttempts = attempts };
+            }
+
+            var returnedId = ImdbIdNormalizer.Normalize(metadata.ImdbId);
+            if (!string.Equals(returnedId, candidate.ImdbId, StringComparison.Ordinal)
+                || !IsPlausibleGoldenGlobeMatch(title, ceremonyYear, normalizedSourceType, metadata))
+            {
+                candidateMismatch = true;
+                continue;
+            }
+
+            if (HasGoldenGlobeAward(metadata))
+            {
+                matchingCandidates.Add(details);
+            }
         }
 
-        var selected = ranked[0].Candidate;
-        var details = await ResolveAsync(
-            title,
-            ceremonyYear,
-            normalizedSourceType,
-            now,
-            cancellationToken,
-            requestPurpose,
-            selected.ImdbId);
-        attempts += details.HttpAttempts;
-
-        if (details.Status != MetadataLookupStatus.Found || details.Metadata is not { } metadata)
+        if (matchingCandidates.Count > 1)
         {
-            return details.Status == MetadataLookupStatus.ConfirmedNotFound
-                || details.ErrorCode == "imdb_id_mismatch"
-                ? new(MetadataLookupStatus.ProviderFailure, null, exact.CacheHit || details.CacheHit, attempts, "candidate_mismatch")
-                : details with { CacheHit = exact.CacheHit || details.CacheHit, HttpAttempts = attempts };
+            return new(MetadataLookupStatus.ProviderFailure, null, cacheHit, attempts, "ambiguous_match");
         }
 
-        var returnedId = ImdbIdNormalizer.Normalize(metadata.ImdbId);
-        if (!string.Equals(returnedId, selected.ImdbId, StringComparison.Ordinal)
-            || !IsPlausibleGoldenGlobeMatch(title, ceremonyYear, normalizedSourceType, metadata))
+        if (matchingCandidates.Count == 0)
         {
-            return new(MetadataLookupStatus.ProviderFailure, null, exact.CacheHit || details.CacheHit, attempts, "candidate_mismatch");
+            var errorCode = contenders.Length == 1 && candidateMismatch
+                ? "candidate_mismatch"
+                : "no_golden_globe_match";
+            return new(MetadataLookupStatus.ProviderFailure, null, cacheHit, attempts, errorCode);
         }
 
-        return details with
-        {
-            CacheHit = exact.CacheHit || details.CacheHit,
-            HttpAttempts = attempts
-        };
+        return matchingCandidates[0] with { CacheHit = cacheHit, HttpAttempts = attempts };
     }
 
     private static void AddCandidates(
@@ -386,6 +417,9 @@ public sealed class MetadataResolver
         return sourceType == "series"
             || metadata.Year is int year && (year == ceremonyYear || year == ceremonyYear - 1);
     }
+
+    private static bool HasGoldenGlobeAward(MetadataDetails metadata) =>
+        metadata.Awards?.Contains("Golden Globe", StringComparison.OrdinalIgnoreCase) == true;
 
     private static decimal TitleSimilarity(string first, string second)
     {

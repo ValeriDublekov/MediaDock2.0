@@ -12,6 +12,8 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
     {
         var candidates = await db.GoldenGlobeNominations.AsNoTracking()
             .Where(x => x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Pending
+                || x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Problem
+                || x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.NotFound
                 || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.TemporaryError
                     && (x.NextEnrichmentAttemptAt == null || x.NextEnrichmentAttemptAt <= now))
                 || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched

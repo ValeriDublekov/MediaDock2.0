@@ -72,7 +72,7 @@ public sealed class GoldenGlobeEnrichmentService(
             }
             else if (resolution.Status == MetadataLookupStatus.ConfirmedNotFound) { status = GoldenGlobeEnrichmentStatuses.NotFound; error = "not_found"; next = null; notFound++; }
             else if (resolution.Status == MetadataLookupStatus.ProviderFailure
-                && resolution.ErrorCode is "ambiguous_match" or "no_confident_match" or "candidate_mismatch")
+                && resolution.ErrorCode is "ambiguous_match" or "no_confident_match" or "candidate_mismatch" or "no_golden_globe_match")
             { status = GoldenGlobeEnrichmentStatuses.Problem; error = resolution.ErrorCode; next = null; problems++; }
             else errors++;
             await repository.SaveOutcomeAsync(candidate.Title, candidate.CeremonyYear, candidate.SourceType, new(status, attempt, attemptedAt, next, error, imdb), cancellationToken);
