@@ -85,7 +85,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         var result = await CreateService(repository, client, now).RunAsync();
 
         Assert.Equal(1, result.Summary.EnrichedTitles);
-        Assert.Equal((null, "series"), Assert.Single(client.Requests));
+        Assert.Equal(((int?)null, "series", null), Assert.Single(client.Requests));
         Assert.Equal("The Crown", Assert.Single(repository.SavedOutcomes).Title);
         Assert.Equal("enriched", Assert.Single(repository.SavedOutcomes).Update.Status);
     }
@@ -105,6 +105,50 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         Assert.Equal(0, result.Summary.AttemptedTitles);
         Assert.Empty(repository.SavedOutcomes);
         Assert.Equal(1, client.Calls);
+    }
+
+    [Fact]
+    public async Task RefreshManualAsyncLooksUpExactIdAndPersistsSuccessfulMetadata()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        var repository = new FakeGoldenGlobeEnrichmentRepository([]);
+        var client = new StubOmdbClient(
+        [new(MetadataLookupStatus.Found, CreateMetadata("Other Display Title", 2018, "tt12345678"), 1)]);
+        var candidate = new GoldenGlobeManualRefreshCandidate("Nomination Title", 2025, "movie", "tt12345678", 3, 0);
+
+        var result = await CreateService(repository, client, now).RefreshManualAsync(candidate);
+
+        Assert.Equal("enriched", result.Status);
+        Assert.True(result.Applied);
+        Assert.Equal(1, result.HttpAttempts);
+        Assert.Equal((2025, "movie", "tt12345678"), Assert.Single(client.Requests));
+        Assert.Equal(candidate, Assert.Single(repository.SavedManualOutcomes).Candidate);
+        Assert.Equal("enriched", repository.SavedManualOutcomes[0].Update.Status);
+        Assert.Equal("tt12345678", repository.SavedManualOutcomes[0].Update.ImdbId);
+    }
+
+    [Fact]
+    public async Task RefreshManualAsyncDoesNotEnrichWhenOmdbReturnsAnotherIdOrType()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        var repository = new FakeGoldenGlobeEnrichmentRepository([]);
+        var mismatchedIdClient = new StubOmdbClient(
+        [new(MetadataLookupStatus.Found, CreateMetadata("Film", 2024, "tt87654321"), 1)]);
+        var candidate = new GoldenGlobeManualRefreshCandidate("Film", 2025, "movie", "tt12345678", 2, 0);
+
+        var mismatchedId = await CreateService(repository, mismatchedIdClient, now).RefreshManualAsync(candidate);
+
+        Assert.Equal("problem", mismatchedId.Status);
+        Assert.Equal("imdb_id_mismatch", mismatchedId.ErrorCode);
+        Assert.Equal("tt12345678", repository.SavedManualOutcomes[0].Update.ImdbId);
+
+        var mismatchedTypeClient = new StubOmdbClient(
+        [new(MetadataLookupStatus.Found, CreateMetadata("Series", 2020, "tt12345678") with { SourceType = "series" }, 1)]);
+        var seriesCandidate = candidate with { SourceType = "movie" };
+        var mismatchedType = await CreateService(repository, mismatchedTypeClient, now).RefreshManualAsync(seriesCandidate);
+
+        Assert.Equal("problem", mismatchedType.Status);
+        Assert.Equal("type_mismatch", mismatchedType.ErrorCode);
     }
 
     private static GoldenGlobeEnrichmentService CreateService(
@@ -139,6 +183,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         IReadOnlyList<GoldenGlobeEnrichmentCandidate> candidates) : IGoldenGlobeEnrichmentRepository
     {
         public List<(string Title, int CeremonyYear, GoldenGlobeEnrichmentUpdate Update)> SavedOutcomes { get; } = [];
+        public List<(GoldenGlobeManualRefreshCandidate Candidate, GoldenGlobeEnrichmentUpdate Update)> SavedManualOutcomes { get; } = [];
 
         public Task<IReadOnlyList<GoldenGlobeEnrichmentCandidate>> GetEligibleCandidatesAsync(
             DateTimeOffset now,
@@ -154,6 +199,15 @@ public sealed class GoldenGlobeEnrichmentServiceTests
             SavedOutcomes.Add((title, ceremonyYear, update));
             return Task.CompletedTask;
         }
+
+        public Task<bool> SaveManualOutcomeAsync(
+            GoldenGlobeManualRefreshCandidate candidate,
+            GoldenGlobeEnrichmentUpdate update,
+            CancellationToken cancellationToken = default)
+        {
+            SavedManualOutcomes.Add((candidate, update));
+            return Task.FromResult(true);
+        }
     }
 
     private sealed class StubOmdbClient(IReadOnlyList<MetadataLookupResult> results) : IOmdbClient
@@ -162,7 +216,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
 
         public int Calls { get; private set; }
         public List<OmdbRequestPurpose> RequestPurposes { get; } = [];
-        public List<(int? Year, string SourceType)> Requests { get; } = [];
+        public List<(int? Year, string SourceType, string? ImdbId)> Requests { get; } = [];
 
         public Task<MetadataLookupResult> LookupAsync(
             string title,
@@ -174,7 +228,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         {
             Calls++;
             RequestPurposes.Add(requestPurpose);
-            Requests.Add((year, sourceType));
+            Requests.Add((year, sourceType, imdbId));
             return Task.FromResult(_results.Dequeue());
         }
     }

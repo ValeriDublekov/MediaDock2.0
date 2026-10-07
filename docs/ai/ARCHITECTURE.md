@@ -81,12 +81,12 @@ For catalog behavior, start with the API endpoint, contract, or service that own
 
 ```mermaid
 flowchart TD
-    ui["Configuration UI"] -->|"RSS scan / Oscar and Golden Globes enrichment / CSV uploads"| routes["BackgroundJobEndpoints"]
+    ui["Configuration UI"] -->|"RSS scan / award enrichment / CSV uploads / manual IMDb refresh"| routes["BackgroundJobEndpoints and GoldenGlobeEndpoints"]
     scheduler["BackgroundJobDispatcher scheduler"] -->|"07:00 / 18:00 Europe/Sofia"| queue[("background_jobs")]
     routes -->|"durable enqueue"| queue
     queue -->|"atomic claim: FOR UPDATE SKIP LOCKED"| dispatcher["BackgroundJobDispatcher"]
     dispatcher --> lock["PostgresAdvisoryScanLock"]
-    lock --> handler["RSS scan / Oscar and Golden Globes enrichment / import handlers"]
+    lock --> handler["RSS scan / award enrichment / import handlers"]
     handler --> app["Application use cases"]
     app --> infra["Infrastructure adapters"]
     infra --> db[("PostgreSQL")]
@@ -122,7 +122,11 @@ or API responses.
 and periodically during processing. New parse logs store their `scan_run_id`;
 older rows remain unassociated. Oscar and Golden Globes enrichment are separate
 manual jobs using the same lock and resolver/cache/shared budget; Golden Globes
-enrichment does not write to RSS history or an enrichment-run audit table. CSV/TSV
+enrichment does not write to RSS history or an enrichment-run audit table. Setting
+a manual Golden Globes IMDb ID commits the exact group pin and targeted refresh
+job atomically; clearing a link invalidates its current version. The dispatcher
+resolves the fixed IMDb ID, persists an ID-keyed cache entry, and applies results
+only if the stored link version still matches; batch enrichment skips manual pins. CSV/TSV
 uploads are bounded bytes stored with queued imports; importers parse them without
 a host path and clear the bytes at terminal state.
 

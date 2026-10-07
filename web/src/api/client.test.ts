@@ -12,6 +12,7 @@ import {
   getCurrentSession,
   getDeploymentStatus,
   getGoldenGlobeFilms,
+  setGoldenGlobeImdbId,
   getMovieAwards,
   getOscarFilm,
   getOscarFilms,
@@ -116,6 +117,20 @@ describe('typed API client', () => {
     const formData = stub.calls[2]?.init?.body as FormData
     expect(formData.get('File')).toBe(file)
     expect(formData.get('YearAfter')).toBe('1980')
+  })
+
+  it('sends manual Golden Globes IMDb link changes as a JSON mutation', async () => {
+    const result = {
+      imdbId: 'tt12345678',
+      refreshJob: { id: 55, status: 'queued', statusUrl: '/api/background-jobs/55' },
+    }
+    const stub = fetchStub(response(200, result))
+
+    await setGoldenGlobeImdbId('2025:movie:A Film', 'tt12345678', stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/golden-globes/imdb-link')
+    expect(stub.calls[0]?.init?.method).toBe('PUT')
+    expect(JSON.parse(String(stub.calls[0]?.init?.body))).toEqual({ filmId: '2025:movie:A Film', imdbId: 'tt12345678' })
   })
 
   it('loads provider settings and sends a write-only key update', async () => {

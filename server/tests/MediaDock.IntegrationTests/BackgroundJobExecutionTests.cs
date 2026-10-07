@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using MediaDock.Api.BackgroundJobs;
+using MediaDock.Api.Common;
+using MediaDock.Api.GoldenGlobes;
 using MediaDock.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -256,6 +258,78 @@ public sealed class BackgroundJobExecutionTests
         Assert.Null(storedJob.InputBytes);
     }
 
+    [Fact]
+    public async Task ApiHostedDispatcherRefreshesManualGoldenGlobeLinkByExactImdbId()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_manual_refresh_execution_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>().UseNpgsql(connectionString).Options;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            db.Settings.Add(new Infrastructure.Persistence.Entities.AppSetting
+            {
+                Id = 1,
+                OmdbApiKey = "synthetic-test-key",
+                OmdbDailyRequestLimit = 10,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+            db.GoldenGlobeNominations.Add(new Infrastructure.Persistence.Entities.GoldenGlobeNomination
+            {
+                ImportKey = "manual-refresh-film",
+                Title = "Manual Refresh Film",
+                Year = 2025,
+                NomineeType = "movie",
+                Award = new Infrastructure.Persistence.Entities.GoldenGlobeAward { Name = "Manual Refresh Award" }
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var handler = new ManualGoldenGlobeOmdbHandler();
+        using var factory = new BackgroundJobsApiFactory(connectionString, handler);
+        using var client = factory.CreateClient();
+        using var acceptedResponse = await client.PutAsJsonAsync("/api/golden-globes/imdb-link", new
+        {
+            filmId = "2025:movie:Manual Refresh Film",
+            imdbId = "TT12345678"
+        });
+        Assert.Equal(HttpStatusCode.OK, acceptedResponse.StatusCode);
+        var accepted = await acceptedResponse.Content.ReadFromJsonAsync<GoldenGlobeImdbLinkResponse>();
+        Assert.NotNull(accepted?.RefreshJob);
+
+        BackgroundJobResponse? completed = null;
+        for (var attempt = 0; attempt < 60; attempt++)
+        {
+            completed = await client.GetFromJsonAsync<BackgroundJobResponse>($"/api/background-jobs/{accepted.RefreshJob.Id}");
+            if (completed?.Status is "succeeded" or "partial" or "failed") break;
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+        }
+
+        Assert.NotNull(completed);
+        Assert.Equal("succeeded", completed.Status);
+        Assert.Contains("&i=tt12345678", Assert.Single(handler.RequestUris).Query);
+        Assert.DoesNotContain("&t=", handler.RequestUris[0].Query);
+
+        await using var verificationDb = new MediaDockDbContext(options);
+        var nomination = await verificationDb.GoldenGlobeNominations.SingleAsync();
+        Assert.Equal("tt12345678", nomination.ImdbId);
+        Assert.True(nomination.IsImdbIdManual);
+        Assert.Equal("enriched", nomination.EnrichmentStatus);
+        var cached = await verificationDb.MetadataCache.SingleAsync();
+        Assert.Equal("tt12345678", cached.LookupIdentity);
+        Assert.Equal("movie", cached.SourceType);
+        var usage = await verificationDb.OmdbDailyUsage.SingleAsync();
+        Assert.Equal(1, usage.TotalRequests);
+        Assert.Equal(0, usage.OscarRequests);
+
+        var catalog = await client.GetFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>("/api/golden-globes?pageSize=100");
+        var film = Assert.Single(catalog!.Items);
+        Assert.True(film.IsImdbIdManual);
+        Assert.Equal("tt12345678", film.ImdbId);
+        Assert.Equal(8.7m, film.ImdbRating);
+    }
+
     private sealed class BackgroundJobsApiFactory(
         string connectionString,
         HttpMessageHandler? messageHandler = null) : WebApplicationFactory<Program>
@@ -290,5 +364,23 @@ public sealed class BackgroundJobExecutionTests
                     {"Response":"True","Title":"The Matrix","Year":"1999","imdbID":"tt0133093","Type":"movie","imdbRating":"8.7","imdbVotes":"1000","Metascore":"73","Genre":"Action, Sci-Fi","Country":"USA","Director":"Example Director","Plot":"Example plot","Poster":"N/A","Runtime":"136 min","Awards":"None","BoxOffice":"$1"}
                     """, Encoding.UTF8, "application/json")
             });
+    }
+
+    private sealed class ManualGoldenGlobeOmdbHandler : HttpMessageHandler
+    {
+        public List<Uri> RequestUris { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            RequestUris.Add(request.RequestUri!);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                    {"Response":"True","Title":"Manual Refresh Film","Year":"2024","imdbID":"tt12345678","Type":"movie","imdbRating":"8.7","imdbVotes":"1000","Metascore":"73","Genre":"Drama","Country":"USA","Director":"Example Director","Plot":"Example plot","Poster":"https://example.test/manual.jpg","Runtime":"100 min","Awards":"None","BoxOffice":"$1"}
+                    """, Encoding.UTF8, "application/json")
+            });
+        }
     }
 }

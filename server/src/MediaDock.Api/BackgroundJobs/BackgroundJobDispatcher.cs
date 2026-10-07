@@ -195,6 +195,11 @@ internal sealed class BackgroundJobDispatcher(
                 await ExecuteGoldenGlobeEnrichmentAsync(services, dbContext, job, stoppingToken);
                 return;
             }
+            if (job.JobType == "golden_globe_manual_refresh")
+            {
+                await ExecuteGoldenGlobeManualRefreshAsync(services, dbContext, job, stoppingToken);
+                return;
+            }
 
             var failedRecheck = IsFailedRecheck(job.ResultSummary);
             await LoadProviderSettingsAsync(services, dbContext, stoppingToken);
@@ -377,6 +382,37 @@ internal sealed class BackgroundJobDispatcher(
         await SetStageAsync(dbContext, job, "golden_globe_enrichment", "Golden Globes enrichment started.", cancellationToken);
         var result = await services.GetRequiredService<GoldenGlobeEnrichmentService>().RunAsync(cancellationToken);
         await CompleteJobAsync(dbContext, job, result.Status, result.Summary, null, CancellationToken.None);
+    }
+
+    private async Task ExecuteGoldenGlobeManualRefreshAsync(
+        IServiceProvider services,
+        MediaDockDbContext dbContext,
+        BackgroundJob job,
+        CancellationToken cancellationToken)
+    {
+        if (job.ResultSummary is null) throw new InvalidDataException("The queued refresh payload is unavailable.");
+        using var payload = JsonDocument.Parse(job.ResultSummary);
+        var root = payload.RootElement;
+        var candidate = new GoldenGlobeManualRefreshCandidate(
+            root.GetProperty("title").GetString() ?? throw new InvalidDataException("The queued refresh title is unavailable."),
+            root.GetProperty("ceremonyYear").GetInt32(),
+            root.GetProperty("sourceType").GetString() ?? throw new InvalidDataException("The queued refresh type is unavailable."),
+            root.GetProperty("imdbId").GetString() ?? throw new InvalidDataException("The queued refresh IMDb ID is unavailable."),
+            root.GetProperty("linkVersion").GetInt32(),
+            root.GetProperty("attemptCount").GetInt32());
+        await LoadProviderSettingsAsync(services, dbContext, cancellationToken);
+        await SetStageAsync(dbContext, job, "golden_globe_manual_refresh", "Manual Golden Globes metadata refresh started.", cancellationToken);
+        var result = await services.GetRequiredService<GoldenGlobeEnrichmentService>()
+            .RefreshManualAsync(candidate, cancellationToken);
+        var status = !result.Applied || result.Status == GoldenGlobeEnrichmentStatuses.Enriched ? "succeeded" : "partial";
+        await CompleteJobAsync(dbContext, job, status, new
+        {
+            result.ImdbId,
+            outcome = result.Applied ? result.Status : "superseded",
+            errorCode = result.ErrorCode,
+            result.HttpAttempts,
+            result.CacheHit
+        }, null, CancellationToken.None);
     }
 
     private async Task ExecuteOscarImportAsync(

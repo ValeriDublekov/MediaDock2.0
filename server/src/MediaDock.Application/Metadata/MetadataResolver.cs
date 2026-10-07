@@ -80,7 +80,8 @@ public sealed class MetadataResolver
                 result.Metadata,
                 now,
                 FoundTtl,
-                cancellationToken);
+                cancellationToken,
+                normalizedImdbId);
         }
         else if (result.Status == MetadataLookupStatus.ConfirmedNotFound)
         {
@@ -94,7 +95,8 @@ public sealed class MetadataResolver
                 null,
                 now,
                 NotFoundTtl,
-                cancellationToken);
+                cancellationToken,
+                normalizedImdbId);
         }
         else if (result.Status == MetadataLookupStatus.Found)
         {
@@ -150,7 +152,8 @@ public sealed class MetadataResolver
         MetadataDetails? metadata,
         DateTimeOffset now,
         TimeSpan ttl,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? lookupIdentity = null)
     {
         await _cache.StoreAsync(
             cacheKey,
@@ -162,7 +165,8 @@ public sealed class MetadataResolver
                 status,
                 metadata,
                 now,
-                now.Add(ttl)),
+                now.Add(ttl),
+                lookupIdentity),
             cancellationToken);
     }
 

@@ -107,6 +107,79 @@ public sealed class GoldenGlobeApiTests
         Assert.Equal(HttpStatusCode.BadRequest, invalidRangeResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task ManualImdbLinkNormalizesQueuesIdempotentlyAndClearsByExactFilmGroup()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_manual_link_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>().UseNpgsql(connectionString).Options;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            db.GoldenGlobeNominations.AddRange(
+                CreateNomination("manual-pending", "A: Film", 2025, false, null, new GoldenGlobeAward { Name = "Manual Award 1" }),
+                CreateNomination("manual-enriched", "A: Film", 2025, false, null, new GoldenGlobeAward { Name = "Manual Award 2" }, "enriched"),
+                CreateNomination("manual-problem", "A: Film", 2025, false, null, new GoldenGlobeAward { Name = "Manual Award 3" }, "problem"),
+                CreateNomination("manual-not-found", "A: Film", 2025, false, null, new GoldenGlobeAward { Name = "Manual Award 4" }, "not_found"),
+                CreateNomination("manual-temporary", "A: Film", 2025, false, null, new GoldenGlobeAward { Name = "Manual Award 5" }, "temporary_error"),
+                CreateNomination("manual-other-year", "A: Film", 2024, false, null, new GoldenGlobeAward { Name = "Manual Other Year" }),
+                CreateNomination("manual-series", "A: Film", 2025, false, null, new GoldenGlobeAward { Name = "Manual Series" }, nomineeType: "series"));
+            await db.SaveChangesAsync();
+        }
+
+        using var factory = new GoldenGlobesApiFactory(connectionString);
+        using var client = factory.CreateClient();
+        var request = new { filmId = "2025:movie:A: Film", imdbId = " TT12345678 " };
+        using var invalidIdResponse = await client.PutAsJsonAsync("/api/golden-globes/imdb-link", new { filmId = request.filmId, imdbId = "tt123" });
+        Assert.Equal(HttpStatusCode.BadRequest, invalidIdResponse.StatusCode);
+        using var firstResponse = await client.PutAsJsonAsync("/api/golden-globes/imdb-link", request);
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        var first = await firstResponse.Content.ReadFromJsonAsync<GoldenGlobeImdbLinkResponse>();
+        Assert.NotNull(first);
+        Assert.Equal("tt12345678", first.ImdbId);
+        Assert.NotNull(first.RefreshJob);
+        Assert.Equal("queued", first.RefreshJob.Status);
+
+        using var duplicateResponse = await client.PutAsJsonAsync("/api/golden-globes/imdb-link", request);
+        var duplicate = await duplicateResponse.Content.ReadFromJsonAsync<GoldenGlobeImdbLinkResponse>();
+        Assert.NotNull(duplicate);
+        Assert.Equal(first.RefreshJob.Id, duplicate.RefreshJob?.Id);
+
+        await using (var db = new MediaDockDbContext(options))
+        {
+            var targetRows = await db.GoldenGlobeNominations.Where(row => row.Title == "A: Film" && row.Year == 2025 && row.NomineeType == "movie").ToListAsync();
+            Assert.Equal(5, targetRows.Count);
+            Assert.All(targetRows, row =>
+            {
+                Assert.Equal("tt12345678", row.ImdbId);
+                Assert.True(row.IsImdbIdManual);
+                Assert.Equal(1, row.ImdbIdVersion);
+                Assert.Equal("pending", row.EnrichmentStatus);
+            });
+            Assert.Equal(1, await db.BackgroundJobs.CountAsync(job => job.JobType == "golden_globe_manual_refresh"));
+            Assert.Contains("tt12345678", (await db.BackgroundJobs.SingleAsync(job => job.Id == first.RefreshJob.Id)).ResultSummary!);
+
+            using var clearResponse = await client.PutAsJsonAsync("/api/golden-globes/imdb-link", new { filmId = request.filmId, imdbId = (string?)null });
+            Assert.Equal(HttpStatusCode.OK, clearResponse.StatusCode);
+            var cleared = await clearResponse.Content.ReadFromJsonAsync<GoldenGlobeImdbLinkResponse>();
+            Assert.NotNull(cleared);
+            Assert.Null(cleared.ImdbId);
+            Assert.Null(cleared.RefreshJob);
+        }
+
+        await using var verifyDb = new MediaDockDbContext(options);
+        var clearedRows = await verifyDb.GoldenGlobeNominations.Where(row => row.Title == "A: Film" && row.Year == 2025 && row.NomineeType == "movie").ToListAsync();
+        Assert.All(clearedRows, row =>
+        {
+            Assert.Null(row.ImdbId);
+            Assert.False(row.IsImdbIdManual);
+            Assert.Equal(2, row.ImdbIdVersion);
+        });
+        Assert.Null((await verifyDb.GoldenGlobeNominations.SingleAsync(row => row.ImportKey == "manual-other-year")).ImdbId);
+        Assert.Null((await verifyDb.GoldenGlobeNominations.SingleAsync(row => row.ImportKey == "manual-series")).ImdbId);
+    }
+
     private static GoldenGlobeNomination CreateNomination(
         string importKey,
         string title,

@@ -46,11 +46,16 @@ public sealed class GoldenGlobeDatasetImporterTests
         var preservedNomination = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "A Film, Extended");
         preservedNomination.EnrichmentStatus = "enriched";
         preservedNomination.EnrichmentAttemptCount = 1;
+        preservedNomination.ImdbId = "tt12345678";
+        preservedNomination.IsImdbIdManual = true;
+        preservedNomination.ImdbIdVersion = 2;
         var legacySeriesNomination = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "Series Title");
         legacySeriesNomination.NomineeType = "movie";
         legacySeriesNomination.EnrichmentStatus = "not_found";
         legacySeriesNomination.EnrichmentAttemptCount = 1;
         legacySeriesNomination.ImdbId = "tt00000001";
+        legacySeriesNomination.IsImdbIdManual = true;
+        legacySeriesNomination.ImdbIdVersion = 2;
         await db.SaveChangesAsync();
 
         var repeatedImport = await importer.ImportAsync(Encoding.UTF8.GetBytes(csv));
@@ -61,12 +66,18 @@ public sealed class GoldenGlobeDatasetImporterTests
         Assert.Equal(0, tsvImport.AwardsCreated);
         Assert.Equal(1, tsvImport.NominationsCreated);
         Assert.Equal(3, await db.GoldenGlobeNominations.CountAsync());
-        Assert.Equal("enriched", (await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "A Film, Extended")).EnrichmentStatus);
+        var preservedAfterReimport = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "A Film, Extended");
+        Assert.Equal("enriched", preservedAfterReimport.EnrichmentStatus);
+        Assert.Equal("tt12345678", preservedAfterReimport.ImdbId);
+        Assert.True(preservedAfterReimport.IsImdbIdManual);
+        Assert.Equal(2, preservedAfterReimport.ImdbIdVersion);
         var reclassifiedSeries = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "Series Title");
         Assert.Equal("series", reclassifiedSeries.NomineeType);
         Assert.Equal("pending", reclassifiedSeries.EnrichmentStatus);
         Assert.Equal(0, reclassifiedSeries.EnrichmentAttemptCount);
         Assert.Null(reclassifiedSeries.ImdbId);
+        Assert.False(reclassifiedSeries.IsImdbIdManual);
+        Assert.Equal(3, reclassifiedSeries.ImdbIdVersion);
         Assert.True((await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "TSV Film")).Winner);
     }
 }

@@ -97,7 +97,8 @@ public sealed record MetadataCacheValue(
     MetadataLookupStatus Status,
     MetadataDetails? Metadata,
     DateTimeOffset FetchedAt,
-    DateTimeOffset ExpiresAt);
+    DateTimeOffset ExpiresAt,
+    string? LookupIdentity = null);
 
 public interface IMetadataCacheStore
 {
@@ -107,6 +108,11 @@ public interface IMetadataCacheStore
 
     async Task<MetadataCacheValue?> GetByTitleAsync(
         string normalizedTitle,
+        string sourceType,
+        CancellationToken cancellationToken = default) => null;
+
+    async Task<MetadataCacheValue?> GetByImdbIdAsync(
+        string imdbId,
         string sourceType,
         CancellationToken cancellationToken = default) => null;
 

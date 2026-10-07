@@ -68,6 +68,8 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
                     existingNomination.NextEnrichmentAttemptAt = null;
                     existingNomination.LastEnrichmentError = null;
                     existingNomination.ImdbId = null;
+                    existingNomination.IsImdbIdManual = false;
+                    existingNomination.ImdbIdVersion++;
                 }
 
                 continue;

@@ -94,6 +94,34 @@ public sealed class PostgresMetadataCacheStore(MediaDockDbContext dbContext) : I
             MetadataLookupStatus.Found, metadata, entity.FetchedAt, entity.ExpiresAt);
     }
 
+    public async Task<MetadataCacheValue?> GetByImdbIdAsync(
+        string imdbId,
+        string sourceType,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedImdbId = ImdbIdNormalizer.Normalize(imdbId);
+        if (normalizedImdbId is null) return null;
+        var entity = await dbContext.MetadataCache
+            .Where(entry => entry.LookupIdentity == normalizedImdbId
+                && entry.SourceType == sourceType
+                && entry.Status == "found"
+                && entry.ExpiresAt > DateTimeOffset.UtcNow)
+            .OrderByDescending(entry => entry.FetchedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (entity?.PayloadJson is null) return null;
+        var metadata = JsonSerializer.Deserialize<MetadataDetails>(entity.PayloadJson);
+        return metadata is null ? null : new MetadataCacheValue(
+            entity.LookupTitle,
+            entity.LookupYear,
+            entity.LookupYearSemantics,
+            entity.SourceType,
+            MetadataLookupStatus.Found,
+            metadata,
+            entity.FetchedAt,
+            entity.ExpiresAt,
+            entity.LookupIdentity);
+    }
+
     public async Task StoreAsync(
         string cacheKey,
         MetadataCacheValue value,
@@ -116,6 +144,7 @@ public sealed class PostgresMetadataCacheStore(MediaDockDbContext dbContext) : I
         entity.LookupYear = value.LookupYear;
         entity.LookupYearSemantics = value.LookupYearSemantics;
         entity.SourceType = value.SourceType;
+        entity.LookupIdentity = value.LookupIdentity;
         entity.Status = value.Status == MetadataLookupStatus.Found ? "found" : "confirmed_not_found";
         entity.PayloadJson = value.Metadata is null ? null : JsonSerializer.Serialize(value.Metadata);
         entity.FetchedAt = value.FetchedAt;

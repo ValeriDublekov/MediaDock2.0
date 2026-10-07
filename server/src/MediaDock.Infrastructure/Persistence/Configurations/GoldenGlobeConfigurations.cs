@@ -41,6 +41,8 @@ internal sealed class GoldenGlobeNominationConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.Title).HasColumnName("title").HasMaxLength(1000).IsRequired();
         builder.Property(x => x.NomineeType).HasColumnName("nominee_type").HasMaxLength(16).IsRequired();
         builder.Property(x => x.ImdbId).HasColumnName("imdb_id").HasMaxLength(32);
+        builder.Property(x => x.IsImdbIdManual).HasColumnName("is_imdb_id_manual").HasDefaultValue(false).IsRequired();
+        builder.Property(x => x.ImdbIdVersion).HasColumnName("imdb_id_version").HasDefaultValue(0).IsRequired();
         builder.Property(x => x.EnrichmentStatus).HasColumnName("enrichment_status").HasMaxLength(24).IsRequired();
         builder.Property(x => x.EnrichmentAttemptCount).HasColumnName("enrichment_attempt_count");
         builder.Property(x => x.LastEnrichmentAttemptAt).HasColumnName("last_enrichment_attempt_at");

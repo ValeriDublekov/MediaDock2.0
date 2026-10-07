@@ -46,6 +46,7 @@ function jobLabel(job: BackgroundJob): string {
   if (job.jobType === 'oscar_enrichment') return 'Oscar film metadata'
   if (job.jobType === 'golden_globe_import') return 'Golden Globes dataset import'
   if (job.jobType === 'golden_globe_enrichment') return 'Golden Globes film metadata'
+  if (job.jobType === 'golden_globe_manual_refresh') return 'Manual Golden Globes metadata refresh'
   return 'Oscar dataset import'
 }
 

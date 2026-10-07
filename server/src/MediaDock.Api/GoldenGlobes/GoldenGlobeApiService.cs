@@ -1,19 +1,23 @@
 using MediaDock.Api.Common;
+using MediaDock.Api.BackgroundJobs;
 using MediaDock.Api.Middleware;
 using MediaDock.Application.GoldenGlobes;
 using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace MediaDock.Api.GoldenGlobes;
 
 internal interface IGoldenGlobeApiService
 {
     Task<PageResponse<GoldenGlobeFilmResponse>> GetFilmsAsync(GoldenGlobeCatalogQuery query, CancellationToken cancellationToken);
+    Task<GoldenGlobeImdbLinkResponse> SetImdbIdAsync(GoldenGlobeImdbLinkRequest request, CancellationToken cancellationToken);
 }
 
-internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetadataCacheStore metadataCacheStore) : IGoldenGlobeApiService
+internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetadataCacheStore metadataCacheStore, TimeProvider timeProvider) : IGoldenGlobeApiService
 {
     public async Task<PageResponse<GoldenGlobeFilmResponse>> GetFilmsAsync(GoldenGlobeCatalogQuery query, CancellationToken cancellationToken)
     {
@@ -37,6 +41,7 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
             .Select(group => new GoldenGlobeFilmResponse(
                 $"{group.Key.Year}:{group.Key.NomineeType}:{group.Key.Title}", group.Key.Title, group.Key.Year, group.Key.NomineeType,
                 group.Select(x => x.ImdbId).FirstOrDefault(x => x != null),
+                group.Any(x => x.IsImdbIdManual),
                 null, null,
                 GetEnrichmentStatus(group.Select(x => x.EnrichmentStatus)),
                 group.Select(x => x.LastEnrichmentError).FirstOrDefault(x => x != null),
@@ -55,15 +60,153 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
                 continue;
             }
 
-            var metadata = await metadataCacheStore.GetByTitleAsync(NormalizeTitle(film.Title), "movie", cancellationToken);
+            var metadata = film.IsImdbIdManual
+                ? await metadataCacheStore.GetByImdbIdAsync(film.ImdbId!, film.NomineeType, cancellationToken)
+                : await metadataCacheStore.GetByTitleAsync(NormalizeTitle(film.Title), film.NomineeType, cancellationToken);
             var details = metadata?.Metadata is { } candidate
-                && ImdbIdNormalizer.IsCompatible(film.ImdbId, candidate.ImdbId)
+                && string.Equals(ImdbIdNormalizer.Normalize(film.ImdbId), ImdbIdNormalizer.Normalize(candidate.ImdbId), StringComparison.Ordinal)
+                && string.Equals(film.NomineeType, candidate.SourceType, StringComparison.Ordinal)
                     ? candidate
                     : null;
             items.Add(film with { PosterUrl = details?.PosterUrl, ImdbRating = details?.ImdbRating });
         }
 
         return new PageResponse<GoldenGlobeFilmResponse>(items, page, pageSize, filteredGroups.Length, filteredGroups.Length == 0 ? 0 : (filteredGroups.Length + pageSize - 1) / pageSize);
+    }
+
+    public async Task<GoldenGlobeImdbLinkResponse> SetImdbIdAsync(
+        GoldenGlobeImdbLinkRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (title, ceremonyYear, sourceType) = ParseFilmId(request.FilmId);
+        var imdbId = string.IsNullOrWhiteSpace(request.ImdbId) ? null : request.ImdbId.Trim().ToLowerInvariant();
+        if (imdbId is not null && !Regex.IsMatch(imdbId, "^tt[0-9]{7,10}$", RegexOptions.CultureInvariant))
+            throw new ApiValidationException(new Dictionary<string, string[]> { [nameof(request.ImdbId)] = ["IMDb ID must contain tt followed by 7 to 10 digits."] });
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock(hashtextextended({request.FilmId}, 0))",
+            cancellationToken);
+        var rows = await dbContext.GoldenGlobeNominations
+            .Where(row => row.Title == title && row.Year == ceremonyYear && row.NomineeType == sourceType)
+            .ToListAsync(cancellationToken);
+        if (rows.Count == 0) throw new ApiNotFoundException("Golden Globes film group not found.");
+
+        if (imdbId is null)
+        {
+            var version = checked(rows.Max(row => row.ImdbIdVersion) + 1);
+            foreach (var row in rows)
+            {
+                row.ImdbId = null;
+                row.IsImdbIdManual = false;
+                row.ImdbIdVersion = version;
+                ResetEnrichment(row);
+            }
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return new(null, null);
+        }
+
+        var sameManualLink = rows.All(row => row.IsImdbIdManual && row.ImdbId == imdbId);
+        var linkVersion = sameManualLink ? rows.Max(row => row.ImdbIdVersion) : checked(rows.Max(row => row.ImdbIdVersion) + 1);
+        if (!sameManualLink)
+        {
+            foreach (var row in rows)
+            {
+                row.ImdbId = imdbId;
+                row.IsImdbIdManual = true;
+                row.ImdbIdVersion = linkVersion;
+                ResetEnrichment(row);
+            }
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        var payload = new
+        {
+            filmId = request.FilmId,
+            title,
+            ceremonyYear,
+            sourceType,
+            imdbId,
+            linkVersion,
+            attemptCount = rows.Max(row => row.EnrichmentAttemptCount)
+        };
+        var activeJobs = await dbContext.BackgroundJobs
+            .Where(job => job.JobType == "golden_globe_manual_refresh" && (job.Status == "queued" || job.Status == "running"))
+            .OrderByDescending(job => job.EnqueuedAt)
+            .ToListAsync(cancellationToken);
+        var matchingJob = activeJobs.FirstOrDefault(job => JobTargets(job.ResultSummary, request.FilmId, imdbId, linkVersion));
+        if (matchingJob is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+            return new(imdbId, ToAcceptedJob(matchingJob));
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var job = new BackgroundJob
+        {
+            JobType = "golden_globe_manual_refresh",
+            Trigger = "manual",
+            Status = "queued",
+            EnqueuedAt = now,
+            CurrentStage = "queued",
+            ResultSummary = JsonSerializer.Serialize(payload)
+        };
+        job.Events.Add(new BackgroundJobEvent
+        {
+            OccurredAt = now,
+            Level = "information",
+            EventCode = "job_queued",
+            Message = "Manual Golden Globes metadata refresh queued."
+        });
+        dbContext.BackgroundJobs.Add(job);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return new(imdbId, ToAcceptedJob(job));
+    }
+
+    private static (string Title, int CeremonyYear, string SourceType) ParseFilmId(string? filmId)
+    {
+        var parts = (filmId ?? string.Empty).Split(':', 3);
+        if (parts.Length != 3
+            || !int.TryParse(parts[0], out var year)
+            || year is < 1800 or > 2200
+            || parts[1] is not ("movie" or "series")
+            || string.IsNullOrWhiteSpace(parts[2]))
+            throw new ApiValidationException(new Dictionary<string, string[]> { ["filmId"] = ["FilmId must identify a valid Golden Globes group."] });
+        return (parts[2], year, parts[1]);
+    }
+
+    private static void ResetEnrichment(GoldenGlobeNomination row)
+    {
+        row.EnrichmentStatus = GoldenGlobeEnrichmentStatuses.Pending;
+        row.EnrichmentAttemptCount = 0;
+        row.LastEnrichmentAttemptAt = null;
+        row.NextEnrichmentAttemptAt = null;
+        row.LastEnrichmentError = null;
+    }
+
+    private static bool JobTargets(string? payload, string filmId, string imdbId, int version)
+    {
+        if (payload is null) return false;
+        try
+        {
+            using var document = JsonDocument.Parse(payload);
+            var root = document.RootElement;
+            return root.GetProperty("filmId").GetString() == filmId
+                && root.GetProperty("imdbId").GetString() == imdbId
+                && root.GetProperty("linkVersion").GetInt32() == version;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static BackgroundJobAcceptedResponse ToAcceptedJob(BackgroundJob job)
+    {
+        var statusUrl = $"/api/background-jobs/{job.Id}";
+        return new(job.Id, job.Status, statusUrl);
     }
 
     private static string GetEnrichmentStatus(IEnumerable<string> statuses)

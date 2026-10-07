@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { getGoldenGlobeFilms } from '../../api/client'
 import type { GoldenGlobeCatalogQuery, GoldenGlobeEnrichmentStatus, GoldenGlobeFilm, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
@@ -69,6 +69,11 @@ export function GoldenGlobeCatalogView() {
   function apply(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setLoading(true); setError(null); setPage(1); setApplied({ ...draft }) }
   function clear() { setLoading(true); setError(null); setDraft(emptyFilters); setApplied(emptyFilters); setPage(1) }
   function refresh() { setLoading(true); setError(null); setAttempt((value) => value + 1) }
+  const refreshFilm = useCallback(async (filmId: string) => {
+    const response = await getGoldenGlobeFilms(queryFor(page, applied))
+    setResult(response)
+    return response.items.find((item) => item.filmId === filmId)
+  }, [applied, page])
   function update(key: keyof Filters, value: string) { setDraft((current) => ({ ...current, [key]: value })) }
 
   return <section aria-label="Golden Globes catalog" className="media-view">
@@ -111,6 +116,7 @@ export function GoldenGlobeCatalogView() {
       awards={combineMovieAwards(getGoldenGlobeRecognitions(selectedFilm), pageAwards, selectedFilm.imdbId)}
       film={selectedFilm}
       onClose={() => setSelectedFilm(null)}
+      onUpdated={refreshFilm}
     />}
   </section>
 }

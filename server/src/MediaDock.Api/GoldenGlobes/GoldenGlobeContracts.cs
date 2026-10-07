@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using MediaDock.Api.BackgroundJobs;
 
 namespace MediaDock.Api.GoldenGlobes;
 
@@ -14,12 +15,21 @@ public sealed record GoldenGlobeCatalogQuery
     [RegularExpression("^(pending|enriched|problem|not_found|temporary_error)$")] public string? EnrichmentStatus { get; init; }
 }
 
+public sealed record GoldenGlobeImdbLinkRequest
+{
+    [Required, MaxLength(1200)] public string FilmId { get; init; } = string.Empty;
+    [MaxLength(32)] public string? ImdbId { get; init; }
+}
+
+public sealed record GoldenGlobeImdbLinkResponse(string? ImdbId, BackgroundJobAcceptedResponse? RefreshJob);
+
 public sealed record GoldenGlobeFilmResponse(
     string FilmId,
     string Title,
     int Year,
     string NomineeType,
     string? ImdbId,
+    bool IsImdbIdManual,
     decimal? ImdbRating,
     string? PosterUrl,
     string? EnrichmentStatus,

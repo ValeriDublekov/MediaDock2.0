@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getGoldenGlobeFilms, getMovieAwards } from '../../api/client'
+import { getBackgroundJob, getGoldenGlobeFilms, getMovieAwards, setGoldenGlobeImdbId } from '../../api/client'
 import type { GoldenGlobeFilm, MovieAwardRecognition, PageResponse } from '../../api/types'
 import { GoldenGlobeCatalogView } from './GoldenGlobeCatalogView'
 
-vi.mock('../../api/client', () => ({ getGoldenGlobeFilms: vi.fn(), getMovieAwards: vi.fn().mockResolvedValue([]) }))
+vi.mock('../../api/client', () => ({ getBackgroundJob: vi.fn(), getGoldenGlobeFilms: vi.fn(), getMovieAwards: vi.fn().mockResolvedValue([]), setGoldenGlobeImdbId: vi.fn() }))
 
 const film: GoldenGlobeFilm = {
   filmId: '2025:movie:A Film',
@@ -12,6 +12,7 @@ const film: GoldenGlobeFilm = {
   year: 2025,
   nomineeType: 'movie',
   imdbId: null,
+  isImdbIdManual: false,
   imdbRating: null,
   posterUrl: 'https://example.test/a-film.jpg',
   enrichmentStatus: 'pending',
@@ -31,6 +32,8 @@ describe('GoldenGlobeCatalogView', () => {
   beforeEach(() => {
     vi.mocked(getGoldenGlobeFilms).mockReset().mockResolvedValue(page)
     vi.mocked(getMovieAwards).mockReset().mockResolvedValue([])
+    vi.mocked(getBackgroundJob).mockReset()
+    vi.mocked(setGoldenGlobeImdbId).mockReset()
   })
 
   afterEach(() => cleanup())
@@ -110,6 +113,70 @@ describe('GoldenGlobeCatalogView', () => {
     expect(within(dialog).getByText('Ceremony year 2025')).toBeTruthy()
     expect(within(dialog).getByRole('link', { name: 'Open A Film on IMDb (opens in new tab)' }).textContent).toContain('7.4')
     expect(within(dialog).getAllByText('Best Picture')).toHaveLength(2)
+  })
+
+  it('sets a manual IMDb ID and reports the targeted refresh completion', async () => {
+    vi.mocked(setGoldenGlobeImdbId).mockResolvedValue({
+      imdbId: 'tt12345678',
+      refreshJob: { id: 71, status: 'queued', statusUrl: '/api/background-jobs/71' },
+    })
+    vi.mocked(getBackgroundJob).mockResolvedValue({
+      id: 71,
+      jobType: 'golden_globe_manual_refresh',
+      trigger: 'manual',
+      status: 'succeeded',
+      enqueuedAt: '2026-10-07T10:00:00Z',
+      startedAt: '2026-10-07T10:00:01Z',
+      finishedAt: '2026-10-07T10:00:02Z',
+      currentStage: 'succeeded',
+      currentSource: null,
+      progressUpdatedAt: '2026-10-07T10:00:02Z',
+      errorCode: null,
+      resultSummary: { outcome: 'enriched', imdbId: 'tt12345678' },
+      scanRunId: null,
+      inputFileName: null,
+    })
+
+    render(<GoldenGlobeCatalogView />)
+    fireEvent.click(await screen.findByRole('button', { name: 'View A Film details' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('IMDb ID'), { target: { value: 'TT12345678' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save and refresh' }))
+
+    await waitFor(() => expect(setGoldenGlobeImdbId).toHaveBeenCalledWith('2025:movie:A Film', 'tt12345678'))
+    expect(await within(dialog).findByText('Metadata refresh queued.')).toBeTruthy()
+    expect(await within(dialog).findByText('Metadata refresh complete.', {}, { timeout: 3000 })).toBeTruthy()
+    expect(getBackgroundJob).toHaveBeenCalledWith(71)
+  })
+
+  it('confirms before replacing an existing manual IMDb link', async () => {
+    const linkedFilm = { ...film, imdbId: 'tt12345678', isImdbIdManual: true }
+    vi.mocked(getGoldenGlobeFilms).mockResolvedValue({ ...page, items: [linkedFilm] })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(<GoldenGlobeCatalogView />)
+    fireEvent.click(await screen.findByRole('button', { name: 'View A Film details' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByLabelText('IMDb ID'), { target: { value: 'tt87654321' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save and refresh' }))
+
+    expect(confirm).toHaveBeenCalledWith('Replace the linked IMDb ID? Metadata linked to the current ID will be replaced.')
+    expect(setGoldenGlobeImdbId).not.toHaveBeenCalled()
+    confirm.mockRestore()
+  })
+
+  it('requeues a refresh when retrying the same manual IMDb ID', async () => {
+    const linkedFilm = { ...film, imdbId: 'tt12345678', isImdbIdManual: true, enrichmentStatus: 'temporary_error' as const }
+    vi.mocked(getGoldenGlobeFilms).mockResolvedValue({ ...page, items: [linkedFilm] })
+    vi.mocked(setGoldenGlobeImdbId).mockResolvedValue({
+      imdbId: 'tt12345678',
+      refreshJob: { id: 72, status: 'queued', statusUrl: '/api/background-jobs/72' },
+    })
+    render(<GoldenGlobeCatalogView />)
+    fireEvent.click(await screen.findByRole('button', { name: 'View A Film details' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save and refresh' }))
+
+    await waitFor(() => expect(setGoldenGlobeImdbId).toHaveBeenCalledWith('2025:movie:A Film', 'tt12345678'))
   })
 
   it('explains not-found and temporary provider errors', async () => {

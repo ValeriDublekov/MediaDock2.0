@@ -114,6 +114,7 @@ export interface GoldenGlobeFilm {
   year: number
   nomineeType: 'movie' | 'series'
   imdbId: string | null
+  isImdbIdManual: boolean
   imdbRating: number | null
   posterUrl: string | null
   enrichmentStatus: OscarEnrichmentStatus
@@ -391,7 +392,7 @@ export type BackgroundJobStatus = 'queued' | 'running' | 'succeeded' | 'partial'
 
 export interface BackgroundJob {
   id: number
-  jobType: 'rss_scan' | 'oscar_import' | 'golden_globe_import' | 'oscar_enrichment' | 'golden_globe_enrichment'
+  jobType: 'rss_scan' | 'oscar_import' | 'golden_globe_import' | 'oscar_enrichment' | 'golden_globe_enrichment' | 'golden_globe_manual_refresh'
   trigger: 'manual' | 'schedule'
   status: BackgroundJobStatus
   enqueuedAt: string
@@ -410,6 +411,11 @@ export interface BackgroundJobAccepted {
   id: number
   status: BackgroundJobStatus
   statusUrl: string
+}
+
+export interface GoldenGlobeImdbLinkResult {
+  imdbId: string | null
+  refreshJob: BackgroundJobAccepted | null
 }
 
 export interface BackgroundJobEvent {

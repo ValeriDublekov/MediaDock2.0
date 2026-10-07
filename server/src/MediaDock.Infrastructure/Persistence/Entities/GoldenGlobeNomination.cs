@@ -10,6 +10,8 @@ public sealed class GoldenGlobeNomination
     public string Title { get; set; } = string.Empty;
     public string NomineeType { get; set; } = "movie";
     public string? ImdbId { get; set; }
+    public bool IsImdbIdManual { get; set; }
+    public int ImdbIdVersion { get; set; }
     public string EnrichmentStatus { get; set; } = "pending";
     public int EnrichmentAttemptCount { get; set; }
     public DateTimeOffset? LastEnrichmentAttemptAt { get; set; }

@@ -1,6 +1,6 @@
 # План: Golden Globes enrichment и ръчно IMDb свързване
 
-**Статус:** планирано; описаните промени не са реализирани  
+**Статус:** Phase B реализирана; останалите етапи са планирани
 **Последна редакция:** 2026-10-07
 
 ## Цел
@@ -10,11 +10,11 @@
 ## Текущо поведение и установени пропуски
 
 - Импортът пази номинациите отделно от каноничните `titles`; типът на номинацията се нормализира до `movie` или `series`.
-- Enrichment-ът обработва групи `(заглавие, церемониална година, тип)`, но Golden Globes API в момента групира само по `(заглавие, година)`. Един идентификатор на филм трябва последователно да обозначава една и съща група и в API, и при запис.
+- Enrichment, API и UI групират по `(церемониална година, заглавие, тип)` и API връща стабилен `filmId` за тази група.
 - Автоматичният lookup използва OMDb `t=` без година. `and` и `&` не се нормализират като еквивалентни варианти. Ако OMDb върне филм от несъвпадаща година, проверката става след lookup и резултатът се маркира `problem`.
-- Сериалът се търси с тип `series`, но Golden Globes API чете metadata cache с тип `movie`. Това може да скрие рейтинг и постер при намерен сериал като `Abbott Elementary`.
+- Catalog metadata се чете с реалния nominee type; ръчните връзки четат cache по точен IMDb ID и тип.
 - Текущият service задава `enriched` само при валиден IMDb ID, но няма invariant/test за вече записан или импортнат ред в състояние `enriched` без ID.
-- Golden Globes API е read-only; каталогът не предлага задаване, смяна или изчистване на IMDb ID.
+- Детайлният каталог позволява задаване, смяна и изчистване на manual IMDb ID; задаването атомарно създава target-specific refresh job, а link version обезсилва остарели резултати.
 
 ## Предложен обхват
 
@@ -62,7 +62,7 @@
 ## Етапи
 
 - [ ] **A. Групова идентичност и cache fix:** уеднаквяване на ключа `(година, заглавие, тип)`, поправка за сериалния cache lookup и тестове за IMDb ID срещу липсващ рейтинг/poster.
-- [ ] **B. Ръчно свързване:** persistence за manual pin, валидиран API mutation, durable target-specific refresh, UI за задаване/смяна/изчистване и защита от остарял job резултат.
+- [x] **B. Ръчно свързване:** persistence за manual pin, валидиран API mutation, durable target-specific refresh, UI за задаване/смяна/изчистване и защита от остарял job резултат.
 - [ ] **C. OMDb Search fallback:** multi-result DTO/client, кандидатско оценяване, type/year проверки, нееднозначен резултат без автоматично свързване и budget accounting.
 - [ ] **D. Съществуващи данни и acceptance:** отчет за `enriched` без ID, безопасна повторна обработка, regression tests, миграция и операторска проверка с `Abbott Elementary`, `and`/`&`, омоними/години и movie/series.
 
@@ -75,6 +75,13 @@
 - `Abbott Elementary` търси и чете metadata като `series`; пропуснат рейтинг от OMDb не скрива наличния IMDb ID.
 - Title normalization намира варианти `and`/`&`; автоматичното обогатяване избира правилна година, а при двусмислие не избира произволен кандидат.
 - Всички реални OMDb заявки са отчетени в общия дневен budget; тестовете за API/UI, repository, enrichment и dispatcher минават през `python -B scripts/run_tests.py <suite>` според [testing guide](TESTING.md). Интеграционните тестове използват наличния Docker setup.
+
+## Handoff: Phase B (2026-10-07)
+
+- Реализирани са manual pin, exact-ID OMDb refresh, atomic job enqueue, ID-keyed metadata cache projection, UI status polling и version guard за остарели резултати.
+- Повторна заявка за същите група/ID използва активната задача. Смяна и изчистване увеличават версията; type correction премахва manual pin.
+- Проверки: `python -B scripts/run_tests.py server-unit --filter "Category=GoldenGlobes"`, `python -B scripts/run_tests.py server-integration --filter "FullyQualifiedName~GoldenGlobe"` и `python -B scripts/run_tests.py web`.
+- Следваща отправна точка: Phase C, OMDb Search fallback и безопасно оценяване на кандидати.
 
 ## Проектни отправни точки
 

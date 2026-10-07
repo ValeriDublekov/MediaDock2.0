@@ -16,6 +16,7 @@ import type {
   OscarFilm,
   GoldenGlobeCatalogQuery,
   GoldenGlobeFilm,
+  GoldenGlobeImdbLinkResult,
   MovieAwardRecognition,
   Occurrence,
   PageResponse,
@@ -313,6 +314,14 @@ export function enqueueGoldenGlobeImport(file: File, yearAfter: number, fetcher?
 
 export function getGoldenGlobeFilms(query: GoldenGlobeCatalogQuery, fetcher?: typeof fetch) {
   return requestJson<PageResponse<GoldenGlobeFilm>>(withQuery('/golden-globes', query), {}, fetcher)
+}
+
+export function setGoldenGlobeImdbId(filmId: string, imdbId: string | null, fetcher?: typeof fetch) {
+  return requestJson<GoldenGlobeImdbLinkResult>(
+    '/golden-globes/imdb-link',
+    { method: 'PUT', body: JSON.stringify({ filmId, imdbId }) },
+    fetcher,
+  )
 }
 
 export function getMovieAwards(imdbIds: string[], fetcher?: typeof fetch) {

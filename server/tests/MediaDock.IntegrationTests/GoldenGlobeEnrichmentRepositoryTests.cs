@@ -97,6 +97,38 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
             candidates);
     }
 
+    [Fact]
+    public async Task ManualLinkVersionPreventsStaleAndAutomaticOutcomesFromReplacingTheSelection()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_manual_version_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>().UseNpgsql(postgres.GetConnectionString()).Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+        var award = new GoldenGlobeAward { Name = "Version Guard Award" };
+        var nomination = CreateNomination("versioned", "Versioned Film", 2025, "pending", 0, null, award);
+        nomination.ImdbId = "tt12345678";
+        nomination.IsImdbIdManual = true;
+        nomination.ImdbIdVersion = 3;
+        db.GoldenGlobeNominations.Add(nomination);
+        await db.SaveChangesAsync();
+
+        var repository = new PostgresGoldenGlobeEnrichmentRepository(db);
+        var attemptedAt = DateTimeOffset.UtcNow;
+        var staleCandidate = new GoldenGlobeManualRefreshCandidate("Versioned Film", 2025, "movie", "tt12345678", 1, 0);
+        var applied = await repository.SaveManualOutcomeAsync(staleCandidate,
+            new GoldenGlobeEnrichmentUpdate("enriched", 1, attemptedAt, null, null, "tt12345678"));
+        await repository.SaveOutcomeAsync("Versioned Film", 2025, "movie",
+            new GoldenGlobeEnrichmentUpdate("enriched", 1, attemptedAt, null, null, "tt87654321"));
+
+        Assert.False(applied);
+        var stored = await db.GoldenGlobeNominations.AsNoTracking().SingleAsync();
+        Assert.Equal("tt12345678", stored.ImdbId);
+        Assert.True(stored.IsImdbIdManual);
+        Assert.Equal(3, stored.ImdbIdVersion);
+        Assert.Equal("pending", stored.EnrichmentStatus);
+    }
+
     private static GoldenGlobeNomination CreateNomination(
         string importKey,
         string title,
