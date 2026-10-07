@@ -94,6 +94,46 @@ public sealed class OmdbClientBudgetTests
         Assert.False(budget.ProviderQuotaExceeded);
     }
 
+    [Fact]
+    public async Task SearchReservesEachPageAndSendsSearchParameters()
+    {
+        var budget = new SequentialRequestBudget(true, false);
+        var handler = new SearchResultsHandler();
+        using var httpClient = new HttpClient(handler);
+        var client = new OmdbClient(
+            httpClient,
+            "test-key",
+            requestBudget: budget,
+            dailyRequestLimit: 2);
+
+        var firstPage = await client.SearchAsync(
+            "Film & Story",
+            "movie",
+            1,
+            requestPurpose: OmdbRequestPurpose.GoldenGlobeEnrichment);
+        var secondPage = await client.SearchAsync(
+            "Film & Story",
+            "movie",
+            2,
+            requestPurpose: OmdbRequestPurpose.GoldenGlobeEnrichment);
+
+        Assert.Equal(MetadataLookupStatus.Found, firstPage.Status);
+        Assert.Equal(1, firstPage.HttpAttempts);
+        Assert.Equal(MetadataLookupStatus.RequestBudgetExhausted, secondPage.Status);
+        Assert.Equal(0, secondPage.HttpAttempts);
+        Assert.Equal(1, handler.RequestCount);
+        Assert.Contains("&s=Film%20%26%20Story", handler.LastRequestUri!.Query);
+        Assert.Contains("&type=movie", handler.LastRequestUri.Query);
+        Assert.Contains("&page=1", handler.LastRequestUri.Query);
+        var candidate = Assert.Single(firstPage.Candidates);
+        Assert.Equal("Film: Story", candidate.Title);
+        Assert.Equal(2024, candidate.Year);
+        Assert.Equal("tt12345678", candidate.ImdbId);
+        Assert.Equal("movie", candidate.SourceType);
+        Assert.Equal(2, budget.ReservationCount);
+        Assert.All(budget.RequestPurposes, purpose => Assert.Equal(OmdbRequestPurpose.GoldenGlobeEnrichment, purpose));
+    }
+
     private sealed class SequentialRequestBudget(params bool[] reservations) : IOmdbRequestBudget
     {
         private readonly Queue<bool> _reservations = new(reservations);
@@ -173,6 +213,25 @@ public sealed class OmdbClientBudgetTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized));
+        }
+    }
+
+    private sealed class SearchResultsHandler : HttpMessageHandler
+    {
+        public int RequestCount { get; private set; }
+        public Uri? LastRequestUri { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RequestCount++;
+            LastRequestUri = request.RequestUri;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"Response":"True","Search":[{"Title":"Film: Story","Year":"2024","imdbID":"TT12345678","Type":"movie"}],"totalResults":"1"}""")
+            });
         }
     }
 }

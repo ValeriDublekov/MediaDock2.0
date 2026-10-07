@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace MediaDock.Application.Metadata;
 
@@ -7,6 +8,9 @@ public sealed class MetadataResolver
 {
     private static readonly TimeSpan FoundTtl = TimeSpan.FromDays(30);
     private static readonly TimeSpan NotFoundTtl = TimeSpan.FromDays(2);
+    private const int MaximumSearchPages = 5;
+    private const decimal MinimumCandidateScore = 90m;
+    private const decimal MinimumCandidateMargin = 5m;
 
     private readonly IOmdbClient _client;
     private readonly IMetadataCacheStore _cache;
@@ -141,6 +145,302 @@ public sealed class MetadataResolver
         }
         return new(result.Status, result.Metadata, false, result.HttpAttempts, result.ErrorCode);
     }
+
+    public async Task<MetadataResolution> ResolveGoldenGlobeAsync(
+        string title,
+        int ceremonyYear,
+        string sourceType,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default,
+        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.GoldenGlobeEnrichment)
+    {
+        var normalizedSourceType = sourceType.Trim().ToLowerInvariant();
+        if (normalizedSourceType is not ("movie" or "series"))
+        {
+            return new(MetadataLookupStatus.InvalidRequest, null, false, 0, "invalid_lookup");
+        }
+
+        var exact = await ResolveByTitleAsync(title, normalizedSourceType, now, cancellationToken, requestPurpose);
+        if (exact.Status == MetadataLookupStatus.Found
+            && exact.Metadata is { } exactMetadata
+            && IsPlausibleGoldenGlobeMatch(title, ceremonyYear, normalizedSourceType, exactMetadata))
+        {
+            return exact;
+        }
+
+        if (exact.Status is not (MetadataLookupStatus.Found or MetadataLookupStatus.ConfirmedNotFound))
+        {
+            return exact;
+        }
+
+        var exactResultWasImplausible = exact.Status == MetadataLookupStatus.Found;
+        var candidates = new Dictionary<string, MetadataSearchCandidate>(StringComparer.Ordinal);
+        var attempts = exact.HttpAttempts;
+        var searchReturnedCandidates = false;
+        var incompleteSearch = false;
+
+        foreach (var variant in CreateSearchVariants(title))
+        {
+            var firstPage = await _client.SearchAsync(
+                variant,
+                normalizedSourceType,
+                1,
+                cancellationToken,
+                requestPurpose);
+            attempts += firstPage.HttpAttempts;
+
+            if (firstPage.Status is MetadataLookupStatus.RequestBudgetExhausted or MetadataLookupStatus.QuotaExceeded)
+            {
+                return new(firstPage.Status, null, exact.CacheHit, attempts, firstPage.ErrorCode);
+            }
+
+            if (firstPage.Status == MetadataLookupStatus.ConfirmedNotFound)
+            {
+                continue;
+            }
+
+            if (firstPage.Status != MetadataLookupStatus.Found)
+            {
+                return new(firstPage.Status, null, exact.CacheHit, attempts, firstPage.ErrorCode);
+            }
+
+            AddCandidates(firstPage.Candidates, candidates, ref searchReturnedCandidates);
+            var pageCount = Math.Max(1, (firstPage.TotalResults + 9) / 10);
+            var pagesToRead = Math.Min(pageCount, MaximumSearchPages);
+            incompleteSearch |= pageCount > MaximumSearchPages;
+
+            for (var page = 2; page <= pagesToRead; page++)
+            {
+                var nextPage = await _client.SearchAsync(
+                    variant,
+                    normalizedSourceType,
+                    page,
+                    cancellationToken,
+                    requestPurpose);
+                attempts += nextPage.HttpAttempts;
+
+                if (nextPage.Status is MetadataLookupStatus.RequestBudgetExhausted or MetadataLookupStatus.QuotaExceeded)
+                {
+                    return new(nextPage.Status, null, exact.CacheHit, attempts, nextPage.ErrorCode);
+                }
+
+                if (nextPage.Status == MetadataLookupStatus.ConfirmedNotFound)
+                {
+                    break;
+                }
+
+                if (nextPage.Status != MetadataLookupStatus.Found)
+                {
+                    return new(nextPage.Status, null, exact.CacheHit, attempts, nextPage.ErrorCode);
+                }
+
+                AddCandidates(nextPage.Candidates, candidates, ref searchReturnedCandidates);
+            }
+        }
+
+        if (candidates.Count == 0)
+        {
+            return exactResultWasImplausible || searchReturnedCandidates
+                ? new(MetadataLookupStatus.ProviderFailure, null, exact.CacheHit, attempts, "no_confident_match")
+                : new(MetadataLookupStatus.ConfirmedNotFound, null, exact.CacheHit, attempts, "not_found");
+        }
+
+        var ranked = candidates.Values
+            .Select(candidate => ScoreCandidate(title, ceremonyYear, normalizedSourceType, candidate))
+            .Where(candidate => candidate is not null)
+            .Select(candidate => candidate!)
+            .OrderByDescending(candidate => candidate.Score)
+            .ToArray();
+
+        if (incompleteSearch
+            || ranked.Length == 0
+            || ranked[0].Score < MinimumCandidateScore)
+        {
+            return new(MetadataLookupStatus.ProviderFailure, null, exact.CacheHit, attempts, "no_confident_match");
+        }
+
+        if (ranked.Length > 1 && ranked[0].Score - ranked[1].Score < MinimumCandidateMargin)
+        {
+            return new(MetadataLookupStatus.ProviderFailure, null, exact.CacheHit, attempts, "ambiguous_match");
+        }
+
+        var selected = ranked[0].Candidate;
+        var details = await ResolveAsync(
+            title,
+            ceremonyYear,
+            normalizedSourceType,
+            now,
+            cancellationToken,
+            requestPurpose,
+            selected.ImdbId);
+        attempts += details.HttpAttempts;
+
+        if (details.Status != MetadataLookupStatus.Found || details.Metadata is not { } metadata)
+        {
+            return details.Status == MetadataLookupStatus.ConfirmedNotFound
+                || details.ErrorCode == "imdb_id_mismatch"
+                ? new(MetadataLookupStatus.ProviderFailure, null, exact.CacheHit || details.CacheHit, attempts, "candidate_mismatch")
+                : details with { CacheHit = exact.CacheHit || details.CacheHit, HttpAttempts = attempts };
+        }
+
+        var returnedId = ImdbIdNormalizer.Normalize(metadata.ImdbId);
+        if (!string.Equals(returnedId, selected.ImdbId, StringComparison.Ordinal)
+            || !IsPlausibleGoldenGlobeMatch(title, ceremonyYear, normalizedSourceType, metadata))
+        {
+            return new(MetadataLookupStatus.ProviderFailure, null, exact.CacheHit || details.CacheHit, attempts, "candidate_mismatch");
+        }
+
+        return details with
+        {
+            CacheHit = exact.CacheHit || details.CacheHit,
+            HttpAttempts = attempts
+        };
+    }
+
+    private static void AddCandidates(
+        IReadOnlyList<MetadataSearchCandidate> found,
+        IDictionary<string, MetadataSearchCandidate> candidates,
+        ref bool searchReturnedCandidates)
+    {
+        foreach (var candidate in found)
+        {
+            searchReturnedCandidates = true;
+            var imdbId = ImdbIdNormalizer.Normalize(candidate.ImdbId);
+            if (ImdbIdNormalizer.IsValid(imdbId))
+            {
+                candidates.TryAdd(imdbId!, candidate with { ImdbId = imdbId });
+            }
+        }
+    }
+
+    private static IReadOnlyList<string> CreateSearchVariants(string title)
+    {
+        var variants = new List<string>();
+
+        void Add(string value)
+        {
+            var normalized = string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+            if (normalized.Length > 0 && !variants.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+            {
+                variants.Add(normalized);
+            }
+        }
+
+        Add(title);
+        Add(title.Replace("&", " and ", StringComparison.Ordinal));
+        Add(Regex.Replace(title, @"\band\b", "&", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant));
+
+        var punctuationNormalized = new string(title
+            .Normalize(NormalizationForm.FormKC)
+            .Select(character => char.IsLetterOrDigit(character) || char.IsWhiteSpace(character) ? character : ' ')
+            .ToArray());
+        Add(punctuationNormalized);
+        return variants;
+    }
+
+    private static ScoredSearchCandidate? ScoreCandidate(
+        string title,
+        int ceremonyYear,
+        string sourceType,
+        MetadataSearchCandidate candidate)
+    {
+        if (!string.Equals(candidate.SourceType, sourceType, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        decimal score;
+        if (sourceType == "movie")
+        {
+            if (candidate.Year is not int candidateYear
+                || candidateYear != ceremonyYear && candidateYear != ceremonyYear - 1)
+            {
+                return null;
+            }
+
+            score = TitleSimilarity(title, candidate.Title) * 80m
+                + 10m
+                + (candidateYear == ceremonyYear ? 10m : 5m);
+        }
+        else
+        {
+            score = TitleSimilarity(title, candidate.Title) * 90m + 10m;
+        }
+
+        return new(candidate, score);
+    }
+
+    private static bool IsPlausibleGoldenGlobeMatch(
+        string title,
+        int ceremonyYear,
+        string sourceType,
+        MetadataDetails metadata)
+    {
+        if (!ImdbIdNormalizer.IsValid(metadata.ImdbId)
+            || !string.Equals(metadata.SourceType, sourceType, StringComparison.Ordinal)
+            || TitleSimilarity(title, metadata.Title) < 0.9m)
+        {
+            return false;
+        }
+
+        return sourceType == "series"
+            || metadata.Year is int year && (year == ceremonyYear || year == ceremonyYear - 1);
+    }
+
+    private static decimal TitleSimilarity(string first, string second)
+    {
+        var normalizedFirst = NormalizeComparisonTitle(first);
+        var normalizedSecond = NormalizeComparisonTitle(second);
+        if (normalizedFirst.Length == 0 || normalizedSecond.Length == 0)
+        {
+            return 0m;
+        }
+
+        if (string.Equals(normalizedFirst, normalizedSecond, StringComparison.Ordinal))
+        {
+            return 1m;
+        }
+
+        var maximumLength = Math.Max(normalizedFirst.Length, normalizedSecond.Length);
+        if (maximumLength > 512)
+        {
+            return 0m;
+        }
+
+        var previous = new int[normalizedSecond.Length + 1];
+        var current = new int[normalizedSecond.Length + 1];
+        for (var column = 0; column <= normalizedSecond.Length; column++)
+        {
+            previous[column] = column;
+        }
+
+        for (var row = 1; row <= normalizedFirst.Length; row++)
+        {
+            current[0] = row;
+            for (var column = 1; column <= normalizedSecond.Length; column++)
+            {
+                var substitutionCost = normalizedFirst[row - 1] == normalizedSecond[column - 1] ? 0 : 1;
+                current[column] = Math.Min(
+                    Math.Min(current[column - 1] + 1, previous[column] + 1),
+                    previous[column - 1] + substitutionCost);
+            }
+
+            (previous, current) = (current, previous);
+        }
+
+        return (maximumLength - previous[normalizedSecond.Length]) / (decimal)maximumLength;
+    }
+
+    private static string NormalizeComparisonTitle(string title)
+    {
+        var normalized = title.Normalize(NormalizationForm.FormKC).ToLowerInvariant().Replace("&", " and ", StringComparison.Ordinal);
+        var characters = normalized
+            .Select(character => char.IsLetterOrDigit(character) || char.IsWhiteSpace(character) ? character : ' ')
+            .ToArray();
+        return string.Join(' ', new string(characters).Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private sealed record ScoredSearchCandidate(MetadataSearchCandidate Candidate, decimal Score);
 
     private async Task StoreAsync(
         string cacheKey,

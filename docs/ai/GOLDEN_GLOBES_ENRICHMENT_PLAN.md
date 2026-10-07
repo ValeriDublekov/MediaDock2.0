@@ -1,6 +1,6 @@
 # План: Golden Globes enrichment и ръчно IMDb свързване
 
-**Статус:** Phase A и B реализирани; останалите етапи са планирани
+**Статус:** Phase A, B и C реализирани; Phase D е планирана
 **Последна редакция:** 2026-10-07
 
 ## Цел
@@ -11,7 +11,7 @@
 
 - Импортът пази номинациите отделно от каноничните `titles`; типът на номинацията се нормализира до `movie` или `series`.
 - Enrichment, API и UI групират по `(церемониална година, заглавие, тип)` и API връща стабилен `filmId` за тази група.
-- Автоматичният lookup използва OMDb `t=` без година. `and` и `&` не се нормализират като еквивалентни варианти. Ако OMDb върне филм от несъвпадаща година, проверката става след lookup и резултатът се маркира `problem`.
+- Автоматичният lookup започва с OMDb `t=` без година и използва Search `s=` fallback при not-found или неправдоподобен резултат. Кандидатите се оценяват по нормализирано заглавие, тип и допустима година; `and`/`&` и пунктуацията се търсят като безопасни варианти.
 - Catalog metadata се чете с реалния nominee type; ръчните връзки четат cache по точен IMDb ID и тип.
 - Автоматичният и ръчният enrichment потвърждават IMDb ID и nominee type преди `enriched`; повредени legacy редове се проектират като `pending` и се включват за повторна обработка.
 - Детайлният каталог позволява задаване, смяна и изчистване на manual IMDb ID; задаването атомарно създава target-specific refresh job, а link version обезсилва остарели резултати.
@@ -73,7 +73,7 @@ ORDER BY year DESC, title, nominee_type, import_key;
 
 - [x] **A. Групова идентичност и cache fix:** уеднаквяване на ключа `(година, заглавие, тип)`, поправка за сериалния cache lookup и тестове за IMDb ID срещу липсващ рейтинг/poster.
 - [x] **B. Ръчно свързване:** persistence за manual pin, валидиран API mutation, durable target-specific refresh, UI за задаване/смяна/изчистване и защита от остарял job резултат.
-- [ ] **C. OMDb Search fallback:** multi-result DTO/client, кандидатско оценяване, type/year проверки, нееднозначен резултат без автоматично свързване и budget accounting.
+- [x] **C. OMDb Search fallback:** multi-result DTO/client, кандидатско оценяване, type/year проверки, нееднозначен резултат без автоматично свързване и budget accounting.
 - [ ] **D. Съществуващи данни и acceptance:** отчет за `enriched` без ID, безопасна повторна обработка, regression tests, миграция и операторска проверка с `Abbott Elementary`, `and`/`&`, омоними/години и movie/series.
 
 ## Тестове и критерии за приемане
@@ -92,7 +92,15 @@ ORDER BY year DESC, title, nominee_type, import_key;
 - Повторна заявка за същите група/ID използва активната задача. Смяна и изчистване увеличават версията; type correction премахва manual pin.
 - Проверки: `python -B scripts/run_tests.py server-unit --filter "Category=GoldenGlobes"`, `python -B scripts/run_tests.py server-integration --filter "FullyQualifiedName~GoldenGlobe"` и `python -B scripts/run_tests.py web`.
 - Metadata/status hardening: cache projection използва `nomineeType`; невалиден `enriched` ред се показва като `pending`, влиза за повторна обработка и е включен в read-only audit SQL по-горе. Enriched write без валиден IMDb ID се отхвърля.
-- Следваща отправна точка: Phase C, OMDb Search fallback и безопасно оценяване на кандидати.
+- Phase C is now implemented; see the handoff below. Phase D remains.
+
+## Handoff: Phase C (2026-10-07)
+
+- `t=` остава първи опит; not-found и неправдоподобни точни резултати преминават към пагиниран `s=` fallback с варианти на пунктуацията и `and`/`&`.
+- Автоматично се приема само достатъчно силен еднозначен кандидат от допустим тип/период; равен или слаб резултат записва безопасен `problem` код. Пълните metadata се зареждат отделно по IMDb ID и се потвърждават преди `enriched`.
+- Всеки search page и IMDb-ID detail lookup резервира отделен реален OMDb опит от споделения budget; cache hit-овете остават без HTTP опит.
+- Проверки: `python -B scripts/run_tests.py server-unit --filter "Category=GoldenGlobes|FullyQualifiedName~OmdbClientBudgetTests"`; Phase D acceptance и операторските проверки остават.
+- Следваща отправна точка: Phase D, regression/acceptance с production dataset, омоними и операторски преглед.
 
 ## Проектни отправни точки
 

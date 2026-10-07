@@ -28,12 +28,12 @@ public sealed class GoldenGlobeEnrichmentServiceTests
 
         var result = await service.RunAsync();
 
-        Assert.Equal(new GoldenGlobeEnrichmentSummary(4, 4, 1, 1, 1, 1, 0, 6, false), result.Summary);
+        Assert.Equal(new GoldenGlobeEnrichmentSummary(4, 4, 1, 1, 1, 1, 0, 8, false), result.Summary);
         Assert.Equal("partial", result.Status);
         Assert.Equal("enriched", repository.SavedOutcomes[0].Update.Status);
         Assert.Equal("tt12345678", repository.SavedOutcomes[0].Update.ImdbId);
         Assert.Equal("problem", repository.SavedOutcomes[1].Update.Status);
-        Assert.Equal("year_mismatch:2023", repository.SavedOutcomes[1].Update.ErrorCode);
+        Assert.Equal("no_confident_match", repository.SavedOutcomes[1].Update.ErrorCode);
         Assert.Null(repository.SavedOutcomes[1].Update.NextAttemptAt);
         Assert.Equal("not_found", repository.SavedOutcomes[2].Update.Status);
         Assert.Equal("temporary_error", repository.SavedOutcomes[3].Update.Status);
@@ -91,6 +91,128 @@ public sealed class GoldenGlobeEnrichmentServiceTests
     }
 
     [Fact]
+    public async Task RunAsyncSearchesTitleVariantsAndFetchesCandidateDetailsByImdbId()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        var repository = new FakeGoldenGlobeEnrichmentRepository(
+        [new("Film & Story", 2025, 0)]);
+        var client = new StubOmdbClient(
+        [
+            new(MetadataLookupStatus.Found, CreateMetadata("Film and Story", 2020, "tt11111111"), 1),
+            new(MetadataLookupStatus.Found, CreateMetadata("Film and Story", 2024, "tt22222222"), 1)
+        ],
+        [
+            new(MetadataLookupStatus.ConfirmedNotFound, [], 0, 1, "not_found"),
+            new(MetadataLookupStatus.Found,
+                [new MetadataSearchCandidate("Film and Story", 2024, "tt22222222", "movie")], 1, 1),
+            new(MetadataLookupStatus.ConfirmedNotFound, [], 0, 1, "not_found")
+        ]);
+
+        var result = await CreateService(repository, client, now).RunAsync();
+
+        Assert.Equal(1, result.Summary.EnrichedTitles);
+        Assert.Equal(5, result.Summary.HttpAttempts);
+        Assert.Equal(["Film & Story", "Film and Story", "Film Story"], client.SearchRequests.Select(request => request.Title));
+        Assert.Equal((null, "movie", null), client.Requests[0]);
+        Assert.Equal((2025, "movie", "tt22222222"), client.Requests[1]);
+        Assert.Equal("tt22222222", repository.SavedOutcomes[0].Update.ImdbId);
+    }
+
+    [Fact]
+    public async Task RunAsyncSearchesSeriesWithoutFilteringPremiereYear()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        var repository = new FakeGoldenGlobeEnrichmentRepository(
+        [new("Abbott Elementary", 2024, 0, "series")]);
+        var client = new StubOmdbClient(
+        [
+            new(MetadataLookupStatus.ConfirmedNotFound, HttpAttempts: 1),
+            new(MetadataLookupStatus.Found,
+                CreateMetadata("Abbott Elementary", 2021, "tt14218830") with { SourceType = "series" }, 1)
+        ],
+        [new(MetadataLookupStatus.Found,
+            [new MetadataSearchCandidate("Abbott Elementary", 2021, "tt14218830", "series")], 1, 1)]);
+
+        var result = await CreateService(repository, client, now).RunAsync();
+
+        Assert.Equal(1, result.Summary.EnrichedTitles);
+        Assert.Equal((null, "series", null), client.Requests[0]);
+        Assert.Equal((null, "series", "tt14218830"), client.Requests[1]);
+        Assert.Equal("enriched", repository.SavedOutcomes[0].Update.Status);
+    }
+
+    [Fact]
+    public async Task RunAsyncReadsLaterSearchPagesBeforeSelectingCandidate()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        var repository = new FakeGoldenGlobeEnrichmentRepository(
+        [new("Pagination Film", 2025, 0)]);
+        var client = new StubOmdbClient(
+        [
+            new(MetadataLookupStatus.ConfirmedNotFound, HttpAttempts: 1),
+            new(MetadataLookupStatus.Found, CreateMetadata("Pagination Film", 2024, "tt33333333"), 1)
+        ],
+        [
+            new(MetadataLookupStatus.Found,
+                [new MetadataSearchCandidate("Pagination Film", 2020, "tt11111111", "movie")], 11, 1),
+            new(MetadataLookupStatus.Found,
+                [new MetadataSearchCandidate("Pagination Film", 2024, "tt33333333", "movie")], 11, 1)
+        ]);
+
+        var result = await CreateService(repository, client, now).RunAsync();
+
+        Assert.Equal(1, result.Summary.EnrichedTitles);
+        Assert.Equal(4, result.Summary.HttpAttempts);
+        Assert.Equal([1, 2], client.SearchRequests.Select(request => request.Page));
+        Assert.Equal("tt33333333", repository.SavedOutcomes[0].Update.ImdbId);
+    }
+
+    [Fact]
+    public async Task RunAsyncDoesNotChooseBetweenEquallyRankedSearchCandidates()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        var repository = new FakeGoldenGlobeEnrichmentRepository(
+        [new("Shared Title", 2025, 0)]);
+        var client = new StubOmdbClient(
+        [new(MetadataLookupStatus.ConfirmedNotFound, HttpAttempts: 1)],
+        [new(MetadataLookupStatus.Found,
+        [
+            new MetadataSearchCandidate("Shared Title", 2025, "tt11111111", "movie"),
+            new MetadataSearchCandidate("Shared Title", 2025, "tt22222222", "movie")
+        ], 2, 1)]);
+
+        var result = await CreateService(repository, client, now).RunAsync();
+
+        Assert.Equal(1, result.Summary.ProblemTitles);
+        Assert.Equal("problem", repository.SavedOutcomes[0].Update.Status);
+        Assert.Equal("ambiguous_match", repository.SavedOutcomes[0].Update.ErrorCode);
+        Assert.Null(repository.SavedOutcomes[0].Update.ImdbId);
+        Assert.Single(client.Requests);
+    }
+
+    [Fact]
+    public async Task RunAsyncMarksCandidateDetailIdMismatchAsProblem()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        var repository = new FakeGoldenGlobeEnrichmentRepository(
+        [new("Candidate Film", 2025, 0)]);
+        var client = new StubOmdbClient(
+        [
+            new(MetadataLookupStatus.ConfirmedNotFound, HttpAttempts: 1),
+            new(MetadataLookupStatus.Found, CreateMetadata("Candidate Film", 2024, "tt22222222"), 1)
+        ],
+        [new(MetadataLookupStatus.Found,
+            [new MetadataSearchCandidate("Candidate Film", 2024, "tt11111111", "movie")], 1, 1)]);
+
+        var result = await CreateService(repository, client, now).RunAsync();
+
+        Assert.Equal(1, result.Summary.ProblemTitles);
+        Assert.Equal("problem", repository.SavedOutcomes[0].Update.Status);
+        Assert.Equal("candidate_mismatch", repository.SavedOutcomes[0].Update.ErrorCode);
+        Assert.Null(repository.SavedOutcomes[0].Update.ImdbId);
+    }
+
+    [Fact]
     public async Task RunAsyncRejectsInvalidImdbIdsAndIncompatibleTypes()
     {
         var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
@@ -108,9 +230,9 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         var result = await CreateService(repository, client, now).RunAsync();
 
         Assert.Equal(2, result.Summary.ProblemTitles);
-        Assert.Equal("invalid_imdb_id", repository.SavedOutcomes[0].Update.ErrorCode);
+        Assert.Equal("no_confident_match", repository.SavedOutcomes[0].Update.ErrorCode);
         Assert.Null(repository.SavedOutcomes[0].Update.ImdbId);
-        Assert.Equal("type_mismatch", repository.SavedOutcomes[1].Update.ErrorCode);
+        Assert.Equal("no_confident_match", repository.SavedOutcomes[1].Update.ErrorCode);
         Assert.Null(repository.SavedOutcomes[1].Update.ImdbId);
     }
 
@@ -234,13 +356,17 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         }
     }
 
-    private sealed class StubOmdbClient(IReadOnlyList<MetadataLookupResult> results) : IOmdbClient
+    private sealed class StubOmdbClient(
+        IReadOnlyList<MetadataLookupResult> results,
+        IReadOnlyList<MetadataSearchResult>? searchResults = null) : IOmdbClient
     {
         private readonly Queue<MetadataLookupResult> _results = new(results);
+        private readonly Queue<MetadataSearchResult> _searchResults = new(searchResults ?? []);
 
         public int Calls { get; private set; }
         public List<OmdbRequestPurpose> RequestPurposes { get; } = [];
         public List<(int? Year, string SourceType, string? ImdbId)> Requests { get; } = [];
+        public List<(string Title, string SourceType, int Page)> SearchRequests { get; } = [];
 
         public Task<MetadataLookupResult> LookupAsync(
             string title,
@@ -254,6 +380,20 @@ public sealed class GoldenGlobeEnrichmentServiceTests
             RequestPurposes.Add(requestPurpose);
             Requests.Add((year, sourceType, imdbId));
             return Task.FromResult(_results.Dequeue());
+        }
+
+        public Task<MetadataSearchResult> SearchAsync(
+            string title,
+            string sourceType,
+            int page,
+            CancellationToken cancellationToken = default,
+            OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
+        {
+            SearchRequests.Add((title, sourceType, page));
+            RequestPurposes.Add(requestPurpose);
+            return Task.FromResult(_searchResults.Count > 0
+                ? _searchResults.Dequeue()
+                : new MetadataSearchResult(MetadataLookupStatus.ConfirmedNotFound, [], 0, 1, "not_found"));
         }
     }
 

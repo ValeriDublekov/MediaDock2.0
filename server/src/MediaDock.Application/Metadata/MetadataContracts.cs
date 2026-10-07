@@ -71,6 +71,15 @@ public sealed record MetadataLookupResult(
     string? ErrorCode = null,
     string? ProviderMessage = null);
 
+public sealed record MetadataSearchCandidate(string Title, int? Year, string? ImdbId, string SourceType);
+
+public sealed record MetadataSearchResult(
+    MetadataLookupStatus Status,
+    IReadOnlyList<MetadataSearchCandidate> Candidates,
+    int TotalResults,
+    int HttpAttempts = 0,
+    string? ErrorCode = null);
+
 public interface IOmdbClient
 {
     Task<MetadataLookupResult> LookupAsync(
@@ -80,6 +89,18 @@ public interface IOmdbClient
         CancellationToken cancellationToken = default,
         OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion,
         string? imdbId = null);
+
+    Task<MetadataSearchResult> SearchAsync(
+        string title,
+        string sourceType,
+        int page,
+        CancellationToken cancellationToken = default,
+        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion) =>
+        Task.FromResult(new MetadataSearchResult(
+            MetadataLookupStatus.ProviderFailure,
+            [],
+            0,
+            ErrorCode: "search_not_supported"));
 }
 
 public interface IOmdbRequestBudget

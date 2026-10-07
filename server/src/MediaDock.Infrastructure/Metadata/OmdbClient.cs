@@ -89,22 +89,6 @@ public sealed class OmdbClient : IOmdbClient
         CancellationToken cancellationToken,
         string? imdbId)
     {
-        var utcDate = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
-        if (_requestBudget is not null)
-        {
-            var reserved = await _requestBudget.TryReserveAsync(
-                utcDate,
-                requestPurpose,
-                _dailyRequestLimit,
-                cancellationToken);
-            if (!reserved)
-            {
-                return new MetadataLookupResult(
-                    MetadataLookupStatus.RequestBudgetExhausted,
-                    ErrorCode: "daily_budget_exhausted");
-            }
-        }
-
         var query = new StringBuilder()
             .Append("apikey=").Append(Uri.EscapeDataString(_apiKey));
         if (imdbId is not null)
@@ -118,6 +102,80 @@ public sealed class OmdbClient : IOmdbClient
             if (year is not null && sourceType != "series")
             {
                 query.Append("&y=").Append(year.Value.ToString(CultureInfo.InvariantCulture));
+            }
+        }
+
+        return await SendRequestAsync(
+            query.ToString(),
+            requestPurpose,
+            cancellationToken,
+            ParseResponse,
+            result => result,
+            result => result);
+    }
+
+    public Task<MetadataSearchResult> SearchAsync(
+        string title,
+        string sourceType,
+        int page,
+        CancellationToken cancellationToken = default,
+        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
+    {
+        if (string.IsNullOrWhiteSpace(title)
+            || sourceType is not ("movie" or "series")
+            || page is < 1 or > 100)
+        {
+            return Task.FromResult(new MetadataSearchResult(
+                MetadataLookupStatus.InvalidRequest,
+                [],
+                0,
+                ErrorCode: "invalid_search"));
+        }
+
+        var query = new StringBuilder()
+            .Append("apikey=").Append(Uri.EscapeDataString(_apiKey))
+            .Append("&s=").Append(Uri.EscapeDataString(title.Trim()))
+            .Append("&type=").Append(Uri.EscapeDataString(sourceType))
+            .Append("&page=").Append(page.ToString(CultureInfo.InvariantCulture));
+
+        return SendRequestAsync(
+            query.ToString(),
+            requestPurpose,
+            cancellationToken,
+            ParseSearchResponse,
+            result => new MetadataSearchResult(
+                result.Status,
+                [],
+                0,
+                result.HttpAttempts,
+                result.ErrorCode),
+            result => new MetadataLookupResult(
+                result.Status,
+                HttpAttempts: result.HttpAttempts,
+                ErrorCode: result.ErrorCode));
+    }
+
+    private async Task<T> SendRequestAsync<T>(
+        string query,
+        OmdbRequestPurpose requestPurpose,
+        CancellationToken cancellationToken,
+        Func<byte[], T> parseResponse,
+        Func<MetadataLookupResult, T> convertError,
+        Func<T, MetadataLookupResult> asLookupResult)
+    {
+        var utcDate = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
+        if (_requestBudget is not null)
+        {
+            var reserved = await _requestBudget.TryReserveAsync(
+                utcDate,
+                requestPurpose,
+                _dailyRequestLimit,
+                cancellationToken);
+            if (!reserved)
+            {
+                return convertError(new MetadataLookupResult(
+                    MetadataLookupStatus.RequestBudgetExhausted,
+                    ErrorCode: "daily_budget_exhausted"));
             }
         }
 
@@ -153,47 +211,49 @@ public sealed class OmdbClient : IOmdbClient
                     ErrorCode: status == MetadataLookupStatus.ProviderFailure ? "http_error" : ErrorCode(status),
                     ProviderMessage: SanitizeProviderMessage(providerMessage)
                         ?? $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}".Trim());
-                return await RecordProviderErrorAsync(utcDate, errorResult, cancellationToken);
+                var recordedError = await RecordProviderErrorAsync(utcDate, errorResult, cancellationToken);
+                return convertError(recordedError);
             }
 
             var body = await ReadBoundedAsync(response.Content, timeoutSource.Token);
-            var result = ParseResponse(body);
-            return await RecordProviderErrorAsync(utcDate, result, cancellationToken);
+            var result = parseResponse(body);
+            await RecordProviderErrorAsync(utcDate, asLookupResult(result), cancellationToken);
+            return result;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return await RecordProviderErrorAsync(
+            return convertError(await RecordProviderErrorAsync(
                 utcDate,
                 new MetadataLookupResult(MetadataLookupStatus.TransportFailure, HttpAttempts: 1, ErrorCode: "timeout"),
-                cancellationToken);
+                cancellationToken));
         }
         catch (HttpRequestException)
         {
-            return await RecordProviderErrorAsync(
+            return convertError(await RecordProviderErrorAsync(
                 utcDate,
                 new MetadataLookupResult(MetadataLookupStatus.TransportFailure, HttpAttempts: 1, ErrorCode: "transport_error"),
-                cancellationToken);
+                cancellationToken));
         }
         catch (IOException)
         {
-            return await RecordProviderErrorAsync(
+            return convertError(await RecordProviderErrorAsync(
                 utcDate,
                 new MetadataLookupResult(MetadataLookupStatus.TransportFailure, HttpAttempts: 1, ErrorCode: "transport_error"),
-                cancellationToken);
+                cancellationToken));
         }
         catch (JsonException)
         {
-            return await RecordProviderErrorAsync(
+            return convertError(await RecordProviderErrorAsync(
                 utcDate,
                 new MetadataLookupResult(MetadataLookupStatus.ProviderFailure, HttpAttempts: 1, ErrorCode: "invalid_response"),
-                cancellationToken);
+                cancellationToken));
         }
         catch (InvalidDataException)
         {
-            return await RecordProviderErrorAsync(
+            return convertError(await RecordProviderErrorAsync(
                 utcDate,
                 new MetadataLookupResult(MetadataLookupStatus.ProviderFailure, HttpAttempts: 1, ErrorCode: "response_too_large"),
-                cancellationToken);
+                cancellationToken));
         }
     }
 
@@ -315,6 +375,57 @@ public sealed class OmdbClient : IOmdbClient
                 GetOptionalString(root, "Awards"),
                 GetOptionalString(root, "BoxOffice")),
             1);
+    }
+
+    private static MetadataSearchResult ParseSearchResponse(byte[] body)
+    {
+        using var document = JsonDocument.Parse(body);
+        var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            return new(MetadataLookupStatus.ProviderFailure, [], 0, 1, "invalid_search_response");
+        }
+
+        if (string.Equals(GetString(root, "Response"), "False", StringComparison.OrdinalIgnoreCase))
+        {
+            var status = ClassifyError(GetString(root, "Error") ?? string.Empty);
+            return new(status, [], 0, 1, ErrorCode(status));
+        }
+
+        if (!string.Equals(GetString(root, "Response"), "True", StringComparison.OrdinalIgnoreCase)
+            || !root.TryGetProperty("Search", out var search)
+            || search.ValueKind != JsonValueKind.Array)
+        {
+            return new(MetadataLookupStatus.ProviderFailure, [], 0, 1, "invalid_search_response");
+        }
+
+        var candidates = new List<MetadataSearchCandidate>();
+        foreach (var item in search.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            var title = GetString(item, "Title")?.Trim();
+            var imdbId = ImdbIdNormalizer.Normalize(GetString(item, "imdbID"));
+            var rawType = GetString(item, "Type")?.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(imdbId))
+            {
+                continue;
+            }
+
+            candidates.Add(new MetadataSearchCandidate(
+                title,
+                ParseYear(GetString(item, "Year")),
+                imdbId,
+                rawType is "movie" or "series" ? rawType : "unknown"));
+        }
+
+        var totalResults = int.TryParse(GetString(root, "totalResults"), NumberStyles.None, CultureInfo.InvariantCulture, out var total)
+            ? Math.Max(total, candidates.Count)
+            : candidates.Count;
+        return new(MetadataLookupStatus.Found, candidates, totalResults, 1);
     }
 
     private static MetadataLookupStatus ClassifyError(string error)

@@ -40,7 +40,13 @@ public sealed class GoldenGlobeEnrichmentService(
         {
             cancellationToken.ThrowIfCancellationRequested();
             var attemptedAt = clock.GetUtcNow();
-            var resolution = await metadataResolver.ResolveByTitleAsync(candidate.Title, candidate.SourceType, attemptedAt, cancellationToken, OmdbRequestPurpose.GoldenGlobeEnrichment);
+            var resolution = await metadataResolver.ResolveGoldenGlobeAsync(
+                candidate.Title,
+                candidate.CeremonyYear,
+                candidate.SourceType,
+                attemptedAt,
+                cancellationToken,
+                OmdbRequestPurpose.GoldenGlobeEnrichment);
             http += resolution.HttpAttempts; cacheHits += resolution.CacheHit ? 1 : 0;
             if (resolution.Status == MetadataLookupStatus.RequestBudgetExhausted) { quota = true; break; }
             var attempt = candidate.AttemptCount + 1;
@@ -65,6 +71,9 @@ public sealed class GoldenGlobeEnrichmentService(
                 else { status = GoldenGlobeEnrichmentStatuses.Enriched; error = null; next = null; enriched++; }
             }
             else if (resolution.Status == MetadataLookupStatus.ConfirmedNotFound) { status = GoldenGlobeEnrichmentStatuses.NotFound; error = "not_found"; next = null; notFound++; }
+            else if (resolution.Status == MetadataLookupStatus.ProviderFailure
+                && resolution.ErrorCode is "ambiguous_match" or "no_confident_match" or "candidate_mismatch")
+            { status = GoldenGlobeEnrichmentStatuses.Problem; error = resolution.ErrorCode; next = null; problems++; }
             else errors++;
             await repository.SaveOutcomeAsync(candidate.Title, candidate.CeremonyYear, candidate.SourceType, new(status, attempt, attemptedAt, next, error, imdb), cancellationToken);
             attempted++;
