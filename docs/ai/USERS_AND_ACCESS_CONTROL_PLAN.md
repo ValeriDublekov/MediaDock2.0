@@ -102,7 +102,7 @@ Schema промяната е добавъчна и се прави с EF Core м
 - Authorization тестове покриват user/admin достъп до всяка група системни write/operation routes, включително deployment и background jobs; непознат/деактивиран потребител е отказан по подразбиране.
 - Административните тестове покриват уникалност на нормализиран имейл, промяна на роля, деактивиране, последен активен администратор и безопасно поведение при повторени заявки.
 - UI тест потвърждава, че предупреждението се вижда винаги, когато authorization е изключен, и че user management показва състоянието на режима.
-- Обновяват се [API договорите](API_CONTRACTS.md), [data contracts](DATA_CONTRACTS.md), [архитектурата](ARCHITECTURE.md), [testing guide](TESTING.md) и свързаните планове за [favorites](FAVORITE_MOVIES_PLAN.md) и [IMDb ratings](IMDB_PERSONAL_RATINGS_PLAN.md) при реализация.
+- При реализация се обновяват [API договорите](API_CONTRACTS.md), [data contracts](DATA_CONTRACTS.md), [архитектурата](ARCHITECTURE.md), [testing guide](TESTING.md) и [IMDb ratings follow-up](IMDB_PERSONAL_RATINGS_PLAN.md), ако ownership промени засягат този поток.
 
 ## Решения за уточняване преди имплементация
 

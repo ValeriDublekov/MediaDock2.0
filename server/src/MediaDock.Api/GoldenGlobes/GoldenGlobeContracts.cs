@@ -15,9 +15,10 @@ public sealed record GoldenGlobeCatalogQuery
 }
 
 public sealed record GoldenGlobeFilmResponse(
-    string Id,
+    string FilmId,
     string Title,
     int Year,
+    string NomineeType,
     string? ImdbId,
     decimal? ImdbRating,
     string? PosterUrl,

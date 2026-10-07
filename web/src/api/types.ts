@@ -109,9 +109,10 @@ export interface MovieAwardRecognition {
 }
 
 export interface GoldenGlobeFilm {
-  id: string
+  filmId: string
   title: string
   year: number
+  nomineeType: 'movie' | 'series'
   imdbId: string | null
   imdbRating: number | null
   posterUrl: string | null

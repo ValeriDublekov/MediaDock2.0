@@ -38,6 +38,8 @@ public sealed class GoldenGlobeApiTests
             db.GoldenGlobeNominations.AddRange(
                 CreateNomination("a-picture", "A Film", 2025, true, "tt12345678", bestPicture, "enriched"),
                 CreateNomination("a-director", "A Film", 2025, false, "tt12345678", bestDirector, "enriched"),
+                CreateNomination("a-series", "A Film", 2025, false, null, bestPicture, nomineeType: "series"),
+                CreateNomination("a-older-year", "A Film", 2024, false, null, bestPicture),
                 CreateNomination("b-picture", "B Film", 2025, false, null, bestPicture, "not_found"),
                 CreateNomination("older-picture", "Older Film", 2024, true, null, bestPicture, "problem"));
             var fetchedAt = DateTimeOffset.UtcNow;
@@ -64,14 +66,24 @@ public sealed class GoldenGlobeApiTests
         Assert.Equal(HttpStatusCode.OK, firstPageResponse.StatusCode);
         var firstPage = await firstPageResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
         Assert.NotNull(firstPage);
-        Assert.Equal(3, firstPage.TotalCount);
-        Assert.Equal(3, firstPage.TotalPages);
+        Assert.Equal(5, firstPage.TotalCount);
+        Assert.Equal(5, firstPage.TotalPages);
         var firstFilm = Assert.Single(firstPage.Items);
         Assert.Equal("A Film", firstFilm.Title);
+        Assert.Equal("2025:movie:A Film", firstFilm.FilmId);
+        Assert.Equal("movie", firstFilm.NomineeType);
         Assert.Equal("tt12345678", firstFilm.ImdbId);
         Assert.Equal("https://example.test/a-film.jpg", firstFilm.PosterUrl);
         Assert.Equal(8.0m, firstFilm.ImdbRating);
         Assert.Equal(new[] { "Best Director", "Best Motion Picture" }, firstFilm.Nominations.Select(row => row.Award));
+
+        using var groupedResponse = await client.GetAsync("/api/golden-globes?pageSize=100");
+        var groupedPage = await groupedResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
+        Assert.NotNull(groupedPage);
+        var sameYearGroups = groupedPage.Items.Where(film => film.Title == "A Film" && film.Year == 2025).ToArray();
+        Assert.Equal(new[] { "movie", "series" }, sameYearGroups.Select(film => film.NomineeType).OrderBy(type => type, StringComparer.Ordinal).ToArray());
+        Assert.Equal(2, sameYearGroups.Select(film => film.FilmId).Distinct().Count());
+        Assert.Equal("2024:movie:A Film", groupedPage.Items.Single(film => film.Title == "A Film" && film.Year == 2024).FilmId);
 
         using var filteredResponse = await client.GetAsync(
             "/api/golden-globes?yearFrom=2025&yearTo=2025&award=Best%20Motion%20Picture&result=winner");
@@ -102,7 +114,8 @@ public sealed class GoldenGlobeApiTests
         bool winner,
         string? imdbId,
         GoldenGlobeAward award,
-        string enrichmentStatus = "pending") => new()
+        string enrichmentStatus = "pending",
+        string nomineeType = "movie") => new()
     {
         ImportKey = importKey,
         Title = title,
@@ -110,6 +123,7 @@ public sealed class GoldenGlobeApiTests
         Winner = winner,
         ImdbId = imdbId,
         EnrichmentStatus = enrichmentStatus,
+        NomineeType = nomineeType,
         Award = award
     };
 

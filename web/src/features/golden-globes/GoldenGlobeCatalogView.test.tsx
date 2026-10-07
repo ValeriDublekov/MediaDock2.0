@@ -7,9 +7,10 @@ import { GoldenGlobeCatalogView } from './GoldenGlobeCatalogView'
 vi.mock('../../api/client', () => ({ getGoldenGlobeFilms: vi.fn(), getMovieAwards: vi.fn().mockResolvedValue([]) }))
 
 const film: GoldenGlobeFilm = {
-  id: '2025:A Film',
+  filmId: '2025:movie:A Film',
   title: 'A Film',
   year: 2025,
+  nomineeType: 'movie',
   imdbId: null,
   imdbRating: null,
   posterUrl: 'https://example.test/a-film.jpg',
@@ -79,6 +80,19 @@ describe('GoldenGlobeCatalogView', () => {
     expect(await screen.findByText('OMDb matched a film from 2016; this ceremony accepts films from 2024 or 2025.')).toBeTruthy()
   })
 
+  it('distinguishes movie and series groups with the same title and ceremony year', async () => {
+    vi.mocked(getGoldenGlobeFilms).mockResolvedValue({
+      ...page,
+      items: [film, { ...film, filmId: '2025:series:A Film', nomineeType: 'series' }],
+      totalCount: 2,
+    })
+
+    render(<GoldenGlobeCatalogView />)
+
+    expect(await screen.findByText('movie')).toBeTruthy()
+    expect(screen.getByText('series')).toBeTruthy()
+  })
+
   it('opens combined award details from the shared poster card', async () => {
     const matchedFilm = { ...film, imdbId: 'tt1234567', imdbRating: 7.4 }
     vi.mocked(getGoldenGlobeFilms).mockResolvedValue({ ...page, items: [matchedFilm] })
@@ -103,7 +117,7 @@ describe('GoldenGlobeCatalogView', () => {
       ...page,
       items: [
         { ...film, enrichmentStatus: 'not_found', enrichmentError: 'not_found' },
-        { ...film, id: '2025:Timeout', title: 'Timeout', enrichmentStatus: 'temporary_error', enrichmentError: 'timeout' },
+        { ...film, filmId: '2025:movie:Timeout', title: 'Timeout', enrichmentStatus: 'temporary_error', enrichmentError: 'timeout' },
       ],
     })
 

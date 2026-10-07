@@ -33,14 +33,15 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
         if (query.Result == "nominee") nominations = nominations.Where(x => !x.Winner);
 
         var rows = await nominations.OrderByDescending(x => x.Year).ThenBy(x => x.Title).ThenBy(x => x.Id).ToListAsync(cancellationToken);
-        var groups = rows.GroupBy(x => new { x.Title, x.Year })
+        var groups = rows.GroupBy(x => new { x.Title, x.Year, x.NomineeType })
             .Select(group => new GoldenGlobeFilmResponse(
-                $"{group.Key.Year}:{group.Key.Title}", group.Key.Title, group.Key.Year, group.Select(x => x.ImdbId).FirstOrDefault(x => x != null),
+                $"{group.Key.Year}:{group.Key.NomineeType}:{group.Key.Title}", group.Key.Title, group.Key.Year, group.Key.NomineeType,
+                group.Select(x => x.ImdbId).FirstOrDefault(x => x != null),
                 null, null,
                 GetEnrichmentStatus(group.Select(x => x.EnrichmentStatus)),
                 group.Select(x => x.LastEnrichmentError).FirstOrDefault(x => x != null),
                 group.OrderBy(x => x.Award.Name).ThenBy(x => x.Id).Select(x => new GoldenGlobeNominationResponse(x.Id, x.Year, x.Award.Name, x.Winner)).ToArray()))
-            .OrderByDescending(x => x.Year).ThenBy(x => x.Title, StringComparer.OrdinalIgnoreCase).ToArray();
+            .OrderByDescending(x => x.Year).ThenBy(x => x.Title, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.NomineeType, StringComparer.Ordinal).ToArray();
         var filteredGroups = string.IsNullOrWhiteSpace(query.EnrichmentStatus)
             ? groups
             : groups.Where(film => film.EnrichmentStatus == query.EnrichmentStatus).ToArray();

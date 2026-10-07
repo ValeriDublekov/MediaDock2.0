@@ -76,6 +76,7 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
             CreateNomination("new-a-pending", "A New Film", 2026, "pending", 1, now.AddHours(1), award),
             CreateNomination("new-a-due", "A New Film", 2026, "temporary_error", 3, now, award),
             CreateNomination("new-a-future", "A New Film", 2026, "temporary_error", 10, now.AddHours(1), award),
+            CreateNomination("new-a-series", "A New Film", 2026, "pending", 0, null, award, "series"),
             CreateNomination("new-series", "A New Series", 2026, "pending", 0, null, award, "series"),
             CreateNomination("new-z-pending", "Z New Film", 2026, "pending", 4, null, award),
             CreateNomination("older-retry", "Older Film", 2025, "temporary_error", 2, null, award),
@@ -88,6 +89,7 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
         Assert.Equal(
             [
                 new GoldenGlobeEnrichmentCandidate("A New Film", 2026, 3),
+                new GoldenGlobeEnrichmentCandidate("A New Film", 2026, 0, "series"),
                 new GoldenGlobeEnrichmentCandidate("A New Series", 2026, 0, "series"),
                 new GoldenGlobeEnrichmentCandidate("Z New Film", 2026, 4),
                 new GoldenGlobeEnrichmentCandidate("Older Film", 2025, 2)
