@@ -42,6 +42,7 @@ This document describes the API in `server/`. Routes are registered in [Program.
 | `POST /api/personal-ratings/import` | Multipart `File` (JSON array of `{ id, rating }`) | `200 PersonalRatingsImportResponse` with added, updated, unchanged, and total counts, plus per-ID errors for rows with missing ratings; valid rows are merged | `400 ValidationProblemDetails` for missing/oversized/non-JSON files or other invalid entries; unauthenticated LAN-trusted write. |
 | `GET /api/background-jobs/active` | None | `200 BackgroundJobResponse` or `204` when no job is queued/running | None declared. |
 | `POST /api/background-jobs/scans` | Empty body | `202 BackgroundJobAcceptedResponse` with job ID and status URL | `409 ProblemDetails` with `activeJobId` and `activeJobStatusUrl` if an RSS scan is already queued/running. |
+| `POST /api/background-jobs/recheck-failed` | Empty body | `202 BackgroundJobAcceptedResponse`; queues the latest `retryable` parse-log item for each source/item key, using stored feed data or the current feed as a legacy fallback | `409 ProblemDetails` with active-job details if an RSS scan or recheck is already queued/running. |
 | `POST /api/background-jobs/oscar-enrichment` | Empty body | `202 BackgroundJobAcceptedResponse` with job ID and status URL | `409 ProblemDetails` if an Oscar enrichment job is already queued/running. |
 | `POST /api/background-jobs/oscar-import` | Multipart `File` (CSV/TSV) and optional `YearAfter` | `202 BackgroundJobAcceptedResponse` | `400 ValidationProblemDetails` for empty/oversized file, unsupported filename/content type, or invalid year. Client paths are not accepted. |
 | `POST /api/background-jobs/golden-globe-enrichment` | Empty body | `202 BackgroundJobAcceptedResponse` | `409 ProblemDetails` if a Golden Globes enrichment job is already queued or running. |
@@ -58,7 +59,7 @@ The Golden Globes catalog route and response metadata are registered in [GoldenG
 
 Deployment status and start routes proxy a fixed request set to the host-side Unix-socket service. They do not accept commands, paths, or unit names from clients. The routes remain unauthenticated and must only be reachable inside the trusted LAN boundary.
 
-Background job types are `rss_scan` (manual or scheduled), `oscar_enrichment`, `oscar_import`, `golden_globe_enrichment`, and `golden_globe_import` (all manual). RSS scans do not run award-catalog imports or enrichment as follow-up operations.
+Background job types are `rss_scan` (manual or scheduled; manual jobs can be full scans or failed-entry rechecks), `oscar_enrichment`, `oscar_import`, `golden_globe_enrichment`, and `golden_globe_import` (all manual). RSS scans do not run award-catalog imports or enrichment as follow-up operations.
 
 ## Queries And Validation
 

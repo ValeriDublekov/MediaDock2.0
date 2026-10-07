@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ApiError,
+  enqueueFailedEntryRecheck,
   enqueueManualScan,
   enqueueOscarEnrichment,
   enqueueGoldenGlobeEnrichment,
@@ -36,7 +37,12 @@ function progressSummary(job: BackgroundJob): Record<string, unknown> {
 }
 
 function jobLabel(job: BackgroundJob): string {
-  if (job.jobType === 'rss_scan') return 'RSS scan'
+  if (job.jobType === 'rss_scan') {
+    const isRecheck = job.currentStage?.startsWith('recheck')
+      || job.resultSummary?.operation === 'failed_recheck'
+      || isRecord(job.resultSummary?.recheck)
+    return isRecheck ? 'Failed torrent recheck' : 'RSS scan'
+  }
   if (job.jobType === 'oscar_enrichment') return 'Oscar film metadata'
   if (job.jobType === 'golden_globe_import') return 'Golden Globes dataset import'
   if (job.jobType === 'golden_globe_enrichment') return 'Golden Globes film metadata'
@@ -155,6 +161,24 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
     }
   }
 
+  async function startFailedRecheck() {
+    if (!window.confirm('Retry the latest failed torrent entries? This may send OMDb requests within the saved limits.')) return
+    setBusy(true)
+    setError(null)
+    try {
+      const accepted = await enqueueFailedEntryRecheck()
+      await showJob(accepted.id)
+    } catch (requestError: unknown) {
+      if (requestError instanceof ApiError && requestError.status === 409) {
+        const activeJob = await getActiveBackgroundJob().catch(() => null)
+        if (activeJob?.jobType === 'rss_scan') await showJob(activeJob.id)
+      }
+      setError(requestError instanceof Error ? requestError.message : 'Could not queue the failed-entry recheck.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function startImport() {
     const file = fileInput.current?.files?.[0]
     setUploadError(null)
@@ -238,9 +262,14 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
         </div>
         <div className="form-actions">
           {mode === 'torrent' && (
-            <button className="button" disabled={busy || (job?.jobType === 'rss_scan' && active)} onClick={() => { void startScan() }} type="button">
-              {busy ? 'Working...' : 'Start scan'}
-            </button>
+            <>
+              <button className="button" disabled={busy || (job?.jobType === 'rss_scan' && active)} onClick={() => { void startScan() }} type="button">
+                {busy ? 'Working...' : 'Start scan'}
+              </button>
+              <button className="button button-secondary" disabled={busy || (job?.jobType === 'rss_scan' && active)} onClick={() => { void startFailedRecheck() }} type="button">
+                Recheck failed
+              </button>
+            </>
           )}
           {mode === 'awards' && <>
             <button className="button button-secondary" disabled={busy || (job?.jobType === 'oscar_enrichment' && active)} onClick={() => { void startOscarEnrichment() }} type="button">

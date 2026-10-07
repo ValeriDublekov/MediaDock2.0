@@ -18,6 +18,40 @@ namespace MediaDock.IntegrationTests;
 public sealed class BackgroundJobApiTests
 {
     [Fact]
+    public async Task FailedEntryRecheckQueuesUnderTheRssScanLock()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_failed_recheck_api_test").Build();
+        await postgres.StartAsync();
+
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDock.Infrastructure.Persistence.MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        await using (var db = new MediaDock.Infrastructure.Persistence.MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+        }
+
+        using var factory = new BackgroundJobsApiFactory(connectionString);
+        using var client = factory.CreateClient();
+
+        using var response = await client.PostAsync("/api/background-jobs/recheck-failed", content: null);
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var accepted = await response.Content.ReadFromJsonAsync<AcceptedJob>();
+        Assert.NotNull(accepted);
+
+        using var duplicateResponse = await client.PostAsync("/api/background-jobs/recheck-failed", content: null);
+        Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
+        using var scanConflictResponse = await client.PostAsync("/api/background-jobs/scans", content: null);
+        Assert.Equal(HttpStatusCode.Conflict, scanConflictResponse.StatusCode);
+
+        await using var verificationDb = new MediaDock.Infrastructure.Persistence.MediaDockDbContext(options);
+        var storedJob = await verificationDb.BackgroundJobs.AsNoTracking().SingleAsync(job => job.Id == accepted.Id);
+        Assert.Equal("rss_scan", storedJob.JobType);
+        Assert.Equal("failed_recheck", JsonDocument.Parse(storedJob.ResultSummary!).RootElement.GetProperty("operation").GetString());
+    }
+
+    [Fact]
     public async Task ScanQueueAndGoldenGlobeJobsPersistSafelyAndRejectDuplicates()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_background_jobs_api_test").Build();

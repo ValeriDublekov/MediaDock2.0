@@ -41,6 +41,11 @@ public sealed record IngestionFeedItem(
     string? TorrentUrl,
     DateTimeOffset? PublishedAt);
 
+public sealed record IngestionRetryItem(
+    IngestionSource Source,
+    string SourceItemKey,
+    IngestionFeedItem FeedItem);
+
 public sealed record IngestionParseLog(
     long? SourceId,
     string? SourceItemKey,
@@ -64,9 +69,16 @@ public sealed record IngestionParseLog(
     string? EventKind = "ingestion")
 {
     public IReadOnlyList<string> LookupTitles { get; init; } = [];
+    public string? FeedEntryId { get; init; }
+    public string? TorrentUrl { get; init; }
 }
 
 public sealed record IngestionUpsertResult(bool TitleCreated, bool OccurrenceCreated);
+
+public sealed record IngestionRecheckResult(
+    IngestionRunResult Run,
+    int RetryableEntriesSelected,
+    int EntriesUnavailable);
 
 public sealed record IngestionRunSummary(
     string Status,
@@ -108,6 +120,9 @@ public interface IRssIngestionRepository
     Task<IReadOnlyList<IngestionSource>> GetEnabledSourcesAsync(CancellationToken cancellationToken = default);
 
     Task<IngestionMatchSettings> GetMatchSettingsAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<IngestionRetryItem>> GetLatestRetryableItemsAsync(
+        CancellationToken cancellationToken = default);
 
     Task<long> StartRunAsync(
         string trigger,

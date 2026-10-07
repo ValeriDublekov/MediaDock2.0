@@ -980,6 +980,10 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("feed_name");
 
+                    b.Property<string>("FeedEntryId")
+                        .HasColumnType("text")
+                        .HasColumnName("feed_entry_id");
+
                     b.Property<string>("FeedType")
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")
@@ -1056,6 +1060,10 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("SourcePublishedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("source_published_at");
+
+                    b.Property<string>("TorrentUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("torrent_url");
 
                     b.HasKey("Id")
                         .HasName("pk_parse_logs");

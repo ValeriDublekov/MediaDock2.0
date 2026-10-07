@@ -41,6 +41,40 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
             : new IngestionMatchSettings(setting.ExcludedCountries, setting.ExcludedGenres);
     }
 
+    public async Task<IReadOnlyList<IngestionRetryItem>> GetLatestRetryableItemsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var latestLogIds = dbContext.ParseLogs
+            .Where(log => log.SourceId != null && log.SourceItemKey != null)
+            .GroupBy(log => new { log.SourceId, log.SourceItemKey })
+            .Select(group => group
+                .OrderByDescending(log => log.ProcessedAt)
+                .ThenByDescending(log => log.Id)
+                .Select(log => log.Id)
+                .First());
+
+        return await dbContext.ParseLogs.AsNoTracking()
+            .Where(log => latestLogIds.Contains(log.Id)
+                && log.RetryState == "retryable"
+                && log.Source != null)
+            .OrderBy(log => log.SourceId)
+            .ThenBy(log => log.ProcessedAt)
+            .ThenBy(log => log.Id)
+            .Select(log => new IngestionRetryItem(
+                new IngestionSource(
+                    log.Source!.Id,
+                    log.Source.Name,
+                    log.FeedType ?? log.Source.FeedType,
+                    log.Source.Url),
+                log.SourceItemKey!,
+                new IngestionFeedItem(
+                    log.RawTitle,
+                    log.FeedEntryId,
+                    log.TorrentUrl,
+                    log.SourcePublishedAt)))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<long> StartRunAsync(
         string trigger,
         DateTimeOffset startedAt,
@@ -302,7 +336,9 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
             FeedType = log.FeedType,
             SourcePublishedAt = log.SourcePublishedAt,
             ObservedAt = log.ObservedAt,
-            EventKind = log.EventKind
+            EventKind = log.EventKind,
+            FeedEntryId = log.FeedEntryId,
+            TorrentUrl = log.TorrentUrl
         }));
         await dbContext.SaveChangesAsync(cancellationToken);
     }

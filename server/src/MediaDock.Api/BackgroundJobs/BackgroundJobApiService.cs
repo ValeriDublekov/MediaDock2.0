@@ -102,6 +102,14 @@ internal sealed class BackgroundJobApiService(
     }
 
     public async Task<EnqueuedBackgroundJob> EnqueueScanAsync(CancellationToken cancellationToken)
+        => await EnqueueRssJobAsync(false, cancellationToken);
+
+    public async Task<EnqueuedBackgroundJob> EnqueueFailedRecheckAsync(CancellationToken cancellationToken)
+        => await EnqueueRssJobAsync(true, cancellationToken);
+
+    private async Task<EnqueuedBackgroundJob> EnqueueRssJobAsync(
+        bool failedRecheck,
+        CancellationToken cancellationToken)
     {
         var active = await dbContext.BackgroundJobs.AsNoTracking()
             .Where(job => job.JobType == "rss_scan" && (job.Status == "queued" || job.Status == "running"))
@@ -118,14 +126,18 @@ internal sealed class BackgroundJobApiService(
             JobType = "rss_scan",
             Trigger = "manual",
             Status = "queued",
-            EnqueuedAt = now
+            EnqueuedAt = now,
+            CurrentStage = failedRecheck ? "recheck_queued" : null,
+            ResultSummary = failedRecheck
+                ? JsonSerializer.Serialize(new { operation = "failed_recheck" })
+                : null
         };
         job.Events.Add(new BackgroundJobEvent
         {
             OccurredAt = now,
             Level = "information",
             EventCode = "job_queued",
-            Message = "Manual scan queued."
+            Message = failedRecheck ? "Failed torrent recheck queued." : "Manual scan queued."
         });
         dbContext.BackgroundJobs.Add(job);
 

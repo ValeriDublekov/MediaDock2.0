@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ApiError,
+  enqueueFailedEntryRecheck,
   enqueueGoldenGlobeEnrichment,
   enqueueGoldenGlobeImport,
   enqueueManualScan,
@@ -179,6 +180,15 @@ describe('typed API client', () => {
     expect(eventsUrl.pathname).toBe('/api/background-jobs/7/events')
     expect(eventsUrl.searchParams.get('afterId')).toBe('12')
     expect(eventsUrl.searchParams.get('pageSize')).toBe('25')
+  })
+
+  it('queues a failed torrent recheck', async () => {
+    const stub = fetchStub(response(202, { id: 12, status: 'queued', statusUrl: '/api/background-jobs/12' }))
+
+    await enqueueFailedEntryRecheck(stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/background-jobs/recheck-failed')
+    expect(stub.calls[0]?.init?.method).toBe('POST')
   })
 
   it('loads deployment status and sends only the selected deployment action', async () => {

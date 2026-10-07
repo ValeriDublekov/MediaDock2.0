@@ -75,6 +75,8 @@ internal sealed class ParseLogConfiguration : IEntityTypeConfiguration<ParseLog>
         builder.Property(entity => entity.SourcePublishedAt).HasColumnName("source_published_at");
         builder.Property(entity => entity.ObservedAt).HasColumnName("observed_at");
         builder.Property(entity => entity.EventKind).HasColumnName("event_kind").HasMaxLength(16);
+        builder.Property(entity => entity.FeedEntryId).HasColumnName("feed_entry_id");
+        builder.Property(entity => entity.TorrentUrl).HasColumnName("torrent_url");
         builder.HasOne(entity => entity.Source)
             .WithMany(source => source.ParseLogs)
             .HasForeignKey(entity => entity.SourceId)

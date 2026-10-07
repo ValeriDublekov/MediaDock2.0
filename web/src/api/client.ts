@@ -285,6 +285,10 @@ export function enqueueManualScan(fetcher?: typeof fetch) {
   return requestJson<BackgroundJobAccepted>('/background-jobs/scans', { method: 'POST' }, fetcher)
 }
 
+export function enqueueFailedEntryRecheck(fetcher?: typeof fetch) {
+  return requestJson<BackgroundJobAccepted>('/background-jobs/recheck-failed', { method: 'POST' }, fetcher)
+}
+
 export function enqueueOscarEnrichment(fetcher?: typeof fetch) {
   return requestJson<BackgroundJobAccepted>('/background-jobs/oscar-enrichment', { method: 'POST' }, fetcher)
 }

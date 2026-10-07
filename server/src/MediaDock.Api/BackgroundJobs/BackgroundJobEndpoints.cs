@@ -41,6 +41,30 @@ internal static class BackgroundJobEndpoints
             .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
+        app.MapPost("/api/background-jobs/recheck-failed", async (BackgroundJobApiService service, CancellationToken token) =>
+        {
+            var result = await service.EnqueueFailedRecheckAsync(token);
+            if (!result.Accepted)
+            {
+                var problem = new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Title = "An RSS job is already queued or running.",
+                    Detail = "Wait for the active RSS job to finish before requesting a failed-entry recheck."
+                };
+                problem.Extensions["activeJobId"] = result.Job.Id;
+                problem.Extensions["activeJobStatusUrl"] = $"/api/background-jobs/{result.Job.Id}";
+                return Results.Conflict(problem);
+            }
+
+            var statusUrl = $"/api/background-jobs/{result.Job.Id}";
+            return Results.Accepted(statusUrl, new BackgroundJobAcceptedResponse(result.Job.Id, result.Job.Status, statusUrl));
+        })
+            .WithName("EnqueueFailedEntryRecheck")
+            .WithSummary("Queue a recheck of the latest retryable torrent entries.")
+            .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
         app.MapPost("/api/background-jobs/oscar-enrichment", async (BackgroundJobApiService service, CancellationToken token) =>
         {
             var result = await service.EnqueueOscarEnrichmentAsync(token);

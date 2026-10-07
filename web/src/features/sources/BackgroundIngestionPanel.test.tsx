@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ApiError,
+  enqueueFailedEntryRecheck,
   enqueueGoldenGlobeEnrichment,
   enqueueGoldenGlobeImport,
   enqueueManualScan,
@@ -22,6 +23,7 @@ vi.mock('../../api/client', () => ({
       this.status = status
     }
   },
+  enqueueFailedEntryRecheck: vi.fn(),
   enqueueGoldenGlobeEnrichment: vi.fn(),
   enqueueGoldenGlobeImport: vi.fn(),
   enqueueManualScan: vi.fn(),
@@ -50,6 +52,7 @@ const queuedJob: BackgroundJob = {
 
 describe('BackgroundIngestionPanel', () => {
   beforeEach(() => {
+    vi.mocked(enqueueFailedEntryRecheck).mockReset().mockResolvedValue({ id: 11, status: 'queued', statusUrl: '/api/background-jobs/11' })
     vi.mocked(enqueueGoldenGlobeEnrichment).mockReset().mockResolvedValue({ id: 9, status: 'queued', statusUrl: '/api/background-jobs/9' })
     vi.mocked(enqueueGoldenGlobeImport).mockReset().mockResolvedValue({ id: 10, status: 'queued', statusUrl: '/api/background-jobs/10' })
     vi.mocked(enqueueManualScan).mockReset().mockResolvedValue({ id: 7, status: 'queued', statusUrl: '/api/background-jobs/7' })
@@ -73,6 +76,18 @@ describe('BackgroundIngestionPanel', () => {
     await screen.findByRole('dialog')
     expect(enqueueManualScan).toHaveBeenCalledOnce()
     expect(screen.getByText(/Job #/)).toBeTruthy()
+  })
+
+  it('queues a failed-entry recheck after confirmation and opens its job details', async () => {
+    vi.stubGlobal('confirm', vi.fn(() => true))
+    vi.mocked(getBackgroundJob).mockResolvedValue({ ...queuedJob, currentStage: 'recheck_queued' })
+    render(<BackgroundIngestionPanel mode="torrent" />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Recheck failed' }))
+
+    await screen.findByRole('dialog')
+    expect(enqueueFailedEntryRecheck).toHaveBeenCalledOnce()
+    expect(screen.getByRole('heading', { name: 'Failed torrent recheck' })).toBeTruthy()
   })
 
   it('restores an existing active job and stops polling when details close', async () => {
@@ -150,6 +165,7 @@ describe('BackgroundIngestionPanel', () => {
 
     expect(await screen.findByText('No active ingestion job.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Start scan' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Recheck failed' })).toBeTruthy()
     expect(screen.queryByLabelText('Oscar dataset')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Enrich Golden Globes films' })).toBeNull()
   })

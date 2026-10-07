@@ -151,17 +151,127 @@ public sealed class RssIngestionService
         return new IngestionRunResult(runId, summary);
     }
 
+    public async Task<IngestionRecheckResult> RecheckFailedAsync(
+        CancellationToken cancellationToken = default,
+        Func<IngestionProgressUpdate, CancellationToken, Task>? reportProgress = null)
+    {
+        var startedAt = _timeProvider.GetUtcNow();
+        var runId = await _repository.StartRunAsync("manual", startedAt, cancellationToken);
+        var progress = new RunProgress { RunId = runId };
+        var pendingLogs = new List<IngestionParseLog>();
+        IReadOnlyList<IngestionRetryItem> items = [];
+        var fallbackFeeds = new Dictionary<long, IReadOnlyDictionary<string, IngestionFeedItem>>();
+        var processedSources = new HashSet<long>();
+        var unavailableItems = 0;
+
+        await ReportProgressAsync("recheck_started", progress, reportProgress, cancellationToken);
+        try
+        {
+            items = await _repository.GetLatestRetryableItemsAsync(cancellationToken);
+            progress.MaximumParseLogs = items.Count;
+            var settings = await _repository.GetMatchSettingsAsync(cancellationToken);
+            foreach (var item in items)
+            {
+                progress.EntriesSeen++;
+                progress.CurrentSource = BoundText(item.Source.Name, 200);
+                if (processedSources.Add(item.Source.Id))
+                {
+                    progress.FeedsProcessed++;
+                }
+
+                var feedItem = item.FeedItem;
+                if (!IsUsableUrl(feedItem.TorrentUrl))
+                {
+                    if (!fallbackFeeds.TryGetValue(item.Source.Id, out var entries))
+                    {
+                        try
+                        {
+                            var body = await _feedTransport.FetchAsync(item.Source.Url, cancellationToken);
+                            entries = ParseFeed(body)
+                                .Select(entry => (Entry: entry, Key: TryCreateSourceItemKey(entry)))
+                                .Where(value => value.Key is not null)
+                                .GroupBy(value => value.Key!, StringComparer.Ordinal)
+                                .ToDictionary(group => group.Key, group => group.First().Entry, StringComparer.Ordinal);
+                            fallbackFeeds[item.Source.Id] = entries;
+                        }
+                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                        {
+                            throw;
+                        }
+                        catch (Exception exception)
+                        {
+                            entries = new Dictionary<string, IngestionFeedItem>(StringComparer.Ordinal);
+                            fallbackFeeds[item.Source.Id] = entries;
+                            progress.RecordError($"Feed '{item.Source.Name}' could not restore an old retry item ({exception.GetType().Name}).");
+                        }
+                    }
+
+                    if (!entries.TryGetValue(item.SourceItemKey, out feedItem))
+                    {
+                        unavailableItems++;
+                        progress.KnownEntriesSkipped++;
+                        continue;
+                    }
+                }
+
+                await ProcessEntryAsync(
+                    item.Source,
+                    feedItem,
+                    settings,
+                    progress,
+                    pendingLogs,
+                    cancellationToken,
+                    skipProcessedItem: false,
+                    sourceItemKeyOverride: item.SourceItemKey);
+
+                if (progress.EntriesSeen % 25 == 0)
+                {
+                    await FlushLogsAsync(pendingLogs, progress, cancellationToken);
+                    await ReportProgressAsync("rechecking_entries", progress, reportProgress, cancellationToken);
+                }
+
+                if (progress.OmdbBudgetExhausted)
+                {
+                    break;
+                }
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            progress.RecordError("Failed-entry recheck cancelled.");
+            await FlushLogsAsync(pendingLogs, progress, CancellationToken.None);
+            var cancelled = BuildSummary(progress, _timeProvider.GetUtcNow(), "failed");
+            await _repository.CompleteRunAsync(runId, cancelled, CancellationToken.None);
+            throw;
+        }
+        catch (Exception exception)
+        {
+            progress.RecordError($"Failed-entry recheck failed ({exception.GetType().Name}).");
+        }
+
+        var status = progress.ErrorCount == 0
+            ? "succeeded"
+            : progress.EntriesSeen > unavailableItems ? "partial" : "failed";
+        var summary = BuildSummary(progress, _timeProvider.GetUtcNow(), status);
+        await FlushLogsAsync(pendingLogs, progress, cancellationToken);
+        await _repository.CompleteRunAsync(runId, summary, cancellationToken);
+        await ReportProgressAsync("recheck_completed", progress, reportProgress, cancellationToken);
+        return new IngestionRecheckResult(new IngestionRunResult(runId, summary), items.Count, unavailableItems);
+    }
+
     private async Task ProcessEntryAsync(
         IngestionSource source,
         IngestionFeedItem entry,
         IngestionMatchSettings settings,
         RunProgress progress,
         List<IngestionParseLog> pendingLogs,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool skipProcessedItem = true,
+        string? sourceItemKeyOverride = null)
     {
         var observedAt = _timeProvider.GetUtcNow();
         var rawTitle = entry.Title ?? string.Empty;
-        var sourceItemKey = TryCreateSourceItemKey(entry);
+        var sourceItemKey = sourceItemKeyOverride ?? TryCreateSourceItemKey(entry);
         if (string.IsNullOrWhiteSpace(rawTitle) || rawTitle.Length > MaximumTitleLength || !IsUsableUrl(entry.TorrentUrl))
         {
             RecordEntryFailure(
@@ -193,7 +303,7 @@ public sealed class RssIngestionService
         }
 
         var itemFingerprint = CreateItemFingerprint(source, entry, settings);
-        if (await _repository.TrySkipProcessedItemAsync(
+        if (skipProcessedItem && await _repository.TrySkipProcessedItemAsync(
             source,
             entry,
                 sourceItemKey,
@@ -507,7 +617,9 @@ public sealed class RssIngestionService
             entry.PublishedAt,
             observedAt)
         {
-            LookupTitles = lookupTitles ?? []
+            LookupTitles = lookupTitles ?? [],
+            FeedEntryId = entry.FeedEntryId,
+            TorrentUrl = entry.TorrentUrl
         };
 
     private static IReadOnlyList<IngestionFeedItem> ParseFeed(byte[] body)
@@ -604,21 +716,23 @@ public sealed class RssIngestionService
         RunProgress progress,
         IngestionParseLog log)
     {
-        if (progress.ParseLogsWritten + pendingLogs.Count >= MaximumParseLogsPerRun)
+        if (progress.ParseLogsWritten + pendingLogs.Count >= progress.MaximumParseLogs)
         {
             return;
         }
 
         pendingLogs.Add(log with
         {
-            RawTitle = BoundText(log.RawTitle, 1000),
+            RawTitle = BoundText(log.RawTitle, MaximumTitleLength + 1),
             FeedName = BoundText(log.FeedName, 200),
             ParsedTitle = BoundText(log.ParsedTitle, 500),
             OmdbStatus = BoundText(log.OmdbStatus, 32),
             IgnoreReason = BoundText(log.IgnoreReason, 64),
             ErrorMessage = BoundText(log.ErrorMessage, 500),
             Decision = BoundText(log.Decision, 64),
-            LookupTitles = log.LookupTitles.Take(2).Select(title => BoundText(title, 160)).ToArray()
+            LookupTitles = log.LookupTitles.Take(2).Select(title => BoundText(title, 160)).ToArray(),
+            FeedEntryId = BoundText(log.FeedEntryId, MaximumFeedUrlLength + 1),
+            TorrentUrl = BoundText(log.TorrentUrl, MaximumFeedUrlLength + 1)
         });
     }
 
@@ -717,6 +831,7 @@ public sealed class RssIngestionService
     private sealed class RunProgress
     {
         public long RunId { get; init; }
+        public int MaximumParseLogs { get; set; } = MaximumParseLogsPerRun;
         public string? CurrentSource { get; set; }
         public int FeedsProcessed { get; set; }
         public int EntriesSeen { get; set; }

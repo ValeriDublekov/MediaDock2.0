@@ -25,6 +25,8 @@ public sealed class ParseLog
     public DateTimeOffset? SourcePublishedAt { get; set; }
     public DateTimeOffset? ObservedAt { get; set; }
     public string? EventKind { get; set; }
+    public string? FeedEntryId { get; set; }
+    public string? TorrentUrl { get; set; }
 
     public Source? Source { get; set; }
 }

@@ -53,6 +53,128 @@ public sealed class IngestionTests
     }
 
     [Fact]
+    public async Task FailedEntryRecheckUsesStoredFeedPayloadAndOverridesProcessedState()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_recheck_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString()).Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+        var publishedAt = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
+        var source = new Source
+        {
+            StableKey = "recheck-source",
+            Name = "Movies",
+            FeedType = "movie",
+            Url = SuccessfulFeedUrl
+        };
+        db.Sources.Add(source);
+        await db.SaveChangesAsync();
+
+        db.ParseLogs.Add(new ParseLog
+        {
+            SourceId = source.Id,
+            SourceItemKey = "entry:recheck-matrix",
+            RawTitle = "The Matrix (1999) [1080p]",
+            FeedName = source.Name,
+            ParsedSuccessfully = false,
+            OmdbStatus = "transport_error",
+            Ignored = true,
+            ErrorMessage = "transport_error",
+            ProcessedAt = publishedAt,
+            RetryState = "retryable",
+            AttemptCount = 1,
+            FeedType = source.FeedType,
+            SourcePublishedAt = publishedAt,
+            FeedEntryId = "recheck-matrix",
+            TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=91"
+        });
+        db.ParseLogs.AddRange(
+            new ParseLog
+            {
+                SourceId = source.Id,
+                SourceItemKey = "entry:matrix-1",
+                RawTitle = "The Matrix (1999) [1080p]",
+                FeedName = source.Name,
+                ParsedSuccessfully = false,
+                OmdbStatus = "transport_error",
+                Ignored = true,
+                ErrorMessage = "transport_error",
+                ProcessedAt = publishedAt.AddMinutes(1),
+                RetryState = "retryable",
+                AttemptCount = 1,
+                FeedType = source.FeedType,
+                SourcePublishedAt = publishedAt,
+                FeedEntryId = "matrix-1"
+            },
+            new ParseLog
+            {
+                SourceId = source.Id,
+                SourceItemKey = "entry:already-resolved",
+                RawTitle = "The Matrix (1999) [1080p]",
+                FeedName = source.Name,
+                ParsedSuccessfully = false,
+                OmdbStatus = "transport_error",
+                Ignored = true,
+                ErrorMessage = "transport_error",
+                ProcessedAt = publishedAt.AddMinutes(2),
+                RetryState = "retryable",
+                AttemptCount = 1,
+                FeedType = source.FeedType,
+                FeedEntryId = "already-resolved",
+                TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=92"
+            },
+            new ParseLog
+            {
+                SourceId = source.Id,
+                SourceItemKey = "entry:already-resolved",
+                RawTitle = "The Matrix (1999) [1080p]",
+                FeedName = source.Name,
+                ParsedSuccessfully = true,
+                OmdbStatus = "found",
+                Ignored = false,
+                ProcessedAt = publishedAt.AddMinutes(3),
+                RetryState = "resolved",
+                AttemptCount = 1,
+                FeedType = source.FeedType,
+                FeedEntryId = "already-resolved",
+                TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=92"
+            });
+        db.RssItemStates.Add(new RssItemProcessingState
+        {
+            SourceId = source.Id,
+            SourceItemKey = "entry:recheck-matrix",
+            Fingerprint = "old-fingerprint",
+            Disposition = "terminal",
+            UpdatedAt = publishedAt,
+            ExpiresAt = publishedAt.AddDays(2)
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new MockProviderHandler();
+        using var httpClient = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        var service = CreateService(db, httpClient, new RssFeedTransport(httpClient, new PublicDnsResolver()));
+
+        var result = await service.RecheckFailedAsync();
+
+        Assert.Equal(2, result.RetryableEntriesSelected);
+        Assert.Equal(0, result.EntriesUnavailable);
+        Assert.Equal(1, result.Run.Summary.TitlesCreated);
+        Assert.Equal(2, result.Run.Summary.OccurrencesCreated);
+        Assert.Equal(1, handler.OmdbRequestCount);
+        var occurrences = await db.Occurrences.OrderBy(value => value.SourceItemKey).ToListAsync();
+        var occurrence = occurrences.Single(value => value.SourceItemKey == "entry:recheck-matrix");
+        Assert.Equal("entry:recheck-matrix", occurrence.SourceItemKey);
+        Assert.Equal("recheck-matrix", occurrence.FeedEntryId);
+        Assert.Equal("https://rutracker.org/forum/viewtopic.php?t=91", occurrence.TorrentUrl);
+        Assert.Contains(occurrences, value => value.SourceItemKey == "entry:matrix-1"
+            && value.TorrentUrl == "https://rutracker.org/forum/viewtopic.php?t=1");
+        Assert.Equal("resolved", (await db.RssItemStates.SingleAsync(state => state.SourceItemKey == "entry:recheck-matrix")).Disposition);
+        Assert.DoesNotContain(occurrences, value => value.SourceItemKey == "entry:already-resolved");
+    }
+
+    [Fact]
     public async Task AmbiguousHitIsNotPersistedAndAlternateTitleIsBoundedAndAudited()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_title_match_test").Build();
@@ -197,7 +319,11 @@ public sealed class IngestionTests
             log.LookupTitles.SequenceEqual(new[] { "Unknown Film" }));
         Assert.Contains(logs, log => log.OmdbStatus == "provider_error" &&
             log.LookupTitles.SequenceEqual(new[] { "Temporary Film" }));
-        Assert.All(logs, log => Assert.True(log.RawTitle.Length <= 1000));
+        var temporaryFilmLog = logs.Single(log => log.RawTitle.StartsWith("Temporary Film")
+            && log.OmdbStatus == "provider_error");
+        Assert.Equal("temporary-1", temporaryFilmLog.FeedEntryId);
+        Assert.Equal("https://rutracker.org/forum/viewtopic.php?t=3", temporaryFilmLog.TorrentUrl);
+        Assert.All(logs, log => Assert.True(log.RawTitle.Length <= 2049));
         Assert.DoesNotContain(logs, log => log.RawTitle.Contains(FakeApiKey, StringComparison.Ordinal));
     }
 

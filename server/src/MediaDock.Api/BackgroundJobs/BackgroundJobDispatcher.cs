@@ -196,8 +196,39 @@ internal sealed class BackgroundJobDispatcher(
                 return;
             }
 
+            var failedRecheck = IsFailedRecheck(job.ResultSummary);
             await LoadProviderSettingsAsync(services, dbContext, stoppingToken);
             var ingestion = services.GetRequiredService<RssIngestionService>();
+            if (failedRecheck)
+            {
+                var recheck = await ingestion.RecheckFailedAsync(
+                    stoppingToken,
+                    (progress, token) => SaveIngestionProgressAsync(dbContext, job, progress, token));
+                var recheckStatus = recheck.Run.Summary.Status switch
+                {
+                    "failed" => "failed",
+                    "partial" => "partial",
+                    _ => "succeeded"
+                };
+                await CompleteJobAsync(
+                    dbContext,
+                    job,
+                    recheckStatus,
+                    new
+                    {
+                        scanRunId = recheck.Run.RunId,
+                        rss = recheck.Run.Summary,
+                        recheck = new
+                        {
+                            recheck.RetryableEntriesSelected,
+                            recheck.EntriesUnavailable
+                        }
+                    },
+                    null,
+                    CancellationToken.None);
+                return;
+            }
+
             var result = await ingestion.RunAsync(
                 job.Trigger,
                 stoppingToken,
@@ -247,6 +278,18 @@ internal sealed class BackgroundJobDispatcher(
                 exception.GetType().FullName,
                 exception.InnerException?.Message);
         }
+    }
+
+    private static bool IsFailedRecheck(string? resultSummary)
+    {
+        if (resultSummary is null)
+        {
+            return false;
+        }
+
+        using var document = JsonDocument.Parse(resultSummary);
+        return document.RootElement.TryGetProperty("operation", out var operation)
+            && operation.GetString() == "failed_recheck";
     }
 
     private async Task MarkJobFailedWithFreshContextAsync(
