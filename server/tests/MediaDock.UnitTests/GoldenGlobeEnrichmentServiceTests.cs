@@ -119,6 +119,29 @@ public sealed class GoldenGlobeEnrichmentServiceTests
     }
 
     [Fact]
+    public async Task RunAsyncCorrectsNomineeTypeAfterVerifiedCrossTypeMatch()
+    {
+        var now = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
+        var repository = new FakeGoldenGlobeEnrichmentRepository(
+        [new("Too Big To Fail", 2012, 0, "series")]);
+        var client = new StubOmdbClient(
+        [
+            new(MetadataLookupStatus.ConfirmedNotFound, HttpAttempts: 1),
+            new(MetadataLookupStatus.Found, CreateMetadata("Too Big to Fail", 2011, "tt1742683", "Nominated for 1 Golden Globe"), 1)
+        ],
+        [new(MetadataLookupStatus.Found,
+            [new MetadataSearchCandidate("Too Big to Fail", 2011, "tt1742683", "movie")], 1, 1)]);
+
+        var result = await CreateService(repository, client, now).RunAsync();
+
+        Assert.Equal(1, result.Summary.EnrichedTitles);
+        Assert.Equal("movie", repository.SavedOutcomes[0].Update.ResolvedNomineeType);
+        Assert.Equal("tt1742683", repository.SavedOutcomes[0].Update.ImdbId);
+        Assert.Null(client.SearchRequests[0].SourceType);
+        Assert.Equal((2012, "movie", "tt1742683"), client.Requests[1]);
+    }
+
+    [Fact]
     public async Task RunAsyncChecksDetailsForClosestCandidateBelowSearchScoreThreshold()
     {
         var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
@@ -439,7 +462,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         public int Calls { get; private set; }
         public List<OmdbRequestPurpose> RequestPurposes { get; } = [];
         public List<(int? Year, string SourceType, string? ImdbId)> Requests { get; } = [];
-        public List<(string Title, string SourceType, int Page)> SearchRequests { get; } = [];
+        public List<(string Title, string? SourceType, int Page)> SearchRequests { get; } = [];
 
         public Task<MetadataLookupResult> LookupAsync(
             string title,
@@ -457,7 +480,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
 
         public Task<MetadataSearchResult> SearchAsync(
             string title,
-            string sourceType,
+            string? sourceType,
             int page,
             CancellationToken cancellationToken = default,
             OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)

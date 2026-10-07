@@ -4,7 +4,7 @@ namespace MediaDock.Application.GoldenGlobes;
 
 public sealed record GoldenGlobeEnrichmentCandidate(string Title, int CeremonyYear, int AttemptCount, string SourceType = "movie");
 public sealed record GoldenGlobeManualRefreshCandidate(string Title, int CeremonyYear, string SourceType, string ImdbId, int LinkVersion, int AttemptCount);
-public sealed record GoldenGlobeEnrichmentUpdate(string Status, int AttemptCount, DateTimeOffset AttemptedAt, DateTimeOffset? NextAttemptAt, string? ErrorCode, string? ImdbId);
+public sealed record GoldenGlobeEnrichmentUpdate(string Status, int AttemptCount, DateTimeOffset AttemptedAt, DateTimeOffset? NextAttemptAt, string? ErrorCode, string? ImdbId, string? ResolvedNomineeType = null);
 public sealed record GoldenGlobeEnrichmentSummary(int EligibleTitles, int AttemptedTitles, int EnrichedTitles, int ProblemTitles, int NotFoundTitles, int TemporaryErrors, int CacheHits, int HttpAttempts, bool StoppedForQuota);
 public sealed record GoldenGlobeEnrichmentResult(GoldenGlobeEnrichmentSummary Summary, string Status);
 public sealed record GoldenGlobeManualRefreshResult(string Status, string? ErrorCode, string ImdbId, int HttpAttempts, bool CacheHit, bool Applied);
@@ -53,29 +53,30 @@ public sealed class GoldenGlobeEnrichmentService(
             var status = GoldenGlobeEnrichmentStatuses.TemporaryError;
             string? error = resolution.ErrorCode ?? resolution.Status.ToString().ToLowerInvariant();
             string? imdb = null;
+            string? resolvedNomineeType = null;
             DateTimeOffset? next = attemptedAt.AddHours(Math.Min(24, Math.Pow(2, Math.Clamp(attempt - 1, 0, 5))));
             if (resolution.Status == MetadataLookupStatus.Found && resolution.Metadata is not null)
             {
                 imdb = ImdbIdNormalizer.Normalize(resolution.Metadata.ImdbId);
                 if (!ImdbIdNormalizer.IsValid(imdb))
                 { status = GoldenGlobeEnrichmentStatuses.Problem; error = imdb is null ? "missing_imdb_id" : "invalid_imdb_id"; imdb = null; next = null; problems++; }
-                else if (!string.Equals(resolution.Metadata.SourceType, candidate.SourceType, StringComparison.Ordinal))
+                else if (resolution.Metadata.SourceType is not ("movie" or "series"))
                 { status = GoldenGlobeEnrichmentStatuses.Problem; error = "type_mismatch"; imdb = null; next = null; problems++; }
-                else if (candidate.SourceType == "movie" && resolution.Metadata.Year is not int)
+                else if (resolution.Metadata.SourceType == "movie" && resolution.Metadata.Year is not int)
                 { status = GoldenGlobeEnrichmentStatuses.Problem; error = "missing_year"; next = null; problems++; }
-                else if (candidate.SourceType == "movie"
+                else if (resolution.Metadata.SourceType == "movie"
                     && resolution.Metadata.Year is int foundYear
                     && foundYear != candidate.CeremonyYear
                     && foundYear != candidate.CeremonyYear - 1)
                 { status = GoldenGlobeEnrichmentStatuses.Problem; error = $"year_mismatch:{foundYear}"; next = null; problems++; }
-                else { status = GoldenGlobeEnrichmentStatuses.Enriched; error = null; next = null; enriched++; }
+                else { status = GoldenGlobeEnrichmentStatuses.Enriched; error = null; next = null; resolvedNomineeType = resolution.Metadata.SourceType; enriched++; }
             }
             else if (resolution.Status == MetadataLookupStatus.ConfirmedNotFound) { status = GoldenGlobeEnrichmentStatuses.NotFound; error = "not_found"; next = null; notFound++; }
             else if (resolution.Status == MetadataLookupStatus.ProviderFailure
                 && resolution.ErrorCode is "ambiguous_match" or "no_confident_match" or "candidate_mismatch" or "no_golden_globe_match")
             { status = GoldenGlobeEnrichmentStatuses.Problem; error = resolution.ErrorCode; next = null; problems++; }
             else errors++;
-            await repository.SaveOutcomeAsync(candidate.Title, candidate.CeremonyYear, candidate.SourceType, new(status, attempt, attemptedAt, next, error, imdb), cancellationToken);
+            await repository.SaveOutcomeAsync(candidate.Title, candidate.CeremonyYear, candidate.SourceType, new(status, attempt, attemptedAt, next, error, imdb, resolvedNomineeType), cancellationToken);
             attempted++;
             if (resolution.Status == MetadataLookupStatus.QuotaExceeded) { quota = true; break; }
         }

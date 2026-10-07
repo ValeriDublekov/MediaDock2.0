@@ -134,6 +134,24 @@ public sealed class OmdbClientBudgetTests
         Assert.All(budget.RequestPurposes, purpose => Assert.Equal(OmdbRequestPurpose.GoldenGlobeEnrichment, purpose));
     }
 
+    [Fact]
+    public async Task SearchCanOmitTheMediaTypeFilter()
+    {
+        var handler = new SearchResultsHandler();
+        using var httpClient = new HttpClient(handler);
+        var client = new OmdbClient(httpClient, "test-key");
+
+        var result = await client.SearchAsync(
+            "Too Big To Fail",
+            null,
+            1,
+            requestPurpose: OmdbRequestPurpose.GoldenGlobeEnrichment);
+
+        Assert.Equal(MetadataLookupStatus.Found, result.Status);
+        Assert.DoesNotContain("&type=", handler.LastRequestUri!.Query);
+        Assert.Equal("movie", Assert.Single(result.Candidates).SourceType);
+    }
+
     private sealed class SequentialRequestBudget(params bool[] reservations) : IOmdbRequestBudget
     {
         private readonly Queue<bool> _reservations = new(reservations);

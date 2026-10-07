@@ -57,7 +57,8 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
                 .SetProperty(x => x.LastEnrichmentAttemptAt, update.AttemptedAt)
                 .SetProperty(x => x.NextEnrichmentAttemptAt, update.NextAttemptAt)
                 .SetProperty(x => x.LastEnrichmentError, update.ErrorCode)
-                .SetProperty(x => x.ImdbId, update.ImdbId), cancellationToken);
+                .SetProperty(x => x.ImdbId, update.ImdbId)
+                .SetProperty(x => x.NomineeType, update.ResolvedNomineeType ?? sourceType), cancellationToken);
         }
     }
 

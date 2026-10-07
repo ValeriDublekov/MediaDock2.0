@@ -65,6 +65,49 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
     }
 
     [Fact]
+    public async Task SaveOutcomeCorrectsTheTypeForTheMatchedNominationGroup()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_type_correction_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+
+        var award = new GoldenGlobeAward { Name = "Television Motion Picture" };
+        db.GoldenGlobeNominations.AddRange(
+            CreateNomination("type-a", "Too Big To Fail", 2012, "not_found", 1, null, award, "series"),
+            CreateNomination("type-b", "Too Big To Fail", 2012, "problem", 2, null, award, "series"),
+            CreateNomination("other-year", "Too Big To Fail", 2011, "not_found", 1, null, award, "series"));
+        await db.SaveChangesAsync();
+
+        var attemptedAt = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
+        await new PostgresGoldenGlobeEnrichmentRepository(db).SaveOutcomeAsync(
+            "Too Big To Fail",
+            2012,
+            "series",
+            new GoldenGlobeEnrichmentUpdate("enriched", 3, attemptedAt, null, null, "tt1742683", "movie"));
+
+        var nominations = await db.GoldenGlobeNominations.AsNoTracking()
+            .Where(row => row.Title == "Too Big To Fail")
+            .OrderBy(row => row.Year)
+            .ThenBy(row => row.ImportKey)
+            .ToListAsync();
+        Assert.All(nominations.Where(row => row.Year == 2012), row =>
+        {
+            Assert.Equal("movie", row.NomineeType);
+            Assert.Equal("enriched", row.EnrichmentStatus);
+            Assert.Equal("tt1742683", row.ImdbId);
+        });
+        var otherYear = Assert.Single(nominations.Where(row => row.Year == 2011));
+        Assert.Equal("series", otherYear.NomineeType);
+        Assert.Equal("not_found", otherYear.EnrichmentStatus);
+        Assert.Null(otherYear.ImdbId);
+    }
+
+    [Fact]
     public async Task GetEligibleCandidatesGroupsEligibleNominationsAndOrdersNewestFirst()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_enrichment_test").Build();

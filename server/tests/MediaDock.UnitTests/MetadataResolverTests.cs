@@ -52,6 +52,81 @@ public sealed class MetadataResolverTests
         Assert.Equal(["tt11564570", "tt8579674"], client.RequestedImdbIds);
     }
 
+    [Fact]
+    public async Task ResolveGoldenGlobeSearchDoesNotFilterByNomineeType()
+    {
+        var now = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
+        var client = new TooBigToFailSearchClient();
+        var resolver = new MetadataResolver(client, new InMemoryMetadataCacheStore());
+
+        var result = await resolver.ResolveGoldenGlobeAsync("Too Big To Fail", 2012, "series", now);
+
+        Assert.Equal(MetadataLookupStatus.Found, result.Status);
+        Assert.Equal("tt1742683", result.Metadata?.ImdbId);
+        Assert.Equal("movie", result.Metadata?.SourceType);
+        Assert.Null(client.SearchSourceType);
+    }
+
+    private sealed class TooBigToFailSearchClient : IOmdbClient
+    {
+        public string? SearchSourceType { get; private set; }
+
+        public Task<MetadataLookupResult> LookupAsync(
+            string title,
+            int? year,
+            string sourceType,
+            CancellationToken cancellationToken = default,
+            OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion,
+            string? imdbId = null)
+        {
+            if (imdbId is null)
+            {
+                return Task.FromResult(new MetadataLookupResult(
+                    MetadataLookupStatus.ConfirmedNotFound,
+                    HttpAttempts: 1,
+                    ErrorCode: "not_found"));
+            }
+
+            return Task.FromResult(new MetadataLookupResult(
+                MetadataLookupStatus.Found,
+                new MetadataDetails(
+                    "Too Big to Fail",
+                    2011,
+                    imdbId,
+                    "movie",
+                    "movie",
+                    "standard",
+                    null,
+                    null,
+                    null,
+                    null,
+                    [],
+                    [],
+                    null,
+                    null,
+                    null,
+                    null,
+                    "Nominated for 1 Golden Globe",
+                    null),
+                1));
+        }
+
+        public Task<MetadataSearchResult> SearchAsync(
+            string title,
+            string? sourceType,
+            int page,
+            CancellationToken cancellationToken = default,
+            OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
+        {
+            SearchSourceType = sourceType;
+            return Task.FromResult(new MetadataSearchResult(
+                MetadataLookupStatus.Found,
+                [new MetadataSearchCandidate("Too Big to Fail", 2011, "tt1742683", "movie")],
+                1,
+                1));
+        }
+    }
+
     private sealed class RecordingOmdbClient : IOmdbClient
     {
         public List<string?> RequestedImdbIds { get; } = [];

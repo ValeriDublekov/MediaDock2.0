@@ -24,6 +24,7 @@ public sealed class GoldenGlobeDatasetImporterTests
             nominee_type,year,winner,award,title
             film,2025,true,Best Motion Picture,"A Film, Extended"
             tv-show,2024,false,Best Television Series,Series Title
+            tv-show,2023,false,Best Television Series,Auto Type Correction
             person,2025,true,Best Actor,Ignored Person
             film,1980,true,Best Motion Picture,Too Old
             film,2025,false,Best Actor,
@@ -36,12 +37,12 @@ public sealed class GoldenGlobeDatasetImporterTests
 
         var firstImport = await importer.ImportAsync(Encoding.UTF8.GetBytes(csv));
 
-        Assert.Equal(5, firstImport.RowsRead);
+        Assert.Equal(6, firstImport.RowsRead);
         Assert.Equal(1, firstImport.RowsSkippedByYear);
         Assert.Equal(1, firstImport.RowsSkippedByType);
         Assert.Equal(1, firstImport.RowsSkippedWithoutTitle);
         Assert.Equal(2, firstImport.AwardsCreated);
-        Assert.Equal(2, firstImport.NominationsCreated);
+        Assert.Equal(3, firstImport.NominationsCreated);
 
         var preservedNomination = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "A Film, Extended");
         preservedNomination.EnrichmentStatus = "enriched";
@@ -56,6 +57,10 @@ public sealed class GoldenGlobeDatasetImporterTests
         legacySeriesNomination.ImdbId = "tt00000001";
         legacySeriesNomination.IsImdbIdManual = true;
         legacySeriesNomination.ImdbIdVersion = 2;
+        var autoTypeCorrection = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "Auto Type Correction");
+        autoTypeCorrection.NomineeType = "movie";
+        autoTypeCorrection.EnrichmentStatus = "enriched";
+        autoTypeCorrection.ImdbId = "tt12345679";
         await db.SaveChangesAsync();
 
         var repeatedImport = await importer.ImportAsync(Encoding.UTF8.GetBytes(csv));
@@ -65,7 +70,7 @@ public sealed class GoldenGlobeDatasetImporterTests
         Assert.Equal(0, repeatedImport.NominationsCreated);
         Assert.Equal(0, tsvImport.AwardsCreated);
         Assert.Equal(1, tsvImport.NominationsCreated);
-        Assert.Equal(3, await db.GoldenGlobeNominations.CountAsync());
+        Assert.Equal(4, await db.GoldenGlobeNominations.CountAsync());
         var preservedAfterReimport = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "A Film, Extended");
         Assert.Equal("enriched", preservedAfterReimport.EnrichmentStatus);
         Assert.Equal("tt12345678", preservedAfterReimport.ImdbId);
@@ -78,6 +83,10 @@ public sealed class GoldenGlobeDatasetImporterTests
         Assert.Null(reclassifiedSeries.ImdbId);
         Assert.False(reclassifiedSeries.IsImdbIdManual);
         Assert.Equal(3, reclassifiedSeries.ImdbIdVersion);
+        var autoTypeCorrected = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "Auto Type Correction");
+        Assert.Equal("movie", autoTypeCorrected.NomineeType);
+        Assert.Equal("enriched", autoTypeCorrected.EnrichmentStatus);
+        Assert.Equal("tt12345679", autoTypeCorrected.ImdbId);
         Assert.True((await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "TSV Film")).Winner);
     }
 }

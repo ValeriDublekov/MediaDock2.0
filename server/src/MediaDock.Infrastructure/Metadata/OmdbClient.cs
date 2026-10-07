@@ -116,13 +116,13 @@ public sealed class OmdbClient : IOmdbClient
 
     public Task<MetadataSearchResult> SearchAsync(
         string title,
-        string sourceType,
+        string? sourceType,
         int page,
         CancellationToken cancellationToken = default,
         OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
     {
         if (string.IsNullOrWhiteSpace(title)
-            || sourceType is not ("movie" or "series")
+            || sourceType is not (null or "movie" or "series")
             || page is < 1 or > 100)
         {
             return Task.FromResult(new MetadataSearchResult(
@@ -134,9 +134,12 @@ public sealed class OmdbClient : IOmdbClient
 
         var query = new StringBuilder()
             .Append("apikey=").Append(Uri.EscapeDataString(_apiKey))
-            .Append("&s=").Append(Uri.EscapeDataString(title.Trim()))
-            .Append("&type=").Append(Uri.EscapeDataString(sourceType))
-            .Append("&page=").Append(page.ToString(CultureInfo.InvariantCulture));
+            .Append("&s=").Append(Uri.EscapeDataString(title.Trim()));
+        if (sourceType is not null)
+        {
+            query.Append("&type=").Append(Uri.EscapeDataString(sourceType));
+        }
+        query.Append("&page=").Append(page.ToString(CultureInfo.InvariantCulture));
 
         return SendRequestAsync(
             query.ToString(),

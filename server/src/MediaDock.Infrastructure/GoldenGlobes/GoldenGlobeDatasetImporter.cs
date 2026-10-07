@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.VisualBasic.FileIO;
+using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -61,15 +62,21 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
                 if (existing.TryGetValue(key, out var existingNomination)
                     && existingNomination.NomineeType != row.NomineeType)
                 {
-                    existingNomination.NomineeType = row.NomineeType;
-                    existingNomination.EnrichmentStatus = "pending";
-                    existingNomination.EnrichmentAttemptCount = 0;
-                    existingNomination.LastEnrichmentAttemptAt = null;
-                    existingNomination.NextEnrichmentAttemptAt = null;
-                    existingNomination.LastEnrichmentError = null;
-                    existingNomination.ImdbId = null;
-                    existingNomination.IsImdbIdManual = false;
-                    existingNomination.ImdbIdVersion++;
+                    var hasVerifiedAutomaticLink = !existingNomination.IsImdbIdManual
+                        && existingNomination.EnrichmentStatus == "enriched"
+                        && ImdbIdNormalizer.IsValid(existingNomination.ImdbId);
+                    if (!hasVerifiedAutomaticLink)
+                    {
+                        existingNomination.NomineeType = row.NomineeType;
+                        existingNomination.EnrichmentStatus = "pending";
+                        existingNomination.EnrichmentAttemptCount = 0;
+                        existingNomination.LastEnrichmentAttemptAt = null;
+                        existingNomination.NextEnrichmentAttemptAt = null;
+                        existingNomination.LastEnrichmentError = null;
+                        existingNomination.ImdbId = null;
+                        existingNomination.IsImdbIdManual = false;
+                        existingNomination.ImdbIdVersion++;
+                    }
                 }
 
                 continue;

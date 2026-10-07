@@ -92,7 +92,7 @@ public interface IOmdbClient
 
     Task<MetadataSearchResult> SearchAsync(
         string title,
-        string sourceType,
+        string? sourceType,
         int page,
         CancellationToken cancellationToken = default,
         OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion) =>

@@ -182,7 +182,7 @@ public sealed class MetadataResolver
         {
             var firstPage = await _client.SearchAsync(
                 variant,
-                normalizedSourceType,
+                null,
                 1,
                 cancellationToken,
                 requestPurpose);
@@ -212,7 +212,7 @@ public sealed class MetadataResolver
             {
                 var nextPage = await _client.SearchAsync(
                     variant,
-                    normalizedSourceType,
+                    null,
                     page,
                     cancellationToken,
                     requestPurpose);
@@ -245,7 +245,7 @@ public sealed class MetadataResolver
         }
 
         var ranked = candidates.Values
-            .Select(candidate => ScoreCandidate(title, ceremonyYear, normalizedSourceType, candidate))
+            .Select(candidate => ScoreCandidate(title, ceremonyYear, candidate))
             .Where(candidate => candidate is not null)
             .Select(candidate => candidate!)
             .OrderByDescending(candidate => candidate.Score)
@@ -267,10 +267,11 @@ public sealed class MetadataResolver
         foreach (var contender in contenders)
         {
             var candidate = contender.Candidate;
+            var candidateType = candidate.SourceType.Trim().ToLowerInvariant();
             var details = await ResolveAsync(
                 title,
                 ceremonyYear,
-                normalizedSourceType,
+                candidateType,
                 now,
                 cancellationToken,
                 requestPurpose,
@@ -297,7 +298,7 @@ public sealed class MetadataResolver
 
             var returnedId = ImdbIdNormalizer.Normalize(metadata.ImdbId);
             if (!string.Equals(returnedId, candidate.ImdbId, StringComparison.Ordinal)
-                || !IsPlausibleGoldenGlobeMatch(title, ceremonyYear, normalizedSourceType, metadata))
+                || !IsPlausibleGoldenGlobeMatch(title, ceremonyYear, candidateType, metadata))
             {
                 candidateMismatch = true;
                 continue;
@@ -369,10 +370,10 @@ public sealed class MetadataResolver
     private static ScoredSearchCandidate? ScoreCandidate(
         string title,
         int ceremonyYear,
-        string sourceType,
         MetadataSearchCandidate candidate)
     {
-        if (!string.Equals(candidate.SourceType, sourceType, StringComparison.Ordinal))
+        var sourceType = candidate.SourceType.Trim().ToLowerInvariant();
+        if (sourceType is not ("movie" or "series"))
         {
             return null;
         }
