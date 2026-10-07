@@ -102,6 +102,36 @@ ORDER BY year DESC, title, nominee_type, import_key;
 - Проверки: `python -B scripts/run_tests.py server-unit --filter "Category=GoldenGlobes|FullyQualifiedName~OmdbClientBudgetTests"`; Phase D acceptance и операторските проверки остават.
 - Следваща отправна точка: Phase D, regression/acceptance с production dataset, омоними и операторски преглед.
 
+## Handoff: Enrichment върна 0 обработени (2026-10-07)
+
+- Потребителят разполага с една среда и иска да тества вече импортираните номинации, без повторен импорт. Потребителят е разрешил SSH достъп и необходима целева промяна на базата, ако се окаже нужна.
+- Последен резултат от потребителя: Golden Globes enrichment е завършил с 0 обработени записа. Причината още не е установена.
+- Локалният API на `http://127.0.0.1:8080` отговори на readiness проверката. Локалният `docker compose ps` не можа да се изпълни, защото в тази workspace среда липсва `POSTGRES_PASSWORD`; това не доказва, че API или базата, използвани от потребителя, са спрени.
+- SSH профилът `.server-access.sshconfig` съществува. Опитът за свързване и последващата заявка за агрегирани статуси бяха прекъснати от потребителя. Не са прочетени статуси от базата и не са правени промени по редове, job-ове или импорти.
+- Batch worker избира само `pending`, `temporary_error` с настъпил `next_enrichment_attempt_at`, и `enriched` с невалиден/липсващ IMDb ID; manual-linked редове се пропускат. Здравите `enriched`, `problem` и `not_found` редове са крайни и не се обработват отново.
+- Следваща сесия: свържи се с `ssh -F .server-access.sshconfig mediadock` и използвай съществуващата SSH сесия. Потвърди реалния deployment root и версията на приложението; `README.md` пази по-стар запис, че production release не е имал background-job миграции, така че не приемай този запис за текущ без проверка.
+- Първо направи read-only проверка на последния Golden Globes job/events и агрегирани nomination статуси, включително `is_imdb_id_manual` и due retry времето. Не извеждай `.env`, пароли, API ключове или provider URL-и.
+- Ако няма eligible групи, подготви конкретен списък по `(year, title, nominee_type)` и предварително потвърди броя и текущите стойности на редовете. Само тогава, с разрешението на потребителя, постави в `pending` минималните подходящи немануални групи и нулирай техните retry/error полета. Не променяй IMDb ID, manual pin, други години или несвързани заглавия; не преимпортирай файловете.
+- Ако eligible редове има, не променяй базата: установи защо job-ът не ги е обработил чрез job events, dispatcher логове и версията на приложението. Ако средата работи със стара версия, използвай само документирания deployment/backup/migration gate преди нов опит.
+- След корекцията или потвърдена конфигурация стартирай съществуващия enrichment job, после провери processed summary, статуса на целевите групи и OMDb budget usage. Потребителят не очаква нов импорт.
+
+## Handoff: Нулевите eligible групи са обработени (2026-10-07)
+
+- Потвърдено е, че live API работи с текущия source commit и базата е достъпна; няма активен job.
+- Последният предходен enrichment job завърши успешно с `EligibleTitles=0`. Причината е очакваната eligibility логика: всичките 1,456 групи са били крайни (`enriched` 1,241, `not_found` 166, `problem` 49); няма `pending`, due retry или повреден `enriched` ID. Няма manual-pinned групи.
+- За минимален acceptance тест е върната само групата `(2024, "Daisy Jones and the Six", series)` в `pending`. Беше потвърден един ред, предишно `not_found`, без IMDb ID и без manual pin. Изчистени са само статусът, retry времето и последната грешка; IMDb ID, pin и attempt count (`1`) са запазени.
+- Новият enrichment job завърши успешно: `EligibleTitles=1`, `AttemptedTitles=1`, `EnrichedTitles=1`, `HttpAttempts=4`, `CacheHits=0`, без quota stop или грешки. Групата вече е `enriched` с валиден IMDb ID `tt8749198`; import не е повтарян и други редове не са променяни.
+- Дневното OMDb броячно използване се увеличи от 7 на 11 при лимит 1,000; няма quota/error флаг.
+- Това потвърждава единичния acceptance сценарий за `and`/`&`. Останалите Phase D проверки за омоними/години и съпоставяне movie/series остават отделно.
+
+## Handoff: IMDb metadata липсват при enriched запис (2026-10-07)
+
+- Read-only одитът на live каталога показа само една засегната група: `(2024, "Daisy Jones and the Six", series)`, IMDb `tt8749198`. API връща `enriched` и ID, но празни `imdbRating`/`posterUrl`.
+- Metadata cache съдържа валиден `found` payload за същия ID и тип с рейтинг `8.1`, 47,051 гласа, жанрове, сюжет и постер. Едновременно има `confirmed_not_found` title cache ред със същия `fetched_at`; автоматичната catalog проекция избира само най-новия title-cache ред и tie-ът може да избере отрицателния резултат.
+- Проверени са всичките 1,242 enriched групи: 1,241 имат съвпадаща проекция; Daisy е единствената открита cache ambiguity. Номинационният ред не е променян и не е нужно ново enrichment/OMDb обаждане за него.
+- Локалната корекция е catalog fallback към cache lookup по точен IMDb ID и nominee type, когато title-cache projection не даде валидни съвпадащи metadata. Regression тестът моделира по-нов отрицателен title cache и валиден exact-ID payload.
+- Проверки: `python -B scripts/run_tests.py server-integration --filter "FullyQualifiedName~GoldenGlobeApiTests"` (2/2 passed). Промяната още не е внедрена в production; Daisy ще се визуализира коректно след нормалния deployment gate.
+
 ## Проектни отправни точки
 
 - [Golden Globes enrichment service](../../server/src/MediaDock.Application/GoldenGlobes/GoldenGlobeEnrichmentService.cs)

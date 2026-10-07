@@ -70,16 +70,24 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
             var metadata = film.IsImdbIdManual
                 ? await metadataCacheStore.GetByImdbIdAsync(film.ImdbId!, film.NomineeType, cancellationToken)
                 : await metadataCacheStore.GetByTitleAsync(NormalizeTitle(film.Title), film.NomineeType, cancellationToken);
-            var details = metadata?.Metadata is { } candidate
-                && string.Equals(ImdbIdNormalizer.Normalize(film.ImdbId), ImdbIdNormalizer.Normalize(candidate.ImdbId), StringComparison.Ordinal)
-                && string.Equals(film.NomineeType, candidate.SourceType, StringComparison.Ordinal)
-                    ? candidate
-                    : null;
+            var details = GetMatchingMetadata(film, metadata);
+            if (details is null && !film.IsImdbIdManual)
+            {
+                metadata = await metadataCacheStore.GetByImdbIdAsync(film.ImdbId!, film.NomineeType, cancellationToken);
+                details = GetMatchingMetadata(film, metadata);
+            }
             items.Add(film with { PosterUrl = details?.PosterUrl, ImdbRating = details?.ImdbRating });
         }
 
         return new PageResponse<GoldenGlobeFilmResponse>(items, page, pageSize, filteredGroups.Length, filteredGroups.Length == 0 ? 0 : (filteredGroups.Length + pageSize - 1) / pageSize);
     }
+
+    private static MetadataDetails? GetMatchingMetadata(GoldenGlobeFilmResponse film, MetadataCacheValue? metadata) =>
+        metadata?.Metadata is { } candidate
+        && string.Equals(ImdbIdNormalizer.Normalize(film.ImdbId), ImdbIdNormalizer.Normalize(candidate.ImdbId), StringComparison.Ordinal)
+        && string.Equals(film.NomineeType, candidate.SourceType, StringComparison.Ordinal)
+            ? candidate
+            : null;
 
     public async Task<GoldenGlobeImdbLinkResponse> SetImdbIdAsync(
         GoldenGlobeImdbLinkRequest request,

@@ -42,6 +42,7 @@ public sealed class GoldenGlobeApiTests
                 CreateNomination("a-older-year", "A Film", 2024, false, null, bestPicture),
                 CreateNomination("b-picture", "B Film", 2025, false, null, bestPicture, "not_found"),
                 CreateNomination("older-picture", "Older Film", 2024, true, null, bestPicture, "problem"),
+                CreateNomination("daisy-series", "Daisy Jones and the Six", 2024, false, "tt8749198", bestPicture, "enriched", "series"),
                 CreateNomination("no-art", "No Art Film", 2025, false, "tt32345678", bestPicture, "enriched"),
                 CreateNomination("broken-enriched", "Broken Enriched Film", 2025, false, null, bestPicture, "enriched"));
             var fetchedAt = DateTimeOffset.UtcNow;
@@ -84,6 +85,31 @@ public sealed class GoldenGlobeApiTests
                         null, null, null, [], [], null, null, null, null, null, null)),
                     FetchedAt = fetchedAt,
                     ExpiresAt = fetchedAt.AddDays(30)
+                },
+                new MetadataCacheEntry
+                {
+                    CacheKey = "golden-globe-daisy-negative-cache",
+                    LookupTitle = "daisy jones and the six",
+                    LookupYearSemantics = "title",
+                    SourceType = "series",
+                    Status = "confirmed_not_found",
+                    FetchedAt = fetchedAt.AddSeconds(1),
+                    ExpiresAt = fetchedAt.AddDays(2)
+                },
+                new MetadataCacheEntry
+                {
+                    CacheKey = "golden-globe-daisy-id-cache",
+                    LookupTitle = "daisy jones and the six",
+                    LookupYearSemantics = "series_title",
+                    SourceType = "series",
+                    LookupIdentity = "tt8749198",
+                    Status = "found",
+                    PayloadJson = JsonSerializer.Serialize(new MetadataDetails(
+                        "Daisy Jones & The Six", 2023, "tt8749198", "series", "series", "standard", null,
+                        8.1m, 47051, null, ["Drama", "Music"], ["United States"], null, "A valid plot.",
+                        "https://example.test/daisy.jpg", null, null, null)),
+                    FetchedAt = fetchedAt,
+                    ExpiresAt = fetchedAt.AddDays(30)
                 });
             await db.SaveChangesAsync();
         }
@@ -95,8 +121,8 @@ public sealed class GoldenGlobeApiTests
         Assert.Equal(HttpStatusCode.OK, firstPageResponse.StatusCode);
         var firstPage = await firstPageResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
         Assert.NotNull(firstPage);
-        Assert.Equal(7, firstPage.TotalCount);
-        Assert.Equal(7, firstPage.TotalPages);
+        Assert.Equal(8, firstPage.TotalCount);
+        Assert.Equal(8, firstPage.TotalPages);
         var firstFilm = Assert.Single(firstPage.Items);
         Assert.Equal("A Film", firstFilm.Title);
         Assert.Equal("2025:movie:A Film", firstFilm.FilmId);
@@ -116,6 +142,10 @@ public sealed class GoldenGlobeApiTests
         Assert.Equal("tt87654321", seriesFilm.ImdbId);
         Assert.Equal(7.4m, seriesFilm.ImdbRating);
         Assert.Equal("https://example.test/a-film-series.jpg", seriesFilm.PosterUrl);
+        var daisyFilm = groupedPage.Items.Single(film => film.Title == "Daisy Jones and the Six");
+        Assert.Equal("tt8749198", daisyFilm.ImdbId);
+        Assert.Equal(8.1m, daisyFilm.ImdbRating);
+        Assert.Equal("https://example.test/daisy.jpg", daisyFilm.PosterUrl);
         var noArtFilm = groupedPage.Items.Single(film => film.Title == "No Art Film");
         Assert.Equal("tt32345678", noArtFilm.ImdbId);
         Assert.Null(noArtFilm.ImdbRating);
