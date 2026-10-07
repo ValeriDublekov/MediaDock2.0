@@ -289,6 +289,7 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
             ParsedSuccessfully = log.ParsedSuccessfully,
             ParsedTitle = log.ParsedTitle,
             ParsedYear = log.ParsedYear,
+            LookupTitles = log.LookupTitles.ToArray(),
             OmdbStatus = log.OmdbStatus,
             Ignored = log.Ignored,
             IgnoreReason = log.IgnoreReason,

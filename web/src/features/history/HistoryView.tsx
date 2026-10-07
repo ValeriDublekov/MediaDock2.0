@@ -131,13 +131,19 @@ function ParseLogTable({ items }: { items: ParseLog[] }) {
   return (
     <div className="table-wrap">
       <table className="data-table">
-        <thead><tr><th>RAW TITLE</th><th>FEED</th><th>PARSE</th><th>DECISION</th><th>RETRY</th><th>PROCESSED</th></tr></thead>
+        <thead><tr><th>RAW TITLE</th><th>FEED</th><th>PARSE</th><th>DIAGNOSIS</th><th>RETRY</th><th>PROCESSED</th></tr></thead>
         <tbody>{items.map((entry) => (
           <tr key={entry.id}>
             <td>{entry.rawTitle}<span className="subtle-line">{entry.parsedTitle ?? 'No normalized title'}{entry.parsedYear ? ` | ${entry.parsedYear}` : ''}</span></td>
             <td>{entry.sourceName ?? entry.feedName}<span className="subtle-line">{entry.feedType ?? 'Unknown feed type'}</span></td>
             <td><span className={`state-pill${entry.parsedSuccessfully ? '' : ' is-muted'}`}>{entry.parsedSuccessfully ? 'Parsed' : 'Rejected'}</span></td>
-            <td>{entry.decision ?? entry.ignoreReason ?? entry.errorMessage ?? (entry.ignored ? 'Ignored' : 'No decision')}</td>
+            <td>
+              <span className="state-pill">{getParseLogDiagnosis(entry)}</span>
+              {entry.lookupTitles.length > 0 && <span className="subtle-line">Lookup names: {entry.lookupTitles.join(' → ')}</span>}
+              {entry.ignoreReason && <span className="subtle-line">Reason: {formatWords(entry.ignoreReason)}</span>}
+              {entry.errorMessage && <span className="subtle-line">Error: {entry.errorMessage}</span>}
+              {entry.decision && <span className="subtle-line">Decision: {entry.decision}</span>}
+            </td>
             <td>{formatWords(entry.retryState)}<span className="subtle-line">{entry.attemptCount} attempts</span></td>
             <td>{formatDate(entry.processedAt)}</td>
           </tr>
@@ -145,4 +151,14 @@ function ParseLogTable({ items }: { items: ParseLog[] }) {
       </table>
     </div>
   )
+}
+
+function getParseLogDiagnosis(entry: Pick<ParseLog, 'parsedSuccessfully' | 'omdbStatus' | 'ignored' | 'ignoreReason'>) {
+  if (entry.ignoreReason === 'feed_error') return 'RSS feed error'
+  if (entry.ignoreReason === 'malformed_entry') return 'Invalid RSS entry'
+  if (!entry.parsedSuccessfully) return 'Parsing failed'
+  if (entry.omdbStatus === 'confirmed_not_found') return 'OMDb found no result'
+  if (entry.omdbStatus === 'found') return entry.ignored ? 'OMDb match rejected' : 'Resolved'
+  if (entry.omdbStatus === 'not_requested') return 'Lookup not attempted'
+  return 'OMDb request failed'
 }

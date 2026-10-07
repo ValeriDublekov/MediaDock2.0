@@ -244,7 +244,9 @@ public sealed class RssIngestionService
             .Select(candidate => candidate.Title)
             .Prepend(parsed.Title)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Take(2);
+            .Take(2)
+            .ToArray();
+        var attemptedLookupTitles = new List<string>(lookupTitles.Length);
         MetadataResolution? resolution = null;
         var fallbackUsed = false;
         var ambiguousHit = false;
@@ -252,6 +254,7 @@ public sealed class RssIngestionService
         foreach (var lookupTitle in lookupTitles)
         {
             fallbackUsed = resolution is not null;
+            attemptedLookupTitles.Add(lookupTitle);
             resolution = await _metadataResolver.ResolveAsync(
                 lookupTitle,
                 parsed.Year,
@@ -306,7 +309,8 @@ public sealed class RssIngestionService
                     fallbackUsed ? "fallback_not_found" : "not_found",
                     observedAt,
                     "terminal",
-                    totalAttempts));
+                    totalAttempts,
+                    attemptedLookupTitles));
             return;
         }
 
@@ -317,7 +321,8 @@ public sealed class RssIngestionService
             progress.IgnoredEntries++;
             AddLog(pendingLogs, progress, CreateLog(
                 source, entry, sourceItemKey, rawTitle, parsed, "found", true,
-                "ambiguous_title_match", null, "fallback_ambiguous", observedAt, "terminal", totalAttempts));
+                "ambiguous_title_match", null, "fallback_ambiguous", observedAt, "terminal", totalAttempts,
+                attemptedLookupTitles));
             return;
         }
 
@@ -335,7 +340,8 @@ public sealed class RssIngestionService
                 pendingLogs,
                 observedAt,
                 OmdbStatus(resolution.Status),
-                totalAttempts);
+                totalAttempts,
+                attemptedLookupTitles);
             return;
         }
 
@@ -348,7 +354,7 @@ public sealed class RssIngestionService
             AddLog(pendingLogs, progress, CreateLog(
                 source, entry, sourceItemKey, rawTitle, parsed, "found", true,
                 "ambiguous_title_match", null, fallbackUsed ? "fallback_ambiguous" : "ambiguous_title_match",
-                observedAt, "terminal", totalAttempts));
+                observedAt, "terminal", totalAttempts, attemptedLookupTitles));
             return;
         }
 
@@ -384,7 +390,8 @@ public sealed class RssIngestionService
                     decision.ReasonCode,
                     observedAt,
                     "terminal",
-                    totalAttempts));
+                    totalAttempts,
+                    attemptedLookupTitles));
             return;
         }
 
@@ -415,7 +422,8 @@ public sealed class RssIngestionService
                 fallbackUsed ? $"fallback_{decision.ReasonCode}" : decision.ReasonCode,
                 observedAt,
                 "resolved",
-                totalAttempts));
+                totalAttempts,
+                attemptedLookupTitles));
     }
 
     private void RecordEntryFailure(
@@ -429,7 +437,8 @@ public sealed class RssIngestionService
         List<IngestionParseLog> pendingLogs,
         DateTimeOffset observedAt,
         string omdbStatus = "not_requested",
-        int attempts = 0)
+        int attempts = 0,
+        IReadOnlyList<string>? lookupTitles = null)
     {
         progress.IgnoredEntries++;
         progress.RecordError($"Entry in '{source.Name}' failed ({errorCode}).");
@@ -449,7 +458,8 @@ public sealed class RssIngestionService
                 null,
                 observedAt,
                 "retryable",
-                attempts));
+                attempts,
+                lookupTitles));
     }
 
     private static IngestionParseLog CreateLog(
@@ -465,7 +475,8 @@ public sealed class RssIngestionService
         string? decision,
         DateTimeOffset observedAt,
         string retryState,
-        int attempts) =>
+        int attempts,
+        IReadOnlyList<string>? lookupTitles = null) =>
         new(
             source.Id,
             sourceItemKey,
@@ -494,7 +505,10 @@ public sealed class RssIngestionService
             attempts > 0 ? observedAt : null,
             source.FeedType,
             entry.PublishedAt,
-            observedAt);
+            observedAt)
+        {
+            LookupTitles = lookupTitles ?? []
+        };
 
     private static IReadOnlyList<IngestionFeedItem> ParseFeed(byte[] body)
     {
@@ -603,7 +617,8 @@ public sealed class RssIngestionService
             OmdbStatus = BoundText(log.OmdbStatus, 32),
             IgnoreReason = BoundText(log.IgnoreReason, 64),
             ErrorMessage = BoundText(log.ErrorMessage, 500),
-            Decision = BoundText(log.Decision, 64)
+            Decision = BoundText(log.Decision, 64),
+            LookupTitles = log.LookupTitles.Take(2).Select(title => BoundText(title, 160)).ToArray()
         });
     }
 

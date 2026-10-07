@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace MediaDock.Application.Parsing;
@@ -39,7 +40,6 @@ public static class RutrackerTitleParser
     private static readonly Regex OutOfRangeYear = new(
         @"(?:\[|\()\s*(?<year>\d{4})(?!\s*[pPiI])",
         RegexOptions.CultureInvariant);
-    private static readonly Regex TitleSeparator = new(@"\s+[/|]\s*|\s*[/|]\s+", RegexOptions.CultureInvariant);
     private static readonly Regex BracketSection = new(@"\[[^\]]*\]", RegexOptions.CultureInvariant);
     private static readonly Regex TechnicalBracket = new(
         @"\b(?:\d{3,4}p|bdrip|brrip|webrip|web[- .]?dl|dvdrip|hdrip|uhd|x26[45]|h\.?26[45])\b",
@@ -99,7 +99,7 @@ public static class RutrackerTitleParser
 
         var (year, yearReason) = ExtractYear(clean);
         var titleSection = ExtractTitleSection(clean);
-        var parts = TitleSeparator.Split(titleSection)
+        var parts = SplitTitleParts(titleSection)
             .Select(part => part.Trim(' ', '-'))
             .Where(part => part.Length > 0)
             .ToArray();
@@ -229,12 +229,20 @@ public static class RutrackerTitleParser
 
     private static string ExtractTitleSection(string title)
     {
-        var titleSection = BracketSection.Replace(title, match =>
-            TechnicalBracket.IsMatch(match.Value) ||
-            Regex.IsMatch(match.Value, @"^\[\s*\d{4}(?:\s*[-–—]\s*\d{4})?(?:\s*[,\]])", RegexOptions.CultureInvariant) ||
-            Regex.IsMatch(title[(match.Index + match.Length)..], @"^\s+[/|]\s*", RegexOptions.CultureInvariant)
-                ? " "
-                : match.Value).Trim();
+        var releaseBracket = BracketSection.Matches(title)
+            .Cast<Match>()
+            .FirstOrDefault(match =>
+                (TechnicalBracket.IsMatch(match.Value) ||
+                 Regex.IsMatch(match.Value, @"^\[\s*\d{4}(?:\s*[-–—]\s*\d{4})?(?:\s*[,\]])", RegexOptions.CultureInvariant)) &&
+                !Regex.IsMatch(title[(match.Index + match.Length)..], @"^\s+[/|]\s*", RegexOptions.CultureInvariant));
+        var titleSection = releaseBracket is null
+            ? BracketSection.Replace(title, match =>
+                TechnicalBracket.IsMatch(match.Value) ||
+                Regex.IsMatch(match.Value, @"^\[\s*\d{4}(?:\s*[-–—]\s*\d{4})?(?:\s*[,\]])", RegexOptions.CultureInvariant) ||
+                Regex.IsMatch(title[(match.Index + match.Length)..], @"^\s+[/|]\s*", RegexOptions.CultureInvariant)
+                    ? " "
+                    : match.Value).Trim()
+            : title[..releaseBracket.Index].Trim();
         titleSection = Whitespace.Replace(titleSection, " ");
         var trailingParenthesis = TrailingParenthesis.Match(titleSection);
         if (trailingParenthesis.Success && IsMetadataParenthesis(trailingParenthesis.Groups[1].Value))
@@ -243,6 +251,46 @@ public static class RutrackerTitleParser
         }
 
         return titleSection;
+    }
+
+    private static string[] SplitTitleParts(string title)
+    {
+        var parts = new List<string>();
+        var start = 0;
+        var parenthesesDepth = 0;
+        for (var index = 0; index < title.Length; index++)
+        {
+            if (title[index] == '(')
+            {
+                parenthesesDepth++;
+                continue;
+            }
+
+            if (title[index] == ')')
+            {
+                parenthesesDepth = Math.Max(0, parenthesesDepth - 1);
+                continue;
+            }
+
+            if (parenthesesDepth != 0 || title[index] is not ('/' or '|'))
+            {
+                continue;
+            }
+
+            var hasAdjacentWhitespace =
+                (index > 0 && char.IsWhiteSpace(title[index - 1])) ||
+                (index + 1 < title.Length && char.IsWhiteSpace(title[index + 1]));
+            if (!hasAdjacentWhitespace)
+            {
+                continue;
+            }
+
+            parts.Add(title[start..index]);
+            start = index + 1;
+        }
+
+        parts.Add(title[start..]);
+        return parts.ToArray();
     }
 
     private static bool IsMetadataParenthesis(string value)
@@ -308,11 +356,8 @@ public static class RutrackerTitleParser
     {
         var cleaned = Whitespace.Replace(part, " ").Trim(' ', '-');
         cleaned = ParenthesizedYear.Replace(cleaned, string.Empty).Trim(' ', '-');
-        var trailingParenthesis = TrailingParenthesis.Match(cleaned);
-        if (trailingParenthesis.Success && IsMetadataParenthesis(trailingParenthesis.Groups[1].Value))
-        {
-            cleaned = cleaned[..trailingParenthesis.Index].Trim(' ', '-');
-        }
+        cleaned = RemoveMetadataParentheticals(cleaned);
+        cleaned = Whitespace.Replace(cleaned, " ").Trim(' ', '-');
 
         if (removeSeriesMarkers)
         {
@@ -326,6 +371,60 @@ public static class RutrackerTitleParser
         }
 
         return cleaned;
+    }
+
+    private static string RemoveMetadataParentheticals(string value)
+    {
+        var result = new StringBuilder(value.Length);
+        for (var index = 0; index < value.Length;)
+        {
+            if (value[index] != '(')
+            {
+                result.Append(value[index++]);
+                continue;
+            }
+
+            var end = FindParenthesisEnd(value, index);
+            if (end < 0)
+            {
+                result.Append(value[index++]);
+                continue;
+            }
+
+            var parenthetical = value[index..(end + 1)];
+            if (IsMetadataParenthesis(parenthetical))
+            {
+                result.Append(' ');
+            }
+            else
+            {
+                result.Append('(');
+                result.Append(RemoveMetadataParentheticals(value[(index + 1)..end]));
+                result.Append(')');
+            }
+
+            index = end + 1;
+        }
+
+        return result.ToString();
+    }
+
+    private static int FindParenthesisEnd(string value, int start)
+    {
+        var depth = 0;
+        for (var index = start; index < value.Length; index++)
+        {
+            if (value[index] == '(')
+            {
+                depth++;
+            }
+            else if (value[index] == ')' && --depth == 0)
+            {
+                return index;
+            }
+        }
+
+        return -1;
     }
 
     private static bool IsLatinCandidate(string value)

@@ -73,6 +73,8 @@ public sealed class IngestionTests
         Assert.Equal(2, first.Summary.OccurrencesCreated);
         Assert.Equal(5, first.Summary.OmdbRequests);
         Assert.Equal("tt2222222", (await db.Titles.SingleAsync()).ImdbId);
+        var alternateTitleLog = await db.ParseLogs.SingleAsync(log => log.RawTitle.StartsWith("Wrong Film / Right Film"));
+        Assert.Equal(new[] { "Wrong Film", "Right Film" }, alternateTitleLog.LookupTitles);
         Assert.Contains(await db.ParseLogs.ToListAsync(), log => log.IgnoreReason == "ambiguous_title_match" && log.RetryState == "terminal");
         Assert.Contains(await db.ParseLogs.ToListAsync(), log => log.Decision != null && log.Decision.Contains("fallback_movie_release_year_within_tolerance"));
 
@@ -191,6 +193,10 @@ public sealed class IngestionTests
         var logs = await db.ParseLogs.OrderBy(log => log.Id).ToListAsync();
         Assert.Contains(logs, log => log.IgnoreReason == "malformed_entry");
         Assert.Contains(logs, log => log.OmdbStatus == "provider_error");
+        Assert.Contains(logs, log => log.OmdbStatus == "confirmed_not_found" &&
+            log.LookupTitles.SequenceEqual(new[] { "Unknown Film" }));
+        Assert.Contains(logs, log => log.OmdbStatus == "provider_error" &&
+            log.LookupTitles.SequenceEqual(new[] { "Temporary Film" }));
         Assert.All(logs, log => Assert.True(log.RawTitle.Length <= 1000));
         Assert.DoesNotContain(logs, log => log.RawTitle.Contains(FakeApiKey, StringComparison.Ordinal));
     }

@@ -75,6 +75,7 @@ internal sealed class OperationalHistoryApiService(MediaDockDbContext dbContext)
                 log.ParsedSuccessfully,
                 log.ParsedTitle,
                 log.ParsedYear,
+                log.LookupTitles,
                 log.OmdbStatus,
                 log.Ignored,
                 log.IgnoreReason,

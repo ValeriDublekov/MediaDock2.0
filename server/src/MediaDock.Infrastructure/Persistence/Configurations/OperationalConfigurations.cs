@@ -58,6 +58,10 @@ internal sealed class ParseLogConfiguration : IEntityTypeConfiguration<ParseLog>
         builder.Property(entity => entity.ParsedSuccessfully).HasColumnName("parsed_successfully");
         builder.Property(entity => entity.ParsedTitle).HasColumnName("parsed_title");
         builder.Property(entity => entity.ParsedYear).HasColumnName("parsed_year");
+        builder.Property(entity => entity.LookupTitles)
+            .HasColumnName("lookup_titles")
+            .HasColumnType("text[]")
+            .HasDefaultValueSql("ARRAY[]::text[]");
         builder.Property(entity => entity.OmdbStatus).HasColumnName("omdb_status").HasMaxLength(32).IsRequired();
         builder.Property(entity => entity.Ignored).HasColumnName("ignored");
         builder.Property(entity => entity.IgnoreReason).HasColumnName("ignore_reason");

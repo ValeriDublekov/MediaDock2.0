@@ -61,7 +61,10 @@ public sealed record IngestionParseLog(
     string? FeedType,
     DateTimeOffset? SourcePublishedAt,
     DateTimeOffset? ObservedAt,
-    string? EventKind = "ingestion");
+    string? EventKind = "ingestion")
+{
+    public IReadOnlyList<string> LookupTitles { get; init; } = [];
+}
 
 public sealed record IngestionUpsertResult(bool TitleCreated, bool OccurrenceCreated);
 

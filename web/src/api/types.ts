@@ -222,6 +222,7 @@ export interface ParseLog {
   parsedSuccessfully: boolean
   parsedTitle: string | null
   parsedYear: number | null
+  lookupTitles: string[]
   omdbStatus: string
   ignored: boolean
   ignoreReason: string | null

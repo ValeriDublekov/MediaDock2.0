@@ -56,6 +56,7 @@ public sealed record ParseLogResponse(
     bool ParsedSuccessfully,
     string? ParsedTitle,
     int? ParsedYear,
+    string[] LookupTitles,
     string OmdbStatus,
     bool Ignored,
     string? IgnoreReason,

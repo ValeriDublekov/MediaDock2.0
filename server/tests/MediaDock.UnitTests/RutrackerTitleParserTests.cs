@@ -103,6 +103,33 @@ public sealed class RutrackerTitleParserTests
     }
 
     [Fact]
+    public void ExtractsMovieTitleFromLocalizedTitleWithDirectorAndReleaseDetails()
+    {
+        const string rawTitle = "Человек-паук: Новый день / Spider-Man: Brand New Day (Дестин Дэниел Креттон / Destin Daniel Cretton) [2026, США, Канада, Великобритания, Германия, фэнтези, комедия, приключения, семейный, WEB-DL 1080p] Dub (MovieDalen) + Original Eng + Sub (Rus, Eng) [9.38 GB]";
+
+        var parsed = RutrackerTitleParser.Parse(rawTitle, "movie");
+
+        Assert.Equal("Spider-Man: Brand New Day", parsed.Title);
+        Assert.Equal(2026, parsed.Year);
+        Assert.False(parsed.IsSeries);
+        Assert.Equal(
+            new[] { "Человек-паук: Новый день", "Spider-Man: Brand New Day" },
+            parsed.Candidates.Select(candidate => candidate.Title));
+    }
+
+    [Fact]
+    public void RemovesNestedDirectorMetadataWithoutLeavingAnExtraClosingParenthesis()
+    {
+        var parsed = RutrackerTitleParser.Parse(
+            "Локальное название / Local Title (Кирилл Режиссер / Kirill Director (Alias)) [1978, страна, HDTVRip 1080p] + Sub Rus, Eng",
+            "movie");
+
+        Assert.Equal("Local Title", parsed.Title);
+        Assert.Equal(1978, parsed.Year);
+        Assert.Equal(new[] { "Локальное название", "Local Title" }, parsed.Candidates.Select(candidate => candidate.Title));
+    }
+
+    [Fact]
     public void PreservesMeaningfulParenthesesAndHandlesEmptyInput()
     {
         var titled = RutrackerTitleParser.Parse(

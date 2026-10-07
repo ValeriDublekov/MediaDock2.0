@@ -123,6 +123,7 @@ public sealed class CatalogApiTests
                 ParsedSuccessfully = true,
                 ParsedTitle = "The Matrix",
                 ParsedYear = 1999,
+                LookupTitles = ["The Matrix"],
                 OmdbStatus = "found",
                 Ignored = false,
                 ProcessedAt = firstSeen,
@@ -388,6 +389,11 @@ public sealed class CatalogApiTests
         Assert.NotNull(logs);
         Assert.Equal(1, logs.TotalCount);
         Assert.True(Assert.Single(logs.Items).Ignored);
+
+        using var resolvedLogsResponse = await client.GetAsync("/api/parse-logs?page=1&pageSize=1&ignored=false");
+        var resolvedLogs = await resolvedLogsResponse.Content.ReadFromJsonAsync<PageResponse<ParseLogResponse>>();
+        Assert.NotNull(resolvedLogs);
+        Assert.Equal(new[] { "The Matrix" }, Assert.Single(resolvedLogs.Items).LookupTitles);
 
         using var runsResponse = await client.GetAsync("/api/scan-runs?page=1&pageSize=10&status=succeeded");
         var runs = await runsResponse.Content.ReadFromJsonAsync<PageResponse<ScanRunResponse>>();

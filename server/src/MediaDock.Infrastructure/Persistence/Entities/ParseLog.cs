@@ -11,6 +11,7 @@ public sealed class ParseLog
     public bool ParsedSuccessfully { get; set; }
     public string? ParsedTitle { get; set; }
     public int? ParsedYear { get; set; }
+    public string[] LookupTitles { get; set; } = [];
     public string OmdbStatus { get; set; } = string.Empty;
     public bool Ignored { get; set; }
     public string? IgnoreReason { get; set; }
