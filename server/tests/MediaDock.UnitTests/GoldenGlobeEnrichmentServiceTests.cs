@@ -80,7 +80,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         var repository = new FakeGoldenGlobeEnrichmentRepository(
         [new("The Crown", 2024, 0, "series")]);
         var client = new StubOmdbClient(
-        [new(MetadataLookupStatus.Found, CreateMetadata("The Crown", 2016, "tt4786824"), 1)]);
+        [new(MetadataLookupStatus.Found, CreateMetadata("The Crown", 2016, "tt4786824") with { SourceType = "series" }, 1)]);
 
         var result = await CreateService(repository, client, now).RunAsync();
 
@@ -88,6 +88,30 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         Assert.Equal(((int?)null, "series", null), Assert.Single(client.Requests));
         Assert.Equal("The Crown", Assert.Single(repository.SavedOutcomes).Title);
         Assert.Equal("enriched", Assert.Single(repository.SavedOutcomes).Update.Status);
+    }
+
+    [Fact]
+    public async Task RunAsyncRejectsInvalidImdbIdsAndIncompatibleTypes()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        var repository = new FakeGoldenGlobeEnrichmentRepository(
+        [
+            new("Invalid ID Film", 2025, 0),
+            new("Wrong Type Series", 2025, 0, "series")
+        ]);
+        var client = new StubOmdbClient(
+        [
+            new(MetadataLookupStatus.Found, CreateMetadata("Invalid ID Film", 2024, "not-an-imdb-id"), 1),
+            new(MetadataLookupStatus.Found, CreateMetadata("Wrong Type Series", 2020, "tt22222222"), 1)
+        ]);
+
+        var result = await CreateService(repository, client, now).RunAsync();
+
+        Assert.Equal(2, result.Summary.ProblemTitles);
+        Assert.Equal("invalid_imdb_id", repository.SavedOutcomes[0].Update.ErrorCode);
+        Assert.Null(repository.SavedOutcomes[0].Update.ImdbId);
+        Assert.Equal("type_mismatch", repository.SavedOutcomes[1].Update.ErrorCode);
+        Assert.Null(repository.SavedOutcomes[1].Update.ImdbId);
     }
 
     [Fact]

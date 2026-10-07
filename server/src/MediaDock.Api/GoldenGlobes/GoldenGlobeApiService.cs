@@ -7,7 +7,6 @@ using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace MediaDock.Api.GoldenGlobes;
 
@@ -38,14 +37,22 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
 
         var rows = await nominations.OrderByDescending(x => x.Year).ThenBy(x => x.Title).ThenBy(x => x.Id).ToListAsync(cancellationToken);
         var groups = rows.GroupBy(x => new { x.Title, x.Year, x.NomineeType })
-            .Select(group => new GoldenGlobeFilmResponse(
-                $"{group.Key.Year}:{group.Key.NomineeType}:{group.Key.Title}", group.Key.Title, group.Key.Year, group.Key.NomineeType,
-                group.Select(x => x.ImdbId).FirstOrDefault(x => x != null),
-                group.Any(x => x.IsImdbIdManual),
-                null, null,
-                GetEnrichmentStatus(group.Select(x => x.EnrichmentStatus)),
-                group.Select(x => x.LastEnrichmentError).FirstOrDefault(x => x != null),
-                group.OrderBy(x => x.Award.Name).ThenBy(x => x.Id).Select(x => new GoldenGlobeNominationResponse(x.Id, x.Year, x.Award.Name, x.Winner)).ToArray()))
+            .Select(group =>
+            {
+                var imdbId = group.Select(x => ImdbIdNormalizer.Normalize(x.ImdbId))
+                    .FirstOrDefault(ImdbIdNormalizer.IsValid);
+                var hasUnhealthyEnrichedRow = group.Any(x =>
+                    x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched
+                    && !ImdbIdNormalizer.IsValid(x.ImdbId));
+                return new GoldenGlobeFilmResponse(
+                    $"{group.Key.Year}:{group.Key.NomineeType}:{group.Key.Title}", group.Key.Title, group.Key.Year, group.Key.NomineeType,
+                    imdbId,
+                    group.Any(x => x.IsImdbIdManual),
+                    null, null,
+                    GetEnrichmentStatus(group.Select(x => x.EnrichmentStatus), hasUnhealthyEnrichedRow),
+                    group.Select(x => x.LastEnrichmentError).FirstOrDefault(x => x != null),
+                    group.OrderBy(x => x.Award.Name).ThenBy(x => x.Id).Select(x => new GoldenGlobeNominationResponse(x.Id, x.Year, x.Award.Name, x.Winner)).ToArray());
+            })
             .OrderByDescending(x => x.Year).ThenBy(x => x.Title, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.NomineeType, StringComparer.Ordinal).ToArray();
         var filteredGroups = string.IsNullOrWhiteSpace(query.EnrichmentStatus)
             ? groups
@@ -80,7 +87,7 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
     {
         var (title, ceremonyYear, sourceType) = ParseFilmId(request.FilmId);
         var imdbId = string.IsNullOrWhiteSpace(request.ImdbId) ? null : request.ImdbId.Trim().ToLowerInvariant();
-        if (imdbId is not null && !Regex.IsMatch(imdbId, "^tt[0-9]{7,10}$", RegexOptions.CultureInvariant))
+        if (imdbId is not null && !ImdbIdNormalizer.IsValid(imdbId))
             throw new ApiValidationException(new Dictionary<string, string[]> { [nameof(request.ImdbId)] = ["IMDb ID must contain tt followed by 7 to 10 digits."] });
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
@@ -209,8 +216,10 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
         return new(job.Id, job.Status, statusUrl);
     }
 
-    private static string GetEnrichmentStatus(IEnumerable<string> statuses)
+    private static string GetEnrichmentStatus(IEnumerable<string> statuses, bool hasUnhealthyEnrichedRow)
     {
+        if (hasUnhealthyEnrichedRow) return GoldenGlobeEnrichmentStatuses.Pending;
+
         var distinct = statuses.ToHashSet(StringComparer.Ordinal);
         foreach (var status in new[]
         {

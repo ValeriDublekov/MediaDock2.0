@@ -38,10 +38,12 @@ public sealed class GoldenGlobeApiTests
             db.GoldenGlobeNominations.AddRange(
                 CreateNomination("a-picture", "A Film", 2025, true, "tt12345678", bestPicture, "enriched"),
                 CreateNomination("a-director", "A Film", 2025, false, "tt12345678", bestDirector, "enriched"),
-                CreateNomination("a-series", "A Film", 2025, false, null, bestPicture, nomineeType: "series"),
+                CreateNomination("a-series", "A Film", 2025, false, "tt87654321", bestPicture, "enriched", "series"),
                 CreateNomination("a-older-year", "A Film", 2024, false, null, bestPicture),
                 CreateNomination("b-picture", "B Film", 2025, false, null, bestPicture, "not_found"),
-                CreateNomination("older-picture", "Older Film", 2024, true, null, bestPicture, "problem"));
+                CreateNomination("older-picture", "Older Film", 2024, true, null, bestPicture, "problem"),
+                CreateNomination("no-art", "No Art Film", 2025, false, "tt32345678", bestPicture, "enriched"),
+                CreateNomination("broken-enriched", "Broken Enriched Film", 2025, false, null, bestPicture, "enriched"));
             var fetchedAt = DateTimeOffset.UtcNow;
             db.MetadataCache.Add(new MetadataCacheEntry
             {
@@ -56,6 +58,33 @@ public sealed class GoldenGlobeApiTests
                 FetchedAt = fetchedAt,
                 ExpiresAt = fetchedAt.AddDays(30)
             });
+            db.MetadataCache.AddRange(
+                new MetadataCacheEntry
+                {
+                    CacheKey = "golden-globe-series-cache",
+                    LookupTitle = "a film",
+                    LookupYearSemantics = "title",
+                    SourceType = "series",
+                    Status = "found",
+                    PayloadJson = JsonSerializer.Serialize(new MetadataDetails(
+                        "A Film", 2010, "tt87654321", "series", "series", "standard", null,
+                        7.4m, 5000, null, [], [], null, null, "https://example.test/a-film-series.jpg", null, null, null)),
+                    FetchedAt = fetchedAt,
+                    ExpiresAt = fetchedAt.AddDays(30)
+                },
+                new MetadataCacheEntry
+                {
+                    CacheKey = "golden-globe-no-art-cache",
+                    LookupTitle = "no art film",
+                    LookupYearSemantics = "title",
+                    SourceType = "movie",
+                    Status = "found",
+                    PayloadJson = JsonSerializer.Serialize(new MetadataDetails(
+                        "No Art Film", 2024, "tt32345678", "movie", "movie", "standard", null,
+                        null, null, null, [], [], null, null, null, null, null, null)),
+                    FetchedAt = fetchedAt,
+                    ExpiresAt = fetchedAt.AddDays(30)
+                });
             await db.SaveChangesAsync();
         }
 
@@ -66,8 +95,8 @@ public sealed class GoldenGlobeApiTests
         Assert.Equal(HttpStatusCode.OK, firstPageResponse.StatusCode);
         var firstPage = await firstPageResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
         Assert.NotNull(firstPage);
-        Assert.Equal(5, firstPage.TotalCount);
-        Assert.Equal(5, firstPage.TotalPages);
+        Assert.Equal(7, firstPage.TotalCount);
+        Assert.Equal(7, firstPage.TotalPages);
         var firstFilm = Assert.Single(firstPage.Items);
         Assert.Equal("A Film", firstFilm.Title);
         Assert.Equal("2025:movie:A Film", firstFilm.FilmId);
@@ -83,6 +112,16 @@ public sealed class GoldenGlobeApiTests
         var sameYearGroups = groupedPage.Items.Where(film => film.Title == "A Film" && film.Year == 2025).ToArray();
         Assert.Equal(new[] { "movie", "series" }, sameYearGroups.Select(film => film.NomineeType).OrderBy(type => type, StringComparer.Ordinal).ToArray());
         Assert.Equal(2, sameYearGroups.Select(film => film.FilmId).Distinct().Count());
+        var seriesFilm = sameYearGroups.Single(film => film.NomineeType == "series");
+        Assert.Equal("tt87654321", seriesFilm.ImdbId);
+        Assert.Equal(7.4m, seriesFilm.ImdbRating);
+        Assert.Equal("https://example.test/a-film-series.jpg", seriesFilm.PosterUrl);
+        var noArtFilm = groupedPage.Items.Single(film => film.Title == "No Art Film");
+        Assert.Equal("tt32345678", noArtFilm.ImdbId);
+        Assert.Null(noArtFilm.ImdbRating);
+        Assert.Null(noArtFilm.PosterUrl);
+        var brokenEnrichedFilm = groupedPage.Items.Single(film => film.Title == "Broken Enriched Film");
+        Assert.Equal("pending", brokenEnrichedFilm.EnrichmentStatus);
         Assert.Equal("2024:movie:A Film", groupedPage.Items.Single(film => film.Title == "A Film" && film.Year == 2024).FilmId);
 
         using var filteredResponse = await client.GetAsync(

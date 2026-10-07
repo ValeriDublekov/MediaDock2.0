@@ -46,6 +46,14 @@ public static class ImdbIdNormalizer
     public static string? Normalize(string? imdbId) =>
         string.IsNullOrWhiteSpace(imdbId) ? null : imdbId.Trim().ToLowerInvariant();
 
+    public static bool IsValid(string? imdbId)
+    {
+        var normalizedImdbId = Normalize(imdbId);
+        return normalizedImdbId is { Length: >= 9 and <= 12 }
+            && normalizedImdbId.StartsWith("tt", StringComparison.Ordinal)
+            && normalizedImdbId.AsSpan(2).IndexOfAnyExceptInRange('0', '9') < 0;
+    }
+
     public static bool IsCompatible(string? first, string? second)
     {
         var normalizedFirst = Normalize(first);

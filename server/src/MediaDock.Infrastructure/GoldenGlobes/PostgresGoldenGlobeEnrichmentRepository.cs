@@ -1,6 +1,8 @@
 using MediaDock.Application.GoldenGlobes;
+using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 namespace MediaDock.Infrastructure.GoldenGlobes;
 
@@ -11,7 +13,9 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
         var candidates = await db.GoldenGlobeNominations.AsNoTracking()
             .Where(x => x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Pending
                 || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.TemporaryError
-                    && (x.NextEnrichmentAttemptAt == null || x.NextEnrichmentAttemptAt <= now)))
+                    && (x.NextEnrichmentAttemptAt == null || x.NextEnrichmentAttemptAt <= now))
+                || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched
+                    && (x.ImdbId == null || !Regex.IsMatch(x.ImdbId, "^tt[0-9]{7,10}$"))))
             .Where(x => !x.IsImdbIdManual)
             .GroupBy(x => new { x.Title, x.Year, x.NomineeType })
             .Select(x => new
@@ -31,6 +35,7 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
 
     public async Task SaveOutcomeAsync(string title, int ceremonyYear, string sourceType, GoldenGlobeEnrichmentUpdate update, CancellationToken cancellationToken = default)
     {
+        EnsureEnrichedOutcomeHasValidImdbId(update);
         var rows = db.GoldenGlobeNominations
             .Where(x => x.Title == title && x.Year == ceremonyYear && x.NomineeType == sourceType && !x.IsImdbIdManual);
         if (update.ImdbId is null)
@@ -59,6 +64,7 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
         GoldenGlobeEnrichmentUpdate update,
         CancellationToken cancellationToken = default)
     {
+        EnsureEnrichedOutcomeHasValidImdbId(update);
         var affected = await db.GoldenGlobeNominations
             .Where(x => x.Title == candidate.Title
                 && x.Year == candidate.CeremonyYear
@@ -74,5 +80,11 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
                 .SetProperty(x => x.LastEnrichmentError, update.ErrorCode)
                 .SetProperty(x => x.ImdbId, candidate.ImdbId), cancellationToken);
         return affected > 0;
+    }
+
+    private static void EnsureEnrichedOutcomeHasValidImdbId(GoldenGlobeEnrichmentUpdate update)
+    {
+        if (update.Status == GoldenGlobeEnrichmentStatuses.Enriched && !ImdbIdNormalizer.IsValid(update.ImdbId))
+            throw new InvalidOperationException("An enriched Golden Globes outcome must include a valid IMDb ID.");
     }
 }

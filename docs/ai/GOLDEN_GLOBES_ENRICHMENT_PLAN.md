@@ -1,6 +1,6 @@
 # План: Golden Globes enrichment и ръчно IMDb свързване
 
-**Статус:** Phase B реализирана; останалите етапи са планирани
+**Статус:** Phase A и B реализирани; останалите етапи са планирани
 **Последна редакция:** 2026-10-07
 
 ## Цел
@@ -13,7 +13,7 @@
 - Enrichment, API и UI групират по `(церемониална година, заглавие, тип)` и API връща стабилен `filmId` за тази група.
 - Автоматичният lookup използва OMDb `t=` без година. `and` и `&` не се нормализират като еквивалентни варианти. Ако OMDb върне филм от несъвпадаща година, проверката става след lookup и резултатът се маркира `problem`.
 - Catalog metadata се чете с реалния nominee type; ръчните връзки четат cache по точен IMDb ID и тип.
-- Текущият service задава `enriched` само при валиден IMDb ID, но няма invariant/test за вече записан или импортнат ред в състояние `enriched` без ID.
+- Автоматичният и ръчният enrichment потвърждават IMDb ID и nominee type преди `enriched`; повредени legacy редове се проектират като `pending` и се включват за повторна обработка.
 - Детайлният каталог позволява задаване, смяна и изчистване на manual IMDb ID; задаването атомарно създава target-specific refresh job, а link version обезсилва остарели резултати.
 
 ## Предложен обхват
@@ -38,10 +38,20 @@
 
 ### 3. Metadata cache и статуси
 
-- Търси metadata в cache с реалния `nomineeType`, а не с фиксиран `movie`.
-- Каталогът трябва да показва IMDb ID независимо от наличието на рейтинг или постер. Липсващо поле от OMDb не означава неуспешно свързване.
-- Поддържай invariant: `enriched` означава потвърден IMDb ID и успешно получени metadata за същия ID и съвместим тип. Добави проверка при запис/проекция, така че `enriched` без ID да не се представя като здрав резултат.
-- При внедряване отчети съществуващите записи `enriched` без IMDb ID и ги върни в състояние за повторна обработка; прегледай тези редове преди миграция/масова корекция.
+- [x] Търси metadata в cache с реалния `nomineeType`, а не с фиксиран `movie`.
+- [x] Каталогът показва IMDb ID независимо от наличието на рейтинг или постер. Липсващо поле от OMDb не означава неуспешно свързване.
+- [x] Поддържай invariant: `enriched` означава потвърден валиден IMDb ID и успешно получени metadata за същия ID и съвместим тип. Проверявай автоматичните/ръчните резултати и записите; повредените записи не се проектират като здрав резултат.
+- [x] Enriched редове без валиден IMDb ID се включват за повторна обработка. Преди внедряване или ръчна масова корекция прегледай само-четящия отчет:
+
+```sql
+SELECT year, nominee_type, title, import_key, imdb_id, last_enrichment_error
+FROM golden_globe_nominations
+WHERE enrichment_status = 'enriched'
+	AND (imdb_id IS NULL OR imdb_id !~ '^tt[0-9]{7,10}$')
+ORDER BY year DESC, title, nominee_type, import_key;
+```
+
+Не се изпълнява автоматична миграция или масова промяна на тези редове. Каталогът ги показва като `pending`, а enrichment worker ги избира за повторна обработка; операторът преглежда отчета преди отделна корекция на данните.
 
 ### 4. Автоматично търсене с OMDb кандидати
 
@@ -61,7 +71,7 @@
 
 ## Етапи
 
-- [ ] **A. Групова идентичност и cache fix:** уеднаквяване на ключа `(година, заглавие, тип)`, поправка за сериалния cache lookup и тестове за IMDb ID срещу липсващ рейтинг/poster.
+- [x] **A. Групова идентичност и cache fix:** уеднаквяване на ключа `(година, заглавие, тип)`, поправка за сериалния cache lookup и тестове за IMDb ID срещу липсващ рейтинг/poster.
 - [x] **B. Ръчно свързване:** persistence за manual pin, валидиран API mutation, durable target-specific refresh, UI за задаване/смяна/изчистване и защита от остарял job резултат.
 - [ ] **C. OMDb Search fallback:** multi-result DTO/client, кандидатско оценяване, type/year проверки, нееднозначен резултат без автоматично свързване и budget accounting.
 - [ ] **D. Съществуващи данни и acceptance:** отчет за `enriched` без ID, безопасна повторна обработка, regression tests, миграция и операторска проверка с `Abbott Elementary`, `and`/`&`, омоними/години и movie/series.
@@ -81,6 +91,7 @@
 - Реализирани са manual pin, exact-ID OMDb refresh, atomic job enqueue, ID-keyed metadata cache projection, UI status polling и version guard за остарели резултати.
 - Повторна заявка за същите група/ID използва активната задача. Смяна и изчистване увеличават версията; type correction премахва manual pin.
 - Проверки: `python -B scripts/run_tests.py server-unit --filter "Category=GoldenGlobes"`, `python -B scripts/run_tests.py server-integration --filter "FullyQualifiedName~GoldenGlobe"` и `python -B scripts/run_tests.py web`.
+- Metadata/status hardening: cache projection използва `nomineeType`; невалиден `enriched` ред се показва като `pending`, влиза за повторна обработка и е включен в read-only audit SQL по-горе. Enriched write без валиден IMDb ID се отхвърля.
 - Следваща отправна точка: Phase C, OMDb Search fallback и безопасно оценяване на кандидати.
 
 ## Проектни отправни точки
