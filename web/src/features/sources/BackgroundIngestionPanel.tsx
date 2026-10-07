@@ -162,7 +162,7 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
   }
 
   async function startFailedRecheck() {
-    if (!window.confirm('Retry the latest failed torrent entries? This may send OMDb requests within the saved limits.')) return
+    if (!window.confirm('Retry failed torrent entries using stored data or a unique match in the current feeds? This may send OMDb requests within the saved limits.')) return
     setBusy(true)
     setError(null)
     try {
@@ -343,6 +343,10 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
                   <div><dt>CACHE HITS</dt><dd>{counter(summary, 'cacheHits', 'CacheHits')}</dd></div>
                   <div><dt>ADDED TITLES</dt><dd>{counter(summary, 'titlesCreated', 'TitlesCreated')}</dd></div>
                   <div><dt>OBSERVATIONS</dt><dd>{counter(summary, 'occurrencesCreated', 'OccurrencesCreated')}</dd></div>
+                  {isRecord(job.resultSummary?.recheck) && <>
+                    <div><dt>RECHECK ITEMS</dt><dd>{counter(job.resultSummary.recheck, 'retryableEntriesSelected', 'RetryableEntriesSelected')}</dd></div>
+                    <div><dt>UNAVAILABLE</dt><dd>{counter(job.resultSummary.recheck, 'entriesUnavailable', 'EntriesUnavailable')}</dd></div>
+                  </>}
                 </>}
                 {job.jobType === 'oscar_enrichment' && <>
                   <div><dt>ELIGIBLE FILMS</dt><dd>{counter(summary, 'eligibleFilms', 'EligibleFilms')}</dd></div>

@@ -80,7 +80,15 @@ describe('BackgroundIngestionPanel', () => {
 
   it('queues a failed-entry recheck after confirmation and opens its job details', async () => {
     vi.stubGlobal('confirm', vi.fn(() => true))
-    vi.mocked(getBackgroundJob).mockResolvedValue({ ...queuedJob, currentStage: 'recheck_queued' })
+    vi.mocked(getBackgroundJob).mockResolvedValue({
+      ...queuedJob,
+      status: 'partial',
+      currentStage: 'recheck_completed',
+      resultSummary: {
+        rss: {},
+        recheck: { retryableEntriesSelected: 2, entriesUnavailable: 1 },
+      },
+    })
     render(<BackgroundIngestionPanel mode="torrent" />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Recheck failed' }))
@@ -88,6 +96,8 @@ describe('BackgroundIngestionPanel', () => {
     await screen.findByRole('dialog')
     expect(enqueueFailedEntryRecheck).toHaveBeenCalledOnce()
     expect(screen.getByRole('heading', { name: 'Failed torrent recheck' })).toBeTruthy()
+    expect(screen.getByText('RECHECK ITEMS').nextElementSibling?.textContent).toBe('2')
+    expect(screen.getByText('UNAVAILABLE').nextElementSibling?.textContent).toBe('1')
   })
 
   it('restores an existing active job and stops polling when details close', async () => {

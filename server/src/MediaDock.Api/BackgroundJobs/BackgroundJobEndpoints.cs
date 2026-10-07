@@ -61,7 +61,7 @@ internal static class BackgroundJobEndpoints
             return Results.Accepted(statusUrl, new BackgroundJobAcceptedResponse(result.Job.Id, result.Job.Status, statusUrl));
         })
             .WithName("EnqueueFailedEntryRecheck")
-            .WithSummary("Queue a recheck of the latest retryable torrent entries.")
+            .WithSummary("Queue a recheck of retryable torrent entries, including legacy failures uniquely matched to current feeds.")
             .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status409Conflict);
 

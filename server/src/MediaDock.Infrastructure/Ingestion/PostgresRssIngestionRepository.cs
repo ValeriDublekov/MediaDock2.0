@@ -75,6 +75,51 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<IngestionLegacyRetryItem>> GetLegacyRetryItemsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var latestLegacyLogIds = dbContext.ParseLogs
+            .Where(log => (log.SourceId == null || log.SourceItemKey == null)
+                && log.RetryState == "retryable")
+            .GroupBy(log => new { log.FeedName, log.FeedType, log.RawTitle })
+            .Select(group => group
+                .OrderByDescending(log => log.ProcessedAt)
+                .ThenByDescending(log => log.Id)
+                .Select(log => log.Id)
+                .First());
+
+        return await dbContext.ParseLogs.AsNoTracking()
+            .Where(log => latestLegacyLogIds.Contains(log.Id))
+            .OrderBy(log => log.ProcessedAt)
+            .ThenBy(log => log.Id)
+            .Select(log => new IngestionLegacyRetryItem(
+                log.Id,
+                log.SourceId,
+                log.SourceItemKey,
+                log.FeedName,
+                log.FeedType,
+                new IngestionFeedItem(log.RawTitle, log.FeedEntryId, log.TorrentUrl, log.SourcePublishedAt)))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task AssociateLegacyRetryItemAsync(
+        long parseLogId,
+        long sourceId,
+        string sourceItemKey,
+        IngestionFeedItem feedItem,
+        string feedType,
+        CancellationToken cancellationToken = default)
+    {
+        var log = await dbContext.ParseLogs.SingleAsync(value => value.Id == parseLogId, cancellationToken);
+        log.SourceId = sourceId;
+        log.SourceItemKey = sourceItemKey;
+        log.FeedEntryId = feedItem.FeedEntryId;
+        log.TorrentUrl = feedItem.TorrentUrl;
+        log.SourcePublishedAt = feedItem.PublishedAt;
+        log.FeedType = feedType;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<long> StartRunAsync(
         string trigger,
         DateTimeOffset startedAt,

@@ -46,6 +46,14 @@ public sealed record IngestionRetryItem(
     string SourceItemKey,
     IngestionFeedItem FeedItem);
 
+public sealed record IngestionLegacyRetryItem(
+    long ParseLogId,
+    long? SourceId,
+    string? SourceItemKey,
+    string FeedName,
+    string? FeedType,
+    IngestionFeedItem FeedItem);
+
 public sealed record IngestionParseLog(
     long? SourceId,
     string? SourceItemKey,
@@ -122,6 +130,17 @@ public interface IRssIngestionRepository
     Task<IngestionMatchSettings> GetMatchSettingsAsync(CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<IngestionRetryItem>> GetLatestRetryableItemsAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<IngestionLegacyRetryItem>> GetLegacyRetryItemsAsync(
+        CancellationToken cancellationToken = default);
+
+    Task AssociateLegacyRetryItemAsync(
+        long parseLogId,
+        long sourceId,
+        string sourceItemKey,
+        IngestionFeedItem feedItem,
+        string feedType,
         CancellationToken cancellationToken = default);
 
     Task<long> StartRunAsync(

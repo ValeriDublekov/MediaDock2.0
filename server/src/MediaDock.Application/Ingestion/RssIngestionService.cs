@@ -163,12 +163,14 @@ public sealed class RssIngestionService
         var fallbackFeeds = new Dictionary<long, IReadOnlyDictionary<string, IngestionFeedItem>>();
         var processedSources = new HashSet<long>();
         var unavailableItems = 0;
+        IReadOnlyList<IngestionLegacyRetryItem> legacyItems = [];
 
         await ReportProgressAsync("recheck_started", progress, reportProgress, cancellationToken);
         try
         {
             items = await _repository.GetLatestRetryableItemsAsync(cancellationToken);
-            progress.MaximumParseLogs = items.Count;
+            legacyItems = await _repository.GetLegacyRetryItemsAsync(cancellationToken);
+            progress.MaximumParseLogs = items.Count + legacyItems.Count;
             var settings = await _repository.GetMatchSettingsAsync(cancellationToken);
             foreach (var item in items)
             {
@@ -235,6 +237,110 @@ public sealed class RssIngestionService
                     break;
                 }
             }
+
+            var enabledSources = await _repository.GetEnabledSourcesAsync(cancellationToken);
+            foreach (var item in legacyItems)
+            {
+                progress.EntriesSeen++;
+                var matches = new List<(IngestionSource Source, IngestionFeedItem FeedItem)>();
+                foreach (var source in enabledSources)
+                {
+                    if ((item.SourceId is not null && item.SourceId != source.Id) ||
+                        (!string.IsNullOrWhiteSpace(item.FeedName) &&
+                            !string.Equals(item.FeedName, source.Name, StringComparison.OrdinalIgnoreCase)) ||
+                        (!string.IsNullOrWhiteSpace(item.FeedType) &&
+                            !string.Equals(item.FeedType, source.FeedType, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        continue;
+                    }
+
+                    if (!fallbackFeeds.TryGetValue(source.Id, out var entries))
+                    {
+                        try
+                        {
+                            var body = await _feedTransport.FetchAsync(source.Url, cancellationToken);
+                            entries = ParseFeed(body)
+                                .Select(entry => (Entry: entry, Key: TryCreateSourceItemKey(entry)))
+                                .Where(value => value.Key is not null)
+                                .GroupBy(value => value.Key!, StringComparer.Ordinal)
+                                .ToDictionary(group => group.Key, group => group.First().Entry, StringComparer.Ordinal);
+                            fallbackFeeds[source.Id] = entries;
+                        }
+                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                        {
+                            throw;
+                        }
+                        catch (Exception exception)
+                        {
+                            entries = new Dictionary<string, IngestionFeedItem>(StringComparer.Ordinal);
+                            fallbackFeeds[source.Id] = entries;
+                            progress.RecordError($"Feed '{source.Name}' could not restore a legacy retry item ({exception.GetType().Name}).");
+                        }
+                    }
+
+                    foreach (var entry in entries.Values)
+                    {
+                        if (!string.Equals(item.FeedItem.Title?.Trim(), entry.Title?.Trim(), StringComparison.Ordinal) ||
+                            (!string.IsNullOrWhiteSpace(item.FeedItem.FeedEntryId) &&
+                                !string.Equals(item.FeedItem.FeedEntryId, entry.FeedEntryId, StringComparison.Ordinal)) ||
+                            (!string.IsNullOrWhiteSpace(item.FeedItem.TorrentUrl) &&
+                                !string.Equals(item.FeedItem.TorrentUrl, entry.TorrentUrl, StringComparison.Ordinal)))
+                        {
+                            continue;
+                        }
+
+                        var sourceItemKey = TryCreateSourceItemKey(entry);
+                        if (sourceItemKey is not null &&
+                            (item.SourceItemKey is null || item.SourceItemKey == sourceItemKey))
+                        {
+                            matches.Add((source, entry));
+                        }
+                    }
+                }
+
+                if (matches.Count != 1)
+                {
+                    unavailableItems++;
+                    progress.KnownEntriesSkipped++;
+                    continue;
+                }
+
+                var match = matches[0];
+                var recoveredKey = TryCreateSourceItemKey(match.FeedItem)!;
+                if (processedSources.Add(match.Source.Id))
+                {
+                    progress.FeedsProcessed++;
+                }
+
+                progress.CurrentSource = BoundText(match.Source.Name, 200);
+                await _repository.AssociateLegacyRetryItemAsync(
+                    item.ParseLogId,
+                    match.Source.Id,
+                    recoveredKey,
+                    match.FeedItem,
+                    match.Source.FeedType,
+                    cancellationToken);
+                await ProcessEntryAsync(
+                    match.Source,
+                    match.FeedItem,
+                    settings,
+                    progress,
+                    pendingLogs,
+                    cancellationToken,
+                    skipProcessedItem: false,
+                    sourceItemKeyOverride: recoveredKey);
+
+                if (progress.EntriesSeen % 25 == 0)
+                {
+                    await FlushLogsAsync(pendingLogs, progress, cancellationToken);
+                    await ReportProgressAsync("rechecking_entries", progress, reportProgress, cancellationToken);
+                }
+
+                if (progress.OmdbBudgetExhausted)
+                {
+                    break;
+                }
+            }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -249,14 +355,15 @@ public sealed class RssIngestionService
             progress.RecordError($"Failed-entry recheck failed ({exception.GetType().Name}).");
         }
 
-        var status = progress.ErrorCount == 0
+        var status = progress.ErrorCount == 0 && unavailableItems == 0
             ? "succeeded"
-            : progress.EntriesSeen > unavailableItems ? "partial" : "failed";
+            : progress.ErrorCount == 0 || progress.EntriesSeen > unavailableItems ? "partial" : "failed";
         var summary = BuildSummary(progress, _timeProvider.GetUtcNow(), status);
         await FlushLogsAsync(pendingLogs, progress, cancellationToken);
         await _repository.CompleteRunAsync(runId, summary, cancellationToken);
         await ReportProgressAsync("recheck_completed", progress, reportProgress, cancellationToken);
-        return new IngestionRecheckResult(new IngestionRunResult(runId, summary), items.Count, unavailableItems);
+        return new IngestionRecheckResult(
+            new IngestionRunResult(runId, summary), items.Count + legacyItems.Count, unavailableItems);
     }
 
     private async Task ProcessEntryAsync(

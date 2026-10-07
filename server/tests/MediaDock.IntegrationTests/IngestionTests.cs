@@ -175,6 +175,69 @@ public sealed class IngestionTests
     }
 
     [Fact]
+    public async Task FailedEntryRecheckFindsLegacyParseLogInCurrentFeed()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_legacy_recheck_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString()).Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+        var processedAt = DateTimeOffset.UtcNow.AddDays(-10);
+        var source = new Source
+        {
+            StableKey = "legacy-recheck-source",
+            Name = "Movies",
+            FeedType = "movie",
+            Url = SuccessfulFeedUrl
+        };
+        db.Sources.Add(source);
+        await db.SaveChangesAsync();
+        db.ParseLogs.AddRange(
+            new ParseLog
+            {
+                RawTitle = "The Matrix (1999) [1080p]",
+                FeedName = "Movies",
+                ParsedSuccessfully = false,
+                OmdbStatus = "not_requested",
+                Ignored = true,
+                ErrorMessage = "empty_title",
+                ProcessedAt = processedAt,
+                RetryState = "retryable",
+                FeedType = "movie"
+            },
+            new ParseLog
+            {
+                RawTitle = "Removed Film (1987) [1080p]",
+                FeedName = "Movies",
+                ParsedSuccessfully = false,
+                OmdbStatus = "not_requested",
+                Ignored = true,
+                ErrorMessage = "empty_title",
+                ProcessedAt = processedAt.AddMinutes(1),
+                RetryState = "retryable",
+                FeedType = "movie"
+            });
+        await db.SaveChangesAsync();
+
+        var handler = new MockProviderHandler();
+        using var httpClient = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        var service = CreateService(db, httpClient, new RssFeedTransport(httpClient, new PublicDnsResolver()));
+
+        var result = await service.RecheckFailedAsync();
+
+        Assert.Equal(2, result.RetryableEntriesSelected);
+        Assert.Equal(1, result.EntriesUnavailable);
+        Assert.Equal("partial", result.Run.Summary.Status);
+        Assert.Equal(1, result.Run.Summary.TitlesCreated);
+        Assert.Equal("entry:matrix-1", (await db.Occurrences.SingleAsync()).SourceItemKey);
+        var repairedLog = await db.ParseLogs.OrderByDescending(log => log.Id).FirstAsync();
+        Assert.Equal(source.Id, repairedLog.SourceId);
+        Assert.Equal("entry:matrix-1", repairedLog.SourceItemKey);
+        Assert.Equal("resolved", repairedLog.RetryState);
+    }
+
+    [Fact]
     public async Task AmbiguousHitIsNotPersistedAndAlternateTitleIsBoundedAndAudited()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_title_match_test").Build();
