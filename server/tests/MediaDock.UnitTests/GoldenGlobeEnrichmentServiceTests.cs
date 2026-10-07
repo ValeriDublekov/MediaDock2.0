@@ -119,6 +119,28 @@ public sealed class GoldenGlobeEnrichmentServiceTests
     }
 
     [Fact]
+    public async Task RunAsyncChecksDetailsForClosestCandidateBelowSearchScoreThreshold()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        var repository = new FakeGoldenGlobeEnrichmentRepository(
+        [new("The Same Film", 2025, 0)]);
+        var client = new StubOmdbClient(
+        [
+            new(MetadataLookupStatus.ConfirmedNotFound, HttpAttempts: 1),
+            new(MetadataLookupStatus.Found, CreateMetadata("The Same Film", 2024, "tt44444444", "Nominated for 1 Golden Globe"), 1)
+        ],
+        [new(MetadataLookupStatus.Found,
+            [new MetadataSearchCandidate("The Same Fim", 2024, "tt44444444", "movie")], 1, 1)]);
+
+        var result = await CreateService(repository, client, now).RunAsync();
+
+        Assert.Equal(1, result.Summary.EnrichedTitles);
+        Assert.Equal("enriched", repository.SavedOutcomes[0].Update.Status);
+        Assert.Equal("tt44444444", repository.SavedOutcomes[0].Update.ImdbId);
+        Assert.Equal((2025, "movie", "tt44444444"), client.Requests[1]);
+    }
+
+    [Fact]
     public async Task RunAsyncSearchesSeriesWithoutFilteringPremiereYear()
     {
         var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);

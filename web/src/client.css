@@ -172,7 +172,8 @@ button:disabled { cursor: not-allowed; }
 .state-pill.is-problem { border-color: #e5b5a3; color: #a64e35; background: #fff4ef; }
 .state-pill.is-not-found { border-color: #d6dcd7; color: #717c75; background: #f2f4f1; }
 .state-pill.is-temporary-error { border-color: #e5b5a3; color: #a64e35; background: #fff4ef; }
-.golden-globe-enrichment-error { display: block; max-width: 100%; color: #d39b89; font-size: 10px; line-height: 1.35; overflow-wrap: anywhere; }
+.golden-globe-enrichment-error { display: grid; justify-items: start; gap: 3px; max-width: 100%; margin-top: 5px; border-left: 3px solid #a64e35; padding-left: 7px; color: #713927; font-size: 11px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.golden-globe-enrichment-error code { color: #713927; font-size: 10px; font-weight: 500; overflow-wrap: anywhere; }
 .oscar-detail-dialog { width: min(900px, 100%); }
 .oscar-details-intro { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 18px; }
 .oscar-detail-poster { width: 96px; height: 142px; border: 1px solid #c9d8ce; background: #eaf1e9; object-fit: cover; }

@@ -23,8 +23,14 @@ function describeEnrichmentError(error: string, ceremonyYear: number) {
 
   const descriptions: Record<string, string> = {
     not_found: 'OMDb did not find a matching title.',
+    no_confident_match: 'OMDb Search returned candidates, but none could be verified safely. Check the title, type, and year, or set the IMDb ID manually.',
+    no_golden_globe_match: 'The closest title did not list a Golden Globe in OMDb Awards. Verify the match or set the IMDb ID manually.',
+    ambiguous_match: 'Several close titles passed the Golden Globe check, so no IMDb ID was selected. Set the correct IMDb ID manually.',
+    candidate_mismatch: 'The detailed IMDb lookup did not match the Search result. Set the correct IMDb ID manually.',
     missing_imdb_id: 'OMDb matched a title but returned no IMDb ID.',
     missing_year: 'OMDb matched a film but returned no release year.',
+    type_mismatch: 'OMDb returned a title with a different media type.',
+    invalid_imdb_id: 'OMDb returned an invalid IMDb ID.',
     timeout: 'The OMDb request timed out.',
     transport_error: 'MediaDock could not connect to OMDb.',
     http_error: 'OMDb returned an HTTP error.',
@@ -41,7 +47,10 @@ function describeEnrichmentError(error: string, ceremonyYear: number) {
 function EnrichmentStatus({ film }: { film: GoldenGlobeFilm }) {
   return <>
     <span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span>
-    {film.enrichmentError && <span className="golden-globe-enrichment-error">{describeEnrichmentError(film.enrichmentError, film.year)}</span>}
+    {film.enrichmentError && <div className="golden-globe-enrichment-error">
+      <span><strong>Enrichment issue:</strong> {describeEnrichmentError(film.enrichmentError, film.year)}</span>
+      <code>{film.enrichmentError}</code>
+    </div>}
   </>
 }
 

@@ -9,7 +9,6 @@ public sealed class MetadataResolver
     private static readonly TimeSpan FoundTtl = TimeSpan.FromDays(30);
     private static readonly TimeSpan NotFoundTtl = TimeSpan.FromDays(2);
     private const int MaximumSearchPages = 5;
-    private const decimal MinimumCandidateScore = 90m;
     private const decimal MinimumCandidateMargin = 5m;
 
     private readonly IOmdbClient _client;
@@ -252,9 +251,7 @@ public sealed class MetadataResolver
             .OrderByDescending(candidate => candidate.Score)
             .ToArray();
 
-        if (incompleteSearch
-            || ranked.Length == 0
-            || ranked[0].Score < MinimumCandidateScore)
+        if (incompleteSearch || ranked.Length == 0)
         {
             return new(MetadataLookupStatus.ProviderFailure, null, exact.CacheHit, attempts, "no_confident_match");
         }

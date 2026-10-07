@@ -83,6 +83,24 @@ describe('GoldenGlobeCatalogView', () => {
     expect(await screen.findByText('OMDb matched a film from 2016; this ceremony accepts films from 2024 or 2025.')).toBeTruthy()
   })
 
+  it('shows specific explanations and safe error codes in the film list', async () => {
+    vi.mocked(getGoldenGlobeFilms).mockResolvedValue({
+      ...page,
+      items: [
+        { ...film, enrichmentStatus: 'problem', enrichmentError: 'no_confident_match' },
+        { ...film, filmId: '2025:movie:No Award Match', title: 'No Award Match', enrichmentStatus: 'problem', enrichmentError: 'no_golden_globe_match' },
+      ],
+      totalCount: 2,
+    })
+
+    render(<GoldenGlobeCatalogView />)
+
+    expect(await screen.findByText('OMDb Search returned candidates, but none could be verified safely. Check the title, type, and year, or set the IMDb ID manually.')).toBeTruthy()
+    expect(screen.getByText('The closest title did not list a Golden Globe in OMDb Awards. Verify the match or set the IMDb ID manually.')).toBeTruthy()
+    expect(screen.getByText('no_confident_match', { selector: 'code' })).toBeTruthy()
+    expect(screen.getByText('no_golden_globe_match', { selector: 'code' })).toBeTruthy()
+  })
+
   it('distinguishes movie and series groups with the same title and ceremony year', async () => {
     vi.mocked(getGoldenGlobeFilms).mockResolvedValue({
       ...page,
