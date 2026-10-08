@@ -14,6 +14,7 @@ import { GoldenGlobeFilmDetailsDialog } from './GoldenGlobeFilmDetailsDialog'
 
 interface Filters { search: string; yearFrom: string; yearTo: string; categories: string[] | null; result: string; enrichmentStatus: string }
 const emptyFilters: Filters = { search: '', yearFrom: '', yearTo: '', categories: null, result: '', enrichmentStatus: '' }
+const searchDebounceMs = 350
 
 function queryFor(page: number, filters: Filters): GoldenGlobeCatalogQuery {
   return { page, pageSize: 20, ...(filters.search.trim() ? { search: filters.search.trim() } : {}), ...(filters.yearFrom ? { yearFrom: Number(filters.yearFrom) } : {}), ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}), ...(filters.categories !== null ? { categories: filters.categories, categoryFilter: true } : {}), ...(filters.result ? { result: filters.result as GoldenGlobeCatalogQuery['result'] } : {}), ...(filters.enrichmentStatus ? { enrichmentStatus: filters.enrichmentStatus as GoldenGlobeEnrichmentStatus } : {}) }
@@ -91,15 +92,23 @@ export function GoldenGlobeCatalogView() {
     return () => { current = false }
   }, [page, applied, attempt])
 
+  useEffect(() => {
+    if (draft.search === applied.search) return
+    const timeoutId = window.setTimeout(() => {
+      setLoading(true)
+      setError(null)
+      setPage(1)
+      setApplied((current) => ({ ...current, search: draft.search }))
+    }, searchDebounceMs)
+    return () => window.clearTimeout(timeoutId)
+  }, [draft.search, applied.search])
+
   function apply(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setLoading(true); setError(null); setPage(1); setApplied({ ...draft }) }
   function clear() { setLoading(true); setError(null); setDraft(emptyFilters); setApplied(emptyFilters); setPage(1) }
   function applyCategories(categories: string[] | null) {
     const nextFilters = { ...draft, categories }
     setDraft(nextFilters)
-    setApplied(nextFilters)
-    setLoading(true)
-    setError(null)
-    setPage(1)
+    commitFilterChanges({ categories })
   }
   function refresh() { setLoading(true); setError(null); setAttempt((value) => value + 1) }
   const refreshFilm = useCallback(async (filmId: string) => {
@@ -107,7 +116,16 @@ export function GoldenGlobeCatalogView() {
     setResult(response)
     return response.items.find((item) => item.filmId === filmId)
   }, [applied, page])
-  function update(key: keyof Filters, value: string) { setDraft((current) => ({ ...current, [key]: value })) }
+  function update(key: keyof Filters, value: string) {
+    setDraft((current) => ({ ...current, [key]: value }))
+    if (key !== 'search') commitFilterChanges({ [key]: value })
+  }
+  function commitFilterChanges(filters: Partial<Filters>) {
+    setLoading(true)
+    setError(null)
+    setPage(1)
+    setApplied((current) => ({ ...current, ...filters }))
+  }
   function updateYearRange(from: number, to: number, applyRange: boolean) {
     const bounds = result?.yearBounds
     if (!bounds) return
@@ -116,12 +134,7 @@ export function GoldenGlobeCatalogView() {
       yearTo: to === bounds.maxYear ? '' : String(to),
     }
     setDraft((current) => ({ ...current, ...years }))
-    if (applyRange) {
-      setApplied((current) => ({ ...current, ...years }))
-      setPage(1)
-      setLoading(true)
-      setError(null)
-    }
+    if (applyRange) commitFilterChanges(years)
   }
 
   return <section aria-label="Golden Globes catalog" className="media-view">
@@ -141,7 +154,7 @@ export function GoldenGlobeCatalogView() {
         <div className="field"><label htmlFor="golden-globe-result">Award result</label><select id="golden-globe-result" onChange={(event) => update('result', event.target.value)} value={draft.result}><option value="">All results</option><option value="winner">Winners</option><option value="nominee">Nominees</option></select></div>
         <div className="field"><label htmlFor="golden-globe-enrichment-status">OMDb status</label><select id="golden-globe-enrichment-status" onChange={(event) => update('enrichmentStatus', event.target.value)} value={draft.enrichmentStatus}><option value="">All statuses</option><option value="pending">Pending</option><option value="enriched">Enriched</option><option value="problem">Problem</option><option value="not_found">Not found</option><option value="temporary_error">Temporary error</option></select></div>
       </div></details>
-      <div className="filter-actions"><button className="button" type="submit">Apply filters</button><button className="button button-secondary" onClick={clear} type="button">Clear</button></div>
+      <div className="filter-actions"><button className="button button-secondary" onClick={clear} type="button">Clear</button></div>
     </form>
     <div className="section-toolbar"><span className="result-count">{result ? `${result.totalCount.toLocaleString()} Golden Globes films` : 'Golden Globes records'}</span><div className="toolbar-actions"><ViewModeControl onChange={setViewMode} value={viewMode} /><button className="text-button" onClick={refresh} type="button">Refresh results</button></div></div>
     {loading && <LoadingState label="Loading Golden Globes catalog" />}

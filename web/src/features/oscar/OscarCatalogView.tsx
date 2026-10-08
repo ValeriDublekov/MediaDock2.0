@@ -35,6 +35,7 @@ const emptyFilters: OscarFilters = {
   result: '',
   enrichmentStatus: '',
 }
+const searchDebounceMs = 350
 
 function buildQuery(page: number, filters: OscarFilters): OscarCatalogQuery {
   return {
@@ -146,6 +147,17 @@ export function OscarCatalogView() {
     return () => { current = false }
   }, [page, appliedFilters, attempt])
 
+  useEffect(() => {
+    if (draftFilters.search === appliedFilters.search) return
+    const timeoutId = window.setTimeout(() => {
+      setLoading(true)
+      setError(null)
+      setPage(1)
+      setAppliedFilters((current) => ({ ...current, search: draftFilters.search }))
+    }, searchDebounceMs)
+    return () => window.clearTimeout(timeoutId)
+  }, [draftFilters.search, appliedFilters.search])
+
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoading(true)
@@ -156,6 +168,14 @@ export function OscarCatalogView() {
 
   function updateFilter<K extends keyof OscarFilters>(key: K, value: OscarFilters[K]) {
     setDraftFilters((current) => ({ ...current, [key]: value }))
+    if (key !== 'search') commitFilterChanges({ [key]: value } as Partial<OscarFilters>)
+  }
+
+  function commitFilterChanges(filters: Partial<OscarFilters>) {
+    setLoading(true)
+    setError(null)
+    setPage(1)
+    setAppliedFilters((current) => ({ ...current, ...filters }))
   }
 
   function updateYearRange(from: number, to: number, apply: boolean) {
@@ -166,21 +186,13 @@ export function OscarCatalogView() {
       yearTo: to === bounds.maxYear ? '' : String(to),
     }
     setDraftFilters((current) => ({ ...current, ...years }))
-    if (apply) {
-      setAppliedFilters((current) => ({ ...current, ...years }))
-      setPage(1)
-      setLoading(true)
-      setError(null)
-    }
+    if (apply) commitFilterChanges(years)
   }
 
   function applyCategories(categories: string[] | null) {
     const nextFilters = { ...draftFilters, categories }
     setDraftFilters(nextFilters)
-    setAppliedFilters(nextFilters)
-    setLoading(true)
-    setError(null)
-    setPage(1)
+    commitFilterChanges({ categories })
   }
 
   function clearFilters() {
@@ -257,7 +269,6 @@ export function OscarCatalogView() {
           </div>
         </details>
         <div className="filter-actions">
-          <button className="button" type="submit">Apply filters</button>
           <button className="button button-secondary" onClick={clearFilters} type="button">Clear</button>
         </div>
       </form>

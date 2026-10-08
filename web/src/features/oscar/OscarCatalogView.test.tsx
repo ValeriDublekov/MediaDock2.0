@@ -144,8 +144,12 @@ describe('OscarCatalogView', () => {
 
     fireEvent.click(screen.getByText('More filters'))
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: '  Oppenheimer  ' } })
+    expect(filmRequest).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('button', { name: 'Apply filters' })).toBeNull()
     fireEvent.change(screen.getByLabelText('Award result'), { target: { value: 'winner' } })
+    expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, result: 'winner' })
     fireEvent.change(screen.getByLabelText('OMDb status'), { target: { value: 'pending' } })
+    expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, result: 'winner', enrichmentStatus: 'pending' })
     fireEvent.click(await screen.findByLabelText('Categories: All categories (5)'))
     fireEvent.click(screen.getByLabelText('BEST PICTURE'))
     expect(screen.getByText('More filters (3 active)')).toBeTruthy()
@@ -168,7 +172,7 @@ describe('OscarCatalogView', () => {
 
     expect(await screen.findByRole('button', { name: 'View The Shape of Water Oscar details' })).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'Shape of Water' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    expect(filmRequest).toHaveBeenCalledTimes(1)
     await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'Shape of Water' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Next page' }))
     await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 2, pageSize: 20, search: 'Shape of Water' }))

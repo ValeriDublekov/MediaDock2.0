@@ -57,10 +57,12 @@ describe('GoldenGlobeCatalogView', () => {
     expect(within(screen.getByLabelText('Awards and nominations')).getByText('Golden Globes')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: '  A Film  ' } })
+    expect(getGoldenGlobeFilms).toHaveBeenCalledTimes(1)
     const minimum = screen.getByRole('slider', { name: 'Ceremony year minimum' })
     fireEvent.change(minimum, { target: { value: '2025' } })
     fireEvent.pointerUp(minimum)
     fireEvent.change(screen.getByLabelText('Award result'), { target: { value: 'winner' } })
+    expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, yearFrom: 2025, result: 'winner' })
     fireEvent.change(screen.getByLabelText('OMDb status'), { target: { value: 'not_found' } })
     fireEvent.click(screen.getByLabelText('Categories: All categories (2)'))
     fireEvent.click(screen.getByLabelText('Best Director'))
@@ -83,7 +85,7 @@ describe('GoldenGlobeCatalogView', () => {
 
     expect(await screen.findByRole('button', { name: 'A Film' })).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'A Film' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    expect(getGoldenGlobeFilms).toHaveBeenCalledTimes(1)
     await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'A Film' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Next page' }))
     await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 2, pageSize: 20, search: 'A Film' }))

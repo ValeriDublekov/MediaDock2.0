@@ -121,7 +121,7 @@ describe('CatalogView', () => {
     expect(screen.getByText('1980 – 2024')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Search titles'), { target: { value: 'Quiet River' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    expect(catalogRequest).toHaveBeenCalledTimes(1)
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
       page: 1, pageSize: 20, feedTypes: ['movie', 'series_complete', 'series_ongoing'], search: 'Quiet River',
     }))
@@ -196,10 +196,17 @@ describe('CatalogView', () => {
 
     fireEvent.click(screen.getByText('More filters'))
     fireEvent.change(screen.getByLabelText('Search titles'), { target: { value: 'quiet river' } })
+    expect(catalogRequest).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('button', { name: 'Apply filters' })).toBeNull()
     fireEvent.change(screen.getByLabelText('Media type'), { target: { value: 'series' } })
+    expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, feedTypes: ['movie', 'series_complete', 'series_ongoing'], mediaType: 'series',
+    })
     fireEvent.change(screen.getByLabelText('Genre'), { target: { value: 'drama' } })
     expect(screen.getByText('More filters (2 active)')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, feedTypes: ['movie', 'series_complete', 'series_ongoing'], mediaType: 'series', genre: 'drama',
+    })
 
     expect(await screen.findByText('No titles found')).toBeTruthy()
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({

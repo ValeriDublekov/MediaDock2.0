@@ -42,6 +42,7 @@ const categories: Array<{ id: CatalogCategory; label: string }> = [
 const emptyFilters: CatalogFilters = {
   search: '', mediaType: '', sourceType: '', contentKind: '', yearFrom: '', yearTo: '', genre: '',
 }
+const searchDebounceMs = 350
 
 function buildQuery(page: number, filters: CatalogFilters, category: CatalogCategory): CatalogQuery {
   return {
@@ -115,14 +116,35 @@ export function CatalogView() {
     return () => { current = false }
   }, [page, appliedFilters, category, attempt])
 
+  useEffect(() => {
+    if (draftFilters.search === appliedFilters.search) return
+    const timeoutId = window.setTimeout(() => {
+      setLoading(true)
+      setError(null)
+      setPage(1)
+      setAppliedFilters((current) => ({ ...current, search: draftFilters.search }))
+    }, searchDebounceMs)
+    return () => window.clearTimeout(timeoutId)
+  }, [draftFilters.search, appliedFilters.search])
+
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setLoading(true)
+    setError(null)
     setPage(1)
     setAppliedFilters({ ...draftFilters })
   }
 
   function updateFilter<K extends keyof CatalogFilters>(key: K, value: CatalogFilters[K]) {
     setDraftFilters((current) => ({ ...current, [key]: value }))
+    if (key !== 'search') commitFilterChanges({ [key]: value } as Partial<CatalogFilters>)
+  }
+
+  function commitFilterChanges(filters: Partial<CatalogFilters>) {
+    setLoading(true)
+    setError(null)
+    setPage(1)
+    setAppliedFilters((current) => ({ ...current, ...filters }))
   }
 
   function updateYearRange(from: number, to: number, apply: boolean) {
@@ -133,12 +155,7 @@ export function CatalogView() {
       yearTo: to === bounds.maxYear ? '' : String(to),
     }
     setDraftFilters((current) => ({ ...current, ...years }))
-    if (apply) {
-      setAppliedFilters((current) => ({ ...current, ...years }))
-      setPage(1)
-      setLoading(true)
-      setError(null)
-    }
+    if (apply) commitFilterChanges(years)
   }
 
   return (
@@ -202,11 +219,12 @@ export function CatalogView() {
           </div>
         </details>
         <div className="filter-actions">
-          <button className="button" type="submit">Apply filters</button>
           <button className="button button-secondary" onClick={() => {
             setDraftFilters({ ...emptyFilters })
             setAppliedFilters({ ...emptyFilters })
             setPage(1)
+            setLoading(true)
+            setError(null)
           }} type="button">Clear</button>
         </div>
       </form>
