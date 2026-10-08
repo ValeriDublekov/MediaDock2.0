@@ -35,6 +35,9 @@ public sealed class GoldenGlobeApiTests
             await db.Database.MigrateAsync();
             var bestPicture = new GoldenGlobeAward { Name = "Best Motion Picture" };
             var bestDirector = new GoldenGlobeAward { Name = "Best Director" };
+            var manualTypeMismatch = CreateNomination(
+                "manual-type-mismatch", "Manual Type Mismatch", 2025, false, "tt76543210", bestPicture, "enriched", "series");
+            manualTypeMismatch.IsImdbIdManual = true;
             db.GoldenGlobeNominations.AddRange(
                 CreateNomination("a-picture", "A Film", 2025, true, "tt12345678", bestPicture, "enriched"),
                 CreateNomination("a-director", "A Film", 2025, false, "tt12345678", bestDirector, "enriched"),
@@ -44,6 +47,7 @@ public sealed class GoldenGlobeApiTests
                 CreateNomination("older-picture", "Older Film", 2024, true, null, bestPicture, "problem"),
                 CreateNomination("daisy-series", "Daisy Jones and the Six", 2024, false, "tt8749198", bestPicture, "enriched", "series"),
                 CreateNomination("no-art", "No Art Film", 2025, false, "tt32345678", bestPicture, "enriched"),
+                manualTypeMismatch,
                 CreateNomination("broken-enriched", "Broken Enriched Film", 2025, false, null, bestPicture, "enriched"));
             var fetchedAt = DateTimeOffset.UtcNow;
             db.MetadataCache.Add(new MetadataCacheEntry
@@ -88,6 +92,20 @@ public sealed class GoldenGlobeApiTests
                 },
                 new MetadataCacheEntry
                 {
+                    CacheKey = "golden-globe-manual-type-mismatch-cache",
+                    LookupTitle = "manual type mismatch",
+                    LookupYearSemantics = "series_title",
+                    SourceType = "series",
+                    LookupIdentity = "tt76543210",
+                    Status = "found",
+                    PayloadJson = JsonSerializer.Serialize(new MetadataDetails(
+                        "Manual Type Mismatch", 2024, "tt76543210", "movie", "movie", "standard", null,
+                        6.7m, 1200, null, [], [], null, null, "https://example.test/manual-type-mismatch.jpg", null, null, null)),
+                    FetchedAt = fetchedAt,
+                    ExpiresAt = fetchedAt.AddDays(30)
+                },
+                new MetadataCacheEntry
+                {
                     CacheKey = "golden-globe-daisy-negative-cache",
                     LookupTitle = "daisy jones and the six",
                     LookupYearSemantics = "title",
@@ -121,8 +139,8 @@ public sealed class GoldenGlobeApiTests
         Assert.Equal(HttpStatusCode.OK, firstPageResponse.StatusCode);
         var firstPage = await firstPageResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
         Assert.NotNull(firstPage);
-        Assert.Equal(8, firstPage.TotalCount);
-        Assert.Equal(8, firstPage.TotalPages);
+        Assert.Equal(9, firstPage.TotalCount);
+        Assert.Equal(9, firstPage.TotalPages);
         var firstFilm = Assert.Single(firstPage.Items);
         Assert.Equal("A Film", firstFilm.Title);
         Assert.Equal("2025:movie:A Film", firstFilm.FilmId);
@@ -146,6 +164,13 @@ public sealed class GoldenGlobeApiTests
         Assert.Equal("tt8749198", daisyFilm.ImdbId);
         Assert.Equal(8.1m, daisyFilm.ImdbRating);
         Assert.Equal("https://example.test/daisy.jpg", daisyFilm.PosterUrl);
+        var manualTypeMismatchFilm = groupedPage.Items.Single(film => film.Title == "Manual Type Mismatch");
+        Assert.Equal("series", manualTypeMismatchFilm.NomineeType);
+        Assert.True(manualTypeMismatchFilm.IsImdbIdManual);
+        Assert.Equal("enriched", manualTypeMismatchFilm.EnrichmentStatus);
+        Assert.Equal("tt76543210", manualTypeMismatchFilm.ImdbId);
+        Assert.Equal(6.7m, manualTypeMismatchFilm.ImdbRating);
+        Assert.Equal("https://example.test/manual-type-mismatch.jpg", manualTypeMismatchFilm.PosterUrl);
         var noArtFilm = groupedPage.Items.Single(film => film.Title == "No Art Film");
         Assert.Equal("tt32345678", noArtFilm.ImdbId);
         Assert.Null(noArtFilm.ImdbRating);

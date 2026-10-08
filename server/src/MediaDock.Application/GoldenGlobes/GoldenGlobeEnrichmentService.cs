@@ -117,7 +117,7 @@ public sealed class GoldenGlobeEnrichmentService(
                 error = "imdb_id_mismatch";
                 nextAttempt = null;
             }
-            else if (!string.Equals(metadata.SourceType, candidate.SourceType, StringComparison.Ordinal))
+            else if (metadata.SourceType is not ("movie" or "series"))
             {
                 status = GoldenGlobeEnrichmentStatuses.Problem;
                 error = "type_mismatch";

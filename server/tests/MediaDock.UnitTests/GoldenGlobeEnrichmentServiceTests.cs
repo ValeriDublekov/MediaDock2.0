@@ -370,7 +370,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
     }
 
     [Fact]
-    public async Task RefreshManualAsyncDoesNotEnrichWhenOmdbReturnsAnotherIdOrType()
+    public async Task RefreshManualAsyncRejectsAnotherIdButTrustsExactManualIdAcrossTypes()
     {
         var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
         var repository = new FakeGoldenGlobeEnrichmentRepository([]);
@@ -385,12 +385,22 @@ public sealed class GoldenGlobeEnrichmentServiceTests
         Assert.Equal("tt12345678", repository.SavedManualOutcomes[0].Update.ImdbId);
 
         var mismatchedTypeClient = new StubOmdbClient(
-        [new(MetadataLookupStatus.Found, CreateMetadata("Series", 2020, "tt12345678") with { SourceType = "series" }, 1)]);
-        var seriesCandidate = candidate with { SourceType = "movie" };
+        [new(MetadataLookupStatus.Found, CreateMetadata("Film", 2024, "tt12345678"), 1)]);
+        var seriesCandidate = candidate with { SourceType = "series" };
         var mismatchedType = await CreateService(repository, mismatchedTypeClient, now).RefreshManualAsync(seriesCandidate);
 
-        Assert.Equal("problem", mismatchedType.Status);
-        Assert.Equal("type_mismatch", mismatchedType.ErrorCode);
+        Assert.Equal("enriched", mismatchedType.Status);
+        Assert.Null(mismatchedType.ErrorCode);
+        Assert.True(mismatchedType.Applied);
+        Assert.Equal("enriched", repository.SavedManualOutcomes[1].Update.Status);
+        Assert.Equal("tt12345678", repository.SavedManualOutcomes[1].Update.ImdbId);
+
+        var unsupportedTypeClient = new StubOmdbClient(
+        [new(MetadataLookupStatus.Found, CreateMetadata("Film", 2024, "tt12345678") with { SourceType = "episode" }, 1)]);
+        var unsupportedType = await CreateService(repository, unsupportedTypeClient, now).RefreshManualAsync(seriesCandidate);
+
+        Assert.Equal("problem", unsupportedType.Status);
+        Assert.Equal("type_mismatch", unsupportedType.ErrorCode);
     }
 
     private static GoldenGlobeEnrichmentService CreateService(

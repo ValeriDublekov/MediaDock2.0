@@ -85,7 +85,8 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
     private static MetadataDetails? GetMatchingMetadata(GoldenGlobeFilmResponse film, MetadataCacheValue? metadata) =>
         metadata?.Metadata is { } candidate
         && string.Equals(ImdbIdNormalizer.Normalize(film.ImdbId), ImdbIdNormalizer.Normalize(candidate.ImdbId), StringComparison.Ordinal)
-        && string.Equals(film.NomineeType, candidate.SourceType, StringComparison.Ordinal)
+        && (string.Equals(film.NomineeType, candidate.SourceType, StringComparison.Ordinal)
+            || (film.IsImdbIdManual && candidate.SourceType is ("movie" or "series")))
             ? candidate
             : null;
 
