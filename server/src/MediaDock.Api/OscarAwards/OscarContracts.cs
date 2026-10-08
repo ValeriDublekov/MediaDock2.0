@@ -19,6 +19,12 @@ public sealed record OscarCatalogQuery
     [Range(1800, 2200)]
     public int? YearTo { get; init; }
 
+    [Range(typeof(decimal), "0", "10")]
+    public decimal? ImdbRatingFrom { get; init; }
+
+    [Range(typeof(decimal), "0", "10")]
+    public decimal? ImdbRatingTo { get; init; }
+
     [MaxLength(100)]
     public string? Category { get; init; }
 

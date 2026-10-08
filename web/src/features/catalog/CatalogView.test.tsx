@@ -15,8 +15,14 @@ vi.mock('../../api/client', () => ({
 
 const catalogRequest = vi.mocked(getCatalog)
 
-function page(items: CatalogTitle[], number = 1, totalPages = 1, yearBounds?: PageResponse<CatalogTitle>['yearBounds']): PageResponse<CatalogTitle> {
-  return { items, page: number, pageSize: 20, totalCount: items.length, totalPages, ...(yearBounds ? { yearBounds } : {}) }
+function page(
+  items: CatalogTitle[],
+  number = 1,
+  totalPages = 1,
+  yearBounds?: PageResponse<CatalogTitle>['yearBounds'],
+  imdbRatingBounds?: PageResponse<CatalogTitle>['imdbRatingBounds'],
+): PageResponse<CatalogTitle> {
+  return { items, page: number, pageSize: 20, totalCount: items.length, totalPages, ...(yearBounds ? { yearBounds } : {}), ...(imdbRatingBounds ? { imdbRatingBounds } : {}) }
 }
 
 const title: CatalogTitle = {
@@ -151,6 +157,23 @@ describe('CatalogView', () => {
 
     expect(await screen.findByText('No titles found')).toBeTruthy()
     expect(screen.queryByRole('slider')).toBeNull()
+  })
+
+  it('applies an IMDb rating minimum using the database-provided bounds', async () => {
+    catalogRequest.mockResolvedValue(page([title], 1, 1, undefined, { minRating: 6.4, maxRating: 9.2 }))
+    render(<CatalogView />)
+
+    expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
+    const minimum = screen.getByRole('slider', { name: 'IMDb rating minimum' }) as HTMLInputElement
+    expect(minimum.min).toBe('6.4')
+    expect(minimum.max).toBe('9.2')
+    fireEvent.change(minimum, { target: { value: '8.1' } })
+    expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('8.1 – 9.2')
+    fireEvent.pointerUp(minimum)
+
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, feedTypes: ['movie', 'series_complete', 'series_ongoing'], imdbRatingFrom: 8.1,
+    }))
   })
 
   it('omits both year parameters for the full range so yearless titles remain included', async () => {

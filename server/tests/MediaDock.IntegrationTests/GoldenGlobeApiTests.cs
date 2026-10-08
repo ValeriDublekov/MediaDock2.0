@@ -149,6 +149,7 @@ public sealed class GoldenGlobeApiTests
         Assert.Equal(9, firstPage.TotalCount);
         Assert.Equal(9, firstPage.TotalPages);
         Assert.Equal(new YearBounds(2024, 2025), firstPage.YearBounds);
+        Assert.Equal(new ImdbRatingBounds(6.7m, 8.1m), firstPage.ImdbRatingBounds);
         var firstFilm = Assert.Single(firstPage.Items);
         Assert.Equal("A Film", firstFilm.Title);
         Assert.Equal("2025:movie:A Film", firstFilm.FilmId);
@@ -192,10 +193,17 @@ public sealed class GoldenGlobeApiTests
         var filteredPage = await filteredResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
         Assert.NotNull(filteredPage);
         Assert.Equal(new YearBounds(2024, 2025), filteredPage.YearBounds);
+        Assert.Equal(new ImdbRatingBounds(6.7m, 8.1m), filteredPage.ImdbRatingBounds);
         var filteredFilm = Assert.Single(filteredPage.Items);
         Assert.Equal("A Film", filteredFilm.Title);
         Assert.Single(filteredFilm.Nominations);
         Assert.Contains(filteredFilm.Nominations, nomination => nomination.Award == "Best Motion Picture" && nomination.IsWinner);
+
+        using var ratingFilteredResponse = await client.GetAsync("/api/golden-globes?imdbRatingFrom=8&imdbRatingTo=8.1");
+        var ratingFilteredPage = await ratingFilteredResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
+        Assert.NotNull(ratingFilteredPage);
+        Assert.Equal(new ImdbRatingBounds(6.7m, 8.1m), ratingFilteredPage.ImdbRatingBounds);
+        Assert.Equal(new[] { "A Film", "Daisy Jones and the Six" }, ratingFilteredPage.Items.Select(film => film.Title).OrderBy(title => title));
 
         using var multiCategoryResponse = await client.GetAsync(
             "/api/golden-globes?yearFrom=2025&yearTo=2025&categoryFilter=true&categories=Best%20Director&categories=Best%20Motion%20Picture&result=winner");

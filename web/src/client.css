@@ -288,7 +288,8 @@ button:disabled { cursor: not-allowed; }
 .browse-filters .filter-actions { grid-column: 2; grid-row: 1; }
 .browse-filters .filter-actions .button { min-height: 44px; }
 .browse-filters .year-range-filter { grid-column: 1 / -1; grid-row: 2; }
-.browse-filters .advanced-filters { grid-column: 1 / -1; grid-row: 3; }
+.browse-filters .imdb-rating-range-filter { grid-column: 1 / -1; grid-row: 3; }
+.browse-filters .advanced-filters { grid-column: 1 / -1; grid-row: 4; }
 .year-range-filter { min-width: 0; margin: 0; border: 0; padding: 0; }
 .year-range-filter legend { margin-bottom: 5px; color: #586961; font-size: 10px; font-weight: 700; }
 .year-range-readout { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #748078; font-size: 10px; font-variant-numeric: tabular-nums; }
@@ -391,8 +392,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offs
   .filter-form.browse-filters { grid-template-columns: minmax(0, 1fr); }
   .browse-filters .filter-search { grid-column: 1; grid-row: 1; }
   .browse-filters .year-range-filter { grid-column: 1; grid-row: 2; }
-  .browse-filters .filter-actions { grid-column: 1; grid-row: 3; }
-  .browse-filters .advanced-filters { grid-column: 1; grid-row: 4; }
+  .browse-filters .imdb-rating-range-filter { grid-column: 1; grid-row: 3; }
+  .browse-filters .filter-actions { grid-column: 1; grid-row: 4; }
+  .browse-filters .advanced-filters { grid-column: 1; grid-row: 5; }
   .advanced-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .poster-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 12px; }
   .film-details-intro { grid-template-columns: 80px minmax(0, 1fr); gap: 14px; }

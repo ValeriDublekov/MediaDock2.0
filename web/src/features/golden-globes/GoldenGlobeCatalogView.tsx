@@ -3,6 +3,7 @@ import { getGoldenGlobeCategories, getGoldenGlobeFilms } from '../../api/client'
 import type { GoldenGlobeCatalogQuery, GoldenGlobeEnrichmentStatus, GoldenGlobeFilm, PageResponse } from '../../api/types'
 import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
+import { ImdbRatingRangeFilter } from '../../components/ImdbRatingRangeFilter'
 import { YearRangeFilter } from '../../components/YearRangeFilter'
 import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { Pagination } from '../../components/Pagination'
@@ -12,12 +13,12 @@ import { combineMovieAwards, getGoldenGlobeRecognitions, movieAwardsRequestKey }
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { GoldenGlobeFilmDetailsDialog } from './GoldenGlobeFilmDetailsDialog'
 
-interface Filters { search: string; yearFrom: string; yearTo: string; categories: string[] | null; result: string; enrichmentStatus: string }
-const emptyFilters: Filters = { search: '', yearFrom: '', yearTo: '', categories: null, result: '', enrichmentStatus: '' }
+interface Filters { search: string; yearFrom: string; yearTo: string; imdbRatingFrom: string; imdbRatingTo: string; categories: string[] | null; result: string; enrichmentStatus: string }
+const emptyFilters: Filters = { search: '', yearFrom: '', yearTo: '', imdbRatingFrom: '', imdbRatingTo: '', categories: null, result: '', enrichmentStatus: '' }
 const searchDebounceMs = 350
 
 function queryFor(page: number, filters: Filters): GoldenGlobeCatalogQuery {
-  return { page, pageSize: 20, ...(filters.search.trim() ? { search: filters.search.trim() } : {}), ...(filters.yearFrom ? { yearFrom: Number(filters.yearFrom) } : {}), ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}), ...(filters.categories !== null ? { categories: filters.categories, categoryFilter: true } : {}), ...(filters.result ? { result: filters.result as GoldenGlobeCatalogQuery['result'] } : {}), ...(filters.enrichmentStatus ? { enrichmentStatus: filters.enrichmentStatus as GoldenGlobeEnrichmentStatus } : {}) }
+  return { page, pageSize: 20, ...(filters.search.trim() ? { search: filters.search.trim() } : {}), ...(filters.yearFrom ? { yearFrom: Number(filters.yearFrom) } : {}), ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}), ...(filters.imdbRatingFrom ? { imdbRatingFrom: Number(filters.imdbRatingFrom) } : {}), ...(filters.imdbRatingTo ? { imdbRatingTo: Number(filters.imdbRatingTo) } : {}), ...(filters.categories !== null ? { categories: filters.categories, categoryFilter: true } : {}), ...(filters.result ? { result: filters.result as GoldenGlobeCatalogQuery['result'] } : {}), ...(filters.enrichmentStatus ? { enrichmentStatus: filters.enrichmentStatus as GoldenGlobeEnrichmentStatus } : {}) }
 }
 
 function describeEnrichmentError(error: string, ceremonyYear: number) {
@@ -136,6 +137,13 @@ export function GoldenGlobeCatalogView() {
     setDraft((current) => ({ ...current, ...years }))
     if (applyRange) commitFilterChanges(years)
   }
+  function updateImdbRatingRange(from: number, to: number, applyRange: boolean) {
+    const bounds = result?.imdbRatingBounds
+    if (!bounds) return
+    const ratings = { imdbRatingFrom: from === bounds.minRating ? '' : String(from), imdbRatingTo: to === bounds.maxRating ? '' : String(to) }
+    setDraft((current) => ({ ...current, ...ratings }))
+    if (applyRange) commitFilterChanges(ratings)
+  }
 
   return <section aria-label="Golden Globes catalog" className="media-view">
     <form className="filter-form oscar-filter-form browse-filters" onSubmit={apply}>
@@ -148,6 +156,14 @@ export function GoldenGlobeCatalogView() {
         onPreview={(from, to) => updateYearRange(from, to, false)}
         valueFrom={draft.yearFrom ? Number(draft.yearFrom) : result.yearBounds.minYear}
         valueTo={draft.yearTo ? Number(draft.yearTo) : result.yearBounds.maxYear}
+      />}
+      {result?.imdbRatingBounds && <ImdbRatingRangeFilter
+        bounds={result.imdbRatingBounds}
+        id="golden-globe-imdb-rating-range"
+        onCommit={(from, to) => updateImdbRatingRange(from, to, true)}
+        onPreview={(from, to) => updateImdbRatingRange(from, to, false)}
+        valueFrom={draft.imdbRatingFrom ? Number(draft.imdbRatingFrom) : result.imdbRatingBounds.minRating}
+        valueTo={draft.imdbRatingTo ? Number(draft.imdbRatingTo) : result.imdbRatingBounds.maxRating}
       />}
       <details className="advanced-filters"><summary>More filters</summary><div className="advanced-fields">
         <CategoryMultiSelect error={categoryOptionsError} label="Categories" loading={categoryOptionsLoading} onChange={applyCategories} options={categoryOptions} selectedValues={draft.categories} />

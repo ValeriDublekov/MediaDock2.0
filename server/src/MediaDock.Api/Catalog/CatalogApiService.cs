@@ -35,6 +35,13 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
                 [nameof(query.YearTo)] = ["YearTo must be greater than or equal to YearFrom."]
             });
         }
+        if (query.ImdbRatingFrom is { } ratingFrom && query.ImdbRatingTo is { } ratingTo && ratingFrom > ratingTo)
+        {
+            throw new ApiValidationException(new Dictionary<string, string[]>
+            {
+                [nameof(query.ImdbRatingTo)] = ["ImdbRatingTo must be greater than or equal to ImdbRatingFrom."]
+            });
+        }
 
         var yearBounds = await dbContext.Titles
             .AsNoTracking()
@@ -43,6 +50,14 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
             .Select(group => new YearBounds(
                 group.Min(title => title.Year!.Value),
                 group.Max(title => title.Year!.Value)))
+            .FirstOrDefaultAsync(cancellationToken);
+        var imdbRatingBounds = await dbContext.Titles
+            .AsNoTracking()
+            .Where(title => title.Occurrences.Any() && title.ImdbRating.HasValue)
+            .GroupBy(_ => 1)
+            .Select(group => new ImdbRatingBounds(
+                group.Min(title => title.ImdbRating!.Value),
+                group.Max(title => title.ImdbRating!.Value)))
             .FirstOrDefaultAsync(cancellationToken);
 
         IQueryable<Title> titles = dbContext.Titles
@@ -88,6 +103,16 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
             titles = titles.Where(title => title.Year <= maximumYear);
         }
 
+        if (query.ImdbRatingFrom is { } minimumRating)
+        {
+            titles = titles.Where(title => title.ImdbRating >= minimumRating);
+        }
+
+        if (query.ImdbRatingTo is { } maximumRating)
+        {
+            titles = titles.Where(title => title.ImdbRating <= maximumRating);
+        }
+
         if (!string.IsNullOrWhiteSpace(query.Genre))
         {
             var genre = query.Genre.Trim();
@@ -127,7 +152,7 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
                 title.Occurrences.Count))
             .ToListAsync(cancellationToken);
 
-        return CreatePage(items, page, pageSize, totalCount, yearBounds);
+        return CreatePage(items, page, pageSize, totalCount, yearBounds, imdbRatingBounds);
     }
 
     public async Task<TitleDetailsResponse> GetTitleAsync(long id, CancellationToken cancellationToken)
@@ -215,6 +240,7 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
         int page,
         int pageSize,
         int totalCount,
-        YearBounds? yearBounds = null) =>
-        new(items, page, pageSize, totalCount, totalCount == 0 ? 0 : (totalCount + pageSize - 1) / pageSize, yearBounds);
+        YearBounds? yearBounds = null,
+        ImdbRatingBounds? imdbRatingBounds = null) =>
+        new(items, page, pageSize, totalCount, totalCount == 0 ? 0 : (totalCount + pageSize - 1) / pageSize, yearBounds, imdbRatingBounds);
 }

@@ -176,6 +176,7 @@ public sealed class OscarApiTests
         Assert.Equal(4, page.TotalCount);
         Assert.Equal(4, page.TotalPages);
         Assert.Equal(new YearBounds(2021, 2023), page.YearBounds);
+        Assert.Equal(new ImdbRatingBounds(7.0m, 8.3m), page.ImdbRatingBounds);
         Assert.Single(page.Items);
 
         using var titleDetailsResponse = await client.GetAsync($"/api/titles/{films[0].TitleId}");
@@ -204,6 +205,12 @@ public sealed class OscarApiTests
         Assert.Equal("Poor Things", nominee.Title);
         Assert.Equal("not_found", nominee.EnrichmentStatus);
         Assert.Null(nominee.ImdbRating);
+
+        using var ratingFilteredResponse = await client.GetAsync("/api/oscars?imdbRatingFrom=8&imdbRatingTo=9");
+        var ratingFilteredPage = await ratingFilteredResponse.Content.ReadFromJsonAsync<PageResponse<OscarFilmResponse>>();
+        Assert.NotNull(ratingFilteredPage);
+        Assert.Equal(new ImdbRatingBounds(7.0m, 8.3m), ratingFilteredPage.ImdbRatingBounds);
+        Assert.Equal("Oppenheimer", Assert.Single(ratingFilteredPage.Items).Title);
 
         using var multiCategoryResponse = await client.GetAsync(
             "/api/oscars?categoryFilter=true&categories=BEST%20PICTURE&categories=DIRECTING&result=nominee");

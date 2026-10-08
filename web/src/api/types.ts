@@ -5,11 +5,17 @@ export interface PageResponse<T> {
   totalCount: number
   totalPages: number
   yearBounds?: YearBounds
+  imdbRatingBounds?: ImdbRatingBounds
 }
 
 export interface YearBounds {
   minYear: number
   maxYear: number
+}
+
+export interface ImdbRatingBounds {
+  minRating: number
+  maxRating: number
 }
 
 export type MediaType = 'movie' | 'series' | 'documentary' | 'short'
@@ -274,6 +280,8 @@ export interface CatalogQuery {
   contentKind?: 'standard' | 'documentary' | 'short'
   yearFrom?: number
   yearTo?: number
+  imdbRatingFrom?: number
+  imdbRatingTo?: number
   genre?: string
   country?: string
   sourceId?: number
@@ -285,6 +293,8 @@ export interface OscarCatalogQuery {
   search?: string
   yearFrom?: number
   yearTo?: number
+  imdbRatingFrom?: number
+  imdbRatingTo?: number
   category?: string
   categories?: string[]
   categoryFilter?: boolean
@@ -298,6 +308,8 @@ export interface GoldenGlobeCatalogQuery {
   search?: string
   yearFrom?: number
   yearTo?: number
+  imdbRatingFrom?: number
+  imdbRatingTo?: number
   award?: string
   categories?: string[]
   categoryFilter?: boolean

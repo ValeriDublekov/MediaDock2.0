@@ -26,7 +26,15 @@ const addRequest = vi.mocked(addFavorite)
 const updateRequest = vi.mocked(updateFavorite)
 
 function page(items: OscarFilm[], number = 1, totalPages = 1): PageResponse<OscarFilm> {
-  return { items, page: number, pageSize: 20, totalCount: items.length, totalPages, yearBounds: { minYear: 2021, maxYear: 2023 } }
+  return {
+    items,
+    page: number,
+    pageSize: 20,
+    totalCount: items.length,
+    totalPages,
+    yearBounds: { minYear: 2021, maxYear: 2023 },
+    imdbRatingBounds: { minRating: 6.2, maxRating: 9.6 },
+  }
 }
 
 const nominations: OscarNomination[] = [
@@ -188,6 +196,22 @@ describe('OscarCatalogView', () => {
 
     await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({
       page: 1, pageSize: 20, search: 'Shape of Water', yearFrom: 2022,
+    }))
+  })
+
+  it('applies an IMDb rating maximum using the database-provided bounds', async () => {
+    filmRequest.mockResolvedValue(page([film]))
+    render(<OscarCatalogView />)
+
+    expect(await screen.findByRole('button', { name: 'View The Shape of Water Oscar details' })).toBeTruthy()
+    const maximum = screen.getByRole('slider', { name: 'IMDb rating maximum' }) as HTMLInputElement
+    expect(maximum.min).toBe('6.2')
+    expect(maximum.max).toBe('9.6')
+    fireEvent.change(maximum, { target: { value: '8.4' } })
+    fireEvent.keyUp(maximum, { key: 'ArrowLeft' })
+
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, imdbRatingTo: 8.4,
     }))
   })
 

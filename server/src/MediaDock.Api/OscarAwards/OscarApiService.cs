@@ -32,6 +32,13 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
                 [nameof(query.YearTo)] = ["YearTo must be greater than or equal to YearFrom."]
             });
         }
+        if (query.ImdbRatingFrom is { } ratingFrom && query.ImdbRatingTo is { } ratingTo && ratingFrom > ratingTo)
+        {
+            throw new ApiValidationException(new Dictionary<string, string[]>
+            {
+                [nameof(query.ImdbRatingTo)] = ["ImdbRatingTo must be greater than or equal to ImdbRatingFrom."]
+            });
+        }
 
         var yearBounds = await dbContext.OscarFilms
             .AsNoTracking()
@@ -39,6 +46,14 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
             .Select(group => new YearBounds(
                 group.Min(film => film.FilmYear),
                 group.Max(film => film.FilmYear)))
+            .FirstOrDefaultAsync(cancellationToken);
+        var imdbRatingBounds = await dbContext.OscarFilms
+            .AsNoTracking()
+            .Where(film => film.Title.ImdbRating.HasValue)
+            .GroupBy(_ => 1)
+            .Select(group => new ImdbRatingBounds(
+                group.Min(film => film.Title.ImdbRating!.Value),
+                group.Max(film => film.Title.ImdbRating!.Value)))
             .FirstOrDefaultAsync(cancellationToken);
 
         IQueryable<OscarFilm> films = dbContext.OscarFilms.AsNoTracking();
@@ -59,6 +74,16 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
         if (query.YearTo is { } maximumYear)
         {
             films = films.Where(film => film.FilmYear <= maximumYear);
+        }
+
+        if (query.ImdbRatingFrom is { } minimumRating)
+        {
+            films = films.Where(film => film.Title.ImdbRating >= minimumRating);
+        }
+
+        if (query.ImdbRatingTo is { } maximumRating)
+        {
+            films = films.Where(film => film.Title.ImdbRating <= maximumRating);
         }
 
         var categoryValues = query.Categories is { Length: > 0 }
@@ -108,7 +133,7 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        return CreatePage(items.Select(ToResponse).ToArray(), page, pageSize, totalCount, yearBounds);
+        return CreatePage(items.Select(ToResponse).ToArray(), page, pageSize, totalCount, yearBounds, imdbRatingBounds);
     }
 
     public async Task<IReadOnlyList<string>> GetCategoriesAsync(CancellationToken cancellationToken) =>
@@ -193,6 +218,7 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
         int page,
         int pageSize,
         int totalCount,
-        YearBounds? yearBounds = null) =>
-        new(items, page, pageSize, totalCount, totalCount == 0 ? 0 : (totalCount + pageSize - 1) / pageSize, yearBounds);
+        YearBounds? yearBounds = null,
+        ImdbRatingBounds? imdbRatingBounds = null) =>
+        new(items, page, pageSize, totalCount, totalCount == 0 ? 0 : (totalCount + pageSize - 1) / pageSize, yearBounds, imdbRatingBounds);
 }

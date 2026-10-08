@@ -27,6 +27,7 @@ const page: PageResponse<GoldenGlobeFilm> = {
   totalCount: 1,
   totalPages: 1,
   yearBounds: { minYear: 2024, maxYear: 2025 },
+  imdbRatingBounds: { minRating: 6.7, maxRating: 8.1 },
 }
 
 describe('GoldenGlobeCatalogView', () => {
@@ -101,6 +102,21 @@ describe('GoldenGlobeCatalogView', () => {
 
     await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({
       page: 1, pageSize: 20, search: 'A Film', yearTo: 2024,
+    }))
+  })
+
+  it('applies an IMDb rating minimum to grouped Golden Globes films', async () => {
+    render(<GoldenGlobeCatalogView />)
+
+    expect(await screen.findByRole('button', { name: 'A Film' })).toBeTruthy()
+    const minimum = screen.getByRole('slider', { name: 'IMDb rating minimum' }) as HTMLInputElement
+    expect(minimum.min).toBe('6.7')
+    expect(minimum.max).toBe('8.1')
+    fireEvent.change(minimum, { target: { value: '7.8' } })
+    fireEvent.pointerUp(minimum)
+
+    await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, imdbRatingFrom: 7.8,
     }))
   })
 

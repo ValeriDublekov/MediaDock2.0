@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { getCatalog } from '../../api/client'
 import type { CatalogQuery, CatalogTitle, FeedType, MediaType, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
+import { ImdbRatingRangeFilter } from '../../components/ImdbRatingRangeFilter'
 import { Pagination } from '../../components/Pagination'
 import { YearRangeFilter } from '../../components/YearRangeFilter'
 import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
@@ -19,6 +20,8 @@ interface CatalogFilters {
   contentKind: string
   yearFrom: string
   yearTo: string
+  imdbRatingFrom: string
+  imdbRatingTo: string
   genre: string
 }
 
@@ -40,7 +43,7 @@ const categories: Array<{ id: CatalogCategory; label: string }> = [
 ]
 
 const emptyFilters: CatalogFilters = {
-  search: '', mediaType: '', sourceType: '', contentKind: '', yearFrom: '', yearTo: '', genre: '',
+  search: '', mediaType: '', sourceType: '', contentKind: '', yearFrom: '', yearTo: '', imdbRatingFrom: '', imdbRatingTo: '', genre: '',
 }
 const searchDebounceMs = 350
 
@@ -55,6 +58,8 @@ function buildQuery(page: number, filters: CatalogFilters, category: CatalogCate
     ...(filters.contentKind ? { contentKind: filters.contentKind as 'standard' | 'documentary' | 'short' } : {}),
     ...(filters.yearFrom ? { yearFrom: Number(filters.yearFrom) } : {}),
     ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}),
+    ...(filters.imdbRatingFrom ? { imdbRatingFrom: Number(filters.imdbRatingFrom) } : {}),
+    ...(filters.imdbRatingTo ? { imdbRatingTo: Number(filters.imdbRatingTo) } : {}),
     ...(filters.genre.trim() ? { genre: filters.genre.trim() } : {}),
   }
 }
@@ -158,6 +163,17 @@ export function CatalogView() {
     if (apply) commitFilterChanges(years)
   }
 
+  function updateImdbRatingRange(from: number, to: number, apply: boolean) {
+    const bounds = result?.imdbRatingBounds
+    if (!bounds) return
+    const ratings = {
+      imdbRatingFrom: from === bounds.minRating ? '' : String(from),
+      imdbRatingTo: to === bounds.maxRating ? '' : String(to),
+    }
+    setDraftFilters((current) => ({ ...current, ...ratings }))
+    if (apply) commitFilterChanges(ratings)
+  }
+
   return (
     <section aria-label="Catalog" className="media-view">
       <nav aria-label="Catalog categories" className="catalog-category-nav">
@@ -182,6 +198,14 @@ export function CatalogView() {
           onPreview={(from, to) => updateYearRange(from, to, false)}
           valueFrom={draftFilters.yearFrom ? Number(draftFilters.yearFrom) : result.yearBounds.minYear}
           valueTo={draftFilters.yearTo ? Number(draftFilters.yearTo) : result.yearBounds.maxYear}
+        />}
+        {result?.imdbRatingBounds && <ImdbRatingRangeFilter
+          bounds={result.imdbRatingBounds}
+          id="catalog-imdb-rating-range"
+          onCommit={(from, to) => updateImdbRatingRange(from, to, true)}
+          onPreview={(from, to) => updateImdbRatingRange(from, to, false)}
+          valueFrom={draftFilters.imdbRatingFrom ? Number(draftFilters.imdbRatingFrom) : result.imdbRatingBounds.minRating}
+          valueTo={draftFilters.imdbRatingTo ? Number(draftFilters.imdbRatingTo) : result.imdbRatingBounds.maxRating}
         />}
         <details className="advanced-filters">
           <summary>More filters{activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ''}</summary>

@@ -10,6 +10,9 @@ public sealed record PageResponse<T>(
     int PageSize,
     int TotalCount,
     int TotalPages,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] YearBounds? YearBounds = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] YearBounds? YearBounds = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ImdbRatingBounds? ImdbRatingBounds = null);
 
 public sealed record YearBounds(int MinYear, int MaxYear);
+
+public sealed record ImdbRatingBounds(decimal MinRating, decimal MaxRating);

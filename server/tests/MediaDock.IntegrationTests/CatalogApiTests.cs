@@ -66,6 +66,7 @@ public sealed class CatalogApiTests
         Assert.Empty(emptyCatalog.Items);
         Assert.Equal(0, emptyCatalog.TotalCount);
         Assert.Null(emptyCatalog.YearBounds);
+        Assert.Null(emptyCatalog.ImdbRatingBounds);
 
         using var invalidPageResponse = await client.GetAsync("/api/catalog?page=0&pageSize=25");
         Assert.Equal(HttpStatusCode.BadRequest, invalidPageResponse.StatusCode);
@@ -86,6 +87,9 @@ public sealed class CatalogApiTests
         var newerTitle = CreateTitle("The Matrix Reloaded", "the matrix reloaded", 2003, "movie", ["Action", "Sci-Fi"]);
         var seriesTitle = CreateTitle("Example Series", "example series", 2010, "series", ["Drama"]);
         var yearlessTitle = CreateTitle("Year Unknown", "year unknown", null, "movie", ["Drama"]);
+        olderTitle.ImdbRating = 7.2m;
+        newerTitle.ImdbRating = 8.5m;
+        seriesTitle.ImdbRating = 6.8m;
         db.Sources.Add(source);
         db.Titles.AddRange(olderTitle, newerTitle, seriesTitle, yearlessTitle);
         await db.SaveChangesAsync();
@@ -164,8 +168,15 @@ public sealed class CatalogApiTests
         Assert.Equal(2, firstPage.TotalCount);
         Assert.Equal(2, firstPage.TotalPages);
         Assert.Equal(new YearBounds(1999, 2010), firstPage.YearBounds);
+        Assert.Equal(new ImdbRatingBounds(6.8m, 8.5m), firstPage.ImdbRatingBounds);
         Assert.Equal("The Matrix Reloaded", Assert.Single(firstPage.Items).Title);
         Assert.Equal("tt2003", Assert.Single(firstPage.Items).ImdbId);
+
+        using var ratingFilteredResponse = await client.GetAsync("/api/catalog?search=matrix&imdbRatingFrom=8&imdbRatingTo=9");
+        var ratingFilteredPage = await ratingFilteredResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
+        Assert.NotNull(ratingFilteredPage);
+        Assert.Equal(new ImdbRatingBounds(6.8m, 8.5m), ratingFilteredPage.ImdbRatingBounds);
+        Assert.Equal("The Matrix Reloaded", Assert.Single(ratingFilteredPage.Items).Title);
 
         using var unfilteredCatalogResponse = await client.GetAsync("/api/catalog?pageSize=100");
         var unfilteredCatalog = await unfilteredCatalogResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();

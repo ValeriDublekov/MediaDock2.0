@@ -61,7 +61,7 @@ describe('typed API client', () => {
     const page: PageResponse<CatalogTitle> = { items: [], page: 2, pageSize: 20, totalCount: 0, totalPages: 0 }
     const stub = fetchStub(response(200, page))
 
-    await getCatalog({ page: 2, pageSize: 20, feedTypes: ['series_complete', 'series_ongoing'], search: 'quiet river', mediaType: 'series', yearFrom: 1998, genre: 'drama' }, stub.fetcher)
+    await getCatalog({ page: 2, pageSize: 20, feedTypes: ['series_complete', 'series_ongoing'], search: 'quiet river', mediaType: 'series', yearFrom: 1998, imdbRatingFrom: 6.5, imdbRatingTo: 8.4, genre: 'drama' }, stub.fetcher)
 
     const requestUrl = new URL(String(stub.calls[0]?.input), 'http://localhost')
     expect(requestUrl.pathname).toBe('/api/catalog')
@@ -71,6 +71,8 @@ describe('typed API client', () => {
     expect(requestUrl.searchParams.get('search')).toBe('quiet river')
     expect(requestUrl.searchParams.get('mediaType')).toBe('series')
     expect(requestUrl.searchParams.get('yearFrom')).toBe('1998')
+    expect(requestUrl.searchParams.get('imdbRatingFrom')).toBe('6.5')
+    expect(requestUrl.searchParams.get('imdbRatingTo')).toBe('8.4')
     expect(requestUrl.searchParams.get('genre')).toBe('drama')
   })
 
@@ -84,6 +86,8 @@ describe('typed API client', () => {
       search: 'Oppenheimer',
       yearFrom: 2022,
       yearTo: 2024,
+      imdbRatingFrom: 7.1,
+      imdbRatingTo: 8.2,
       categories: ['BEST PICTURE', 'DIRECTING'],
       categoryFilter: true,
       result: 'winner',
@@ -95,6 +99,8 @@ describe('typed API client', () => {
     expect(listUrl.pathname).toBe('/api/oscars')
     expect(listUrl.searchParams.get('yearFrom')).toBe('2022')
     expect(listUrl.searchParams.get('yearTo')).toBe('2024')
+    expect(listUrl.searchParams.get('imdbRatingFrom')).toBe('7.1')
+    expect(listUrl.searchParams.get('imdbRatingTo')).toBe('8.2')
     expect(listUrl.searchParams.getAll('categories')).toEqual(['BEST PICTURE', 'DIRECTING'])
     expect(listUrl.searchParams.get('categoryFilter')).toBe('true')
     expect(listUrl.searchParams.get('result')).toBe('winner')
@@ -110,13 +116,15 @@ describe('typed API client', () => {
     const stub = fetchStub(response(202, page))
     const file = new File(['dataset'], 'golden-globes.csv', { type: 'text/csv' })
 
-    await getGoldenGlobeFilms({ page: 1, pageSize: 20, search: 'A Film', yearFrom: 2025, categories: ['Best Picture', 'Best Director'], categoryFilter: true, result: 'winner' }, stub.fetcher)
+    await getGoldenGlobeFilms({ page: 1, pageSize: 20, search: 'A Film', yearFrom: 2025, imdbRatingFrom: 7.4, imdbRatingTo: 8.1, categories: ['Best Picture', 'Best Director'], categoryFilter: true, result: 'winner' }, stub.fetcher)
     await enqueueGoldenGlobeEnrichment(stub.fetcher)
     await enqueueGoldenGlobeImport(file, 1980, stub.fetcher)
 
     const catalogUrl = new URL(String(stub.calls[0]?.input), 'http://localhost')
     expect(catalogUrl.pathname).toBe('/api/golden-globes')
     expect(catalogUrl.searchParams.get('yearFrom')).toBe('2025')
+    expect(catalogUrl.searchParams.get('imdbRatingFrom')).toBe('7.4')
+    expect(catalogUrl.searchParams.get('imdbRatingTo')).toBe('8.1')
     expect(catalogUrl.searchParams.getAll('categories')).toEqual(['Best Picture', 'Best Director'])
     expect(catalogUrl.searchParams.get('categoryFilter')).toBe('true')
     expect(catalogUrl.searchParams.get('result')).toBe('winner')

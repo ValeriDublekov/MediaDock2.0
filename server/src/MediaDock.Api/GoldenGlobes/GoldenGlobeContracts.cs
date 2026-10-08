@@ -10,6 +10,8 @@ public sealed record GoldenGlobeCatalogQuery
     [MaxLength(200)] public string? Search { get; init; }
     [Range(1800, 2200)] public int? YearFrom { get; init; }
     [Range(1800, 2200)] public int? YearTo { get; init; }
+    [Range(typeof(decimal), "0", "10")] public decimal? ImdbRatingFrom { get; init; }
+    [Range(typeof(decimal), "0", "10")] public decimal? ImdbRatingTo { get; init; }
     [MaxLength(100)] public string? Award { get; init; }
     [MaxLength(100)] public string[]? Categories { get; init; }
     public bool? CategoryFilter { get; init; }
