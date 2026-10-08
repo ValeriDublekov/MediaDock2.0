@@ -153,6 +153,14 @@ public sealed class OscarApiTests
         using var factory = new ApiFactory(connectionString);
         using var client = factory.CreateClient();
 
+        using var categoriesResponse = await client.GetAsync("/api/oscars/categories");
+        Assert.Equal(HttpStatusCode.OK, categoriesResponse.StatusCode);
+        var categories = await categoriesResponse.Content.ReadFromJsonAsync<string[]>();
+        Assert.NotNull(categories);
+        Assert.Contains("BEST PICTURE", categories);
+        Assert.Contains("DIRECTING", categories);
+        Assert.Equal(categories.OrderBy(category => category, StringComparer.Ordinal), categories);
+
         using var catalogResponse = await client.GetAsync("/api/catalog");
         Assert.Equal(HttpStatusCode.OK, catalogResponse.StatusCode);
         var catalog = await catalogResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
@@ -192,6 +200,19 @@ public sealed class OscarApiTests
         Assert.Equal("Poor Things", nominee.Title);
         Assert.Equal("not_found", nominee.EnrichmentStatus);
         Assert.Null(nominee.ImdbRating);
+
+        using var multiCategoryResponse = await client.GetAsync(
+            "/api/oscars?categoryFilter=true&categories=BEST%20PICTURE&categories=DIRECTING&result=nominee");
+        var multiCategoryPage = await multiCategoryResponse.Content.ReadFromJsonAsync<PageResponse<OscarFilmResponse>>();
+        Assert.NotNull(multiCategoryPage);
+        var multiCategoryNominee = Assert.Single(multiCategoryPage.Items, film => film.Title == "Poor Things");
+        Assert.Equal(2, multiCategoryNominee.Nominations.Count);
+
+        using var emptyCategoryResponse = await client.GetAsync("/api/oscars?categoryFilter=true");
+        var emptyCategoryPage = await emptyCategoryResponse.Content.ReadFromJsonAsync<PageResponse<OscarFilmResponse>>();
+        Assert.NotNull(emptyCategoryPage);
+        Assert.Empty(emptyCategoryPage.Items);
+        Assert.Equal(0, emptyCategoryPage.TotalCount);
 
         using var detailsResponse = await client.GetAsync($"/api/oscars/{nominee.Id}");
         Assert.Equal(HttpStatusCode.OK, detailsResponse.StatusCode);

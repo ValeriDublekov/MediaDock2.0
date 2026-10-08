@@ -13,6 +13,7 @@ namespace MediaDock.Api.GoldenGlobes;
 internal interface IGoldenGlobeApiService
 {
     Task<PageResponse<GoldenGlobeFilmResponse>> GetFilmsAsync(GoldenGlobeCatalogQuery query, CancellationToken cancellationToken);
+    Task<IReadOnlyList<string>> GetCategoriesAsync(CancellationToken cancellationToken);
     Task<GoldenGlobeImdbLinkResponse> SetImdbIdAsync(GoldenGlobeImdbLinkRequest request, CancellationToken cancellationToken);
 }
 
@@ -31,12 +32,33 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
         if (query.YearFrom is { } yearFrom) nominations = nominations.Where(x => x.Year >= yearFrom);
         if (query.YearTo is { } yearTo) nominations = nominations.Where(x => x.Year <= yearTo);
         if (!string.IsNullOrWhiteSpace(query.Award))
-            nominations = nominations.Where(x => EF.Functions.ILike(x.Award.Name, query.Award.Trim()));
-        if (query.Result == "winner") nominations = nominations.Where(x => x.Winner);
-        if (query.Result == "nominee") nominations = nominations.Where(x => !x.Winner);
-
+            nominations = nominations.Where(x => EF.Functions.ILike(x.Award.Name, $"%{query.Award.Trim()}%"));
         var rows = await nominations.OrderByDescending(x => x.Year).ThenBy(x => x.Title).ThenBy(x => x.Id).ToListAsync(cancellationToken);
+        var categoryValues = query.Categories ?? Array.Empty<string>();
+        var categoryFilterActive = query.CategoryFilter == true
+            || query.Categories is { Length: > 0 };
+        if (categoryValues.Any(award => award.Length > 100))
+            throw new ApiValidationException(new Dictionary<string, string[]> { [nameof(query.Categories)] = ["Each award category must be 100 characters or fewer."] });
+
+        var awards = categoryFilterActive
+            ? categoryValues
+            .Select(award => award.Trim())
+            .Where(award => award.Length > 0)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : null;
+        if (!categoryFilterActive && query.Result == "winner") rows = rows.Where(x => x.Winner).ToList();
+        if (!categoryFilterActive && query.Result == "nominee") rows = rows.Where(x => !x.Winner).ToList();
+        var matchingGroups = rows
+            .Where(row => (awards == null || awards.Contains(row.Award.Name))
+                && (categoryFilterActive
+                    ? query.Result == null
+                    || (query.Result == "winner" && row.Winner)
+                    || (query.Result == "nominee" && !row.Winner)
+                    : true))
+            .Select(row => (row.Title, row.Year, row.NomineeType))
+            .ToHashSet();
         var groups = rows.GroupBy(x => new { x.Title, x.Year, x.NomineeType })
+            .Where(group => !categoryFilterActive || matchingGroups.Contains((group.Key.Title, group.Key.Year, group.Key.NomineeType)))
             .Select(group =>
             {
                 var imdbId = group.Select(x => ImdbIdNormalizer.Normalize(x.ImdbId))
@@ -81,6 +103,14 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
 
         return new PageResponse<GoldenGlobeFilmResponse>(items, page, pageSize, filteredGroups.Length, filteredGroups.Length == 0 ? 0 : (filteredGroups.Length + pageSize - 1) / pageSize);
     }
+
+    public async Task<IReadOnlyList<string>> GetCategoriesAsync(CancellationToken cancellationToken) =>
+        await dbContext.GoldenGlobeAwards
+            .AsNoTracking()
+            .Select(award => award.Name)
+            .Distinct()
+            .OrderBy(award => award)
+            .ToArrayAsync(cancellationToken);
 
     private static MetadataDetails? GetMatchingMetadata(GoldenGlobeFilmResponse film, MetadataCacheValue? metadata) =>
         metadata?.Metadata is { } candidate

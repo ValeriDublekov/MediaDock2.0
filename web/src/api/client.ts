@@ -102,12 +102,17 @@ export async function requestJson<T>(
   }
 }
 
-function withQuery(path: string, query: object): string {
+function withQuery(path: string, query: object, repeatedKeys: readonly string[] = []): string {
   const params = new URLSearchParams()
+  const repeatedKeySet = new Set(repeatedKeys)
   for (const [key, value] of Object.entries(query)) {
     if (value === undefined || value === null || value === '') continue
     if (Array.isArray(value)) {
-      if (value.length > 0) params.set(key, value.join(','))
+      if (repeatedKeySet.has(key)) {
+        for (const item of value) params.append(key, String(item))
+      } else if (value.length > 0) {
+        params.set(key, value.join(','))
+      }
       continue
     }
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
@@ -123,7 +128,11 @@ export function getCatalog(query: CatalogQuery, fetcher?: typeof fetch) {
 }
 
 export function getOscarFilms(query: OscarCatalogQuery, fetcher?: typeof fetch) {
-  return requestJson<PageResponse<OscarFilm>>(withQuery('/oscars', query), {}, fetcher)
+  return requestJson<PageResponse<OscarFilm>>(withQuery('/oscars', query, ['categories']), {}, fetcher)
+}
+
+export function getOscarCategories(fetcher?: typeof fetch) {
+  return requestJson<string[]>('/oscars/categories', {}, fetcher)
 }
 
 export function getOscarFilm(id: number, fetcher?: typeof fetch) {
@@ -313,7 +322,11 @@ export function enqueueGoldenGlobeImport(file: File, yearAfter: number, fetcher?
 }
 
 export function getGoldenGlobeFilms(query: GoldenGlobeCatalogQuery, fetcher?: typeof fetch) {
-  return requestJson<PageResponse<GoldenGlobeFilm>>(withQuery('/golden-globes', query), {}, fetcher)
+  return requestJson<PageResponse<GoldenGlobeFilm>>(withQuery('/golden-globes', query, ['categories']), {}, fetcher)
+}
+
+export function getGoldenGlobeCategories(fetcher?: typeof fetch) {
+  return requestJson<string[]>('/golden-globes/categories', {}, fetcher)
 }
 
 export function setGoldenGlobeImdbId(filmId: string, imdbId: string | null, fetcher?: typeof fetch) {

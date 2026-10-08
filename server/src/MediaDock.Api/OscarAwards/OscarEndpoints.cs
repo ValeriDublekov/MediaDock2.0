@@ -21,6 +21,14 @@ internal static class OscarEndpoints
             .Produces<PageResponse<OscarFilmResponse>>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        app.MapGet("/api/oscars/categories", async Task<Ok<IReadOnlyList<string>>>(
+            IOscarApiService oscarService,
+            CancellationToken cancellationToken) =>
+                TypedResults.Ok(await oscarService.GetCategoriesAsync(cancellationToken)))
+            .WithName("GetOscarCategories")
+            .WithSummary("List distinct Oscar nomination categories.")
+            .Produces<IReadOnlyList<string>>(StatusCodes.Status200OK);
+
         app.MapGet("/api/oscars/{id:long}", async Task<Ok<OscarFilmResponse>> (
             long id,
             IOscarApiService oscarService,

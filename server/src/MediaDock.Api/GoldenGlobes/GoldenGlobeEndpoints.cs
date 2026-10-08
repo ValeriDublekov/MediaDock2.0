@@ -14,6 +14,13 @@ internal static class GoldenGlobeEndpoints
             .WithSummary("Search and filter Golden Globes films.")
             .Produces<PageResponse<GoldenGlobeFilmResponse>>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest);
+        app.MapGet("/api/golden-globes/categories", async Task<Ok<IReadOnlyList<string>>>(
+            IGoldenGlobeApiService service,
+            CancellationToken cancellationToken) =>
+                TypedResults.Ok(await service.GetCategoriesAsync(cancellationToken)))
+            .WithName("GetGoldenGlobeCategories")
+            .WithSummary("List distinct Golden Globes award categories.")
+            .Produces<IReadOnlyList<string>>(StatusCodes.Status200OK);
         app.MapPut("/api/golden-globes/imdb-link", async Task<Ok<GoldenGlobeImdbLinkResponse>>(
             [FromBody] GoldenGlobeImdbLinkRequest request,
             IGoldenGlobeApiService service,

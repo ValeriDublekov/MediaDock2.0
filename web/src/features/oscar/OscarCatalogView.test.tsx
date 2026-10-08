@@ -1,12 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { addFavorite, getFavorites, getOscarFilm, getOscarFilms, getTitleOccurrences, getTitleOscars, updateFavorite } from '../../api/client'
+import { addFavorite, getFavorites, getOscarCategories, getOscarFilm, getOscarFilms, getTitleOccurrences, getTitleOscars, updateFavorite } from '../../api/client'
 import type { FavoriteMovie, OscarFilm, OscarNomination, PageResponse } from '../../api/types'
 import { FavoriteProvider } from '../favorites/FavoriteContext'
 import { OscarCatalogView } from './OscarCatalogView'
 
 vi.mock('../../api/client', () => ({
   getOscarFilm: vi.fn(),
+  getOscarCategories: vi.fn(),
   getOscarFilms: vi.fn(),
   getTitleOscars: vi.fn(),
   getMovieAwards: vi.fn().mockResolvedValue([]),
@@ -86,6 +87,9 @@ const film: OscarFilm = {
 describe('OscarCatalogView', () => {
   beforeEach(() => {
     filmRequest.mockReset()
+    vi.mocked(getOscarCategories).mockReset().mockResolvedValue([
+      'BEST PICTURE', 'DIRECTING', 'WRITING (Original Screenplay)', 'WRITING (Adapted Screenplay)', 'CINEMATOGRAPHY',
+    ])
     detailsRequest.mockReset()
     titleOscarsRequest.mockReset()
     occurrencesRequest.mockReset()
@@ -142,11 +146,11 @@ describe('OscarCatalogView', () => {
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: '  Oppenheimer  ' } })
     fireEvent.change(screen.getByLabelText('Year from'), { target: { value: '2022' } })
     fireEvent.change(screen.getByLabelText('Year to'), { target: { value: '2024' } })
-    fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'BEST PICTURE' } })
     fireEvent.change(screen.getByLabelText('Award result'), { target: { value: 'winner' } })
     fireEvent.change(screen.getByLabelText('OMDb status'), { target: { value: 'pending' } })
+    fireEvent.click(await screen.findByLabelText('Categories: All categories (5)'))
+    fireEvent.click(screen.getByLabelText('BEST PICTURE'))
     expect(screen.getByText('More filters (5 active)')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
 
     expect(await screen.findByText('No Oscar films found')).toBeTruthy()
     await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({
@@ -155,10 +159,46 @@ describe('OscarCatalogView', () => {
       search: 'Oppenheimer',
       yearFrom: 2022,
       yearTo: 2024,
-      category: 'BEST PICTURE',
+      categories: ['DIRECTING', 'WRITING (Original Screenplay)', 'WRITING (Adapted Screenplay)', 'CINEMATOGRAPHY'],
+      categoryFilter: true,
       result: 'winner',
       enrichmentStatus: 'pending',
     }))
+  })
+
+  it('supports an empty category selection and restoring all categories', async () => {
+    filmRequest.mockResolvedValue(page([film], 1, 2))
+    render(<OscarCatalogView />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Next page' }))
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 }))
+
+    const summary = await screen.findByLabelText('Categories: All categories (5)')
+    expect((screen.getAllByRole('checkbox') as HTMLInputElement[]).every((checkbox) => checkbox.checked)).toBe(true)
+    fireEvent.click(summary)
+    for (const category of [
+      'BEST PICTURE', 'DIRECTING', 'WRITING (Original Screenplay)',
+      'WRITING (Adapted Screenplay)', 'CINEMATOGRAPHY',
+    ]) {
+      fireEvent.click(screen.getByLabelText(category))
+    }
+
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
+      categories: [],
+      categoryFilter: true,
+    }))
+    expect(screen.getByLabelText('Categories: 0 of 5 selected')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select all' }))
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 }))
+    expect(screen.getByLabelText('Categories: All categories (5)')).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'temporary search' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 }))
+    expect((screen.getByLabelText('Search films') as HTMLInputElement).value).toBe('')
   })
 
   it('opens the film details and displays all nominations and winners', async () => {

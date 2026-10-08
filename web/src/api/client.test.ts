@@ -11,10 +11,12 @@ import {
   getCatalog,
   getCurrentSession,
   getDeploymentStatus,
+  getGoldenGlobeCategories,
   getGoldenGlobeFilms,
   setGoldenGlobeImdbId,
   getMovieAwards,
   getOscarFilm,
+  getOscarCategories,
   getOscarFilms,
   getProviderSettings,
   importPersonalRatings,
@@ -82,7 +84,8 @@ describe('typed API client', () => {
       search: 'Oppenheimer',
       yearFrom: 2022,
       yearTo: 2024,
-      category: 'BEST PICTURE',
+      categories: ['BEST PICTURE', 'DIRECTING'],
+      categoryFilter: true,
       result: 'winner',
       enrichmentStatus: 'pending',
     }, stub.fetcher)
@@ -92,10 +95,14 @@ describe('typed API client', () => {
     expect(listUrl.pathname).toBe('/api/oscars')
     expect(listUrl.searchParams.get('yearFrom')).toBe('2022')
     expect(listUrl.searchParams.get('yearTo')).toBe('2024')
-    expect(listUrl.searchParams.get('category')).toBe('BEST PICTURE')
+    expect(listUrl.searchParams.getAll('categories')).toEqual(['BEST PICTURE', 'DIRECTING'])
+    expect(listUrl.searchParams.get('categoryFilter')).toBe('true')
     expect(listUrl.searchParams.get('result')).toBe('winner')
     expect(listUrl.searchParams.get('enrichmentStatus')).toBe('pending')
     expect(String(stub.calls[1]?.input)).toBe('/api/oscars/42')
+
+    await getOscarCategories(stub.fetcher)
+    expect(String(stub.calls[2]?.input)).toBe('/api/oscars/categories')
   })
 
   it('serializes Golden Globes catalog filters and queues import and enrichment jobs', async () => {
@@ -103,20 +110,34 @@ describe('typed API client', () => {
     const stub = fetchStub(response(202, page))
     const file = new File(['dataset'], 'golden-globes.csv', { type: 'text/csv' })
 
-    await getGoldenGlobeFilms({ page: 1, pageSize: 20, search: 'A Film', yearFrom: 2025, award: 'Best Picture', result: 'winner' }, stub.fetcher)
+    await getGoldenGlobeFilms({ page: 1, pageSize: 20, search: 'A Film', yearFrom: 2025, categories: ['Best Picture', 'Best Director'], categoryFilter: true, result: 'winner' }, stub.fetcher)
     await enqueueGoldenGlobeEnrichment(stub.fetcher)
     await enqueueGoldenGlobeImport(file, 1980, stub.fetcher)
 
     const catalogUrl = new URL(String(stub.calls[0]?.input), 'http://localhost')
     expect(catalogUrl.pathname).toBe('/api/golden-globes')
     expect(catalogUrl.searchParams.get('yearFrom')).toBe('2025')
-    expect(catalogUrl.searchParams.get('award')).toBe('Best Picture')
+    expect(catalogUrl.searchParams.getAll('categories')).toEqual(['Best Picture', 'Best Director'])
+    expect(catalogUrl.searchParams.get('categoryFilter')).toBe('true')
     expect(catalogUrl.searchParams.get('result')).toBe('winner')
     expect(String(stub.calls[1]?.input)).toBe('/api/background-jobs/golden-globe-enrichment')
     expect(String(stub.calls[2]?.input)).toBe('/api/background-jobs/golden-globe-import')
     const formData = stub.calls[2]?.init?.body as FormData
     expect(formData.get('File')).toBe(file)
     expect(formData.get('YearAfter')).toBe('1980')
+
+    await getGoldenGlobeCategories(stub.fetcher)
+    expect(String(stub.calls[3]?.input)).toBe('/api/golden-globes/categories')
+  })
+
+  it('preserves an explicitly empty award category selection', async () => {
+    const stub = fetchStub(response(200, { items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 }))
+
+    await getOscarFilms({ page: 1, pageSize: 20, categories: [], categoryFilter: true }, stub.fetcher)
+
+    const requestUrl = new URL(String(stub.calls[0]?.input), 'http://localhost')
+    expect(requestUrl.searchParams.get('categoryFilter')).toBe('true')
+    expect(requestUrl.searchParams.getAll('categories')).toEqual([])
   })
 
   it('sends manual Golden Globes IMDb link changes as a JSON mutation', async () => {

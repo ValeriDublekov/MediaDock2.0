@@ -22,6 +22,11 @@ public sealed record OscarCatalogQuery
     [MaxLength(100)]
     public string? Category { get; init; }
 
+    [MaxLength(100)]
+    public string[]? Categories { get; init; }
+
+    public bool? CategoryFilter { get; init; }
+
     [RegularExpression("^(winner|nominee)$")]
     public string? Result { get; init; }
 

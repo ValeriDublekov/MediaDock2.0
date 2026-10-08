@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { getOscarFilms } from '../../api/client'
+import { getOscarCategories, getOscarFilms } from '../../api/client'
 import type {
   OscarCatalogQuery,
   OscarEnrichmentStatus,
@@ -7,6 +7,7 @@ import type {
   PageResponse,
 } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
+import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
 import { Pagination } from '../../components/Pagination'
 import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
@@ -20,7 +21,7 @@ interface OscarFilters {
   search: string
   yearFrom: string
   yearTo: string
-  category: string
+  categories: string[] | null
   result: string
   enrichmentStatus: string
 }
@@ -29,7 +30,7 @@ const emptyFilters: OscarFilters = {
   search: '',
   yearFrom: '',
   yearTo: '',
-  category: '',
+  categories: null,
   result: '',
   enrichmentStatus: '',
 }
@@ -41,7 +42,7 @@ function buildQuery(page: number, filters: OscarFilters): OscarCatalogQuery {
     ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
     ...(filters.yearFrom ? { yearFrom: Number(filters.yearFrom) } : {}),
     ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}),
-    ...(filters.category ? { category: filters.category } : {}),
+    ...(filters.categories !== null ? { categories: filters.categories, categoryFilter: true } : {}),
     ...(filters.result ? { result: filters.result as OscarCatalogQuery['result'] } : {}),
     ...(filters.enrichmentStatus
       ? { enrichmentStatus: filters.enrichmentStatus as OscarEnrichmentStatus }
@@ -108,6 +109,9 @@ export function OscarCatalogView() {
   const [page, setPage] = useState(1)
   const [draftFilters, setDraftFilters] = useState<OscarFilters>(emptyFilters)
   const [appliedFilters, setAppliedFilters] = useState<OscarFilters>(emptyFilters)
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([])
+  const [categoryOptionsLoading, setCategoryOptionsLoading] = useState(true)
+  const [categoryOptionsError, setCategoryOptionsError] = useState<string | null>(null)
   const [result, setResult] = useState<PageResponse<OscarFilm> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -115,7 +119,20 @@ export function OscarCatalogView() {
   const [selectedFilmId, setSelectedFilmId] = useState<number | null>(null)
   const awardsRequestKey = movieAwardsRequestKey(result?.items.map((film) => film.imdbId) ?? [])
   const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
-  const activeFilterCount = Object.entries(draftFilters).filter(([key, value]) => key !== 'search' && value !== '').length
+  const activeFilterCount = Object.entries(draftFilters)
+    .filter(([key, value]) => key !== 'search' && key !== 'categories' && value !== '')
+    .length + (draftFilters.categories === null ? 0 : 1)
+
+  useEffect(() => {
+    let current = true
+    getOscarCategories()
+      .then((categories) => { if (current) setCategoryOptions(categories) })
+      .catch((requestError: unknown) => {
+        if (current) setCategoryOptionsError(requestError instanceof Error ? requestError.message : 'The Oscar categories request failed.')
+      })
+      .finally(() => { if (current) setCategoryOptionsLoading(false) })
+    return () => { current = false }
+  }, [])
 
   useEffect(() => {
     let current = true
@@ -138,6 +155,15 @@ export function OscarCatalogView() {
 
   function updateFilter<K extends keyof OscarFilters>(key: K, value: OscarFilters[K]) {
     setDraftFilters((current) => ({ ...current, [key]: value }))
+  }
+
+  function applyCategories(categories: string[] | null) {
+    const nextFilters = { ...draftFilters, categories }
+    setDraftFilters(nextFilters)
+    setAppliedFilters(nextFilters)
+    setLoading(true)
+    setError(null)
+    setPage(1)
   }
 
   function clearFilters() {
@@ -184,17 +210,14 @@ export function OscarCatalogView() {
               <label htmlFor="oscar-year-to">Year to</label>
               <input id="oscar-year-to" max="2200" min="1800" onChange={(event) => updateFilter('yearTo', event.target.value)} type="number" value={draftFilters.yearTo} />
             </div>
-            <div className="field">
-              <label htmlFor="oscar-category">Category</label>
-              <select id="oscar-category" onChange={(event) => updateFilter('category', event.target.value)} value={draftFilters.category}>
-                <option value="">All categories</option>
-                <option value="BEST PICTURE">Best picture</option>
-                <option value="DIRECTING">Directing</option>
-                <option value="WRITING (Original Screenplay)">Original screenplay</option>
-                <option value="WRITING (Adapted Screenplay)">Adapted screenplay</option>
-                <option value="CINEMATOGRAPHY">Cinematography</option>
-              </select>
-            </div>
+            <CategoryMultiSelect
+              error={categoryOptionsError}
+              label="Categories"
+              loading={categoryOptionsLoading}
+              onChange={applyCategories}
+              options={categoryOptions}
+              selectedValues={draftFilters.categories}
+            />
             <div className="field">
               <label htmlFor="oscar-result">Award result</label>
               <select id="oscar-result" onChange={(event) => updateFilter('result', event.target.value)} value={draftFilters.result}>

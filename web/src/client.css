@@ -294,6 +294,23 @@ button:disabled { cursor: not-allowed; }
 .advanced-filters[open] summary::before { content: '−'; }
 .advanced-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 8px; border-top: 1px solid #d8ddd8; padding: 16px 0 8px; }
 .advanced-filters summary:focus-visible { outline: 2px solid #be533b; outline-offset: 3px; }
+.category-multiselect { min-width: 0; margin: 0; border: 0; padding: 0; }
+.category-multiselect legend { margin-bottom: 6px; color: #586961; font-size: 10px; font-weight: 700; }
+.category-multiselect-menu { position: relative; }
+.category-multiselect-menu > summary { display: flex; min-height: 39px; align-items: center; justify-content: space-between; gap: 10px; overflow-wrap: anywhere; border: 1px solid #cbd6cd; border-radius: 2px; padding: 8px 10px; color: #20342e; background: #fbfcfa; font-size: 12px; cursor: pointer; list-style: none; }
+.category-multiselect-menu > summary::-webkit-details-marker { display: none; }
+.category-multiselect-menu > summary::after { content: '+'; flex: 0 0 auto; color: #ab4732; font-size: 16px; }
+.category-multiselect-menu[open] > summary { border-color: #bf553e; outline: 2px solid rgba(191, 85, 62, 0.12); }
+.category-multiselect-menu[open] > summary::after { content: '−'; }
+.category-multiselect-menu > summary:focus-visible { outline: 2px solid #be533b; outline-offset: 2px; }
+.category-multiselect-options { position: absolute; z-index: 8; top: calc(100% + 4px); left: 0; display: grid; width: max(100%, 260px); max-width: calc(100vw - 48px); max-height: min(320px, 55vh); gap: 2px; overflow-y: auto; border: 1px solid #cbd6cd; border-radius: 2px; padding: 7px; background: #fff; box-shadow: 0 10px 24px rgba(28, 39, 33, 0.16); }
+.category-multiselect-option { display: flex; min-height: 34px; align-items: center; gap: 9px; border-radius: 2px; padding: 5px 7px; color: #35473f; font-size: 12px; overflow-wrap: anywhere; cursor: pointer; }
+.category-multiselect-option:hover { background: #f0f3ef; }
+.category-multiselect-option input { width: 15px; height: 15px; flex: 0 0 auto; margin: 0; accent-color: #b74430; }
+.category-multiselect-select-all { min-height: 32px; border: 0; border-bottom: 1px solid #e0e5e0; padding: 0 7px; color: #a7422e; background: #fff; font-size: 11px; font-weight: 700; text-align: left; cursor: pointer; }
+.category-multiselect-select-all:hover { color: #202927; text-decoration: underline; }
+.category-multiselect-status, .category-multiselect-error { min-height: 39px; margin: 0; border: 1px solid #cbd6cd; padding: 10px; color: #66736d; background: #fbfcfa; font-size: 11px; }
+.category-multiselect-error { border-color: #e2b7a7; color: #8d422e; background: #fff9f5; }
 .media-view .feedback-error { min-height: 178px; gap: 22px; border: 0; border-left: 4px solid #e0573e; padding: 30px; color: #fff; background: #242a29; }
 .media-view .feedback-error .feedback-symbol { width: 40px; height: 40px; border-color: #e0573e; color: #ffa38e; font-size: 21px; }
 .media-view .feedback-error .feedback-copy strong { color: #f9f9f4; font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 24px; }

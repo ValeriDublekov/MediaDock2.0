@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { getGoldenGlobeFilms } from '../../api/client'
+import { getGoldenGlobeCategories, getGoldenGlobeFilms } from '../../api/client'
 import type { GoldenGlobeCatalogQuery, GoldenGlobeEnrichmentStatus, GoldenGlobeFilm, PageResponse } from '../../api/types'
+import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { Pagination } from '../../components/Pagination'
@@ -10,11 +11,11 @@ import { combineMovieAwards, getGoldenGlobeRecognitions, movieAwardsRequestKey }
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { GoldenGlobeFilmDetailsDialog } from './GoldenGlobeFilmDetailsDialog'
 
-interface Filters { search: string; yearFrom: string; yearTo: string; award: string; result: string; enrichmentStatus: string }
-const emptyFilters: Filters = { search: '', yearFrom: '', yearTo: '', award: '', result: '', enrichmentStatus: '' }
+interface Filters { search: string; yearFrom: string; yearTo: string; categories: string[] | null; result: string; enrichmentStatus: string }
+const emptyFilters: Filters = { search: '', yearFrom: '', yearTo: '', categories: null, result: '', enrichmentStatus: '' }
 
 function queryFor(page: number, filters: Filters): GoldenGlobeCatalogQuery {
-  return { page, pageSize: 20, ...(filters.search.trim() ? { search: filters.search.trim() } : {}), ...(filters.yearFrom ? { yearFrom: Number(filters.yearFrom) } : {}), ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}), ...(filters.award ? { award: filters.award } : {}), ...(filters.result ? { result: filters.result as GoldenGlobeCatalogQuery['result'] } : {}), ...(filters.enrichmentStatus ? { enrichmentStatus: filters.enrichmentStatus as GoldenGlobeEnrichmentStatus } : {}) }
+  return { page, pageSize: 20, ...(filters.search.trim() ? { search: filters.search.trim() } : {}), ...(filters.yearFrom ? { yearFrom: Number(filters.yearFrom) } : {}), ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}), ...(filters.categories !== null ? { categories: filters.categories, categoryFilter: true } : {}), ...(filters.result ? { result: filters.result as GoldenGlobeCatalogQuery['result'] } : {}), ...(filters.enrichmentStatus ? { enrichmentStatus: filters.enrichmentStatus as GoldenGlobeEnrichmentStatus } : {}) }
 }
 
 function describeEnrichmentError(error: string, ceremonyYear: number) {
@@ -59,6 +60,9 @@ export function GoldenGlobeCatalogView() {
   const [page, setPage] = useState(1)
   const [draft, setDraft] = useState<Filters>(emptyFilters)
   const [applied, setApplied] = useState<Filters>(emptyFilters)
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([])
+  const [categoryOptionsLoading, setCategoryOptionsLoading] = useState(true)
+  const [categoryOptionsError, setCategoryOptionsError] = useState<string | null>(null)
   const [result, setResult] = useState<PageResponse<GoldenGlobeFilm> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -66,6 +70,17 @@ export function GoldenGlobeCatalogView() {
   const [selectedFilm, setSelectedFilm] = useState<GoldenGlobeFilm | null>(null)
   const awardsRequestKey = movieAwardsRequestKey(result?.items.map((film) => film.imdbId) ?? [])
   const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
+
+  useEffect(() => {
+    let current = true
+    getGoldenGlobeCategories()
+      .then((categories) => { if (current) setCategoryOptions(categories) })
+      .catch((requestError: unknown) => {
+        if (current) setCategoryOptionsError(requestError instanceof Error ? requestError.message : 'The Golden Globes categories request failed.')
+      })
+      .finally(() => { if (current) setCategoryOptionsLoading(false) })
+    return () => { current = false }
+  }, [])
 
   useEffect(() => {
     let current = true
@@ -77,6 +92,14 @@ export function GoldenGlobeCatalogView() {
 
   function apply(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setLoading(true); setError(null); setPage(1); setApplied({ ...draft }) }
   function clear() { setLoading(true); setError(null); setDraft(emptyFilters); setApplied(emptyFilters); setPage(1) }
+  function applyCategories(categories: string[] | null) {
+    const nextFilters = { ...draft, categories }
+    setDraft(nextFilters)
+    setApplied(nextFilters)
+    setLoading(true)
+    setError(null)
+    setPage(1)
+  }
   function refresh() { setLoading(true); setError(null); setAttempt((value) => value + 1) }
   const refreshFilm = useCallback(async (filmId: string) => {
     const response = await getGoldenGlobeFilms(queryFor(page, applied))
@@ -91,7 +114,7 @@ export function GoldenGlobeCatalogView() {
       <details className="advanced-filters"><summary>More filters</summary><div className="advanced-fields">
         <div className="field"><label htmlFor="golden-globe-year-from">Year from</label><input id="golden-globe-year-from" max="2200" min="1800" onChange={(event) => update('yearFrom', event.target.value)} type="number" value={draft.yearFrom} /></div>
         <div className="field"><label htmlFor="golden-globe-year-to">Year to</label><input id="golden-globe-year-to" max="2200" min="1800" onChange={(event) => update('yearTo', event.target.value)} type="number" value={draft.yearTo} /></div>
-        <div className="field"><label htmlFor="golden-globe-award">Award</label><input id="golden-globe-award" onChange={(event) => update('award', event.target.value)} placeholder="Award name" value={draft.award} /></div>
+        <CategoryMultiSelect error={categoryOptionsError} label="Categories" loading={categoryOptionsLoading} onChange={applyCategories} options={categoryOptions} selectedValues={draft.categories} />
         <div className="field"><label htmlFor="golden-globe-result">Award result</label><select id="golden-globe-result" onChange={(event) => update('result', event.target.value)} value={draft.result}><option value="">All results</option><option value="winner">Winners</option><option value="nominee">Nominees</option></select></div>
         <div className="field"><label htmlFor="golden-globe-enrichment-status">OMDb status</label><select id="golden-globe-enrichment-status" onChange={(event) => update('enrichmentStatus', event.target.value)} value={draft.enrichmentStatus}><option value="">All statuses</option><option value="pending">Pending</option><option value="enriched">Enriched</option><option value="problem">Problem</option><option value="not_found">Not found</option><option value="temporary_error">Temporary error</option></select></div>
       </div></details>

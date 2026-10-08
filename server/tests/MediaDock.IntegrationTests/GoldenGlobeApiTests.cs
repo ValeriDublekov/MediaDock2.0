@@ -135,6 +135,13 @@ public sealed class GoldenGlobeApiTests
         using var factory = new GoldenGlobesApiFactory(connectionString);
         using var client = factory.CreateClient();
 
+        using var categoriesResponse = await client.GetAsync("/api/golden-globes/categories");
+        Assert.Equal(HttpStatusCode.OK, categoriesResponse.StatusCode);
+        var categories = await categoriesResponse.Content.ReadFromJsonAsync<string[]>();
+        Assert.NotNull(categories);
+        Assert.Contains("Best Motion Picture", categories);
+        Assert.Equal(categories.OrderBy(category => category, StringComparer.Ordinal), categories);
+
         using var firstPageResponse = await client.GetAsync("/api/golden-globes?page=1&pageSize=1");
         Assert.Equal(HttpStatusCode.OK, firstPageResponse.StatusCode);
         var firstPage = await firstPageResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
@@ -185,7 +192,21 @@ public sealed class GoldenGlobeApiTests
         Assert.NotNull(filteredPage);
         var filteredFilm = Assert.Single(filteredPage.Items);
         Assert.Equal("A Film", filteredFilm.Title);
-        Assert.True(Assert.Single(filteredFilm.Nominations).IsWinner);
+        Assert.Single(filteredFilm.Nominations);
+        Assert.Contains(filteredFilm.Nominations, nomination => nomination.Award == "Best Motion Picture" && nomination.IsWinner);
+
+        using var multiCategoryResponse = await client.GetAsync(
+            "/api/golden-globes?yearFrom=2025&yearTo=2025&categoryFilter=true&categories=Best%20Director&categories=Best%20Motion%20Picture&result=winner");
+        var multiCategoryPage = await multiCategoryResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
+        Assert.NotNull(multiCategoryPage);
+        var multiCategoryFilm = Assert.Single(multiCategoryPage.Items, film => film.Title == "A Film");
+        Assert.Equal(2, multiCategoryFilm.Nominations.Count);
+
+        using var emptyCategoryResponse = await client.GetAsync("/api/golden-globes?categoryFilter=true");
+        var emptyCategoryPage = await emptyCategoryResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
+        Assert.NotNull(emptyCategoryPage);
+        Assert.Empty(emptyCategoryPage.Items);
+        Assert.Equal(0, emptyCategoryPage.TotalCount);
 
         using var notFoundResponse = await client.GetAsync("/api/golden-globes?enrichmentStatus=not_found");
         var notFoundPage = await notFoundResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();

@@ -12,6 +12,7 @@ internal interface IOscarApiService
         OscarCatalogQuery query,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<string>> GetCategoriesAsync(CancellationToken cancellationToken);
     Task<OscarFilmResponse> GetOscarFilmAsync(long id, CancellationToken cancellationToken);
     Task<IReadOnlyList<OscarFilmResponse>> GetByTitleAsync(long titleId, CancellationToken cancellationToken);
 }
@@ -52,14 +53,32 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
             films = films.Where(film => film.FilmYear <= maximumYear);
         }
 
-        var category = string.IsNullOrWhiteSpace(query.Category)
-            ? null
-            : query.Category.Trim().ToUpperInvariant();
+        var categoryValues = query.Categories is { Length: > 0 }
+            ? query.Categories
+            : query.Category is not null ? [query.Category] : Array.Empty<string>();
+        var categoryFilterActive = query.CategoryFilter == true
+            || query.Category is not null
+            || query.Categories is { Length: > 0 };
+        if (categoryValues.Any(category => category.Length > 100))
+        {
+            throw new ApiValidationException(new Dictionary<string, string[]>
+            {
+                [nameof(query.Categories)] = ["Each category must be 100 characters or fewer."]
+            });
+        }
+
+        var categories = categoryFilterActive
+            ? categoryValues
+            .Select(category => category.Trim().ToUpperInvariant())
+            .Where(category => category.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray()
+            : null;
         var result = query.Result;
-        if (category is not null || result is not null)
+        if (categoryFilterActive || result is not null)
         {
             films = films.Where(film => film.Nominations.Any(nomination =>
-                (category == null || nomination.CanonicalCategory.ToUpper() == category)
+                (categories == null || (categories.Length > 0 && categories.Contains(nomination.CanonicalCategory.ToUpper())))
                 && (result == null
                     || (result == "winner" && nomination.IsWinner)
                     || (result == "nominee" && !nomination.IsWinner))));
@@ -83,6 +102,14 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
 
         return CreatePage(items.Select(ToResponse).ToArray(), page, pageSize, totalCount);
     }
+
+    public async Task<IReadOnlyList<string>> GetCategoriesAsync(CancellationToken cancellationToken) =>
+        await dbContext.OscarNominations
+            .AsNoTracking()
+            .Select(nomination => nomination.CanonicalCategory)
+            .Distinct()
+            .OrderBy(category => category)
+            .ToArrayAsync(cancellationToken);
 
     public async Task<OscarFilmResponse> GetOscarFilmAsync(long id, CancellationToken cancellationToken)
     {

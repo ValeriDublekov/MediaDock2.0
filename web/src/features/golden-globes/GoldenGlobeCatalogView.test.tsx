@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getBackgroundJob, getGoldenGlobeFilms, getMovieAwards, setGoldenGlobeImdbId } from '../../api/client'
+import { getBackgroundJob, getGoldenGlobeCategories, getGoldenGlobeFilms, getMovieAwards, setGoldenGlobeImdbId } from '../../api/client'
 import type { GoldenGlobeFilm, MovieAwardRecognition, PageResponse } from '../../api/types'
 import { GoldenGlobeCatalogView } from './GoldenGlobeCatalogView'
 
-vi.mock('../../api/client', () => ({ getBackgroundJob: vi.fn(), getGoldenGlobeFilms: vi.fn(), getMovieAwards: vi.fn().mockResolvedValue([]), setGoldenGlobeImdbId: vi.fn() }))
+vi.mock('../../api/client', () => ({ getBackgroundJob: vi.fn(), getGoldenGlobeCategories: vi.fn(), getGoldenGlobeFilms: vi.fn(), getMovieAwards: vi.fn().mockResolvedValue([]), setGoldenGlobeImdbId: vi.fn() }))
 
 const film: GoldenGlobeFilm = {
   filmId: '2025:movie:A Film',
@@ -31,6 +31,7 @@ const page: PageResponse<GoldenGlobeFilm> = {
 describe('GoldenGlobeCatalogView', () => {
   beforeEach(() => {
     vi.mocked(getGoldenGlobeFilms).mockReset().mockResolvedValue(page)
+    vi.mocked(getGoldenGlobeCategories).mockReset().mockResolvedValue(['Best Director', 'Best Picture'])
     vi.mocked(getMovieAwards).mockReset().mockResolvedValue([])
     vi.mocked(getBackgroundJob).mockReset()
     vi.mocked(setGoldenGlobeImdbId).mockReset()
@@ -56,17 +57,18 @@ describe('GoldenGlobeCatalogView', () => {
 
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: '  A Film  ' } })
     fireEvent.change(screen.getByLabelText('Year from'), { target: { value: '2025' } })
-    fireEvent.change(screen.getByLabelText('Award'), { target: { value: 'Best Picture' } })
     fireEvent.change(screen.getByLabelText('Award result'), { target: { value: 'winner' } })
     fireEvent.change(screen.getByLabelText('OMDb status'), { target: { value: 'not_found' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    fireEvent.click(screen.getByLabelText('Categories: All categories (2)'))
+    fireEvent.click(screen.getByLabelText('Best Director'))
 
     await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({
       page: 1,
       pageSize: 20,
       search: 'A Film',
       yearFrom: 2025,
-      award: 'Best Picture',
+      categories: ['Best Picture'],
+      categoryFilter: true,
       result: 'winner',
       enrichmentStatus: 'not_found',
     }))

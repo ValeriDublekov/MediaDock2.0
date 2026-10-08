@@ -280,6 +280,8 @@ export interface OscarCatalogQuery {
   yearFrom?: number
   yearTo?: number
   category?: string
+  categories?: string[]
+  categoryFilter?: boolean
   result?: 'winner' | 'nominee'
   enrichmentStatus?: OscarEnrichmentStatus
 }
@@ -291,6 +293,8 @@ export interface GoldenGlobeCatalogQuery {
   yearFrom?: number
   yearTo?: number
   award?: string
+  categories?: string[]
+  categoryFilter?: boolean
   result?: 'winner' | 'nominee'
   enrichmentStatus?: GoldenGlobeEnrichmentStatus
 }

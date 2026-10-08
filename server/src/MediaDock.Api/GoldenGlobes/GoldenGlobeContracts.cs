@@ -11,6 +11,8 @@ public sealed record GoldenGlobeCatalogQuery
     [Range(1800, 2200)] public int? YearFrom { get; init; }
     [Range(1800, 2200)] public int? YearTo { get; init; }
     [MaxLength(100)] public string? Award { get; init; }
+    [MaxLength(100)] public string[]? Categories { get; init; }
+    public bool? CategoryFilter { get; init; }
     [RegularExpression("^(winner|nominee)$")] public string? Result { get; init; }
     [RegularExpression("^(pending|enriched|problem|not_found|temporary_error)$")] public string? EnrichmentStatus { get; init; }
 }
