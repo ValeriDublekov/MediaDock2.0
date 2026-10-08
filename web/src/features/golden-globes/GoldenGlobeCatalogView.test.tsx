@@ -26,6 +26,7 @@ const page: PageResponse<GoldenGlobeFilm> = {
   pageSize: 20,
   totalCount: 1,
   totalPages: 1,
+  yearBounds: { minYear: 2024, maxYear: 2025 },
 }
 
 describe('GoldenGlobeCatalogView', () => {
@@ -45,7 +46,7 @@ describe('GoldenGlobeCatalogView', () => {
     expect(await screen.findByRole('button', { name: 'A Film' })).toBeTruthy()
     expect(screen.getByRole('img', { name: 'Poster for A Film' }).getAttribute('src')).toBe('https://example.test/a-film.jpg')
     expect(screen.queryByText('Genres unavailable')).toBeNull()
-    expect(screen.getByText('2025')).toBeTruthy()
+    expect(screen.getByTitle('Ceremony year 2025')).toBeTruthy()
     const awardSummary = within(screen.getByLabelText('Awards and nominations'))
     expect(awardSummary.getByText('Golden Globes')).toBeTruthy()
     expect(awardSummary.getByText('1 win · 1 nomination')).toBeTruthy()
@@ -56,7 +57,9 @@ describe('GoldenGlobeCatalogView', () => {
     expect(within(screen.getByLabelText('Awards and nominations')).getByText('Golden Globes')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: '  A Film  ' } })
-    fireEvent.change(screen.getByLabelText('Year from'), { target: { value: '2025' } })
+    const minimum = screen.getByRole('slider', { name: 'Ceremony year minimum' })
+    fireEvent.change(minimum, { target: { value: '2025' } })
+    fireEvent.pointerUp(minimum)
     fireEvent.change(screen.getByLabelText('Award result'), { target: { value: 'winner' } })
     fireEvent.change(screen.getByLabelText('OMDb status'), { target: { value: 'not_found' } })
     fireEvent.click(screen.getByLabelText('Categories: All categories (2)'))
@@ -71,6 +74,31 @@ describe('GoldenGlobeCatalogView', () => {
       categoryFilter: true,
       result: 'winner',
       enrichmentStatus: 'not_found',
+    }))
+  })
+
+  it('applies a touch-released ceremony year range while preserving applied filters', async () => {
+    vi.mocked(getGoldenGlobeFilms).mockResolvedValue({ ...page, totalPages: 2 })
+    render(<GoldenGlobeCatalogView />)
+
+    expect(await screen.findByRole('button', { name: 'A Film' })).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'A Film' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'A Film' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Next page' }))
+    await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 2, pageSize: 20, search: 'A Film' }))
+
+    fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'Unsubmitted search' } })
+    const maximum = screen.getByRole('slider', { name: 'Ceremony year maximum' }) as HTMLInputElement
+    expect(maximum.min).toBe('2024')
+    expect(maximum.max).toBe('2025')
+    fireEvent.change(maximum, { target: { value: '2024' } })
+    expect(screen.getByText('2024 – 2024')).toBeTruthy()
+    expect(getGoldenGlobeFilms).toHaveBeenCalledTimes(3)
+    fireEvent.pointerUp(maximum, { pointerType: 'touch' })
+
+    await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, search: 'A Film', yearTo: 2024,
     }))
   })
 

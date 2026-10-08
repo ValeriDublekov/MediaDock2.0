@@ -3,6 +3,7 @@ import { getCatalog } from '../../api/client'
 import type { CatalogQuery, CatalogTitle, FeedType, MediaType, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
+import { YearRangeFilter } from '../../components/YearRangeFilter'
 import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatDate, formatWords } from '../../shared/format'
@@ -124,6 +125,22 @@ export function CatalogView() {
     setDraftFilters((current) => ({ ...current, [key]: value }))
   }
 
+  function updateYearRange(from: number, to: number, apply: boolean) {
+    const bounds = result?.yearBounds
+    if (!bounds) return
+    const years = {
+      yearFrom: from === bounds.minYear ? '' : String(from),
+      yearTo: to === bounds.maxYear ? '' : String(to),
+    }
+    setDraftFilters((current) => ({ ...current, ...years }))
+    if (apply) {
+      setAppliedFilters((current) => ({ ...current, ...years }))
+      setPage(1)
+      setLoading(true)
+      setError(null)
+    }
+  }
+
   return (
     <section aria-label="Catalog" className="media-view">
       <nav aria-label="Catalog categories" className="catalog-category-nav">
@@ -140,6 +157,15 @@ export function CatalogView() {
           <label htmlFor="catalog-search">Search titles</label>
           <input id="catalog-search" onChange={(event) => updateFilter('search', event.target.value)} placeholder="Title or year" type="search" value={draftFilters.search} />
         </div>
+        {result?.yearBounds && <YearRangeFilter
+          bounds={result.yearBounds}
+          id="catalog-year-range"
+          label="Title year"
+          onCommit={(from, to) => updateYearRange(from, to, true)}
+          onPreview={(from, to) => updateYearRange(from, to, false)}
+          valueFrom={draftFilters.yearFrom ? Number(draftFilters.yearFrom) : result.yearBounds.minYear}
+          valueTo={draftFilters.yearTo ? Number(draftFilters.yearTo) : result.yearBounds.maxYear}
+        />}
         <details className="advanced-filters">
           <summary>More filters{activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ''}</summary>
           <div className="advanced-fields">

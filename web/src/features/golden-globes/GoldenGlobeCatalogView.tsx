@@ -3,6 +3,7 @@ import { getGoldenGlobeCategories, getGoldenGlobeFilms } from '../../api/client'
 import type { GoldenGlobeCatalogQuery, GoldenGlobeEnrichmentStatus, GoldenGlobeFilm, PageResponse } from '../../api/types'
 import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
+import { YearRangeFilter } from '../../components/YearRangeFilter'
 import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { Pagination } from '../../components/Pagination'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
@@ -107,13 +108,35 @@ export function GoldenGlobeCatalogView() {
     return response.items.find((item) => item.filmId === filmId)
   }, [applied, page])
   function update(key: keyof Filters, value: string) { setDraft((current) => ({ ...current, [key]: value })) }
+  function updateYearRange(from: number, to: number, applyRange: boolean) {
+    const bounds = result?.yearBounds
+    if (!bounds) return
+    const years = {
+      yearFrom: from === bounds.minYear ? '' : String(from),
+      yearTo: to === bounds.maxYear ? '' : String(to),
+    }
+    setDraft((current) => ({ ...current, ...years }))
+    if (applyRange) {
+      setApplied((current) => ({ ...current, ...years }))
+      setPage(1)
+      setLoading(true)
+      setError(null)
+    }
+  }
 
   return <section aria-label="Golden Globes catalog" className="media-view">
     <form className="filter-form oscar-filter-form browse-filters" onSubmit={apply}>
       <div className="field filter-search"><label htmlFor="golden-globe-search">Search films</label><input id="golden-globe-search" onChange={(event) => update('search', event.target.value)} placeholder="Film title" type="search" value={draft.search} /></div>
+      {result?.yearBounds && <YearRangeFilter
+        bounds={result.yearBounds}
+        id="golden-globe-year-range"
+        label="Ceremony year"
+        onCommit={(from, to) => updateYearRange(from, to, true)}
+        onPreview={(from, to) => updateYearRange(from, to, false)}
+        valueFrom={draft.yearFrom ? Number(draft.yearFrom) : result.yearBounds.minYear}
+        valueTo={draft.yearTo ? Number(draft.yearTo) : result.yearBounds.maxYear}
+      />}
       <details className="advanced-filters"><summary>More filters</summary><div className="advanced-fields">
-        <div className="field"><label htmlFor="golden-globe-year-from">Year from</label><input id="golden-globe-year-from" max="2200" min="1800" onChange={(event) => update('yearFrom', event.target.value)} type="number" value={draft.yearFrom} /></div>
-        <div className="field"><label htmlFor="golden-globe-year-to">Year to</label><input id="golden-globe-year-to" max="2200" min="1800" onChange={(event) => update('yearTo', event.target.value)} type="number" value={draft.yearTo} /></div>
         <CategoryMultiSelect error={categoryOptionsError} label="Categories" loading={categoryOptionsLoading} onChange={applyCategories} options={categoryOptions} selectedValues={draft.categories} />
         <div className="field"><label htmlFor="golden-globe-result">Award result</label><select id="golden-globe-result" onChange={(event) => update('result', event.target.value)} value={draft.result}><option value="">All results</option><option value="winner">Winners</option><option value="nominee">Nominees</option></select></div>
         <div className="field"><label htmlFor="golden-globe-enrichment-status">OMDb status</label><select id="golden-globe-enrichment-status" onChange={(event) => update('enrichmentStatus', event.target.value)} value={draft.enrichmentStatus}><option value="">All statuses</option><option value="pending">Pending</option><option value="enriched">Enriched</option><option value="problem">Problem</option><option value="not_found">Not found</option><option value="temporary_error">Temporary error</option></select></div>

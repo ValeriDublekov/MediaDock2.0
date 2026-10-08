@@ -26,6 +26,14 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
         if (query.YearFrom is { } from && query.YearTo is { } to && from > to)
             throw new ApiValidationException(new Dictionary<string, string[]> { [nameof(query.YearTo)] = ["YearTo must be greater than or equal to YearFrom."] });
 
+        var yearBounds = await dbContext.GoldenGlobeNominations
+            .AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(group => new YearBounds(
+                group.Min(nomination => nomination.Year),
+                group.Max(nomination => nomination.Year)))
+            .FirstOrDefaultAsync(cancellationToken);
+
         IQueryable<GoldenGlobeNomination> nominations = dbContext.GoldenGlobeNominations.AsNoTracking().Include(x => x.Award);
         if (!string.IsNullOrWhiteSpace(query.Search))
             nominations = nominations.Where(x => EF.Functions.ILike(x.Title, $"%{query.Search.Trim()}%"));
@@ -101,7 +109,13 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, IMetad
             items.Add(film with { PosterUrl = details?.PosterUrl, ImdbRating = details?.ImdbRating });
         }
 
-        return new PageResponse<GoldenGlobeFilmResponse>(items, page, pageSize, filteredGroups.Length, filteredGroups.Length == 0 ? 0 : (filteredGroups.Length + pageSize - 1) / pageSize);
+        return new PageResponse<GoldenGlobeFilmResponse>(
+            items,
+            page,
+            pageSize,
+            filteredGroups.Length,
+            filteredGroups.Length == 0 ? 0 : (filteredGroups.Length + pageSize - 1) / pageSize,
+            yearBounds);
     }
 
     public async Task<IReadOnlyList<string>> GetCategoriesAsync(CancellationToken cancellationToken) =>

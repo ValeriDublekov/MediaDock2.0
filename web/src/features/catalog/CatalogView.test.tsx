@@ -15,8 +15,8 @@ vi.mock('../../api/client', () => ({
 
 const catalogRequest = vi.mocked(getCatalog)
 
-function page(items: CatalogTitle[], number = 1, totalPages = 1): PageResponse<CatalogTitle> {
-  return { items, page: number, pageSize: 20, totalCount: items.length, totalPages }
+function page(items: CatalogTitle[], number = 1, totalPages = 1, yearBounds?: PageResponse<CatalogTitle>['yearBounds']): PageResponse<CatalogTitle> {
+  return { items, page: number, pageSize: 20, totalCount: items.length, totalPages, ...(yearBounds ? { yearBounds } : {}) }
 }
 
 const title: CatalogTitle = {
@@ -108,6 +108,63 @@ describe('CatalogView', () => {
       pageSize: 20,
       feedTypes: ['movie', 'series_complete', 'series_ongoing'],
     }))
+  })
+
+  it('previews global year bounds and applies only the released range to applied filters', async () => {
+    catalogRequest.mockResolvedValue(page([title], 1, 2, { minYear: 1980, maxYear: 2024 }))
+    render(<CatalogView />)
+
+    expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
+    const minimum = screen.getByRole('slider', { name: 'Title year minimum' }) as HTMLInputElement
+    expect(minimum.min).toBe('1980')
+    expect(minimum.max).toBe('2024')
+    expect(screen.getByText('1980 – 2024')).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Search titles'), { target: { value: 'Quiet River' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, feedTypes: ['movie', 'series_complete', 'series_ongoing'], search: 'Quiet River',
+    }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Next page' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 2, pageSize: 20, feedTypes: ['movie', 'series_complete', 'series_ongoing'], search: 'Quiet River',
+    }))
+
+    fireEvent.change(screen.getByLabelText('Search titles'), { target: { value: 'Unsubmitted search' } })
+    fireEvent.change(minimum, { target: { value: '2000' } })
+    expect(screen.getByText('2000 – 2024')).toBeTruthy()
+    expect(catalogRequest).toHaveBeenCalledTimes(3)
+    fireEvent.pointerUp(minimum)
+
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
+      feedTypes: ['movie', 'series_complete', 'series_ongoing'],
+      search: 'Quiet River',
+      yearFrom: 2000,
+    }))
+  })
+
+  it('hides the year range when the catalog has no valid year bounds', async () => {
+    catalogRequest.mockResolvedValue(page([]))
+    render(<CatalogView />)
+
+    expect(await screen.findByText('No titles found')).toBeTruthy()
+    expect(screen.queryByRole('slider')).toBeNull()
+  })
+
+  it('omits both year parameters for the full range so yearless titles remain included', async () => {
+    const yearlessTitle = { ...title, id: 8, title: 'Year Unknown', year: null }
+    catalogRequest.mockResolvedValue(page([yearlessTitle], 1, 1, { minYear: 1980, maxYear: 2024 }))
+    render(<CatalogView />)
+
+    expect(await screen.findByRole('button', { name: 'View Year Unknown details' })).toBeTruthy()
+    fireEvent.pointerUp(screen.getByRole('slider', { name: 'Title year minimum' }))
+
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, feedTypes: ['movie', 'series_complete', 'series_ongoing'],
+    }))
+    expect(screen.getByRole('button', { name: 'View Year Unknown details' })).toBeTruthy()
   })
 
   it('defaults to the three main categories and switches categories with one click', async () => {

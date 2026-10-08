@@ -26,7 +26,7 @@ const addRequest = vi.mocked(addFavorite)
 const updateRequest = vi.mocked(updateFavorite)
 
 function page(items: OscarFilm[], number = 1, totalPages = 1): PageResponse<OscarFilm> {
-  return { items, page: number, pageSize: 20, totalCount: items.length, totalPages }
+  return { items, page: number, pageSize: 20, totalCount: items.length, totalPages, yearBounds: { minYear: 2021, maxYear: 2023 } }
 }
 
 const nominations: OscarNomination[] = [
@@ -144,25 +144,46 @@ describe('OscarCatalogView', () => {
 
     fireEvent.click(screen.getByText('More filters'))
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: '  Oppenheimer  ' } })
-    fireEvent.change(screen.getByLabelText('Year from'), { target: { value: '2022' } })
-    fireEvent.change(screen.getByLabelText('Year to'), { target: { value: '2024' } })
     fireEvent.change(screen.getByLabelText('Award result'), { target: { value: 'winner' } })
     fireEvent.change(screen.getByLabelText('OMDb status'), { target: { value: 'pending' } })
     fireEvent.click(await screen.findByLabelText('Categories: All categories (5)'))
     fireEvent.click(screen.getByLabelText('BEST PICTURE'))
-    expect(screen.getByText('More filters (5 active)')).toBeTruthy()
+    expect(screen.getByText('More filters (3 active)')).toBeTruthy()
 
     expect(await screen.findByText('No Oscar films found')).toBeTruthy()
     await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({
       page: 1,
       pageSize: 20,
       search: 'Oppenheimer',
-      yearFrom: 2022,
-      yearTo: 2024,
       categories: ['DIRECTING', 'WRITING (Original Screenplay)', 'WRITING (Adapted Screenplay)', 'CINEMATOGRAPHY'],
       categoryFilter: true,
       result: 'winner',
       enrichmentStatus: 'pending',
+    }))
+  })
+
+  it('applies the keyboard-released film year range without submitting unfinished filters', async () => {
+    filmRequest.mockResolvedValue(page([film], 1, 2))
+    render(<OscarCatalogView />)
+
+    expect(await screen.findByRole('button', { name: 'View The Shape of Water Oscar details' })).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'Shape of Water' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'Shape of Water' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Next page' }))
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 2, pageSize: 20, search: 'Shape of Water' }))
+
+    fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'Unsubmitted search' } })
+    const minimum = screen.getByRole('slider', { name: 'Film year minimum' }) as HTMLInputElement
+    expect(minimum.min).toBe('2021')
+    expect(minimum.max).toBe('2023')
+    fireEvent.change(minimum, { target: { value: '2022' } })
+    expect(screen.getByText('2022 – 2023')).toBeTruthy()
+    expect(filmRequest).toHaveBeenCalledTimes(3)
+    fireEvent.keyUp(minimum, { key: 'ArrowRight' })
+
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, search: 'Shape of Water', yearFrom: 2022,
     }))
   })
 

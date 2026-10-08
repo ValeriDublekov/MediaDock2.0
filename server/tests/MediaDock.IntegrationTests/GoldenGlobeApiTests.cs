@@ -148,6 +148,7 @@ public sealed class GoldenGlobeApiTests
         Assert.NotNull(firstPage);
         Assert.Equal(9, firstPage.TotalCount);
         Assert.Equal(9, firstPage.TotalPages);
+        Assert.Equal(new YearBounds(2024, 2025), firstPage.YearBounds);
         var firstFilm = Assert.Single(firstPage.Items);
         Assert.Equal("A Film", firstFilm.Title);
         Assert.Equal("2025:movie:A Film", firstFilm.FilmId);
@@ -190,6 +191,7 @@ public sealed class GoldenGlobeApiTests
             "/api/golden-globes?yearFrom=2025&yearTo=2025&award=Best%20Motion%20Picture&result=winner");
         var filteredPage = await filteredResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
         Assert.NotNull(filteredPage);
+        Assert.Equal(new YearBounds(2024, 2025), filteredPage.YearBounds);
         var filteredFilm = Assert.Single(filteredPage.Items);
         Assert.Equal("A Film", filteredFilm.Title);
         Assert.Single(filteredFilm.Nominations);

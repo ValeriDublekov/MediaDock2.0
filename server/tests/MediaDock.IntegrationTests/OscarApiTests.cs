@@ -144,7 +144,9 @@ public sealed class OscarApiTests
                 CreateNomination("poor-things-directing", 96, "DIRECTING", "Directing", "Yorgos Lanthimos", false)),
             CreateFilm("category-mix-2023", "Category Mix Example", 2023, "pending", now, 7.0m,
                 CreateNomination("category-mix-best-picture", 96, "BEST PICTURE", "Best Picture", "Producer", false),
-                CreateNomination("category-mix-directing", 96, "DIRECTING", "Directing", "Director", true))
+                CreateNomination("category-mix-directing", 96, "DIRECTING", "Directing", "Director", true)),
+            CreateFilm("year-bounds-2021", "Year Bounds Example", 2021, "pending", now, null,
+                CreateNomination("year-bounds-sound", 93, "SOUND", "Sound", "Sound Team", false))
         };
         db.OscarFilms.AddRange(films);
         await db.SaveChangesAsync();
@@ -171,8 +173,9 @@ public sealed class OscarApiTests
         Assert.Equal(HttpStatusCode.OK, pageResponse.StatusCode);
         var page = await pageResponse.Content.ReadFromJsonAsync<PageResponse<OscarFilmResponse>>();
         Assert.NotNull(page);
-        Assert.Equal(3, page.TotalCount);
-        Assert.Equal(3, page.TotalPages);
+        Assert.Equal(4, page.TotalCount);
+        Assert.Equal(4, page.TotalPages);
+        Assert.Equal(new YearBounds(2021, 2023), page.YearBounds);
         Assert.Single(page.Items);
 
         using var titleDetailsResponse = await client.GetAsync($"/api/titles/{films[0].TitleId}");
@@ -196,6 +199,7 @@ public sealed class OscarApiTests
             "/api/oscars?search=poor&yearFrom=2022&yearTo=2024&category=DIRECTING&result=nominee&enrichmentStatus=not_found");
         var nominees = await nomineeResponse.Content.ReadFromJsonAsync<PageResponse<OscarFilmResponse>>();
         Assert.NotNull(nominees);
+        Assert.Equal(new YearBounds(2021, 2023), nominees.YearBounds);
         var nominee = Assert.Single(nominees.Items);
         Assert.Equal("Poor Things", nominee.Title);
         Assert.Equal("not_found", nominee.EnrichmentStatus);

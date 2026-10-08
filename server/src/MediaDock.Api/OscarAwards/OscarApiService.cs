@@ -33,6 +33,14 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
             });
         }
 
+        var yearBounds = await dbContext.OscarFilms
+            .AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(group => new YearBounds(
+                group.Min(film => film.FilmYear),
+                group.Max(film => film.FilmYear)))
+            .FirstOrDefaultAsync(cancellationToken);
+
         IQueryable<OscarFilm> films = dbContext.OscarFilms.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -100,7 +108,7 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        return CreatePage(items.Select(ToResponse).ToArray(), page, pageSize, totalCount);
+        return CreatePage(items.Select(ToResponse).ToArray(), page, pageSize, totalCount, yearBounds);
     }
 
     public async Task<IReadOnlyList<string>> GetCategoriesAsync(CancellationToken cancellationToken) =>
@@ -180,6 +188,11 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
                 nomination.IsWinner))
             .ToArray());
 
-    private static PageResponse<T> CreatePage<T>(IReadOnlyList<T> items, int page, int pageSize, int totalCount) =>
-        new(items, page, pageSize, totalCount, totalCount == 0 ? 0 : (totalCount + pageSize - 1) / pageSize);
+    private static PageResponse<T> CreatePage<T>(
+        IReadOnlyList<T> items,
+        int page,
+        int pageSize,
+        int totalCount,
+        YearBounds? yearBounds = null) =>
+        new(items, page, pageSize, totalCount, totalCount == 0 ? 0 : (totalCount + pageSize - 1) / pageSize, yearBounds);
 }

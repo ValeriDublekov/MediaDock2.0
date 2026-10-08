@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace MediaDock.Api.Common;
 
 /// <summary>Represents a stable page of API results.</summary>
@@ -7,4 +9,7 @@ public sealed record PageResponse<T>(
     int Page,
     int PageSize,
     int TotalCount,
-    int TotalPages);
+    int TotalPages,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] YearBounds? YearBounds = null);
+
+public sealed record YearBounds(int MinYear, int MaxYear);

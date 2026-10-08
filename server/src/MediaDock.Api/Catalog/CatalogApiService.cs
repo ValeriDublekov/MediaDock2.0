@@ -36,6 +36,15 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
             });
         }
 
+        var yearBounds = await dbContext.Titles
+            .AsNoTracking()
+            .Where(title => title.Occurrences.Any() && title.Year.HasValue)
+            .GroupBy(_ => 1)
+            .Select(group => new YearBounds(
+                group.Min(title => title.Year!.Value),
+                group.Max(title => title.Year!.Value)))
+            .FirstOrDefaultAsync(cancellationToken);
+
         IQueryable<Title> titles = dbContext.Titles
             .AsNoTracking()
             .Where(title => title.Occurrences.Any());
@@ -118,7 +127,7 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
                 title.Occurrences.Count))
             .ToListAsync(cancellationToken);
 
-        return CreatePage(items, page, pageSize, totalCount);
+        return CreatePage(items, page, pageSize, totalCount, yearBounds);
     }
 
     public async Task<TitleDetailsResponse> GetTitleAsync(long id, CancellationToken cancellationToken)
@@ -201,6 +210,11 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
         return CreatePage(items, page, pageSize, totalCount);
     }
 
-    private static PageResponse<T> CreatePage<T>(IReadOnlyList<T> items, int page, int pageSize, int totalCount) =>
-        new(items, page, pageSize, totalCount, totalCount == 0 ? 0 : (totalCount + pageSize - 1) / pageSize);
+    private static PageResponse<T> CreatePage<T>(
+        IReadOnlyList<T> items,
+        int page,
+        int pageSize,
+        int totalCount,
+        YearBounds? yearBounds = null) =>
+        new(items, page, pageSize, totalCount, totalCount == 0 ? 0 : (totalCount + pageSize - 1) / pageSize, yearBounds);
 }

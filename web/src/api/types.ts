@@ -4,6 +4,12 @@ export interface PageResponse<T> {
   pageSize: number
   totalCount: number
   totalPages: number
+  yearBounds?: YearBounds
+}
+
+export interface YearBounds {
+  minYear: number
+  maxYear: number
 }
 
 export type MediaType = 'movie' | 'series' | 'documentary' | 'short'

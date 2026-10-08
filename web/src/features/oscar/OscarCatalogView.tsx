@@ -9,6 +9,7 @@ import type {
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
 import { Pagination } from '../../components/Pagination'
+import { YearRangeFilter } from '../../components/YearRangeFilter'
 import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatWords } from '../../shared/format'
@@ -157,6 +158,22 @@ export function OscarCatalogView() {
     setDraftFilters((current) => ({ ...current, [key]: value }))
   }
 
+  function updateYearRange(from: number, to: number, apply: boolean) {
+    const bounds = result?.yearBounds
+    if (!bounds) return
+    const years = {
+      yearFrom: from === bounds.minYear ? '' : String(from),
+      yearTo: to === bounds.maxYear ? '' : String(to),
+    }
+    setDraftFilters((current) => ({ ...current, ...years }))
+    if (apply) {
+      setAppliedFilters((current) => ({ ...current, ...years }))
+      setPage(1)
+      setLoading(true)
+      setError(null)
+    }
+  }
+
   function applyCategories(categories: string[] | null) {
     const nextFilters = { ...draftFilters, categories }
     setDraftFilters(nextFilters)
@@ -199,17 +216,18 @@ export function OscarCatalogView() {
             value={draftFilters.search}
           />
         </div>
+        {result?.yearBounds && <YearRangeFilter
+          bounds={result.yearBounds}
+          id="oscar-year-range"
+          label="Film year"
+          onCommit={(from, to) => updateYearRange(from, to, true)}
+          onPreview={(from, to) => updateYearRange(from, to, false)}
+          valueFrom={draftFilters.yearFrom ? Number(draftFilters.yearFrom) : result.yearBounds.minYear}
+          valueTo={draftFilters.yearTo ? Number(draftFilters.yearTo) : result.yearBounds.maxYear}
+        />}
         <details className="advanced-filters">
           <summary>More filters{activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ''}</summary>
           <div className="advanced-fields">
-            <div className="field">
-              <label htmlFor="oscar-year-from">Year from</label>
-              <input id="oscar-year-from" max="2200" min="1800" onChange={(event) => updateFilter('yearFrom', event.target.value)} type="number" value={draftFilters.yearFrom} />
-            </div>
-            <div className="field">
-              <label htmlFor="oscar-year-to">Year to</label>
-              <input id="oscar-year-to" max="2200" min="1800" onChange={(event) => updateFilter('yearTo', event.target.value)} type="number" value={draftFilters.yearTo} />
-            </div>
             <CategoryMultiSelect
               error={categoryOptionsError}
               label="Categories"

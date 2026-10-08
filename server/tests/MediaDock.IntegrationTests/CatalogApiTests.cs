@@ -65,6 +65,7 @@ public sealed class CatalogApiTests
         Assert.NotNull(emptyCatalog);
         Assert.Empty(emptyCatalog.Items);
         Assert.Equal(0, emptyCatalog.TotalCount);
+        Assert.Null(emptyCatalog.YearBounds);
 
         using var invalidPageResponse = await client.GetAsync("/api/catalog?page=0&pageSize=25");
         Assert.Equal(HttpStatusCode.BadRequest, invalidPageResponse.StatusCode);
@@ -84,14 +85,16 @@ public sealed class CatalogApiTests
         var olderTitle = CreateTitle("The Matrix", "the matrix", 1999, "movie", ["Action", "Sci-Fi"]);
         var newerTitle = CreateTitle("The Matrix Reloaded", "the matrix reloaded", 2003, "movie", ["Action", "Sci-Fi"]);
         var seriesTitle = CreateTitle("Example Series", "example series", 2010, "series", ["Drama"]);
+        var yearlessTitle = CreateTitle("Year Unknown", "year unknown", null, "movie", ["Drama"]);
         db.Sources.Add(source);
-        db.Titles.AddRange(olderTitle, newerTitle, seriesTitle);
+        db.Titles.AddRange(olderTitle, newerTitle, seriesTitle, yearlessTitle);
         await db.SaveChangesAsync();
 
         var firstSeen = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
         db.Occurrences.AddRange(
             CreateOccurrence(olderTitle.Id, source.Id, "matrix-1999", "The Matrix (1999)", firstSeen),
-            CreateOccurrence(newerTitle.Id, source.Id, "matrix-2003", "The Matrix Reloaded (2003)", firstSeen.AddDays(1)));
+            CreateOccurrence(newerTitle.Id, source.Id, "matrix-2003", "The Matrix Reloaded (2003)", firstSeen.AddDays(1)),
+            CreateOccurrence(yearlessTitle.Id, source.Id, "year-unknown", "Year Unknown", firstSeen.AddDays(2)));
         var completeSeriesSource = new Source
         {
             StableKey = "series-complete",
@@ -160,8 +163,15 @@ public sealed class CatalogApiTests
         Assert.NotNull(firstPage);
         Assert.Equal(2, firstPage.TotalCount);
         Assert.Equal(2, firstPage.TotalPages);
+        Assert.Equal(new YearBounds(1999, 2010), firstPage.YearBounds);
         Assert.Equal("The Matrix Reloaded", Assert.Single(firstPage.Items).Title);
         Assert.Equal("tt2003", Assert.Single(firstPage.Items).ImdbId);
+
+        using var unfilteredCatalogResponse = await client.GetAsync("/api/catalog?pageSize=100");
+        var unfilteredCatalog = await unfilteredCatalogResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
+        Assert.NotNull(unfilteredCatalog);
+        Assert.Equal(new YearBounds(1999, 2010), unfilteredCatalog.YearBounds);
+        Assert.Null(Assert.Single(unfilteredCatalog.Items, title => title.Title == "Year Unknown").Year);
 
         using var inProgressSeriesResponse = await client.GetAsync("/api/catalog?feedTypes=series_ongoing");
         var inProgressSeries = await inProgressSeriesResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
@@ -171,7 +181,7 @@ public sealed class CatalogApiTests
         using var mainFeedsResponse = await client.GetAsync("/api/catalog?feedTypes=movie,series_complete,series_ongoing");
         var mainFeeds = await mainFeedsResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
         Assert.NotNull(mainFeeds);
-        Assert.Equal(3, mainFeeds.TotalCount);
+        Assert.Equal(4, mainFeeds.TotalCount);
 
         using var secondPageResponse = await client.GetAsync(
             "/api/catalog?page=2&pageSize=1&search=matrix&mediaType=movie");
@@ -198,6 +208,7 @@ public sealed class CatalogApiTests
         Assert.NotNull(occurrences);
         Assert.Equal(1, occurrences.TotalCount);
         Assert.Equal("Movies", Assert.Single(occurrences.Items).SourceName);
+        Assert.DoesNotContain("\"yearBounds\"", await occurrencesResponse.Content.ReadAsStringAsync());
 
         using var sourcesResponse = await client.GetAsync("/api/sources");
         var profiles = await sourcesResponse.Content.ReadFromJsonAsync<List<SourceProfileResponse>>();
@@ -401,9 +412,11 @@ public sealed class CatalogApiTests
         Assert.Equal("succeeded", Assert.Single(runs.Items).Status);
     }
 
-    private static Title CreateTitle(string title, string normalizedTitle, int year, string mediaType, string[] genres)
+    private static Title CreateTitle(string title, string normalizedTitle, int? year, string mediaType, string[] genres)
     {
-        var seenAt = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var seenAt = year is { } knownYear
+            ? new DateTimeOffset(knownYear, 1, 1, 0, 0, 0, TimeSpan.Zero)
+            : new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
         return new Title
         {
             TitleText = title,
@@ -412,7 +425,7 @@ public sealed class CatalogApiTests
             MediaType = mediaType,
             SourceType = mediaType,
             ContentKind = "standard",
-            ImdbId = $"tt{year}",
+            ImdbId = year is { } imdbYear ? $"tt{imdbYear}" : null,
             ImdbRating = 8.0m,
             ImdbVotes = 1000,
             Genres = genres,
