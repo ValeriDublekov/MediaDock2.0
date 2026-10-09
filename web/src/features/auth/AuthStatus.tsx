@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { confirmGoogleAccountLink, getCurrentSession, requestRegistration, signOut } from '../../api/client'
+import { confirmGoogleAccountLink, getCurrentSession, signOut } from '../../api/client'
 import type { CurrentSession } from '../../api/types'
 
 function requestStateLabel(status: string) {
@@ -11,7 +11,7 @@ function requestStateLabel(status: string) {
 function isUnauthorizedError(error: unknown) {
   return error instanceof Error && 'status' in error && error.status === 401
 }
-export function AuthStatus() {
+export function AuthStatus({ onSessionChange }: { onSessionChange?: (session: CurrentSession | null) => void }) {
   const [session, setSession] = useState<CurrentSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -26,28 +26,11 @@ export function AuthStatus() {
         if (!active) return
 
         setSession(currentSession)
+        onSessionChange?.(currentSession)
         setInvalidSession(false)
-
-        if (currentSession.accountState === 'unmatched'
-          && currentSession.identity?.profileComplete
-          && !currentSession.registrationRequest) {
-          setBusy(true)
-          try {
-            await requestRegistration()
-            const updatedSession = await getCurrentSession()
-            if (active) setSession(updatedSession)
-          } catch (requestError) {
-            if (active) {
-              setError(requestError instanceof Error ? requestError.message : 'The registration request failed.')
-              setInvalidSession(isUnauthorizedError(requestError))
-            }
-          } finally {
-            if (active) setBusy(false)
-          }
-        }
-
       } catch (loadError: unknown) {
         if (active) {
+          onSessionChange?.(null)
           setError(loadError instanceof Error ? loadError.message : 'Could not load sign-in status.')
           setInvalidSession(isUnauthorizedError(loadError))
         }
@@ -58,14 +41,16 @@ export function AuthStatus() {
 
     void loadSession()
     return () => { active = false }
-  }, [])
+  }, [onSessionChange])
 
   async function runAction(action: () => Promise<unknown>) {
     setBusy(true)
     setError(null)
     try {
       await action()
-      setSession(await getCurrentSession())
+      const updatedSession = await getCurrentSession()
+      setSession(updatedSession)
+      onSessionChange?.(updatedSession)
       setInvalidSession(false)
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : 'The sign-in action failed.')
@@ -77,6 +62,11 @@ export function AuthStatus() {
 
   const identity = session?.identity
   const user = session?.user
+  const displayName = user
+    ? `${user.givenName} ${user.familyName}`
+    : identity?.givenName && identity.familyName
+      ? `${identity.givenName} ${identity.familyName}`
+      : identity?.givenName ?? identity?.familyName ?? identity?.email
 
   return (
     <section aria-label="Sign-in status" className="auth-strip">
@@ -98,7 +88,7 @@ export function AuthStatus() {
               </>
             ) : (
               <>
-                <strong>{user ? `${user.givenName} ${user.familyName}` : identity?.email}</strong>
+                <strong>{displayName}</strong>
                 <span className="auth-email">{identity?.email}</span>
                 {session.registrationRequest && (
                   <span className="auth-request-state" role="status">
@@ -110,9 +100,6 @@ export function AuthStatus() {
                 )}
                 {session.accountState === 'account_conflict' && (
                   <span className="auth-message">This email is already linked to another Google identity.</span>
-                )}
-                {session.accountState === 'unmatched' && identity && !identity.profileComplete && (
-                  <span className="auth-message">Your Google profile needs both given and family names before registration.</span>
                 )}
               </>
             )}
@@ -128,11 +115,6 @@ export function AuthStatus() {
                 {session.accountState === 'link_confirmation_required' && (
                   <button className="button button-secondary" disabled={busy} onClick={() => void runAction(confirmGoogleAccountLink)} type="button">
                     {busy ? 'Linking…' : 'Link this account'}
-                  </button>
-                )}
-                {session.accountState === 'unmatched' && identity?.profileComplete && !session.registrationRequest && (
-                  <button className="button button-secondary" disabled={busy} onClick={() => void runAction(requestRegistration)} type="button">
-                    {busy ? 'Submitting…' : 'Request registration'}
                   </button>
                 )}
                 <button className="text-button" disabled={busy} onClick={() => void runAction(signOut)} type="button">

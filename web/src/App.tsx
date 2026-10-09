@@ -1,4 +1,7 @@
+import { useCallback, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { getCurrentSession, requestRegistration } from './api/client'
+import type { CurrentSession } from './api/types'
 import { CatalogView } from './features/catalog/CatalogView'
 import { HistoryView } from './features/history/HistoryView'
 import { OscarCatalogView } from './features/oscar/OscarCatalogView'
@@ -63,7 +66,58 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
   },
 }
 
+function RegistrationGate({
+  session,
+  onSessionChange,
+}: {
+  session: CurrentSession
+  onSessionChange: (session: CurrentSession | null) => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const identity = session.identity
+  const firstName = identity?.givenName?.trim()
+  const profileComplete = Boolean(identity?.profileComplete && firstName && identity.familyName?.trim())
+
+  async function submitRequest() {
+    setBusy(true)
+    setError(null)
+    try {
+      await requestRegistration()
+      onSessionChange(await getCurrentSession())
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'The registration request failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section aria-labelledby="registration-heading" className="registration-gate">
+      <p className="registration-eyebrow">ACCOUNT ACCESS</p>
+      <h1 id="registration-heading">Hello{firstName ? ` ${firstName}` : ''}</h1>
+      {profileComplete ? (
+        <>
+          <p>Your Google account is not registered yet. Send a request to create your MediaDock account.</p>
+          <button className="button" disabled={busy} onClick={() => void submitRequest()} type="button">
+            {busy ? 'Submitting request...' : 'Request registration'}
+          </button>
+        </>
+      ) : (
+        <p className="registration-note">Your Google profile needs both given and family names before you can request registration.</p>
+      )}
+      {error && <p className="registration-error" role="alert">{error}</p>}
+    </section>
+  )
+}
+
 function AppContent() {
+  const [authChecked, setAuthChecked] = useState(false)
+  const [session, setSession] = useState<CurrentSession | null>(null)
+  const onSessionChange = useCallback((currentSession: CurrentSession | null) => {
+    setSession(currentSession)
+    setAuthChecked(true)
+  }, [])
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -78,10 +132,12 @@ function AppContent() {
   const content = sectionContent[section]
   const title = configurationPage?.label ?? content.title
   const description = configurationPage?.description ?? content.description
+  const registrationSession = session?.authenticated && session.accountState === 'unmatched' ? session : null
+  const isAccessGated = !authChecked || registrationSession !== null
 
   return (
-    <div className="app-shell">
-      <aside className={`sidebar${section === 'sources' ? ' is-configuration' : ''}`}>
+    <div className={`app-shell${isAccessGated ? ' is-gated' : ''}`}>
+      {!isAccessGated && <aside className={`sidebar${section === 'sources' ? ' is-configuration' : ''}`}>
         <NavLink className="brand" to="/catalog">
           <span className="brand-mark" aria-hidden="true">MD</span>
           <span className="brand-name">MediaDock</span>
@@ -134,19 +190,23 @@ function AppContent() {
           <span>Local instance</span>
           <span className="status-caption">API-backed</span>
         </div>
-      </aside>
+      </aside>}
 
       <main className="main-shell">
         <header className="topbar">
-          <div className="breadcrumb">MEDIADOCK <span>/</span> {content.eyebrow}{configurationPage && <> <span>/</span> {configurationPage.label.toUpperCase()}</>}</div>
-          <AuthStatus />
+          <div className="breadcrumb">MEDIADOCK <span>/</span> {registrationSession ? 'ACCOUNT ACCESS' : !authChecked ? 'SIGN-IN CHECK' : <>{content.eyebrow}{configurationPage && <> <span>/</span> {configurationPage.label.toUpperCase()}</>}</>}</div>
+          <AuthStatus onSessionChange={onSessionChange} />
         </header>
 
         <aside className="open-mode-warning" role="note">
           Sign-in is optional and verifies identity only. Application permissions are not enforced, and data remains accessible to clients within the configured network boundary.
         </aside>
 
-        <div className="page-content">
+        {!authChecked ? (
+          <div className="session-check" role="status">Checking sign-in status</div>
+        ) : registrationSession ? (
+          <RegistrationGate onSessionChange={onSessionChange} session={registrationSession} />
+        ) : <div className="page-content">
           <div className="page-heading">
             <div>
               <p className="eyebrow">{content.eyebrow}</p>
@@ -171,7 +231,7 @@ function AppContent() {
             <Route path="/history" element={<HistoryView scanRunId={historyScanRunId} onClearScanRun={() => setSearchParams({})} />} />
             <Route path="*" element={<Navigate replace to="/catalog" />} />
           </Routes>
-        </div>
+        </div>}
       </main>
     </div>
   )

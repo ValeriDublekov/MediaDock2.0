@@ -18,6 +18,7 @@ button:disabled { cursor: not-allowed; }
 #root { min-height: 100vh; }
 
 .app-shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; }
+.app-shell.is-gated { grid-template-columns: minmax(0, 1fr); }
 .sidebar { position: sticky; top: 0; display: flex; height: 100vh; min-height: 540px; flex-direction: column; padding: 30px 16px 20px; color: #f2f2ec; background: #1c2222; }
 .brand { display: flex; align-items: center; gap: 11px; color: inherit; text-decoration: none; }
 .brand-mark { display: grid; width: 38px; height: 38px; place-items: center; border: 2px solid #e0573e; color: #f8eee9; font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 12px; font-weight: 800; }
@@ -51,6 +52,14 @@ button:disabled { cursor: not-allowed; }
 .auth-request-state { color: #496852; font-size: 11px; font-weight: 700; }
 .open-mode-warning { position: sticky; z-index: 5; top: 0; border-bottom: 1px solid #ddc88c; border-left: 4px solid #c28b32; padding: 10px 42px; color: #56431d; background: #fff4d4; font-size: 12px; line-height: 1.45; }
 .page-content { width: min(1370px, 100%); margin: 0 auto; padding: 36px 42px 64px; }
+.session-check, .registration-gate { width: min(640px, calc(100% - 48px)); margin: clamp(52px, 12vh, 128px) auto; }
+.session-check { border-top: 1px solid #cbd6cd; padding-top: 18px; color: #596560; font-size: 13px; }
+.registration-gate { border-top: 4px solid #e0573e; padding: 28px 0 64px; }
+.registration-eyebrow { margin: 0 0 12px; color: #bd4e38; font-size: 10px; font-weight: 800; letter-spacing: 1px; }
+.registration-gate h1 { margin: 0 0 16px; color: #171e1e; font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 46px; font-weight: 800; line-height: 1.05; }
+.registration-gate > p:not(.registration-eyebrow) { max-width: 520px; color: #596560; font-size: 14px; line-height: 1.6; }
+.registration-gate .button { margin-top: 24px; min-height: 44px; }
+.registration-gate .registration-error { margin-top: 16px; color: #895038; font-size: 12px; }
 .page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
 .eyebrow { margin: 0 0 7px; color: #bd4e38; font-size: 10px; font-weight: 800; letter-spacing: 1px; }
 .page-heading h1 { margin: 0; color: #171e1e; font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 40px; font-weight: 800; line-height: 1.05; }
@@ -425,6 +434,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offs
   .auth-controls { justify-content: flex-start; }
   .open-mode-warning { padding: 9px 16px; font-size: 11px; }
   .page-content { padding: 25px 16px 36px; }
+  .session-check, .registration-gate { width: calc(100% - 32px); margin: 44px auto; }
+  .registration-gate h1 { font-size: 36px; }
   .page-heading { align-items: flex-start; margin-bottom: 24px; }
   .page-heading h1 { font-size: 30px; }
   .filter-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }

@@ -1,13 +1,12 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { confirmGoogleAccountLink, getCurrentSession, requestRegistration, signOut } from '../../api/client'
+import { confirmGoogleAccountLink, getCurrentSession, signOut } from '../../api/client'
 import type { CurrentSession } from '../../api/types'
 import { AuthStatus } from './AuthStatus'
 
 vi.mock('../../api/client', () => ({
   confirmGoogleAccountLink: vi.fn(),
   getCurrentSession: vi.fn(),
-  requestRegistration: vi.fn(),
   signOut: vi.fn(),
 }))
 
@@ -88,48 +87,12 @@ describe('AuthStatus', () => {
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy()
   })
 
-  it('automatically submits registration after an unmatched Google sign-in', async () => {
-    vi.mocked(getCurrentSession)
-      .mockResolvedValueOnce(unmatchedSession)
-      .mockResolvedValueOnce(linkedSession({
-        status: 'pending',
-        requestedAt: '2026-10-06T10:00:00Z',
-        decidedAt: null,
-      }))
-    vi.mocked(requestRegistration).mockResolvedValue({
-      status: 'pending',
-      requestedAt: '2026-10-06T10:00:00Z',
-      decidedAt: null,
-    })
-
+  it('shows the Google name for an unmatched account', async () => {
+    vi.mocked(getCurrentSession).mockResolvedValue(unmatchedSession)
     render(<AuthStatus />)
 
-    expect(await screen.findByText('Registration request pending review')).toBeTruthy()
-    expect(requestRegistration).toHaveBeenCalledOnce()
-    expect(getCurrentSession).toHaveBeenCalledTimes(2)
-  })
-
-  it('offers a retry when the automatic registration request fails', async () => {
-    vi.mocked(getCurrentSession)
-      .mockResolvedValueOnce(unmatchedSession)
-      .mockResolvedValueOnce(linkedSession({
-        status: 'pending',
-        requestedAt: '2026-10-06T10:00:00Z',
-        decidedAt: null,
-      }))
-    vi.mocked(requestRegistration)
-      .mockRejectedValueOnce(new Error('Request failed'))
-      .mockResolvedValueOnce({
-        status: 'pending',
-        requestedAt: '2026-10-06T10:00:00Z',
-        decidedAt: null,
-      })
-
-    render(<AuthStatus />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Request registration' }))
-
-    expect(await screen.findByText('Registration request pending review')).toBeTruthy()
-    expect(requestRegistration).toHaveBeenCalledTimes(2)
+    expect(await screen.findByText('Google Profile')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Request registration' })).toBeNull()
   })
 
   it('requires explicit confirmation before linking a matching account', async () => {
@@ -144,19 +107,6 @@ describe('AuthStatus', () => {
 
     expect(await screen.findByText('Stored Account')).toBeTruthy()
     expect(confirmGoogleAccountLink).toHaveBeenCalledOnce()
-  })
-
-  it('explains missing Google names and does not offer registration', async () => {
-    vi.mocked(getCurrentSession).mockResolvedValue({
-      ...unmatchedSession,
-      identity: { ...unmatchedSession.identity!, givenName: null, profileComplete: false },
-    })
-
-    render(<AuthStatus />)
-
-    expect(await screen.findByText(/needs both given and family names/)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Request registration' })).toBeNull()
-    expect(requestRegistration).not.toHaveBeenCalled()
   })
 
   it('signs out and returns to anonymous status', async () => {
