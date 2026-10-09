@@ -413,6 +413,15 @@ export interface CurrentSession {
   registrationRequest: RegistrationRequestStatus | null
 }
 
+export interface AuthDiagnostic {
+  operation: string
+  endpoint: string
+  status: number | null
+  message: string
+  traceId: string | null
+  occurredAt: string
+}
+
 export interface DeploymentStatus {
   isRunning: boolean
   activeState: string

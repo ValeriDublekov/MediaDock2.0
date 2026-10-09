@@ -3,10 +3,10 @@ import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { getCurrentSession, requestRegistration } from './api/client'
-import type { CurrentSession } from './api/types'
+import type { AuthDiagnostic, CurrentSession } from './api/types'
 import App from './App'
 
-const authMock = vi.hoisted(() => ({ session: null as CurrentSession | null }))
+const authMock = vi.hoisted(() => ({ session: null as CurrentSession | null, diagnostic: null as AuthDiagnostic | null }))
 
 vi.mock('./api/client', () => ({
   getCurrentSession: vi.fn(),
@@ -15,12 +15,12 @@ vi.mock('./api/client', () => ({
 vi.mock('./features/auth/AuthStatus', async () => {
   const { useEffect, useRef } = await import('react')
   return {
-    AuthStatus: ({ onSessionChange }: { onSessionChange: (session: CurrentSession | null) => void }) => {
+    AuthStatus: ({ onSessionChange }: { onSessionChange: (session: CurrentSession | null, diagnostic?: AuthDiagnostic | null) => void }) => {
       const reported = useRef(false)
       useEffect(() => {
         if (!reported.current) {
           reported.current = true
-          onSessionChange(authMock.session)
+          onSessionChange(authMock.session, authMock.diagnostic)
         }
       }, [onSessionChange])
       return <div>Authentication status</div>
@@ -89,6 +89,7 @@ const unmatchedSession: CurrentSession = {
 describe('App routes', () => {
   beforeEach(() => {
     authMock.session = anonymousSession
+    authMock.diagnostic = null
     vi.mocked(getCurrentSession).mockReset()
     vi.mocked(requestRegistration).mockReset()
   })
@@ -199,5 +200,25 @@ describe('App routes', () => {
     expect(screen.getByText(/needs both given and family names/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Request registration' })).toBeNull()
     expect(requestRegistration).not.toHaveBeenCalled()
+  })
+
+  it('shows a full-page diagnostic when the saved session cannot be loaded', async () => {
+    authMock.session = null
+    authMock.diagnostic = {
+      operation: 'Load sign-in status',
+      endpoint: '/api/auth/session',
+      status: 401,
+      message: 'The saved sign-in session is invalid.',
+      traceId: 'trace-session-123',
+      occurredAt: '2026-10-09T10:00:00.000Z',
+    }
+
+    renderAt('/catalog')
+
+    expect(await screen.findByRole('heading', { name: 'Sign-in needs attention' })).toBeTruthy()
+    expect(screen.getByText('The saved sign-in session is invalid.')).toBeTruthy()
+    expect(screen.getByText('HTTP 401')).toBeTruthy()
+    expect(screen.getByText('trace-session-123')).toBeTruthy()
+    expect(screen.queryByText('Catalog route content')).toBeNull()
   })
 })

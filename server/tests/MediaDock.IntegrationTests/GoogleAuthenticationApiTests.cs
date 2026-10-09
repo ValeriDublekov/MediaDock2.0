@@ -268,6 +268,13 @@ public sealed class GoogleAuthenticationApiTests
 
         using var rejectedResponse = await unverifiedClient.GetAsync("/api/auth/session");
         Assert.Equal(HttpStatusCode.Unauthorized, rejectedResponse.StatusCode);
+        Assert.True(rejectedResponse.Headers.TryGetValues("X-MediaDock-TraceId", out var sessionTraceIds));
+        Assert.NotEmpty(sessionTraceIds!);
+
+        using var logoutResponse = await unverifiedClient.PostAsync("/api/auth/logout", new StringContent(string.Empty));
+        Assert.Equal(HttpStatusCode.BadRequest, logoutResponse.StatusCode);
+        Assert.True(logoutResponse.Headers.TryGetValues("X-MediaDock-TraceId", out var logoutTraceIds));
+        Assert.NotEmpty(logoutTraceIds!);
 
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_google_names_test").Build();
         await postgres.StartAsync();

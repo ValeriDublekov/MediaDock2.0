@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { getCurrentSession, requestRegistration } from './api/client'
-import type { CurrentSession } from './api/types'
+import type { AuthDiagnostic, CurrentSession } from './api/types'
 import { CatalogView } from './features/catalog/CatalogView'
 import { HistoryView } from './features/history/HistoryView'
 import { OscarCatalogView } from './features/oscar/OscarCatalogView'
@@ -111,11 +111,37 @@ function RegistrationGate({
   )
 }
 
+function AuthDiagnosticDetails({ diagnostic }: { diagnostic: AuthDiagnostic }) {
+  return (
+    <dl className="auth-diagnostic-details">
+      <div><dt>Operation</dt><dd>{diagnostic.operation}</dd></div>
+      <div><dt>Endpoint</dt><dd><code>{diagnostic.endpoint}</code></dd></div>
+      <div><dt>Result</dt><dd>{diagnostic.status === 0 ? 'Network error' : diagnostic.status ? `HTTP ${diagnostic.status}` : 'Unknown'}</dd></div>
+      <div><dt>Time</dt><dd>{diagnostic.occurredAt}</dd></div>
+      {diagnostic.traceId && <div><dt>Server trace ID</dt><dd><code>{diagnostic.traceId}</code></dd></div>}
+    </dl>
+  )
+}
+
+function AuthRecoveryScreen({ diagnostic }: { diagnostic: AuthDiagnostic }) {
+  return (
+    <section aria-labelledby="auth-recovery-heading" className="auth-recovery">
+      <p className="registration-eyebrow">SIGN-IN DIAGNOSTICS</p>
+      <h1 id="auth-recovery-heading">Sign-in needs attention</h1>
+      <p className="auth-recovery-message">{diagnostic.message}</p>
+      <AuthDiagnosticDetails diagnostic={diagnostic} />
+      <p className="auth-recovery-help">Use <strong>Reset sign-in</strong> or <strong>Retry</strong> in the upper-right corner. If this continues, share the details above with the MediaDock operator.</p>
+    </section>
+  )
+}
+
 function AppContent() {
   const [authChecked, setAuthChecked] = useState(false)
   const [session, setSession] = useState<CurrentSession | null>(null)
-  const onSessionChange = useCallback((currentSession: CurrentSession | null) => {
+  const [authDiagnostic, setAuthDiagnostic] = useState<AuthDiagnostic | null>(null)
+  const onSessionChange = useCallback((currentSession: CurrentSession | null, diagnostic: AuthDiagnostic | null = null) => {
     setSession(currentSession)
+    setAuthDiagnostic(diagnostic)
     setAuthChecked(true)
   }, [])
   const location = useLocation()
@@ -133,7 +159,8 @@ function AppContent() {
   const title = configurationPage?.label ?? content.title
   const description = configurationPage?.description ?? content.description
   const registrationSession = session?.authenticated && session.accountState === 'unmatched' ? session : null
-  const isAccessGated = !authChecked || registrationSession !== null
+  const recoveryDiagnostic = session === null ? authDiagnostic : null
+  const isAccessGated = !authChecked || registrationSession !== null || recoveryDiagnostic !== null
 
   return (
     <div className={`app-shell${isAccessGated ? ' is-gated' : ''}`}>
@@ -194,7 +221,7 @@ function AppContent() {
 
       <main className="main-shell">
         <header className="topbar">
-          <div className="breadcrumb">MEDIADOCK <span>/</span> {registrationSession ? 'ACCOUNT ACCESS' : !authChecked ? 'SIGN-IN CHECK' : <>{content.eyebrow}{configurationPage && <> <span>/</span> {configurationPage.label.toUpperCase()}</>}</>}</div>
+          <div className="breadcrumb">MEDIADOCK <span>/</span> {recoveryDiagnostic ? 'SIGN-IN DIAGNOSTICS' : registrationSession ? 'ACCOUNT ACCESS' : !authChecked ? 'SIGN-IN CHECK' : <>{content.eyebrow}{configurationPage && <> <span>/</span> {configurationPage.label.toUpperCase()}</>}</>}</div>
           <AuthStatus onSessionChange={onSessionChange} />
         </header>
 
@@ -204,9 +231,17 @@ function AppContent() {
 
         {!authChecked ? (
           <div className="session-check" role="status">Checking sign-in status</div>
+        ) : recoveryDiagnostic ? (
+          <AuthRecoveryScreen diagnostic={recoveryDiagnostic} />
         ) : registrationSession ? (
           <RegistrationGate onSessionChange={onSessionChange} session={registrationSession} />
         ) : <div className="page-content">
+          {authDiagnostic && (
+            <section aria-label="Sign-in diagnostic" className="auth-diagnostic-notice" role="alert">
+              <strong>{authDiagnostic.message}</strong>
+              <AuthDiagnosticDetails diagnostic={authDiagnostic} />
+            </section>
+          )}
           <div className="page-heading">
             <div>
               <p className="eyebrow">{content.eyebrow}</p>

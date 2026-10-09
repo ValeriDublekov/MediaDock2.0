@@ -34,6 +34,7 @@ function response(status: number, value: unknown): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
+    headers: new Headers(),
     json: async () => value,
     text: async () => value === undefined || value === null ? '' : JSON.stringify(value),
   } as Response
@@ -331,6 +332,30 @@ describe('typed API client', () => {
       name: 'ApiError',
       status: 400,
       message: 'The field PageSize must be between 1 and 100.',
+    })
+  })
+
+  it('preserves the endpoint and server trace ID for authentication diagnostics', async () => {
+    const fetcher: typeof fetch = async () => new Response(JSON.stringify({ title: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/problem+json', 'X-MediaDock-TraceId': 'trace-auth-123' },
+    })
+
+    await expect(requestJson('/auth/session', {}, fetcher)).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 401,
+      endpoint: '/api/auth/session',
+      traceId: 'trace-auth-123',
+    })
+  })
+
+  it('reports the HTTP status when an auth error has an empty response body', async () => {
+    const fetcher: typeof fetch = async () => new Response(null, { status: 401 })
+
+    await expect(requestJson('/auth/session', {}, fetcher)).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 401,
+      message: 'The API request failed with status 401.',
     })
   })
 

@@ -41,15 +41,19 @@ const API_ROOT = '/api'
 
 export class ApiError extends Error {
   readonly status: number
+  readonly endpoint: string
+  readonly traceId: string | null
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, endpoint = 'unknown', traceId: string | null = null) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.endpoint = endpoint
+    this.traceId = traceId
   }
 }
 
-function problemMessage(problem: unknown): string {
+function problemMessage(problem: unknown): string | null {
   if (typeof problem === 'string' && problem.trim()) return problem.trim()
   if (problem && typeof problem === 'object') {
     const fields = problem as Record<string, unknown>
@@ -63,7 +67,7 @@ function problemMessage(problem: unknown): string {
     }
     if (typeof fields.title === 'string' && fields.title.trim()) return fields.title
   }
-  return 'The API returned an unexpected error.'
+  return null
 }
 
 export async function requestJson<T>(
@@ -79,7 +83,7 @@ export async function requestJson<T>(
   try {
     response = await fetcher(`${API_ROOT}${path}`, { ...init, headers })
   } catch {
-    throw new ApiError('Could not reach the API. Check the server connection and retry.', 0)
+    throw new ApiError('Could not reach the API. Check the server connection and retry.', 0, `${API_ROOT}${path}`)
   }
 
   if (!response.ok) {
@@ -91,16 +95,20 @@ export async function requestJson<T>(
     } catch {
       problem = responseText
     }
-    throw new ApiError(response.status === 502 && !responseText
+    const message = response.status === 502 && !responseText
       ? 'The local API is unavailable. Check the server connection and retry.'
-      : problemMessage(problem) || `The API request failed with status ${response.status}.`, response.status)
+      : problemMessage(problem) ?? `The API request failed with status ${response.status}.`
+    throw new ApiError(message,
+    response.status,
+    `${API_ROOT}${path}`,
+    response.headers.get('X-MediaDock-TraceId'))
   }
 
   if (response.status === 204) return undefined as T
   try {
     return await response.json() as T
   } catch {
-    throw new ApiError('The API returned an invalid response.', response.status)
+    throw new ApiError('The API returned an invalid response.', response.status, `${API_ROOT}${path}`, response.headers.get('X-MediaDock-TraceId'))
   }
 }
 

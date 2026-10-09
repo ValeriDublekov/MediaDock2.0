@@ -41,9 +41,12 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
             }
         };
 
-        logger.LogError(exception, "API request failed with status {StatusCode}.", problemDetails.Status);
+        var traceId = httpContext.TraceIdentifier;
+        problemDetails.Extensions["traceId"] = traceId;
+        logger.LogError(exception, "API request failed with status {StatusCode}. TraceId {TraceId}.", problemDetails.Status, traceId);
         httpContext.Response.StatusCode = problemDetails.Status ?? StatusCodes.Status500InternalServerError;
         httpContext.Response.ContentType = "application/problem+json";
+        httpContext.Response.Headers["X-MediaDock-TraceId"] = traceId;
         await httpContext.Response.WriteAsJsonAsync(
             problemDetails,
             contentType: "application/problem+json",

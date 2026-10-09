@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { confirmGoogleAccountLink, getCurrentSession, signOut } from '../../api/client'
-import type { CurrentSession } from '../../api/types'
+import type { AuthDiagnostic, CurrentSession } from '../../api/types'
 
 function requestStateLabel(status: string) {
   if (status === 'pending') return 'Registration request pending review'
@@ -11,7 +11,23 @@ function requestStateLabel(status: string) {
 function isUnauthorizedError(error: unknown) {
   return error instanceof Error && 'status' in error && error.status === 401
 }
-export function AuthStatus({ onSessionChange }: { onSessionChange?: (session: CurrentSession | null) => void }) {
+
+function createDiagnostic(operation: string, fallbackEndpoint: string, error: unknown): AuthDiagnostic {
+  const details = error && typeof error === 'object' ? error as Record<string, unknown> : null
+  const status = typeof details?.status === 'number' ? details.status : null
+  return {
+    operation,
+    endpoint: typeof details?.endpoint === 'string' ? details.endpoint : fallbackEndpoint,
+    status,
+    message: error instanceof Error ? error.message : 'An unexpected sign-in error occurred.',
+    traceId: typeof details?.traceId === 'string' ? details.traceId : null,
+    occurredAt: new Date().toISOString(),
+  }
+}
+
+export function AuthStatus({ onSessionChange }: {
+  onSessionChange?: (session: CurrentSession | null, diagnostic?: AuthDiagnostic | null) => void
+}) {
   const [session, setSession] = useState<CurrentSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -26,12 +42,14 @@ export function AuthStatus({ onSessionChange }: { onSessionChange?: (session: Cu
         if (!active) return
 
         setSession(currentSession)
-        onSessionChange?.(currentSession)
+        onSessionChange?.(currentSession, null)
         setInvalidSession(false)
       } catch (loadError: unknown) {
         if (active) {
-          onSessionChange?.(null)
-          setError(loadError instanceof Error ? loadError.message : 'Could not load sign-in status.')
+          const diagnostic = createDiagnostic('Load sign-in status', '/api/auth/session', loadError)
+          console.error('[MediaDock auth diagnostic]', diagnostic)
+          onSessionChange?.(null, diagnostic)
+          setError(diagnostic.message)
           setInvalidSession(isUnauthorizedError(loadError))
         }
       } finally {
@@ -43,18 +61,21 @@ export function AuthStatus({ onSessionChange }: { onSessionChange?: (session: Cu
     return () => { active = false }
   }, [onSessionChange])
 
-  async function runAction(action: () => Promise<unknown>) {
+  async function runAction(operation: string, endpoint: string, action: () => Promise<unknown>) {
     setBusy(true)
     setError(null)
     try {
       await action()
       const updatedSession = await getCurrentSession()
       setSession(updatedSession)
-      onSessionChange?.(updatedSession)
+      onSessionChange?.(updatedSession, null)
       setInvalidSession(false)
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : 'The sign-in action failed.')
-      setInvalidSession(isUnauthorizedError(actionError))
+      const diagnostic = createDiagnostic(operation, endpoint, actionError)
+      console.error('[MediaDock auth diagnostic]', diagnostic)
+      onSessionChange?.(session, diagnostic)
+      setError(diagnostic.message)
+      setInvalidSession(session === null || isUnauthorizedError(actionError))
     } finally {
       setBusy(false)
     }
@@ -75,8 +96,8 @@ export function AuthStatus({ onSessionChange }: { onSessionChange?: (session: Cu
       ) : session === null ? (
         <>
           <span className="auth-message" role="status">{invalidSession ? 'The saved sign-in session is invalid.' : 'Sign-in status unavailable'}</span>
-          {invalidSession && <button className="text-button" disabled={busy} onClick={() => void runAction(signOut)} type="button">Reset sign-in</button>}
-          <button className="text-button" disabled={busy} onClick={() => void runAction(getCurrentSession)} type="button">Retry</button>
+          {error && <button className="text-button" disabled={busy} onClick={() => void runAction('Reset sign-in', '/api/auth/logout', signOut)} type="button">Reset sign-in</button>}
+          <button className="text-button" disabled={busy} onClick={() => void runAction('Retry session check', '/api/auth/session', getCurrentSession)} type="button">Retry</button>
         </>
       ) : (
         <>
@@ -113,11 +134,11 @@ export function AuthStatus({ onSessionChange }: { onSessionChange?: (session: Cu
             ) : (
               <>
                 {session.accountState === 'link_confirmation_required' && (
-                  <button className="button button-secondary" disabled={busy} onClick={() => void runAction(confirmGoogleAccountLink)} type="button">
+                  <button className="button button-secondary" disabled={busy} onClick={() => void runAction('Link Google account', '/api/auth/google/link', confirmGoogleAccountLink)} type="button">
                     {busy ? 'Linking…' : 'Link this account'}
                   </button>
                 )}
-                <button className="text-button" disabled={busy} onClick={() => void runAction(signOut)} type="button">
+                <button className="text-button" disabled={busy} onClick={() => void runAction('Sign out', '/api/auth/logout', signOut)} type="button">
                   {busy ? 'Please wait' : 'Sign out'}
                 </button>
               </>

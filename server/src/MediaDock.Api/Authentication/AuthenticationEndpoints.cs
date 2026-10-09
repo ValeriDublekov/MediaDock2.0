@@ -36,8 +36,11 @@ internal static class AuthenticationEndpoints
             HttpContext context,
             GoogleSignInSettings signInSettings,
             GoogleSessionService sessionService,
+            ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
         {
+            var logger = loggerFactory.CreateLogger("MediaDock.Api.Authentication");
+            context.Response.Headers["X-MediaDock-TraceId"] = context.TraceIdentifier;
             if (context.User.Identity?.IsAuthenticated != true)
             {
                 return TypedResults.Ok(CurrentSessionResponse.Anonymous with
@@ -48,6 +51,9 @@ internal static class AuthenticationEndpoints
 
             if (!ValidatedGoogleIdentity.TryCreate(context.User, out var identity))
             {
+                logger.LogWarning(
+                    "Rejected authenticated Google session because validated identity claims were incomplete. TraceId {TraceId}",
+                    context.TraceIdentifier);
                 return TypedResults.Unauthorized();
             }
 
@@ -61,6 +67,7 @@ internal static class AuthenticationEndpoints
 
         app.MapGet("/api/auth/antiforgery", (HttpContext context, IAntiforgery antiforgery) =>
         {
+            context.Response.Headers["X-MediaDock-TraceId"] = context.TraceIdentifier;
             context.Response.Headers.CacheControl = "no-store";
             var tokens = antiforgery.GetAndStoreTokens(context);
             return TypedResults.Ok(new AntiforgeryTokenResponse(tokens.RequestToken!));
@@ -148,16 +155,23 @@ internal static class AuthenticationEndpoints
 
         app.MapPost("/api/auth/logout", async Task<Results<NoContent, ProblemHttpResult>> (
             HttpContext context,
-            IAntiforgery antiforgery) =>
+            IAntiforgery antiforgery,
+            ILoggerFactory loggerFactory) =>
         {
+            var logger = loggerFactory.CreateLogger("MediaDock.Api.Authentication");
+            context.Response.Headers["X-MediaDock-TraceId"] = context.TraceIdentifier;
             if (!await antiforgery.IsRequestValidAsync(context))
             {
+                logger.LogWarning(
+                    "Rejected MediaDock sign-out because anti-forgery validation failed. TraceId {TraceId}",
+                    context.TraceIdentifier);
                 return TypedResults.Problem(
                     statusCode: StatusCodes.Status400BadRequest,
                     title: "A valid anti-forgery token is required.");
             }
 
             await context.SignOutAsync(GoogleSignInSettings.CookieScheme);
+            logger.LogInformation("Completed MediaDock sign-out. TraceId {TraceId}", context.TraceIdentifier);
             return TypedResults.NoContent();
         })
             .WithName("Logout")
