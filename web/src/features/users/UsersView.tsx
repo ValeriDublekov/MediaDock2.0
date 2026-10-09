@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { ApiError, decideRegistrationRequest, getAdminUsers, getCurrentSession, setAdminUserStatus } from '../../api/client'
+import { ApiError, decideRegistrationRequest, getAdminUsers, setAdminUserStatus } from '../../api/client'
 import type { AdminUser, AdminUserState, AdminUsersPage } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 
@@ -19,7 +19,6 @@ export function UsersView() {
   const [page, setPage] = useState<AdminUsersPage>(emptyUsers)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [signInDisabled, setSignInDisabled] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [busyUserId, setBusyUserId] = useState<number | null>(null)
   const [reload, setReload] = useState(0)
@@ -28,16 +27,7 @@ export function UsersView() {
     let current = true
     void getAdminUsers({ state, search: search || undefined, page: pageNumber, pageSize: 50 })
       .then((result) => { if (current) setPage(result) })
-      .catch(async (loadError: unknown) => {
-        if (loadError instanceof ApiError && loadError.status === 401) {
-          const session = await getCurrentSession().catch(() => null)
-          if (current && session && !session.signInEnabled) {
-            setSignInDisabled(true)
-            return
-          }
-        }
-        if (current) setError(loadErrorMessage(loadError))
-      })
+      .catch((loadError: unknown) => { if (current) setError(loadErrorMessage(loadError)) })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
   }, [state, search, pageNumber, reload])
@@ -76,27 +66,16 @@ export function UsersView() {
   function retryLoad() {
     setLoading(true)
     setError(null)
-    setSignInDisabled(false)
     setReload((current) => current + 1)
   }
 
   if (loading) return <LoadingState label="Loading users" />
-  if (signInDisabled) return (
-    <div className="feedback" role="status" aria-live="polite">
-      <span className="feedback-symbol" aria-hidden="true">!</span>
-      <div className="feedback-copy">
-        <strong>Administrator setup required</strong>
-        <p>Google sign-in is disabled. Enable it and bootstrap your verified Google account as the first administrator; pending accounts cannot approve themselves.</p>
-      </div>
-      <button className="button button-secondary" onClick={retryLoad} type="button">Retry</button>
-    </div>
-  )
   if (error) return <ErrorState message={error} onRetry={retryLoad} />
 
   return (
     <section aria-labelledby="users-heading" className="management-section">
       <h2 id="users-heading">Users</h2>
-      <p className="section-caption">Review Google registration requests and manage active accounts.</p>
+      <p className="section-caption">Review registration requests and manage accounts. These actions are open to clients within the configured network boundary.</p>
       <div className="users-toolbar">
         <label className="field users-state-filter">
           <span className="field-label">Show</span>
