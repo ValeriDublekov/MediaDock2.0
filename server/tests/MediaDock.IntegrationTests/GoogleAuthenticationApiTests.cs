@@ -359,6 +359,7 @@ public sealed class GoogleAuthenticationApiTests
             .Options;
         long requestId;
         long adminId;
+        long requesterId;
         await using (var db = new MediaDockDbContext(options))
         {
             await db.Database.MigrateAsync();
@@ -407,19 +408,22 @@ public sealed class GoogleAuthenticationApiTests
             await db.SaveChangesAsync();
             requestId = registrationRequest.Id;
             adminId = admin.Id;
+            requesterId = requester.Id;
         }
 
         using var anonymousFactory = new ApiFactory(connectionString);
         using var anonymousClient = anonymousFactory.CreateClient();
         using var anonymousResponse = await anonymousClient.GetAsync("/api/admin/users");
-        Assert.True(
-            anonymousResponse.StatusCode == HttpStatusCode.Unauthorized,
-            $"Expected 401 but received {(int)anonymousResponse.StatusCode}: {await anonymousResponse.Content.ReadAsStringAsync()}");
+        Assert.Equal(HttpStatusCode.OK, anonymousResponse.StatusCode);
+        var anonymousUsers = await anonymousResponse.Content.ReadFromJsonAsync<AdminUsersPageResponse>();
+        Assert.NotNull(anonymousUsers);
+        Assert.Equal(2, anonymousUsers.TotalCount);
+        Assert.Contains(anonymousUsers.Items, user => user.Email == "new@example.com");
 
         using var regularUserFactory = new ApiFactory(connectionString, CreatePrincipal(subject: "requester-subject"));
         using var regularUserClient = regularUserFactory.CreateClient();
         using var regularUserResponse = await regularUserClient.GetAsync("/api/admin/users");
-        Assert.Equal(HttpStatusCode.Forbidden, regularUserResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, regularUserResponse.StatusCode);
 
         using var adminFactory = new ApiFactory(connectionString, CreatePrincipal(email: "admin@example.com", subject: "admin-subject"));
         using var adminClient = adminFactory.CreateClient();
@@ -431,24 +435,41 @@ public sealed class GoogleAuthenticationApiTests
         Assert.Equal("new@example.com", listedRequester.Email);
         Assert.Equal("pending", listedRequester.RegistrationRequest?.Status);
 
-        var token = await GetAntiforgeryTokenAsync(adminClient);
+        var token = await GetAntiforgeryTokenAsync(anonymousClient);
         using var approveRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/registration-requests/{requestId}/decision")
         {
             Content = JsonContent.Create(new AdminRegistrationDecisionRequest("approve"))
         };
         approveRequest.Headers.Add("RequestVerificationToken", token);
-        using var approveResponse = await adminClient.SendAsync(approveRequest);
+        using var approveResponse = await anonymousClient.SendAsync(approveRequest);
         Assert.Equal(HttpStatusCode.NoContent, approveResponse.StatusCode);
 
-        await using var verifyDb = new MediaDockDbContext(options);
-        var approvedUser = await verifyDb.Users.SingleAsync(user => user.NormalizedEmail == "new@example.com");
-        var approvedRequest = await verifyDb.RegistrationRequests.SingleAsync(request => request.Id == requestId);
-        Assert.Equal("active", approvedUser.Status);
-        Assert.Equal("user", approvedUser.Role);
-        Assert.Equal("approved", approvedRequest.Status);
-        Assert.Equal("admin@example.com", approvedRequest.DecidedBy);
-        Assert.NotNull(approvedRequest.DecidedAt);
-        Assert.Equal(1, await verifyDb.Users.CountAsync(user => user.Id == adminId && user.Role == "admin"));
+        await using (var verifyDb = new MediaDockDbContext(options))
+        {
+            var approvedUser = await verifyDb.Users.SingleAsync(user => user.NormalizedEmail == "new@example.com");
+            var approvedRequest = await verifyDb.RegistrationRequests.SingleAsync(request => request.Id == requestId);
+            Assert.Equal("active", approvedUser.Status);
+            Assert.Equal("user", approvedUser.Role);
+            Assert.Equal("approved", approvedRequest.Status);
+            Assert.Equal("open-mode", approvedRequest.DecidedBy);
+            Assert.NotNull(approvedRequest.DecidedAt);
+            Assert.Equal(1, await verifyDb.Users.CountAsync(user => user.Id == adminId && user.Role == "admin"));
+        }
+
+        var statusToken = await GetAntiforgeryTokenAsync(anonymousClient);
+        using var deactivateRequest = new HttpRequestMessage(HttpMethod.Put, $"/api/admin/users/{requesterId}/status")
+        {
+            Content = JsonContent.Create(new AdminUserStatusRequest("deactivated"))
+        };
+        deactivateRequest.Headers.Add("RequestVerificationToken", statusToken);
+        using var deactivateResponse = await anonymousClient.SendAsync(deactivateRequest);
+        Assert.Equal(HttpStatusCode.NoContent, deactivateResponse.StatusCode);
+
+        await using var statusDb = new MediaDockDbContext(options);
+        Assert.Equal("deactivated", await statusDb.Users
+            .Where(user => user.Id == requesterId)
+            .Select(user => user.Status)
+            .SingleAsync());
     }
 
     [Fact]

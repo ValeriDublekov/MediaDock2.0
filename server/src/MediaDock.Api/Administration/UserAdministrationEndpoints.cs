@@ -10,24 +10,10 @@ internal static class UserAdministrationEndpoints
     public static WebApplication MapUserAdministrationEndpoints(this WebApplication app)
     {
         app.MapGet("/api/admin/users", async Task<IResult> (
-            HttpContext context,
             [AsParameters] AdminUsersQuery query,
             UserAdministrationApiService service,
             CancellationToken cancellationToken) =>
         {
-            if (!TryGetIdentity(context, out var identity, out var failure))
-            {
-                return failure!;
-            }
-
-            var actor = await service.ResolveAdministratorAsync(identity!, cancellationToken);
-            if (actor is null)
-            {
-                return TypedResults.Problem(
-                    statusCode: StatusCodes.Status403Forbidden,
-                    title: "Active administrator access is required.");
-            }
-
             try
             {
                 return TypedResults.Ok(await service.GetUsersAsync(query, cancellationToken));
@@ -40,11 +26,9 @@ internal static class UserAdministrationEndpoints
             }
         })
             .WithName("GetAdminUsers")
-            .WithSummary("List accounts and registration requests for active administrators.")
+            .WithSummary("List accounts and registration requests in the current open-access mode.")
             .Produces<AdminUsersPageResponse>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden);
+            .ProducesProblem(StatusCodes.Status400BadRequest);
 
         app.MapPost("/api/admin/registration-requests/{requestId:long}/decision", async Task<IResult> (
             long requestId,
@@ -61,21 +45,12 @@ internal static class UserAdministrationEndpoints
                     title: "A valid anti-forgery token is required.");
             }
 
-            if (!TryGetIdentity(context, out var identity, out var failure))
-            {
-                return failure!;
-            }
-
-            var actor = await service.ResolveAdministratorAsync(identity!, cancellationToken);
-            if (actor is null)
-            {
-                return AdminRequiredProblem();
-            }
+            var actor = await TryResolveAdministratorAsync(context, service, cancellationToken);
 
             var result = await service.DecideRegistrationRequestAsync(
                 requestId,
                 request.Decision,
-                actor.UserId,
+                actor?.UserId,
                 cancellationToken);
             return ToResult(result);
         })
@@ -103,21 +78,12 @@ internal static class UserAdministrationEndpoints
                     title: "A valid anti-forgery token is required.");
             }
 
-            if (!TryGetIdentity(context, out var identity, out var failure))
-            {
-                return failure!;
-            }
-
-            var actor = await service.ResolveAdministratorAsync(identity!, cancellationToken);
-            if (actor is null)
-            {
-                return AdminRequiredProblem();
-            }
+            var actor = await TryResolveAdministratorAsync(context, service, cancellationToken);
 
             var result = await service.SetUserStatusAsync(
                 userId,
                 request.Status,
-                actor.UserId,
+                actor?.UserId,
                 cancellationToken);
             return ToResult(result);
         })
@@ -133,21 +99,18 @@ internal static class UserAdministrationEndpoints
         return app;
     }
 
-    private static bool TryGetIdentity(
+    private static async Task<AdministratorActor?> TryResolveAdministratorAsync(
         HttpContext context,
-        out ValidatedGoogleIdentity? identity,
-        out IResult? failure)
+        UserAdministrationApiService service,
+        CancellationToken cancellationToken)
     {
         if (context.User.Identity?.IsAuthenticated == true
-            && ValidatedGoogleIdentity.TryCreate(context.User, out identity))
+            && ValidatedGoogleIdentity.TryCreate(context.User, out var identity))
         {
-            failure = null;
-            return true;
+            return await service.ResolveAdministratorAsync(identity!, cancellationToken);
         }
 
-        identity = null;
-        failure = TypedResults.Unauthorized();
-        return false;
+        return null;
     }
 
     private static IResult AdminRequiredProblem() =>

@@ -41,6 +41,7 @@ public enum UserAdministrationResult
 public sealed class UserAdministrationApiService(MediaDockDbContext db)
 {
     private const string AdminMutationLockName = "mediadock-user-administration";
+    private const string OpenModeActor = "open-mode";
 
     public Task<AdministratorActor?> ResolveAdministratorAsync(
         ValidatedGoogleIdentity identity,
@@ -122,13 +123,15 @@ public sealed class UserAdministrationApiService(MediaDockDbContext db)
     public async Task<UserAdministrationResult> DecideRegistrationRequestAsync(
         long requestId,
         string decision,
-        long actorId,
+        long? actorId,
         CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await AcquireMutationLockAsync(cancellationToken);
-        var actorEmail = await GetActiveAdministratorEmailAsync(actorId, cancellationToken);
-        if (actorEmail is null)
+        var actorEmail = actorId.HasValue
+            ? await GetActiveAdministratorEmailAsync(actorId.Value, cancellationToken)
+            : OpenModeActor;
+        if (actorId.HasValue && actorEmail is null)
         {
             return UserAdministrationResult.Forbidden;
         }
@@ -149,7 +152,7 @@ public sealed class UserAdministrationApiService(MediaDockDbContext db)
         var now = DateTimeOffset.UtcNow;
         request.Status = decision == "approve" ? "approved" : "rejected";
         request.DecidedAt = now;
-        request.DecidedBy = actorEmail;
+        request.DecidedBy = actorEmail!;
         if (decision == "approve")
         {
             request.User.Status = "active";
@@ -165,12 +168,13 @@ public sealed class UserAdministrationApiService(MediaDockDbContext db)
     public async Task<UserAdministrationResult> SetUserStatusAsync(
         long userId,
         string status,
-        long actorId,
+        long? actorId,
         CancellationToken cancellationToken)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await AcquireMutationLockAsync(cancellationToken);
-        if (await GetActiveAdministratorEmailAsync(actorId, cancellationToken) is null)
+        if (actorId.HasValue
+            && await GetActiveAdministratorEmailAsync(actorId.Value, cancellationToken) is null)
         {
             return UserAdministrationResult.Forbidden;
         }
