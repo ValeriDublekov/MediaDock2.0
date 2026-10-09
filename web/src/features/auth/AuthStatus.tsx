@@ -8,20 +8,30 @@ function requestStateLabel(status: string) {
   return 'Registration request rejected'
 }
 
+function isUnauthorizedError(error: unknown) {
+  return error instanceof Error && 'status' in error && error.status === 401
+}
 export function AuthStatus() {
   const [session, setSession] = useState<CurrentSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [invalidSession, setInvalidSession] = useState(false)
 
   useEffect(() => {
     let active = true
     void getCurrentSession()
       .then((currentSession) => {
-        if (active) setSession(currentSession)
+        if (active) {
+          setSession(currentSession)
+          setInvalidSession(false)
+        }
       })
       .catch((loadError: unknown) => {
-        if (active) setError(loadError instanceof Error ? loadError.message : 'Could not load sign-in status.')
+        if (active) {
+          setError(loadError instanceof Error ? loadError.message : 'Could not load sign-in status.')
+          setInvalidSession(isUnauthorizedError(loadError))
+        }
       })
       .finally(() => {
         if (active) setLoading(false)
@@ -35,8 +45,10 @@ export function AuthStatus() {
     try {
       await action()
       setSession(await getCurrentSession())
+      setInvalidSession(false)
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : 'The sign-in action failed.')
+      setInvalidSession(isUnauthorizedError(actionError))
     } finally {
       setBusy(false)
     }
@@ -51,7 +63,8 @@ export function AuthStatus() {
         <span className="auth-summary" role="status">Checking sign-in status</span>
       ) : session === null ? (
         <>
-          <span className="auth-message" role="status">Sign-in status unavailable</span>
+          <span className="auth-message" role="status">{invalidSession ? 'The saved sign-in session is invalid.' : 'Sign-in status unavailable'}</span>
+          {invalidSession && <button className="text-button" disabled={busy} onClick={() => void runAction(signOut)} type="button">Reset sign-in</button>}
           <button className="text-button" disabled={busy} onClick={() => void runAction(getCurrentSession)} type="button">Retry</button>
         </>
       ) : (

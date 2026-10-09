@@ -28,6 +28,7 @@ vi.mock('./features/history/HistoryView', () => ({
     <div>History scan: {scanRunId ?? 'all'}<button onClick={onClearScanRun} type="button">Clear scan</button></div>
   ),
 }))
+vi.mock('./features/users/UsersView', () => ({ UsersView: () => <div>Users route content</div> }))
 
 function LocationProbe() {
   const location = useLocation()
@@ -51,6 +52,7 @@ describe('App routes', () => {
     ['/configuration/personal-ratings', 'Personal IMDb ratings'],
     ['/configuration/omdb', 'OMDb provider'],
     ['/configuration/system', 'System'],
+    ['/configuration/users', 'Users'],
     ['/history', 'Scan history'],
   ])('opens %s directly', (path, heading) => {
     renderAt(path)

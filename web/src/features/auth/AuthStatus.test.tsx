@@ -58,6 +58,21 @@ describe('AuthStatus', () => {
     expect(screen.getByRole('link', { name: 'Sign in with Google' }).getAttribute('href')).toBe('/api/auth/google/login')
   })
 
+  it('clears an invalid saved session before offering a fresh sign-in', async () => {
+    vi.mocked(getCurrentSession)
+      .mockRejectedValueOnce(Object.assign(new Error('Unauthorized'), { status: 401 }))
+      .mockResolvedValueOnce(anonymousSession)
+    vi.mocked(signOut).mockResolvedValue(undefined)
+
+    render(<AuthStatus />)
+
+    expect(await screen.findByText('The saved sign-in session is invalid.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Reset sign-in' }))
+
+    expect(await screen.findByText('Anonymous access')).toBeTruthy()
+    expect(signOut).toHaveBeenCalledOnce()
+  })
+
   it('shows linked account and request state without offering a duplicate request', async () => {
     vi.mocked(getCurrentSession).mockResolvedValue(linkedSession({
       status: 'pending',

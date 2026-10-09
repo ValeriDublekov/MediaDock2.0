@@ -10,6 +10,9 @@ import {
   getBackgroundJobEvents,
   getCatalog,
   getCurrentSession,
+  getAdminUsers,
+  decideRegistrationRequest,
+  setAdminUserStatus,
   getDeploymentStatus,
   getGoldenGlobeCategories,
   getGoldenGlobeFilms,
@@ -210,6 +213,33 @@ describe('typed API client', () => {
     expect(String(registrationStub.calls[0]?.input)).toBe('/api/auth/registration-requests')
     expect(registrationStub.calls[0]?.init?.method).toBe('POST')
     expect(new Headers(registrationStub.calls[0]?.init?.headers).get('RequestVerificationToken')).toBe('csrf-token')
+  })
+
+  it('filters admin users and protects account decisions with antiforgery tokens', async () => {
+    const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = []
+    const fetcher: typeof fetch = async (input, init) => {
+      calls.push({ input, init })
+      if (String(input) === '/api/auth/antiforgery') return response(200, { requestToken: 'admin-csrf' })
+      if (init?.method === 'GET' || !init?.method) return response(200, { items: [], page: 1, pageSize: 50, totalCount: 0, totalPages: 0 })
+      return response(204, undefined)
+    }
+
+    await getAdminUsers({ state: 'requested', search: 'new@example.com', page: 2, pageSize: 50 }, fetcher)
+    await decideRegistrationRequest(17, 'approve', fetcher)
+    await setAdminUserStatus(21, 'deactivated', fetcher)
+
+    const usersUrl = new URL(String(calls[0]?.input), 'http://localhost')
+    expect(usersUrl.pathname).toBe('/api/admin/users')
+    expect(usersUrl.searchParams.get('state')).toBe('requested')
+    expect(usersUrl.searchParams.get('search')).toBe('new@example.com')
+    expect(usersUrl.searchParams.get('page')).toBe('2')
+    expect(String(calls[2]?.input)).toBe('/api/admin/registration-requests/17/decision')
+    expect(calls[2]?.init?.method).toBe('POST')
+    expect(JSON.parse(String(calls[2]?.init?.body))).toEqual({ decision: 'approve' })
+    expect(new Headers(calls[2]?.init?.headers).get('RequestVerificationToken')).toBe('admin-csrf')
+    expect(String(calls[4]?.input)).toBe('/api/admin/users/21/status')
+    expect(calls[4]?.init?.method).toBe('PUT')
+    expect(JSON.parse(String(calls[4]?.init?.body))).toEqual({ status: 'deactivated' })
   })
 
   it('queues a scan and fetches job events with a cursor', async () => {

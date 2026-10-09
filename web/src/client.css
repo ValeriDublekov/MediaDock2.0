@@ -74,6 +74,15 @@ button:disabled { cursor: not-allowed; }
 .text-button { min-height: 34px; border: 0; padding: 0 7px; color: #ab4732; background: transparent; font-size: 11px; font-weight: 700; }
 .text-button:hover { color: #202927; text-decoration: underline; }
 
+.users-toolbar { display: flex; align-items: end; gap: 12px; margin: 16px 0 20px; border-block: 1px solid #d6dfd7; padding: 12px 0; }
+.users-state-filter { width: min(210px, 100%); }
+.users-search { display: flex; align-items: end; gap: 8px; flex: 1; }
+.users-search .field { width: min(320px, 100%); }
+.users-toolbar .result-count { margin: 0 0 10px auto; white-space: nowrap; }
+.users-table td:first-child { min-width: 210px; }
+.users-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.users-actions .button { min-height: 32px; padding-inline: 9px; font-size: 11px; }
+
 .table-wrap { width: 100%; overflow-x: auto; border-top: 1px solid #cbd6cd; }
 .data-table { width: 100%; border-collapse: collapse; text-align: left; }
 .data-table th { height: 39px; border-bottom: 1px solid #cbd6cd; padding: 0 12px; color: #728078; font-size: 9px; font-weight: 800; letter-spacing: 0.8px; white-space: nowrap; }
@@ -389,6 +398,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offs
 }
 
 @media (max-width: 620px) {
+  .users-toolbar { align-items: stretch; flex-wrap: wrap; }
+  .users-state-filter, .users-search { width: 100%; }
+  .users-search .field { flex: 1; }
+  .users-toolbar .result-count { margin: 0; }
+  .users-table { min-width: 700px; }
   .filter-form.browse-filters { grid-template-columns: minmax(0, 1fr); }
   .browse-filters .filter-search { grid-column: 1; grid-row: 1; }
   .browse-filters .year-range-filter { grid-column: 1; grid-row: 2; }

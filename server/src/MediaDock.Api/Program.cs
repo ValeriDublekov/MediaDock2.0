@@ -3,6 +3,7 @@ using MediaDock.Api.Awards;
 using MediaDock.Api.Authentication;
 using MediaDock.Api.BackgroundJobs;
 using MediaDock.Api.Favorites;
+using MediaDock.Api.Administration;
 using MediaDock.Api.Health;
 using MediaDock.Api.GoldenGlobes;
 using MediaDock.Api.Middleware;
@@ -29,6 +30,7 @@ builder.Services.AddDbContext<MediaDockDbContext>(options =>
 	options.UseNpgsql(builder.Configuration.GetConnectionString("MediaDock")
 		?? throw new InvalidOperationException("ConnectionStrings:MediaDock must be configured.")));
 builder.Services.AddScoped<InitialAdminBootstrapper>();
+builder.Services.AddScoped<UserAdministrationApiService>();
 builder.Services.AddIngestionInfrastructure();
 builder.Services.AddScoped<MediaDock.Infrastructure.GoldenGlobes.GoldenGlobeDatasetImporter>();
 builder.Services.AddScoped<BackgroundJobApiService>();
@@ -117,6 +119,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapHealthEndpoints();
 app.MapAuthenticationEndpoints();
+app.MapUserAdministrationEndpoints();
 app.MapCatalogEndpoints();
 app.MapMovieAwardsEndpoints();
 app.MapFavoriteEndpoints();

@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
+using MediaDock.Api.Administration;
 using MediaDock.Api.Authentication;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
@@ -347,6 +348,161 @@ public sealed class GoogleAuthenticationApiTests
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
+    [Fact]
+    public async Task UserAdministrationRequiresAnActiveAdminAndApprovalActivatesTheRequester()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_user_admin_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        long requestId;
+        long adminId;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            var admin = new User
+            {
+                NormalizedEmail = "admin@example.com",
+                GivenName = "Admin",
+                FamilyName = "Account",
+                Status = "active",
+                Role = "admin",
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            admin.ExternalIdentities.Add(new ExternalIdentity
+            {
+                User = admin,
+                Issuer = GoogleSignInSettings.GoogleIssuer,
+                Subject = "admin-subject",
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            var requester = new User
+            {
+                NormalizedEmail = "new@example.com",
+                GivenName = "New",
+                FamilyName = "User",
+                Status = "pending",
+                Role = null,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            requester.ExternalIdentities.Add(new ExternalIdentity
+            {
+                User = requester,
+                Issuer = GoogleSignInSettings.GoogleIssuer,
+                Subject = "requester-subject",
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            var registrationRequest = new RegistrationRequest
+            {
+                User = requester,
+                RequestedAt = DateTimeOffset.UtcNow,
+                Status = "pending"
+            };
+            db.Users.AddRange(admin, requester);
+            db.RegistrationRequests.Add(registrationRequest);
+            await db.SaveChangesAsync();
+            requestId = registrationRequest.Id;
+            adminId = admin.Id;
+        }
+
+        using var anonymousFactory = new ApiFactory(connectionString);
+        using var anonymousClient = anonymousFactory.CreateClient();
+        using var anonymousResponse = await anonymousClient.GetAsync("/api/admin/users");
+        Assert.True(
+            anonymousResponse.StatusCode == HttpStatusCode.Unauthorized,
+            $"Expected 401 but received {(int)anonymousResponse.StatusCode}: {await anonymousResponse.Content.ReadAsStringAsync()}");
+
+        using var regularUserFactory = new ApiFactory(connectionString, CreatePrincipal(subject: "requester-subject"));
+        using var regularUserClient = regularUserFactory.CreateClient();
+        using var regularUserResponse = await regularUserClient.GetAsync("/api/admin/users");
+        Assert.Equal(HttpStatusCode.Forbidden, regularUserResponse.StatusCode);
+
+        using var adminFactory = new ApiFactory(connectionString, CreatePrincipal(email: "admin@example.com", subject: "admin-subject"));
+        using var adminClient = adminFactory.CreateClient();
+        using var listResponse = await adminClient.GetAsync("/api/admin/users?state=requested");
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+        var users = await listResponse.Content.ReadFromJsonAsync<AdminUsersPageResponse>();
+        Assert.NotNull(users);
+        var listedRequester = Assert.Single(users.Items);
+        Assert.Equal("new@example.com", listedRequester.Email);
+        Assert.Equal("pending", listedRequester.RegistrationRequest?.Status);
+
+        var token = await GetAntiforgeryTokenAsync(adminClient);
+        using var approveRequest = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/registration-requests/{requestId}/decision")
+        {
+            Content = JsonContent.Create(new AdminRegistrationDecisionRequest("approve"))
+        };
+        approveRequest.Headers.Add("RequestVerificationToken", token);
+        using var approveResponse = await adminClient.SendAsync(approveRequest);
+        Assert.Equal(HttpStatusCode.NoContent, approveResponse.StatusCode);
+
+        await using var verifyDb = new MediaDockDbContext(options);
+        var approvedUser = await verifyDb.Users.SingleAsync(user => user.NormalizedEmail == "new@example.com");
+        var approvedRequest = await verifyDb.RegistrationRequests.SingleAsync(request => request.Id == requestId);
+        Assert.Equal("active", approvedUser.Status);
+        Assert.Equal("user", approvedUser.Role);
+        Assert.Equal("approved", approvedRequest.Status);
+        Assert.Equal("admin@example.com", approvedRequest.DecidedBy);
+        Assert.NotNull(approvedRequest.DecidedAt);
+        Assert.Equal(1, await verifyDb.Users.CountAsync(user => user.Id == adminId && user.Role == "admin"));
+    }
+
+    [Fact]
+    public async Task LastActiveAdministratorCannotBeDeactivated()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_last_admin_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        long adminId;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            var admin = new User
+            {
+                NormalizedEmail = "admin@example.com",
+                GivenName = "Admin",
+                FamilyName = "Account",
+                Status = "active",
+                Role = "admin",
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            admin.ExternalIdentities.Add(new ExternalIdentity
+            {
+                User = admin,
+                Issuer = GoogleSignInSettings.GoogleIssuer,
+                Subject = "admin-subject",
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            db.Users.Add(admin);
+            await db.SaveChangesAsync();
+            adminId = admin.Id;
+        }
+
+        using var factory = new ApiFactory(connectionString, CreatePrincipal(email: "admin@example.com", subject: "admin-subject"));
+        using var client = factory.CreateClient();
+        var token = await GetAntiforgeryTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/admin/users/{adminId}/status")
+        {
+            Content = JsonContent.Create(new AdminUserStatusRequest("deactivated"))
+        };
+        request.Headers.Add("RequestVerificationToken", token);
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        await using var verifyDb = new MediaDockDbContext(options);
+        var adminUser = await verifyDb.Users.SingleAsync(user => user.Id == adminId);
+        Assert.Equal("active", adminUser.Status);
+        Assert.Equal("admin", adminUser.Role);
+    }
+
     private static async Task<string> GetAntiforgeryTokenAsync(HttpClient client)
     {
         using var response = await client.GetAsync("/api/auth/antiforgery");
@@ -355,13 +511,17 @@ public sealed class GoogleAuthenticationApiTests
         return token!.RequestToken;
     }
 
-    private static ClaimsPrincipal CreatePrincipal(bool emailVerified = true, bool includeNames = true)
+    private static ClaimsPrincipal CreatePrincipal(
+        bool emailVerified = true,
+        bool includeNames = true,
+        string email = "Person@Example.com",
+        string subject = "google-subject-1")
     {
         var claims = new List<Claim>
         {
             new(GoogleSignInSettings.IssuerClaimType, GoogleSignInSettings.GoogleIssuer),
-            new("sub", "google-subject-1"),
-            new("email", "Person@Example.com"),
+            new("sub", subject),
+            new("email", email),
             new("email_verified", emailVerified ? "true" : "false")
         };
         if (includeNames)

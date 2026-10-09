@@ -382,6 +382,28 @@ export interface RegistrationRequestStatus {
   decidedAt: string | null
 }
 
+export type AdminUserState = 'all' | 'requested' | 'active' | 'deactivated'
+
+export interface AdminUserQuery {
+  state?: AdminUserState
+  search?: string
+  page?: number
+  pageSize?: number
+}
+
+export interface AdminUser {
+  id: number
+  email: string
+  givenName: string
+  familyName: string
+  status: 'pending' | 'active' | 'deactivated'
+  role: 'admin' | 'user' | null
+  createdAt: string
+  registrationRequest: (RegistrationRequestStatus & { id: number }) | null
+}
+
+export interface AdminUsersPage extends PageResponse<AdminUser> {}
+
 export interface CurrentSession {
   authenticated: boolean
   identity: CurrentSessionIdentity | null

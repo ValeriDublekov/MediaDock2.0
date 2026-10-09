@@ -23,12 +23,51 @@ server configuration. The app has no login. PostgreSQL remains bound to
 - The deploy dump is root-only and has been confirmed in the latest Restic snapshot.
 - This host still runs the pre-background-jobs release. The legacy Worker service is installed, its timer is not installed or enabled, and no scan has run. The repository's API-hosted ingestion migrations have not been deployed.
 - LAN readiness/UI/catalog checks returned HTTP 200. Router port-forward and non-LAN denial checks remain unverified.
+- Since 2026-10-09, the remote-managed Cloudflare Tunnel for `media.valyo.eu` routes to `http://api:8080`. An unauthenticated HTTPS readiness request returned HTTP 302 at Cloudflare Access. The pinned cloudflared connector has no published host ports, uses `/etc/cloudflared/media.valyo.eu.token` (`root:cloudflared`, mode `0440`), and shares a dedicated bridge with the API only. Direct-origin non-LAN denial and router port-forward checks remain unverified.
 
 The installation instructions below describe how to provision or operate the units; this status block records the verified production state.
 
 ## LAN API Firewall
 
 The optional `mediadock-next-firewall.service` reads `/etc/default/mediadock-next-firewall`. Create that root-owned host file with `APP_BIND_ADDRESS`, `APP_PORT`, and `TRUSTED_LAN_CIDR` before enabling the unit; use a specific IPv4 bind and the intended trusted subnet. Keep the real host address and subnet out of Git. The unit limits filtering to the configured API destination and must not be treated as authentication.
+
+## Cloudflare Tunnel
+
+The API and PostgreSQL share the Compose default network, so do not attach the
+Tunnel connector to that network. Use the separate Docker bridge
+`mediadock-next-cloudflared`, attach only the API container to it, and configure
+the Cloudflare public hostname service as `http://api:8080`. The checked-in
+`deploy/attach-cloudflared-network.sh` helper restores the API attachment after
+the deployment service recreates the API container.
+
+Install the helper and systemd drop-in, create the external network, then reload
+systemd and run the helper once for the current API container:
+
+```sh
+sudo install -o root -g root -m 0750 deploy/attach-cloudflared-network.sh /usr/local/sbin/mediadock-next-attach-cloudflared-network
+sudo install -d -o root -g root -m 0755 /etc/systemd/system/mediadock-next-deploy.service.d
+sudo install -o root -g root -m 0644 deploy/systemd/mediadock-next-deploy-cloudflared.conf /etc/systemd/system/mediadock-next-deploy.service.d/10-cloudflared.conf
+sudo docker network create mediadock-next-cloudflared
+sudo systemctl daemon-reload
+sudo /usr/local/sbin/mediadock-next-attach-cloudflared-network
+```
+
+Store the remote-managed tunnel token in `/etc/cloudflared/media.valyo.eu.token`
+as `root:65532` mode `0440`; the connector runs as UID/GID `65532` and mounts
+that file read-only. Enter the token at a hidden terminal prompt, never in a
+command argument or repository file. Run the connector on the dedicated bridge,
+pin its image by digest, use a restart policy, and do not publish host ports.
+Cloudflare Access remains the external access gate; the application itself has
+no API authorization. Confirm that the host firewall continues to limit direct
+API access to the trusted LAN.
+
+For HTTPS-aware application callbacks, set the ignored production `.env`
+variable `FORWARDED_HEADERS_TRUSTED_NETWORK` to the subnet of this dedicated
+bridge. Read it with
+`sudo docker network inspect mediadock-next-cloudflared --format '{{(index .IPAM.Config 0).Subnet}}'`.
+The API honors only `X-Forwarded-Proto`, only from that CIDR, and only one hop;
+forwarded-header processing stays disabled when the variable is empty. Never
+use the Compose default network or a wildcard CIDR as the trusted network.
 
 These host-side systemd units are for a single Ubuntu host. The production
 Compose project is installed at `/opt/docker/projects/mediadock-next` and

@@ -8,6 +8,7 @@ import { FavoritesView } from './features/favorites/FavoritesView'
 import { SourceSettingsView } from './features/sources/SourceSettingsView'
 import { IngestionSettingsView, OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './features/sources/ConfigurationSettingsViews'
 import { AuthStatus } from './features/auth/AuthStatus'
+import { UsersView } from './features/users/UsersView'
 
 type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'sources' | 'history'
 
@@ -26,6 +27,7 @@ const configurationPages = [
   { path: '/configuration/ingestion', label: 'Ingestion', description: 'Import and enrich award datasets.' },
   { path: '/configuration/personal-ratings', label: 'Personal IMDb ratings', description: 'Import and maintain your IMDb ratings.' },
   { path: '/configuration/omdb', label: 'OMDb provider', description: 'Configure provider credentials and shared request limits.' },
+  { path: '/configuration/users', label: 'Users', description: 'Review registration requests and manage account status.' },
 ]
 
 const sectionContent: Record<Section, { eyebrow: string; title: string; description: string }> = {
@@ -165,6 +167,7 @@ function AppContent() {
             <Route path="/configuration/personal-ratings" element={<PersonalRatingsView />} />
             <Route path="/configuration/omdb" element={<OmdbProviderView />} />
             <Route path="/configuration/system" element={<SystemSettingsView />} />
+            <Route path="/configuration/users" element={<UsersView />} />
             <Route path="/history" element={<HistoryView scanRunId={historyScanRunId} onClearScanRun={() => setSearchParams({})} />} />
             <Route path="*" element={<Navigate replace to="/catalog" />} />
           </Routes>

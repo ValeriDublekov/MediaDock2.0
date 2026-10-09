@@ -1,9 +1,11 @@
 # Users and Access Control: Implementation Plan
 
-**Status:** Planned; implementation not started  
+**Status:** Partially implemented; broad access control and per-user data ownership remain planned
 **Source design:** [Users and access control plan](USERS_AND_ACCESS_CONTROL_PLAN.md)
 
 **Prerequisite:** The [Google authentication and registration requests plan](GOOGLE_AUTHENTICATION_PLAN.md) is complete for source implementation and documentation. It adds optional OIDC sign-in and identity persistence without enforcing authorization or changing shared personal data. Reuse its schema, session, linking, registration-request, and bootstrap flows; do not recreate them here. Google Cloud client provisioning and the production LAN HTTPS callback remain operator setup gates, not blockers to starting this plan's code work.
+
+**Implementation update (2026-10-09):** A limited Users workflow now lists accounts and registration requests, approves/rejects requests, and activates/deactivates accounts. These routes perform their own active-admin check and do not depend on the still-unimplemented system-wide policies in Session 3. This does not complete Sessions 2, 3, 6, or 7: other routes remain open, roles cannot be changed in the UI, and personal data is still shared.
 
 This document turns the source design into bounded implementation sessions. Each session should end with its acceptance checks passing and a short handoff recording completed work, decisions, and the next session. Do not deploy or migrate production data as part of a coding session.
 
@@ -13,13 +15,13 @@ Before the Google authentication foundation, the implementation has one shared `
 
 The original source design placed user/role management before enforcement. That would be unsafe even after optional sign-in exists: without authorization, any client that reaches the API could create accounts, change roles, or deactivate an account. A persistent warning explains the risk but does not prevent it.
 
-**Required safety adjustment:** while authorization is disabled, preserve the existing single-profile behavior under one bootstrap owner. Do not expose multi-user selection, user/role management, or APIs that accept an owner ID. The warning remains visible, and the existing loopback/LAN boundary remains mandatory. Provision and link the first administrator through an explicit operator-controlled bootstrap procedure; expose normal user administration only after authorization is enforced. Registration requests created by the prerequisite plan do not grant permissions and must not be approved through an unprotected application endpoint.
+**Required safety adjustment:** while general authorization is disabled, preserve the existing single-profile behavior under one bootstrap owner. Do not expose multi-user selection, per-user data access, or APIs that accept an owner ID. Account review operations must independently verify a currently active administrator from the validated server-side identity and protect cookie mutations against CSRF. The warning remains visible, and the existing loopback/LAN boundary remains mandatory. Registration requests do not grant permissions and must never be approved through an unprotected endpoint.
 
 Treat these decisions as a gate, not implementation assumptions. Close them in Session 0:
 
 - Verify the implemented Google OIDC provider and same-origin server-managed session against the prerequisite plan and source. Reuse its validated issuer/subject identity, verified-email policy, 12-hour non-sliding protected cookie, anti-forgery protection, account-link confirmation, and host-only bootstrap. Resolve implementation gaps before enforcement; do not duplicate the login flow.
 - Accepted email policy. Email is a normalized, unique account attribute, not durable provider identity. Persist provider identity by validated `issuer` plus `subject`.
-- Reuse the existing operator-supplied one-shot `bootstrap-admin` Compose tool, populated only from the validated session response; it does not verify Google claims itself. Reuse the explicit one-time server-derived account-link confirmation. Do not add public bootstrap, approval, or role-management endpoints. Registration-request review remains host/operator-controlled until protected administration exists.
+- Reuse the existing operator-supplied one-shot `bootstrap-admin` Compose tool, populated only from the validated session response; it does not verify Google claims itself. Reuse the explicit one-time server-derived account-link confirmation. Never add public bootstrap, approval, or role-management endpoints. Registration review may use narrowly protected admin-only endpoints; creating users and changing roles remain host/operator-controlled until the planned system-wide authorization work is complete.
 - Deactivation and deletion policy. Recommended initial behavior: deactivate and retain personal rows; do not cascade-delete or reassign them implicitly.
 - Initial roles/capabilities. The identity schema uses `admin` and `user`; administrators do not read or edit another user's personal rows by default. Authorization capabilities and enforcement remain to be decided here.
 - Exact routes available anonymously, the explicit authorization-disabled configuration, and the conditions under which enforcement may be enabled.
@@ -113,3 +115,5 @@ Record the decisions in the source design or a short decision record before Sess
 ## Session Handoff
 
 At the end of each session, record the completed session number, changed files, test commands/results, decisions or blockers, and the next session's entry point. Do not begin a later session while the current session's exit checks are failing; update this plan if implementation evidence requires a design change.
+
+**Incremental handoff (2026-10-09):** Added `GET /api/admin/users`, protected registration-request decisions, and account activation/deactivation. Every request resolves the validated Google issuer/subject to a currently active admin in PostgreSQL; mutations require anti-forgery validation, decisions are transactional, and the last active administrator cannot be deactivated. Configuration > Users provides search, filters, pagination, approval/rejection, and activation controls. The auth/admin integration suite passed 9/9; the web suite passed 93/93; Oxlint and the production web build succeeded. Lint reports five existing warnings outside the Users feature. The broader access matrix, ownership migration, role changes, and per-user favorites/ratings remain unimplemented.

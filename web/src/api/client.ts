@@ -1,4 +1,6 @@
 import type {
+  AdminUserQuery,
+  AdminUsersPage,
   CatalogQuery,
   CatalogTitle,
   CurrentSession,
@@ -246,6 +248,27 @@ export function requestRegistration(fetcher?: typeof fetch) {
 
 export function signOut(fetcher?: typeof fetch) {
   return postAuthChange<void>('/auth/logout', fetcher)
+}
+
+export function getAdminUsers(query: AdminUserQuery = {}, fetcher?: typeof fetch) {
+  return requestJson<AdminUsersPage>(withQuery('/admin/users', query), {}, fetcher)
+}
+
+async function adminMutation(path: string, method: 'POST' | 'PUT', body: object, fetcher?: typeof fetch) {
+  const requestToken = await getAuthRequestToken(fetcher)
+  return requestJson<void>(path, {
+    method,
+    body: JSON.stringify(body),
+    headers: { RequestVerificationToken: requestToken },
+  }, fetcher)
+}
+
+export function decideRegistrationRequest(id: number, decision: 'approve' | 'reject', fetcher?: typeof fetch) {
+  return adminMutation(`/admin/registration-requests/${id}/decision`, 'POST', { decision }, fetcher)
+}
+
+export function setAdminUserStatus(id: number, status: 'active' | 'deactivated', fetcher?: typeof fetch) {
+  return adminMutation(`/admin/users/${id}/status`, 'PUT', { status }, fetcher)
 }
 
 export function getDeploymentStatus(fetcher?: typeof fetch) {
