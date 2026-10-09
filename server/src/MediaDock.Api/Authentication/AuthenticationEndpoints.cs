@@ -51,9 +51,26 @@ internal static class AuthenticationEndpoints
 
             if (!ValidatedGoogleIdentity.TryCreate(context.User, out var identity, out var failureCode))
             {
+                int? emailVerificationClaimCount = null;
+                string? emailVerificationClaimState = null;
+                if (failureCode == "missing_or_ambiguous_email_verification")
+                {
+                    var claims = context.User.FindAll("email_verified").ToArray();
+                    emailVerificationClaimCount = claims.Length;
+                    emailVerificationClaimState = claims.Length switch
+                    {
+                        0 => "missing",
+                        > 1 => "multiple",
+                        _ when string.IsNullOrWhiteSpace(claims[0].Value) => "blank",
+                        _ => "single_nonblank"
+                    };
+                }
+
                 logger.LogWarning(
-                    "Rejected authenticated Google session. ReasonCode {ReasonCode}. TraceId {TraceId}",
+                    "Rejected authenticated Google session. ReasonCode {ReasonCode}. EmailVerificationClaimCount {EmailVerificationClaimCount}. EmailVerificationClaimState {EmailVerificationClaimState}. TraceId {TraceId}",
                     failureCode,
+                    emailVerificationClaimCount,
+                    emailVerificationClaimState,
                     context.TraceIdentifier);
                 return TypedResults.Problem(
                     statusCode: StatusCodes.Status401Unauthorized,

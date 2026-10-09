@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
@@ -310,6 +311,31 @@ public sealed class GoogleAuthenticationApiTests
         Assert.Empty(await verifyDb.RegistrationRequests.ToListAsync());
     }
 
+    [Theory]
+    [InlineData(0, "missing")]
+    [InlineData(2, "multiple")]
+    public async Task InvalidEmailVerificationClaimShapeIsLoggedWithoutClaimValues(
+        int claimCount,
+        string expectedClaimState)
+    {
+        using var loggerProvider = new TestLoggerProvider();
+        using var factory = new ApiFactory(
+            "Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test",
+            CreatePrincipal(emailVerificationClaimCount: claimCount),
+            loggerProvider);
+        using var client = factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/auth/session");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var warning = Assert.Single(loggerProvider.Messages.Where(message =>
+            message.Contains("ReasonCode missing_or_ambiguous_email_verification", StringComparison.Ordinal)));
+        Assert.Contains($"EmailVerificationClaimCount {claimCount}", warning, StringComparison.Ordinal);
+        Assert.Contains($"EmailVerificationClaimState {expectedClaimState}", warning, StringComparison.Ordinal);
+        Assert.Contains("TraceId", warning, StringComparison.Ordinal);
+        Assert.False(warning.Contains("Person@Example.com", StringComparison.OrdinalIgnoreCase));
+    }
+
     [Fact]
     public async Task LinkIsRejectedWhenEmailBelongsToAnAlreadyLinkedAccount()
     {
@@ -544,15 +570,20 @@ public sealed class GoogleAuthenticationApiTests
         bool emailVerified = true,
         bool includeNames = true,
         string email = "Person@Example.com",
-        string subject = "google-subject-1")
+        string subject = "google-subject-1",
+        int emailVerificationClaimCount = 1)
     {
         var claims = new List<Claim>
         {
             new(GoogleSignInSettings.IssuerClaimType, GoogleSignInSettings.GoogleIssuer),
             new("sub", subject),
-            new("email", email),
-            new("email_verified", emailVerified ? "true" : "false")
+            new("email", email)
         };
+        for (var index = 0; index < emailVerificationClaimCount; index++)
+        {
+            claims.Add(new Claim("email_verified", emailVerified ? "true" : "false"));
+        }
+
         if (includeNames)
         {
             claims.Add(new Claim("given_name", "Google"));
@@ -576,10 +607,18 @@ public sealed class GoogleAuthenticationApiTests
         return GoogleSignInSettings.FromConfiguration(configuration);
     }
 
-    private sealed class ApiFactory(string connectionString, ClaimsPrincipal? principal = null) : WebApplicationFactory<Program>
+    private sealed class ApiFactory(
+        string connectionString,
+        ClaimsPrincipal? principal = null,
+        ILoggerProvider? loggerProvider = null) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            if (loggerProvider is not null)
+            {
+                builder.ConfigureLogging(logging => logging.AddProvider(loggerProvider));
+            }
+
             builder.ConfigureAppConfiguration((_, configuration) =>
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
@@ -597,6 +636,36 @@ public sealed class GoogleAuthenticationApiTests
                 services.PostConfigure<AuthenticationOptions>(options =>
                     options.DefaultAuthenticateScheme = TestGoogleOptions.Scheme);
             });
+        }
+    }
+
+    private sealed class TestLoggerProvider : ILoggerProvider
+    {
+        private readonly ConcurrentQueue<string> _messages = new();
+
+        public IReadOnlyCollection<string> Messages => _messages.ToArray();
+
+        public ILogger CreateLogger(string categoryName) => new TestLogger(_messages);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class TestLogger(ConcurrentQueue<string> messages) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                messages.Enqueue(formatter(state, exception));
+            }
         }
     }
 
