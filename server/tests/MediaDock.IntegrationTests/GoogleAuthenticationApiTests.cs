@@ -268,6 +268,7 @@ public sealed class GoogleAuthenticationApiTests
 
         using var rejectedResponse = await unverifiedClient.GetAsync("/api/auth/session");
         Assert.Equal(HttpStatusCode.Unauthorized, rejectedResponse.StatusCode);
+        Assert.Contains("email_not_verified", await rejectedResponse.Content.ReadAsStringAsync());
         Assert.True(rejectedResponse.Headers.TryGetValues("X-MediaDock-TraceId", out var sessionTraceIds));
         Assert.NotEmpty(sessionTraceIds!);
 

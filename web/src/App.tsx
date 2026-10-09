@@ -114,11 +114,11 @@ function RegistrationGate({
 function AuthDiagnosticDetails({ diagnostic }: { diagnostic: AuthDiagnostic }) {
   return (
     <dl className="auth-diagnostic-details">
-      <div><dt>Operation</dt><dd>{diagnostic.operation}</dd></div>
-      <div><dt>Endpoint</dt><dd><code>{diagnostic.endpoint}</code></dd></div>
-      <div><dt>Result</dt><dd>{diagnostic.status === 0 ? 'Network error' : diagnostic.status ? `HTTP ${diagnostic.status}` : 'Unknown'}</dd></div>
-      <div><dt>Time</dt><dd>{diagnostic.occurredAt}</dd></div>
-      {diagnostic.traceId && <div><dt>Server trace ID</dt><dd><code>{diagnostic.traceId}</code></dd></div>}
+      <div><dt>Operation:</dt><dd>{diagnostic.operation}</dd></div>
+      <div><dt>Endpoint:</dt><dd><code>{diagnostic.endpoint}</code></dd></div>
+      <div><dt>Result:</dt><dd>{diagnostic.status === 0 ? 'Network error' : diagnostic.status ? `HTTP ${diagnostic.status}` : 'Unknown'}</dd></div>
+      <div><dt>Time:</dt><dd>{diagnostic.occurredAt}</dd></div>
+      {diagnostic.traceId && <div><dt>Server trace ID:</dt><dd><code>{diagnostic.traceId}</code></dd></div>}
     </dl>
   )
 }

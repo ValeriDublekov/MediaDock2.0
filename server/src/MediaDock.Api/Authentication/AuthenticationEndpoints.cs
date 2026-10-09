@@ -32,7 +32,7 @@ internal static class AuthenticationEndpoints
             .WithSummary("Start the optional Google sign-in flow.")
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
-        app.MapGet("/api/auth/session", async Task<Results<Ok<CurrentSessionResponse>, UnauthorizedHttpResult>> (
+        app.MapGet("/api/auth/session", async Task<Results<Ok<CurrentSessionResponse>, ProblemHttpResult>> (
             HttpContext context,
             GoogleSignInSettings signInSettings,
             GoogleSessionService sessionService,
@@ -49,12 +49,16 @@ internal static class AuthenticationEndpoints
                 });
             }
 
-            if (!ValidatedGoogleIdentity.TryCreate(context.User, out var identity))
+            if (!ValidatedGoogleIdentity.TryCreate(context.User, out var identity, out var failureCode))
             {
                 logger.LogWarning(
-                    "Rejected authenticated Google session because validated identity claims were incomplete. TraceId {TraceId}",
+                    "Rejected authenticated Google session. ReasonCode {ReasonCode}. TraceId {TraceId}",
+                    failureCode,
                     context.TraceIdentifier);
-                return TypedResults.Unauthorized();
+                return TypedResults.Problem(
+                    statusCode: StatusCodes.Status401Unauthorized,
+                    title: "Google session validation failed.",
+                    detail: $"Reason code: {failureCode}. Reset sign-in and sign in again.");
             }
 
             var session = await sessionService.GetCurrentSessionAsync(identity!, cancellationToken);
@@ -63,7 +67,7 @@ internal static class AuthenticationEndpoints
             .WithName("GetCurrentSession")
             .WithSummary("Return the optional Google identity associated with this browser session.")
             .Produces<CurrentSessionResponse>(StatusCodes.Status200OK)
-            .Produces(StatusCodes.Status401Unauthorized);
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         app.MapGet("/api/auth/antiforgery", (HttpContext context, IAntiforgery antiforgery) =>
         {

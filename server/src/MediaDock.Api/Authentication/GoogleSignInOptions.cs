@@ -85,30 +85,78 @@ public sealed record ValidatedGoogleIdentity(
     string? FamilyName)
 {
     public static bool TryCreate(ClaimsPrincipal principal, out ValidatedGoogleIdentity? identity)
+        => TryCreate(principal, out identity, out _);
+
+    public static bool TryCreate(
+        ClaimsPrincipal principal,
+        out ValidatedGoogleIdentity? identity,
+        out string failureCode)
     {
         identity = null;
-        if (principal.Identity?.IsAuthenticated != true
-            || !TrySingleClaim(principal, GoogleSignInSettings.IssuerClaimType, required: true, out var issuer)
-            || !string.Equals(issuer, GoogleSignInSettings.GoogleIssuer, StringComparison.Ordinal)
-            || !TrySingleClaim(principal, "sub", required: true, out var subject)
-            || string.IsNullOrWhiteSpace(subject)
-            || !TrySingleClaim(principal, "email", required: true, out var email)
-            || !TrySingleClaim(principal, "email_verified", required: true, out var verified)
-            || !string.Equals(verified, "true", StringComparison.OrdinalIgnoreCase)
-            || !TrySingleClaim(principal, "given_name", required: false, out var givenName)
-            || !TrySingleClaim(principal, "family_name", required: false, out var familyName))
+        failureCode = "invalid_google_identity";
+        if (principal.Identity?.IsAuthenticated != true)
         {
+            failureCode = "not_authenticated";
+            return false;
+        }
+
+        if (!TrySingleClaim(principal, GoogleSignInSettings.IssuerClaimType, required: true, out var issuer))
+        {
+            failureCode = "missing_or_ambiguous_issuer";
+            return false;
+        }
+
+        if (!string.Equals(issuer, GoogleSignInSettings.GoogleIssuer, StringComparison.Ordinal))
+        {
+            failureCode = "unsupported_issuer";
+            return false;
+        }
+
+        if (!TrySingleClaim(principal, "sub", required: true, out var subject))
+        {
+            failureCode = "missing_or_ambiguous_subject";
+            return false;
+        }
+
+        if (!TrySingleClaim(principal, "email", required: true, out var email))
+        {
+            failureCode = "missing_or_ambiguous_email";
+            return false;
+        }
+
+        if (!TrySingleClaim(principal, "email_verified", required: true, out var verified))
+        {
+            failureCode = "missing_or_ambiguous_email_verification";
+            return false;
+        }
+
+        if (!string.Equals(verified, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            failureCode = "email_not_verified";
+            return false;
+        }
+
+        if (!TrySingleClaim(principal, "given_name", required: false, out var givenName))
+        {
+            failureCode = "ambiguous_given_name";
+            return false;
+        }
+
+        if (!TrySingleClaim(principal, "family_name", required: false, out var familyName))
+        {
+            failureCode = "ambiguous_family_name";
+            return false;
+        }
+
+        if (subject.Length > 255)
+        {
+            failureCode = "subject_too_long";
             return false;
         }
 
         try
         {
             var normalizedEmail = UserEmail.Normalize(email);
-            if (subject.Length > 255 || issuer.Length > 255)
-            {
-                return false;
-            }
-
             identity = new ValidatedGoogleIdentity(
                 issuer,
                 subject,
@@ -116,10 +164,12 @@ public sealed record ValidatedGoogleIdentity(
                 normalizedEmail,
                 NormalizeName(givenName),
                 NormalizeName(familyName));
+            failureCode = string.Empty;
             return true;
         }
         catch (ArgumentException)
         {
+            failureCode = "invalid_email";
             return false;
         }
     }
