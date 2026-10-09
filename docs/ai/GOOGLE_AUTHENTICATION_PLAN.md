@@ -11,7 +11,7 @@ Complete this plan before the [users and access-control implementation plan](USE
 ## Behavior and security boundary
 
 - Sign-in is optional. Anonymous users continue to use the application exactly as they do today; no existing API or screen requires a Google session.
-- A signed-in user can identify an existing linked account or submit a registration request. A request does not grant or remove access to application features.
+- A signed-in user can identify an existing linked account. When a verified Google identity matches no account and includes both name claims, successful sign-in automatically submits a registration request. A request does not grant or remove access to application features.
 - User status and roles may be stored, but they have no authorization effect in this phase. Do not add role-based endpoint policies, owner scoping, or UI restrictions.
 - Favorites and personal ratings remain in the current shared-profile model. Do not assign existing rows to a new user or imply that they have become private.
 - Show a persistent warning that sign-in is optional and does not protect application data. Keep the existing loopback default and the specific-interface plus firewall allowlist requirements for LAN operation. Do not expose the API to the public internet.
@@ -48,7 +48,7 @@ The login flow should behave as follows:
 
 1. The user can continue anonymously or choose **Sign in with Google**.
 2. After successful OIDC validation, an already-linked identity is associated with its internal user for display/session purposes. This association does not alter API authorization.
-3. If a verified email matches a pre-provisioned account without a linked identity, offer the controlled one-time linking flow. If it matches no account, offer **Request registration**. On submission, atomically create a pending `users` row with the Google `given_name` and `family_name`, link the validated provider identity, and create a `registration_requests` row for that user.
+3. If a verified email matches a pre-provisioned account without a linked identity, offer the controlled one-time linking flow. If it matches no account and both Google name claims are present, automatically atomically create a pending `users` row with the Google `given_name` and `family_name`, link the validated provider identity, and create a `registration_requests` row for that user. If either name claim is missing, explain that the profile is incomplete and do not create the request.
 4. Show the request state to the requester where possible. Approval in this phase is an operator-controlled operation, not a public API or an unprotected admin screen. Approval activates the same user row and assigns its role; it still does not change application access until a later authorization phase.
 
 Seed or provision the first administrator through an explicit operator-controlled bootstrap, populate the name fields from the verified Google profile, and link the verified Google identity. Do not infer administrator status from email address, domain, or first-login order.

@@ -20,22 +20,43 @@ export function AuthStatus() {
 
   useEffect(() => {
     let active = true
-    void getCurrentSession()
-      .then((currentSession) => {
-        if (active) {
-          setSession(currentSession)
-          setInvalidSession(false)
+    async function loadSession() {
+      try {
+        const currentSession = await getCurrentSession()
+        if (!active) return
+
+        setSession(currentSession)
+        setInvalidSession(false)
+
+        if (currentSession.accountState === 'unmatched'
+          && currentSession.identity?.profileComplete
+          && !currentSession.registrationRequest) {
+          setBusy(true)
+          try {
+            await requestRegistration()
+            const updatedSession = await getCurrentSession()
+            if (active) setSession(updatedSession)
+          } catch (requestError) {
+            if (active) {
+              setError(requestError instanceof Error ? requestError.message : 'The registration request failed.')
+              setInvalidSession(isUnauthorizedError(requestError))
+            }
+          } finally {
+            if (active) setBusy(false)
+          }
         }
-      })
-      .catch((loadError: unknown) => {
+
+      } catch (loadError: unknown) {
         if (active) {
           setError(loadError instanceof Error ? loadError.message : 'Could not load sign-in status.')
           setInvalidSession(isUnauthorizedError(loadError))
         }
-      })
-      .finally(() => {
+      } finally {
         if (active) setLoading(false)
-      })
+      }
+    }
+
+    void loadSession()
     return () => { active = false }
   }, [])
 
