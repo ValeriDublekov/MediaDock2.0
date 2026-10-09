@@ -53,10 +53,17 @@ internal static class AuthenticationEndpoints
             {
                 int? emailVerificationClaimCount = null;
                 string? emailVerificationClaimState = null;
+                bool? emailVerificationClaimValuesAgree = null;
                 if (failureCode == "missing_or_ambiguous_email_verification")
                 {
                     var claims = context.User.FindAll("email_verified").ToArray();
                     emailVerificationClaimCount = claims.Length;
+                    if (claims.Length > 1)
+                    {
+                        emailVerificationClaimValuesAgree = claims.Skip(1).All(claim =>
+                            string.Equals(claim.Value, claims[0].Value, StringComparison.OrdinalIgnoreCase));
+                    }
+
                     emailVerificationClaimState = claims.Length switch
                     {
                         0 => "missing",
@@ -67,10 +74,11 @@ internal static class AuthenticationEndpoints
                 }
 
                 logger.LogWarning(
-                    "Rejected authenticated Google session. ReasonCode {ReasonCode}. EmailVerificationClaimCount {EmailVerificationClaimCount}. EmailVerificationClaimState {EmailVerificationClaimState}. TraceId {TraceId}",
+                    "Rejected authenticated Google session. ReasonCode {ReasonCode}. EmailVerificationClaimCount {EmailVerificationClaimCount}. EmailVerificationClaimState {EmailVerificationClaimState}. EmailVerificationClaimValuesAgree {EmailVerificationClaimValuesAgree}. TraceId {TraceId}",
                     failureCode,
                     emailVerificationClaimCount,
                     emailVerificationClaimState,
+                    emailVerificationClaimValuesAgree,
                     context.TraceIdentifier);
                 return TypedResults.Problem(
                     statusCode: StatusCodes.Status401Unauthorized,

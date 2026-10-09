@@ -124,7 +124,18 @@ public sealed record ValidatedGoogleIdentity(
             return false;
         }
 
-        if (!TrySingleClaim(principal, "email_verified", required: true, out var verified))
+        var emailVerificationClaims = principal.FindAll("email_verified").ToArray();
+        if (emailVerificationClaims.Length == 0)
+        {
+            failureCode = "missing_or_ambiguous_email_verification";
+            return false;
+        }
+
+        var verified = emailVerificationClaims[0].Value;
+        if (string.IsNullOrWhiteSpace(verified)
+            || emailVerificationClaims.Skip(1).Any(claim =>
+                string.IsNullOrWhiteSpace(claim.Value)
+                || !string.Equals(claim.Value, verified, StringComparison.OrdinalIgnoreCase)))
         {
             failureCode = "missing_or_ambiguous_email_verification";
             return false;

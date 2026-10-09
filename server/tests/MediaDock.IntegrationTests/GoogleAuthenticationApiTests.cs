@@ -321,7 +321,9 @@ public sealed class GoogleAuthenticationApiTests
         using var loggerProvider = new TestLoggerProvider();
         using var factory = new ApiFactory(
             "Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test",
-            CreatePrincipal(emailVerificationClaimCount: claimCount),
+            CreatePrincipal(
+                emailVerificationClaimCount: claimCount,
+                conflictingEmailVerificationClaims: claimCount > 1),
             loggerProvider);
         using var client = factory.CreateClient();
 
@@ -333,7 +335,33 @@ public sealed class GoogleAuthenticationApiTests
         Assert.Contains($"EmailVerificationClaimCount {claimCount}", warning, StringComparison.Ordinal);
         Assert.Contains($"EmailVerificationClaimState {expectedClaimState}", warning, StringComparison.Ordinal);
         Assert.Contains("TraceId", warning, StringComparison.Ordinal);
+        if (claimCount > 1)
+        {
+            Assert.Contains("EmailVerificationClaimValuesAgree False", warning, StringComparison.Ordinal);
+        }
+
         Assert.False(warning.Contains("Person@Example.com", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void IdenticalEmailVerificationClaimsAreAcceptedButConflictingClaimsAreRejected()
+    {
+        var accepted = ValidatedGoogleIdentity.TryCreate(
+            CreatePrincipal(emailVerificationClaimCount: 2),
+            out var identity,
+            out var acceptedFailureCode);
+
+        Assert.True(accepted);
+        Assert.NotNull(identity);
+        Assert.Empty(acceptedFailureCode);
+
+        var rejected = ValidatedGoogleIdentity.TryCreate(
+            CreatePrincipal(emailVerificationClaimCount: 2, conflictingEmailVerificationClaims: true),
+            out _,
+            out var rejectedFailureCode);
+
+        Assert.False(rejected);
+        Assert.Equal("missing_or_ambiguous_email_verification", rejectedFailureCode);
     }
 
     [Fact]
@@ -571,7 +599,8 @@ public sealed class GoogleAuthenticationApiTests
         bool includeNames = true,
         string email = "Person@Example.com",
         string subject = "google-subject-1",
-        int emailVerificationClaimCount = 1)
+        int emailVerificationClaimCount = 1,
+        bool conflictingEmailVerificationClaims = false)
     {
         var claims = new List<Claim>
         {
@@ -581,7 +610,10 @@ public sealed class GoogleAuthenticationApiTests
         };
         for (var index = 0; index < emailVerificationClaimCount; index++)
         {
-            claims.Add(new Claim("email_verified", emailVerified ? "true" : "false"));
+            var claimValue = conflictingEmailVerificationClaims && index > 0
+                ? emailVerified ? "false" : "true"
+                : emailVerified ? "true" : "false";
+            claims.Add(new Claim("email_verified", claimValue));
         }
 
         if (includeNames)
