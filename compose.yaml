@@ -37,6 +37,7 @@ services:
       Authentication__Google__ClientId: ${GOOGLE_AUTH_CLIENT_ID:-}
       Authentication__Google__ClientSecret: ${GOOGLE_AUTH_CLIENT_SECRET:-}
       Authentication__Google__CallbackUri: "${GOOGLE_AUTH_CALLBACK_URI:-http://localhost:8080/signin-oidc}"
+      ForwardedHeaders__TrustedNetwork: ${FORWARDED_HEADERS_TRUSTED_NETWORK:-}
       DeploymentControl__SocketPath: /run/mediadock-next-deploy-control/control.sock
     volumes:
       - type: bind

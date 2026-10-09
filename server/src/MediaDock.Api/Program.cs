@@ -14,6 +14,7 @@ using MediaDock.Api.Versioning;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Ingestion;
 using MediaDock.Infrastructure.Users;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Sockets;
 
@@ -66,6 +67,12 @@ builder.Services.AddHttpClient<DeploymentControlApiService>(client =>
 	});
 
 var app = builder.Build();
+var forwardedHeadersOptions = TrustedForwardedHeaders.CreateOptions(builder.Configuration);
+if (forwardedHeadersOptions is not null)
+{
+	app.UseForwardedHeaders(forwardedHeadersOptions);
+}
+
 var maximumUploadBytes = Math.Clamp(
 	builder.Configuration.GetValue("BackgroundJobs:MaxUploadBytes", 10 * 1024 * 1024),
 	1,

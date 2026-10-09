@@ -8,6 +8,7 @@ using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -79,6 +80,39 @@ public sealed class GoogleAuthenticationApiTests
         request.Scheme = "https";
         request.Host = new HostString("mediadock.example");
         Assert.True(secureSettings.MatchesRequestOrigin(request));
+    }
+
+    [Fact]
+    public async Task ForwardedHttpsSchemeIsAcceptedOnlyFromConfiguredProxyNetwork()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [TrustedForwardedHeaders.TrustedNetworkConfigurationKey] = "172.20.0.0/16"
+            })
+            .Build();
+        var options = TrustedForwardedHeaders.CreateOptions(configuration);
+        Assert.NotNull(options);
+
+        using var loggerFactory = LoggerFactory.Create(_ => { });
+        var middleware = new ForwardedHeadersMiddleware(_ => Task.CompletedTask, loggerFactory, Options.Create(options));
+
+        var trustedContext = CreateForwardedRequest("172.20.0.3");
+        await middleware.Invoke(trustedContext);
+        Assert.Equal("https", trustedContext.Request.Scheme);
+
+        var untrustedContext = CreateForwardedRequest("192.168.1.10");
+        await middleware.Invoke(untrustedContext);
+        Assert.Equal("http", untrustedContext.Request.Scheme);
+    }
+
+    private static DefaultHttpContext CreateForwardedRequest(string remoteAddress)
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Scheme = "http";
+        context.Request.Headers["X-Forwarded-Proto"] = "https";
+        context.Connection.RemoteIpAddress = IPAddress.Parse(remoteAddress);
+        return context;
     }
 
     [Fact]
