@@ -3,6 +3,7 @@ import { addFavorite, getFavorites, removeFavorite, updateFavorite } from '../..
 import type { FavoriteMovie } from '../../api/types'
 
 interface FavoriteState {
+  available: boolean
   movies: Record<number, FavoriteMovie>
   pending: number | null
   loading: boolean
@@ -15,19 +16,20 @@ interface FavoriteState {
 
 const FavoriteContext = createContext<FavoriteState | null>(null)
 const emptyState: FavoriteState = {
-  movies: {}, pending: null, loading: false, error: null, retry: () => {},
+  available: false, movies: {}, pending: null, loading: false, error: null, retry: () => {},
   add: async () => {}, update: async () => {}, remove: async () => {},
 }
 
-export function FavoriteProvider({ children }: { children: ReactNode }) {
+export function FavoriteProvider({ children, accountKey }: { children: ReactNode; accountKey: string | null }) {
   const [movies, setMovies] = useState<Record<number, FavoriteMovie>>({})
   const [pending, setPending] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(accountKey !== null)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let active = true
+    if (accountKey === null) return
     async function load() {
       try {
         const first = await getFavorites({ page: 1, pageSize: 100 })
@@ -45,9 +47,10 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
     }
     void load()
     return () => { active = false }
-  }, [attempt])
+  }, [accountKey, attempt])
 
   async function mutate(titleId: number, action: () => Promise<FavoriteMovie | void>) {
+    if (accountKey === null) return
     setPending(titleId)
     setError(null)
     try {
@@ -65,7 +68,7 @@ export function FavoriteProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  return <FavoriteContext.Provider value={{ movies, pending, loading, error, retry: () => { setLoading(true); setAttempt((value) => value + 1) },
+  return <FavoriteContext.Provider value={{ available: accountKey !== null, movies, pending, loading, error, retry: () => { setLoading(true); setAttempt((value) => value + 1) },
     add: (titleId, from) => mutate(titleId, () => addFavorite(titleId, from)),
     update: (titleId, input) => mutate(titleId, () => updateFavorite(titleId, input)),
     remove: (titleId) => mutate(titleId, () => removeFavorite(titleId)),

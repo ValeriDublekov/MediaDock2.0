@@ -5,6 +5,8 @@ using System.Security.Claims;
 using System.Text.Json;
 using MediaDock.Api.Administration;
 using MediaDock.Api.Authentication;
+using MediaDock.Api.Common;
+using MediaDock.Api.Favorites;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.AspNetCore.Authentication;
@@ -27,6 +29,262 @@ namespace MediaDock.IntegrationTests;
 [Trait("Category", "Api")]
 public sealed class GoogleAuthenticationApiTests
 {
+    [Fact]
+    public async Task FavoritesAreScopedToCurrentActiveUserEvenWhenAccessControlIsOpen()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_favorites_owner_api_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        long firstUserId;
+        long secondUserId;
+        long firstTitleId;
+        long secondTitleId;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            var now = DateTimeOffset.UtcNow;
+
+            User CreateUser(string email, string subject, string status = "active", string role = "user")
+            {
+                var user = new User
+                {
+                    NormalizedEmail = email,
+                    GivenName = "Test",
+                    FamilyName = "User",
+                    Status = status,
+                    Role = role,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                user.ExternalIdentities.Add(new ExternalIdentity
+                {
+                    User = user,
+                    Issuer = GoogleSignInSettings.GoogleIssuer,
+                    Subject = subject,
+                    CreatedAt = now
+                });
+                return user;
+            }
+
+            var firstUser = CreateUser("first@example.com", "favorites-first");
+            var secondUser = CreateUser("second@example.com", "favorites-second");
+            var deactivatedUser = CreateUser("disabled@example.com", "favorites-disabled", "deactivated");
+            var adminUser = CreateUser("admin@example.com", "favorites-admin", role: "admin");
+            db.Users.AddRange(firstUser, secondUser, deactivatedUser, adminUser);
+
+            var source = new Source
+            {
+                StableKey = "favorites-test-source",
+                Name = "Movies",
+                FeedType = "movie",
+                Url = "https://example.com/movies"
+            };
+            var titles = new[]
+            {
+                new Title
+                {
+                    TitleText = "Shared Film",
+                    NormalizedTitle = "shared film",
+                    Year = 2025,
+                    MediaType = "movie",
+                    FirstSeenAt = now,
+                    LastSeenAt = now,
+                    UpdatedAt = now
+                },
+                new Title
+                {
+                    TitleText = "Second User Film",
+                    NormalizedTitle = "second user film",
+                    Year = 2024,
+                    MediaType = "movie",
+                    FirstSeenAt = now,
+                    LastSeenAt = now,
+                    UpdatedAt = now
+                }
+            };
+            db.Sources.Add(source);
+            db.Titles.AddRange(titles);
+            db.Occurrences.AddRange(titles.Select((title, index) => new Occurrence
+            {
+                Title = title,
+                Source = source,
+                SourceItemKey = $"entry:favorites-{index}",
+                TorrentUrl = $"https://example.com/torrents/{index}",
+                RawTitle = title.TitleText,
+                SourceFeedName = source.Name,
+                FeedType = "movie",
+                FirstSeenAt = now,
+                LastSeenAt = now
+            }));
+            db.OscarFilms.Add(new OscarFilm
+            {
+                Title = titles[0],
+                StableKey = "favorites-shared-film",
+                FilmTitle = titles[0].TitleText,
+                NormalizedTitle = titles[0].NormalizedTitle,
+                FilmYear = titles[0].Year!.Value,
+                ImportedAt = now,
+                UpdatedAt = now
+            });
+            await db.SaveChangesAsync();
+            firstUserId = firstUser.Id;
+            secondUserId = secondUser.Id;
+            firstTitleId = titles[0].Id;
+            secondTitleId = titles[1].Id;
+        }
+
+        using var anonymousFactory = new ApiFactory(connectionString);
+        using var anonymousClient = anonymousFactory.CreateClient();
+        using var anonymousResponse = await anonymousClient.GetAsync("/api/favorites");
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
+
+        using var unknownFactory = new ApiFactory(connectionString, CreatePrincipal(subject: "favorites-unknown"));
+        using var unknownClient = unknownFactory.CreateClient();
+        using var unknownResponse = await unknownClient.GetAsync("/api/favorites");
+        Assert.Equal(HttpStatusCode.Forbidden, unknownResponse.StatusCode);
+
+        using var deactivatedFactory = new ApiFactory(
+            connectionString,
+            CreatePrincipal(email: "disabled@example.com", subject: "favorites-disabled"));
+        using var deactivatedClient = deactivatedFactory.CreateClient();
+        using var deactivatedResponse = await deactivatedClient.GetAsync("/api/favorites");
+        Assert.Equal(HttpStatusCode.Forbidden, deactivatedResponse.StatusCode);
+
+        using var firstFactory = new ApiFactory(
+            connectionString,
+            CreatePrincipal(email: "first@example.com", subject: "favorites-first"));
+        using var firstClient = firstFactory.CreateClient();
+        using var secondFactory = new ApiFactory(
+            connectionString,
+            CreatePrincipal(email: "second@example.com", subject: "favorites-second"));
+        using var secondClient = secondFactory.CreateClient();
+        using var adminFactory = new ApiFactory(
+            connectionString,
+            CreatePrincipal(email: "admin@example.com", subject: "favorites-admin"));
+        using var adminClient = adminFactory.CreateClient();
+
+        using var missingSourceResponse = await firstClient.PostAsJsonAsync(
+            "/api/favorites",
+            new { titleId = secondTitleId, from = "oscar" });
+        Assert.Equal(HttpStatusCode.NotFound, missingSourceResponse.StatusCode);
+
+        using var firstAddResponse = await firstClient.PostAsJsonAsync(
+            $"/api/favorites?userId={secondUserId}",
+            new { titleId = firstTitleId, from = "catalog", userId = secondUserId });
+        Assert.Equal(HttpStatusCode.OK, firstAddResponse.StatusCode);
+        var firstAdded = await firstAddResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.NotNull(firstAdded);
+        Assert.False(firstAdded.AddedFromOscar);
+        Assert.True(firstAdded.AddedFromCatalog);
+
+        using var firstOscarAddResponse = await firstClient.PostAsJsonAsync(
+            "/api/favorites",
+            new { titleId = firstTitleId, from = "oscar" });
+        Assert.Equal(HttpStatusCode.OK, firstOscarAddResponse.StatusCode);
+        var firstOscarAdded = await firstOscarAddResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.NotNull(firstOscarAdded);
+        Assert.True(firstOscarAdded.AddedFromOscar);
+        Assert.True(firstOscarAdded.AddedFromCatalog);
+        Assert.True(firstOscarAdded.ToWatch);
+        Assert.True(firstOscarAdded.ToDownload);
+
+        using var secondAddResponse = await secondClient.PostAsJsonAsync(
+            "/api/favorites",
+            new { titleId = firstTitleId, from = "catalog" });
+        Assert.Equal(HttpStatusCode.OK, secondAddResponse.StatusCode);
+        using var secondOnlyAddResponse = await secondClient.PostAsJsonAsync(
+            "/api/favorites",
+            new { titleId = secondTitleId, from = "catalog" });
+        Assert.Equal(HttpStatusCode.OK, secondOnlyAddResponse.StatusCode);
+
+        using var adminListResponse = await adminClient.GetAsync($"/api/favorites?userId={secondUserId}");
+        Assert.Equal(HttpStatusCode.OK, adminListResponse.StatusCode);
+        var adminList = await adminListResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
+        Assert.Equal(0, adminList?.TotalCount);
+
+        using var updateResponse = await firstClient.PatchAsJsonAsync(
+            $"/api/favorites/{firstTitleId}",
+            new { toWatch = true, toDownload = false });
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.NotNull(updated);
+        Assert.True(updated.ToWatch);
+        Assert.False(updated.ToDownload);
+
+        using var repeatAddResponse = await firstClient.PostAsJsonAsync(
+            "/api/favorites",
+            new { titleId = firstTitleId, from = "catalog" });
+        var repeatAdded = await repeatAddResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.Equal(HttpStatusCode.OK, repeatAddResponse.StatusCode);
+        Assert.NotNull(repeatAdded);
+        Assert.True(repeatAdded.ToWatch);
+        Assert.False(repeatAdded.ToDownload);
+        Assert.True(repeatAdded.AddedFromOscar);
+        Assert.True(repeatAdded.AddedFromCatalog);
+
+        using var firstListResponse = await firstClient.GetAsync(
+            $"/api/favorites?userId={secondUserId}&page=1&pageSize=1");
+        Assert.Equal(HttpStatusCode.OK, firstListResponse.StatusCode);
+        var firstPage = await firstListResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
+        Assert.NotNull(firstPage);
+        Assert.Equal(1, firstPage.TotalCount);
+        Assert.Equal(1, firstPage.TotalPages);
+        Assert.Equal(firstTitleId, Assert.Single(firstPage.Items).TitleId);
+        Assert.True(firstPage.Items[0].ToWatch);
+        Assert.False(firstPage.Items[0].ToDownload);
+
+        using var secondPageOneResponse = await secondClient.GetAsync("/api/favorites?page=1&pageSize=1");
+        using var secondPageTwoResponse = await secondClient.GetAsync("/api/favorites?page=2&pageSize=1");
+        var secondPageOne = await secondPageOneResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
+        var secondPageTwo = await secondPageTwoResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
+        Assert.Equal(HttpStatusCode.OK, secondPageOneResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, secondPageTwoResponse.StatusCode);
+        Assert.NotNull(secondPageOne);
+        Assert.NotNull(secondPageTwo);
+        Assert.Equal(2, secondPageOne.TotalCount);
+        Assert.Equal(2, secondPageOne.TotalPages);
+        Assert.Equal(2, new[] { Assert.Single(secondPageOne.Items).TitleId, Assert.Single(secondPageTwo.Items).TitleId }.Distinct().Count());
+        var secondUserSharedFavorite = new[] { secondPageOne.Items[0], secondPageTwo.Items[0] }
+            .Single(favorite => favorite.TitleId == firstTitleId);
+        Assert.False(secondUserSharedFavorite.ToWatch);
+        Assert.True(secondUserSharedFavorite.ToDownload);
+
+        using var firstWatchFilterResponse = await firstClient.GetAsync("/api/favorites?status=to_watch");
+        using var secondWatchFilterResponse = await secondClient.GetAsync("/api/favorites?status=to_watch");
+        var firstWatchFilter = await firstWatchFilterResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
+        var secondWatchFilter = await secondWatchFilterResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
+        Assert.Equal(1, firstWatchFilter?.TotalCount);
+        Assert.Equal(0, secondWatchFilter?.TotalCount);
+
+        using var firstDownloadFilterResponse = await firstClient.GetAsync("/api/favorites?status=to_download");
+        using var secondDownloadFilterResponse = await secondClient.GetAsync("/api/favorites?status=to_download");
+        var firstDownloadFilter = await firstDownloadFilterResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
+        var secondDownloadFilter = await secondDownloadFilterResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
+        Assert.Equal(0, firstDownloadFilter?.TotalCount);
+        Assert.Equal(2, secondDownloadFilter?.TotalCount);
+
+        using var crossUserUpdateResponse = await firstClient.PatchAsJsonAsync(
+            $"/api/favorites/{secondTitleId}",
+            new { toWatch = true });
+        Assert.Equal(HttpStatusCode.NotFound, crossUserUpdateResponse.StatusCode);
+        using var firstDeleteResponse = await firstClient.DeleteAsync($"/api/favorites/{firstTitleId}");
+        Assert.Equal(HttpStatusCode.NoContent, firstDeleteResponse.StatusCode);
+
+        await using var verifyDb = new MediaDockDbContext(options);
+        var favorites = await verifyDb.FavoriteMovies.AsNoTracking()
+            .OrderBy(favorite => favorite.UserId)
+            .ThenBy(favorite => favorite.TitleId)
+            .ToListAsync();
+        Assert.Equal(2, favorites.Count);
+        Assert.All(favorites, favorite => Assert.Equal(secondUserId, favorite.UserId));
+        Assert.Contains(favorites, favorite => favorite.TitleId == firstTitleId);
+        Assert.Contains(favorites, favorite => favorite.TitleId == secondTitleId);
+        Assert.DoesNotContain(favorites, favorite => favorite.UserId == firstUserId);
+    }
+
     [Fact]
     public async Task AnonymousModeRemainsAvailableAndStateChangesRequireAntiforgery()
     {
@@ -670,7 +928,9 @@ public sealed class GoogleAuthenticationApiTests
         using var adminSettingsResponse = await adminClient.GetAsync("/api/settings");
         Assert.Equal(HttpStatusCode.OK, adminSettingsResponse.StatusCode);
         using var adminFavoritesResponse = await adminClient.GetAsync("/api/favorites?userId=2");
-        Assert.Equal(HttpStatusCode.Forbidden, adminFavoritesResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, adminFavoritesResponse.StatusCode);
+        using var userFavoritesResponse = await userClient.GetAsync("/api/favorites");
+        Assert.Equal(HttpStatusCode.OK, userFavoritesResponse.StatusCode);
         using var ratingsContent = new MultipartFormDataContent();
         ratingsContent.Add(new StringContent("[]"), "File", "ratings.json");
         using var adminRatingsResponse = await adminClient.PostAsync(

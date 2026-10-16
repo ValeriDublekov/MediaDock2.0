@@ -10,6 +10,7 @@ public static class AccessPolicies
 {
     public const string Administrator = "Administrator";
     public const string PersonalData = "PersonalData";
+    public const string OwnerScopedFavorites = "OwnerScopedFavorites";
 }
 
 public sealed record AccessControlSettings(bool Enforced)
@@ -43,7 +44,9 @@ public sealed class CurrentUserContext(MediaDockDbContext db)
     }
 }
 
-public sealed record CurrentUserRequirement(string? RequiredRole = null) : IAuthorizationRequirement;
+public sealed record CurrentUserRequirement(
+    string? RequiredRole = null,
+    bool RequireActiveUserInOpenMode = false) : IAuthorizationRequirement;
 public sealed record PersonalDataNotOwnerScopedRequirement : IAuthorizationRequirement;
 
 public sealed class CurrentUserAuthorizationHandler(
@@ -55,7 +58,7 @@ public sealed class CurrentUserAuthorizationHandler(
     {
         foreach (var requirement in context.PendingRequirements.OfType<CurrentUserRequirement>().ToArray())
         {
-            if (!settings.Enforced)
+            if (!settings.Enforced && !requirement.RequireActiveUserInOpenMode)
             {
                 context.Succeed(requirement);
                 continue;
@@ -95,6 +98,9 @@ public static class AccessControlServiceCollectionExtensions
             options.AddPolicy(
                 AccessPolicies.PersonalData,
                 policy => policy.AddRequirements(new PersonalDataNotOwnerScopedRequirement()));
+            options.AddPolicy(
+                AccessPolicies.OwnerScopedFavorites,
+                policy => policy.AddRequirements(new CurrentUserRequirement(RequireActiveUserInOpenMode: true)));
         });
         return services;
     }

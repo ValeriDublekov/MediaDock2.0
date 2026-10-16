@@ -12,6 +12,13 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
     {
         ProblemDetails problemDetails = exception switch
         {
+            ApiForbiddenException forbiddenException => new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Title = "Forbidden",
+                Detail = forbiddenException.Message,
+                Instance = httpContext.Request.Path
+            },
             ApiValidationException validationException => new ValidationProblemDetails(validationException.Errors)
             {
                 Status = StatusCodes.Status400BadRequest,
@@ -61,6 +68,7 @@ internal sealed class ApiValidationException(IReadOnlyDictionary<string, string[
     public IDictionary<string, string[]> Errors { get; } = new Dictionary<string, string[]>(errors);
 }
 
+internal sealed class ApiForbiddenException(string message) : Exception(message);
 internal sealed class ApiNotFoundException(string message) : Exception(message);
 
 internal sealed class ApiConflictException(string message) : Exception(message);

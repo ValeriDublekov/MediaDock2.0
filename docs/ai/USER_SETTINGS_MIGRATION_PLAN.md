@@ -1,6 +1,6 @@
 # User Settings and Personal Data Migration Plan
 
-**Status:** Session 1 schema/backfill and Session 2 authorization gate complete; favorites/ratings remain unavailable until their owner-scoped API sessions.
+**Status:** Sessions 1-3 schema/backfill, authorization gate, and per-user favorites are complete; personal ratings remain unavailable until Session 4 owner-scoped API work.
 **Updated:** 2026-10-16
 **Prerequisite:** Reuse the identity and authorization work in the [users and access control implementation plan](USERS_AND_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md). This plan does not recreate Google sign-in, user records, or account administration.
 
@@ -107,6 +107,16 @@ Complete/reuse the server-derived active-user context and authorization policies
 Scope favorite reads and mutations, API projections, and any favorite-backed catalog controls by the authenticated owner. Keep canonical titles and torrent availability shared. Refresh client state when the signed-in account changes.
 
 **Exit checks:** two users can independently add the same title, choose different `ToWatch`/`ToDownload` values, and remove/update only their own rows. API tests cover list/count/page isolation and attempts to access another user's row by ID.
+
+**Handoff (2026-10-16):** Favorites now require an active user resolved from the validated `(issuer, subject)` on every request, including open mode. List/count/page/status, add/upsert, update, and delete operations are owner-scoped; client-supplied owner IDs do not select a user, and admin status does not expose another user's rows. Existing source validation, origin merging, independent markers, pagination, and shared torrent/award projections are retained. The browser fetches favorites only for an active linked account and remounts the provider on identity changes. Personal ratings remain denied pending Session 4; no preferences or singleton settings semantics changed.
+
+**Files changed:** favorites API authorization/service/endpoints and forbidden response mapping; API isolation tests; browser session/favorites state and tests; API, data, architecture, testing, and migration-plan documentation.
+
+**Verification:** `python -B scripts/run_tests.py server-integration --filter "Category=Api"` passed (38/38); the focused owner-isolation test passed (1/1); `python -B scripts/run_tests.py web` passed (103/103); `npm --prefix web run lint` succeeded with five existing warnings; `npm --prefix web run build` succeeded; editor diagnostics found no errors.
+
+**Migration and settings:** No migration or production data change was performed. Session 1's migration branches remain unchanged. The Session 0 decisions remain in force: minimum thresholds are legacy singleton settings, saved catalog filters are out of scope, and no personal preferences were added.
+
+**Blockers:** None. Next entry point: Session 4 per-user ratings and approved preferences.
 
 ### Session 4: Per-User Ratings and Approved Preferences
 

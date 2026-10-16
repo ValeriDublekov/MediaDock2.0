@@ -8,11 +8,15 @@ namespace MediaDock.Api.Favorites;
 
 internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
 {
-    public async Task<PageResponse<FavoriteMovieResponse>> GetAsync(FavoriteQuery query, CancellationToken cancellationToken)
+    public async Task<PageResponse<FavoriteMovieResponse>> GetAsync(
+        long userId,
+        FavoriteQuery query,
+        CancellationToken cancellationToken)
     {
         var page = query.Page ?? 1;
         var pageSize = query.PageSize ?? 25;
-        IQueryable<FavoriteMovie> favorites = dbContext.FavoriteMovies.AsNoTracking();
+        IQueryable<FavoriteMovie> favorites = dbContext.FavoriteMovies.AsNoTracking()
+            .Where(favorite => favorite.UserId == userId);
         if (query.Status == "to_watch") favorites = favorites.Where(favorite => favorite.ToWatch);
         if (query.Status == "to_download") favorites = favorites.Where(favorite => favorite.ToDownload);
 
@@ -24,18 +28,21 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
             totalCount == 0 ? 0 : (totalCount + pageSize - 1) / pageSize);
     }
 
-    public async Task<FavoriteMovieResponse> AddAsync(CreateFavoriteRequest request, CancellationToken cancellationToken)
+    public async Task<FavoriteMovieResponse> AddAsync(
+        long userId,
+        CreateFavoriteRequest request,
+        CancellationToken cancellationToken)
     {
         var fromOscar = request.From == "oscar";
         var fromCatalog = request.From == "catalog";
         var now = DateTimeOffset.UtcNow;
         var changed = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-            INSERT INTO favorite_movies (title_id, to_watch, to_download, added_from_oscar, added_from_catalog, created_at, updated_at)
-            SELECT id, {fromOscar}, {fromCatalog}, {fromOscar}, {fromCatalog}, {now}, {now}
+            INSERT INTO favorite_movies (user_id, title_id, to_watch, to_download, added_from_oscar, added_from_catalog, created_at, updated_at)
+            SELECT {userId}, id, {fromOscar}, {fromCatalog}, {fromOscar}, {fromCatalog}, {now}, {now}
             FROM titles WHERE id = {request.TitleId} AND media_type = 'movie'
               AND (({fromOscar} AND EXISTS (SELECT 1 FROM oscar_films WHERE title_id = titles.id))
                 OR ({fromCatalog} AND EXISTS (SELECT 1 FROM occurrences WHERE title_id = titles.id)))
-            ON CONFLICT (title_id) DO UPDATE SET
+            ON CONFLICT (user_id, title_id) DO UPDATE SET
               to_watch = favorite_movies.to_watch OR (EXCLUDED.added_from_oscar AND NOT favorite_movies.added_from_oscar),
               to_download = favorite_movies.to_download OR (EXCLUDED.added_from_catalog AND NOT favorite_movies.added_from_catalog),
               added_from_oscar = favorite_movies.added_from_oscar OR EXCLUDED.added_from_oscar,
@@ -43,15 +50,20 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
               updated_at = EXCLUDED.updated_at
             """, cancellationToken);
         if (changed == 0) throw new ApiNotFoundException("Movie or catalog source not found.");
-        return await GetOneAsync(request.TitleId, cancellationToken);
+        return await GetOneAsync(userId, request.TitleId, cancellationToken);
     }
 
-    public async Task<FavoriteMovieResponse> UpdateAsync(long titleId, UpdateFavoriteRequest request, CancellationToken cancellationToken)
+    public async Task<FavoriteMovieResponse> UpdateAsync(
+        long userId,
+        long titleId,
+        UpdateFavoriteRequest request,
+        CancellationToken cancellationToken)
     {
         if (request.ToWatch is null && request.ToDownload is null)
             throw new ApiValidationException(new Dictionary<string, string[]> { ["body"] = ["Provide at least one marker."] });
 
-        var favorites = dbContext.FavoriteMovies.Where(favorite => favorite.TitleId == titleId);
+        var favorites = dbContext.FavoriteMovies
+            .Where(favorite => favorite.UserId == userId && favorite.TitleId == titleId);
         if (request.ToDownload == true && !await dbContext.Occurrences.AnyAsync(item => item.TitleId == titleId, cancellationToken))
         {
             if (!await favorites.AnyAsync(cancellationToken)) throw new ApiNotFoundException("Favorite not found.");
@@ -63,14 +75,20 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
             .SetProperty(favorite => favorite.ToDownload, favorite => request.ToDownload ?? favorite.ToDownload)
             .SetProperty(favorite => favorite.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken);
         if (updated == 0) throw new ApiNotFoundException("Favorite not found.");
-        return await GetOneAsync(titleId, cancellationToken);
+        return await GetOneAsync(userId, titleId, cancellationToken);
     }
 
-    public Task<int> DeleteAsync(long titleId, CancellationToken cancellationToken) =>
-        dbContext.FavoriteMovies.Where(favorite => favorite.TitleId == titleId).ExecuteDeleteAsync(cancellationToken);
+    public Task<int> DeleteAsync(long userId, long titleId, CancellationToken cancellationToken) =>
+        dbContext.FavoriteMovies
+            .Where(favorite => favorite.UserId == userId && favorite.TitleId == titleId)
+            .ExecuteDeleteAsync(cancellationToken);
 
-    private async Task<FavoriteMovieResponse> GetOneAsync(long titleId, CancellationToken cancellationToken) =>
-        await Project(dbContext.FavoriteMovies.AsNoTracking().Where(favorite => favorite.TitleId == titleId))
+    private async Task<FavoriteMovieResponse> GetOneAsync(
+        long userId,
+        long titleId,
+        CancellationToken cancellationToken) =>
+        await Project(dbContext.FavoriteMovies.AsNoTracking()
+                .Where(favorite => favorite.UserId == userId && favorite.TitleId == titleId))
             .FirstOrDefaultAsync(cancellationToken) ?? throw new ApiNotFoundException("Favorite not found.");
 
     private IQueryable<FavoriteMovieResponse> Project(IQueryable<FavoriteMovie> favorites) =>

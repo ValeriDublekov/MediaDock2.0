@@ -6,8 +6,8 @@ export function FavoriteControls({ titleId, from, mediaType, occurrenceCount }: 
   mediaType: string
   occurrenceCount: number
 }) {
-  const { movies, pending, loading, error, add, update, remove, retry } = useFavorites()
-  if (mediaType !== 'movie') return null
+  const { available, movies, pending, loading, error, add, update, remove, retry } = useFavorites()
+  if (mediaType !== 'movie' || !available) return null
   const favorite = movies[titleId]
   const disabled = pending === titleId || loading || Boolean(error)
   const selectedFromHere = from === 'oscar' ? favorite?.addedFromOscar : favorite?.addedFromCatalog

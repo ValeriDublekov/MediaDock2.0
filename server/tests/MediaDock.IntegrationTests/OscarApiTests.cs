@@ -18,7 +18,7 @@ namespace MediaDock.IntegrationTests;
 public sealed class OscarApiTests
 {
     [Fact]
-    public async Task FavoritesRemainClosedUntilOwnerScopedQueriesAreImplemented()
+    public async Task FavoritesRequireAnActiveLinkedUserEvenWhenAccessControlIsOpen()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_favorite_gate_test").Build();
         await postgres.StartAsync();

@@ -309,7 +309,7 @@ describe('OscarCatalogView', () => {
     favoritesRequest.mockResolvedValue({ items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0 })
     addRequest.mockResolvedValue(favorite)
     updateRequest.mockRejectedValue(new Error('Save failed'))
-    render(<FavoriteProvider><OscarCatalogView /></FavoriteProvider>)
+    render(<FavoriteProvider accountKey="test-account"><OscarCatalogView /></FavoriteProvider>)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add to favorites' }))
     await waitFor(() => expect(addRequest).toHaveBeenCalledWith(film.titleId, 'oscar'))
@@ -332,7 +332,7 @@ describe('OscarCatalogView', () => {
     filmRequest.mockResolvedValue(page([film]))
     favoritesRequest.mockResolvedValue({ items: [existing], page: 1, pageSize: 100, totalCount: 1, totalPages: 1 })
     addRequest.mockResolvedValue({ ...existing, toWatch: true, addedFromOscar: true })
-    render(<FavoriteProvider><OscarCatalogView /></FavoriteProvider>)
+    render(<FavoriteProvider accountKey="test-account"><OscarCatalogView /></FavoriteProvider>)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add from Oscar' }))
     await waitFor(() => expect(addRequest).toHaveBeenCalledWith(film.titleId, 'oscar'))

@@ -158,11 +158,15 @@ function AppContent() {
   const content = sectionContent[section]
   const title = configurationPage?.label ?? content.title
   const description = configurationPage?.description ?? content.description
+  const favoriteAccountKey = session?.accountState === 'linked' && session.user?.status === 'active'
+    ? session.identity ? `${session.identity.issuer}:${session.identity.subject}` : null
+    : null
   const registrationSession = session?.authenticated && session.accountState === 'unmatched' ? session : null
   const recoveryDiagnostic = session === null ? authDiagnostic : null
   const isAccessGated = !authChecked || registrationSession !== null || recoveryDiagnostic !== null
 
   return (
+    <FavoriteProvider accountKey={favoriteAccountKey} key={favoriteAccountKey ?? 'no-active-owner'}>
     <div className={`app-shell${isAccessGated ? ' is-gated' : ''}`}>
       {!isAccessGated && <aside className={`sidebar${section === 'sources' ? ' is-configuration' : ''}`}>
         <NavLink className="brand" to="/catalog">
@@ -227,7 +231,7 @@ function AppContent() {
 
         {(!authChecked || session?.authorizationEnforced !== true) && (
           <aside className="open-mode-warning" role="note">
-            Sign-in is optional and verifies identity only. Application permissions are not enforced for shared, system, or account-administration routes. Keep the API within its configured network boundary. Favorites and personal ratings are unavailable until user ownership is enforced.
+            Sign-in is optional and verifies identity only. Application permissions are not enforced for shared, system, or account-administration routes. Keep the API within its configured network boundary. Favorites require an active linked account; personal ratings remain unavailable until owner scoping is implemented.
           </aside>
         )}
 
@@ -271,11 +275,12 @@ function AppContent() {
         </div>}
       </main>
     </div>
+    </FavoriteProvider>
   )
 }
 
 function App() {
-  return <FavoriteProvider><AppContent /></FavoriteProvider>
+  return <AppContent />
 }
 
 export default App

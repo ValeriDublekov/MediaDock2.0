@@ -20,16 +20,18 @@ export function FavoritesView() {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selected, setSelected] = useState<number | null>(null)
-  const { movies } = useFavorites()
+  const { available, movies } = useFavorites()
 
   useEffect(() => {
+    if (!available) return
     let active = true
+
     getFavorites({ status, page, pageSize: 20 })
       .then((response) => { if (active) setResult(response) })
       .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Favorites could not be loaded.') })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [status, page, attempt, movies])
+  }, [available, status, page, attempt, movies])
 
   function changeStatus(next: Status) {
     setStatus(next)
@@ -47,10 +49,11 @@ export function FavoritesView() {
       </div>
       <div className="toolbar-actions">{!error && result && <span className="result-count">{result.totalCount} movies</span>}<ViewModeControl onChange={setViewMode} value={viewMode} /></div>
     </div>
-    {loading && <LoadingState label="Loading favorites" />}
-    {!loading && error && <ErrorState message={error} onRetry={() => { setLoading(true); setError(null); setAttempt((value) => value + 1) }} />}
-    {!loading && !error && result?.items.length === 0 && <EmptyState title="No favorites here" message="Add a movie from the catalog or Oscar catalog." />}
-    {!loading && !error && result && result.items.length > 0 && <>
+    {!available && <EmptyState title="Sign in to view favorites" message="An active linked account is required." />}
+    {available && loading && <LoadingState label="Loading favorites" />}
+    {available && !loading && error && <ErrorState message={error} onRetry={() => { setLoading(true); setError(null); setAttempt((value) => value + 1) }} />}
+    {available && !loading && !error && result?.items.length === 0 && <EmptyState title="No favorites here" message="Add a movie from the catalog or Oscar catalog." />}
+    {available && !loading && !error && result && result.items.length > 0 && <>
       {viewMode === 'posters' ? <div className="poster-grid">
         {result.items.map((item) => <article className="movie-tile" key={item.titleId}>
           <button aria-label={`View ${item.title} details`} className="poster-action" onClick={() => setSelected(item.titleId)} type="button">
