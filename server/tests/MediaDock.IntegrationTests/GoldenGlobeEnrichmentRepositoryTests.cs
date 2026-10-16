@@ -34,7 +34,7 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
             "Grouped Film",
             2025,
             "movie",
-            new GoldenGlobeEnrichmentUpdate("enriched", 2, attemptedAt, null, null, "tt12345678"));
+            new GoldenGlobeEnrichmentUpdate("enriched", 2, attemptedAt, null, null, "TT12345678"));
 
         var updatedNominations = await db.GoldenGlobeNominations.AsNoTracking()
             .Where(row => row.Title == "Grouped Film" && row.Year == 2025)
@@ -126,6 +126,9 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
         var pinnedProblem = CreateNomination("pinned-problem", "Pinned Problem", 2026, "problem", 3, null, award);
         pinnedProblem.ImdbId = "tt87654321";
         pinnedProblem.IsImdbIdManual = true;
+        db.ImdbTitles.AddRange(
+            new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = now },
+            new ImdbTitle { ImdbId = "tt87654321", UpdatedAt = now });
         db.GoldenGlobeNominations.AddRange(
             CreateNomination("new-a-pending", "A New Film", 2026, "pending", 1, now.AddHours(1), award),
             CreateNomination("new-a-due", "A New Film", 2026, "temporary_error", 3, now, award),
@@ -171,6 +174,7 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
         nomination.ImdbId = "tt12345678";
         nomination.IsImdbIdManual = true;
         nomination.ImdbIdVersion = 3;
+        db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = DateTimeOffset.UtcNow });
         db.GoldenGlobeNominations.Add(nomination);
         await db.SaveChangesAsync();
 

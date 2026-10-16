@@ -172,6 +172,9 @@ public sealed class PersonalRatingsApiTests
             rating.UserId == secondUserId && rating.ImdbId == "tt1234567")).Rating);
         Assert.Equal(10, Assert.Single(ratings.Where(rating =>
             rating.UserId == adminUserId && rating.ImdbId == "tt1234567")).Rating);
+        var imdbTitles = await verifyDb.ImdbTitles.AsNoTracking().ToListAsync();
+        Assert.Equal(2, imdbTitles.Count);
+        Assert.All(imdbTitles, title => Assert.Equal("pending", title.MetadataStatus));
     }
 
     private static MultipartFormDataContent CreateUpload(string json, long? userId = null)

@@ -67,6 +67,7 @@ public sealed class OscarApiTests
             CreateFilm("year-bounds-2021", "Year Bounds Example", 2021, "pending", now, null,
                 CreateNomination("year-bounds-sound", 93, "SOUND", "Sound", "Sound Team", false))
         };
+        db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt15398776", UpdatedAt = now });
         db.OscarFilms.AddRange(films);
         await db.SaveChangesAsync();
         Assert.Empty(await db.Occurrences.AsNoTracking().ToListAsync());

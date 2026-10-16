@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using MediaDock.Application.Metadata;
+using MediaDock.Infrastructure.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -89,6 +90,8 @@ public sealed class OscarDatasetImporter(MediaDockDbContext dbContext)
                 })
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
+            await ImdbTitleMetadataMapper.EnsureAsync(
+                dbContext, preparedRows.Select(row => row.Row.ImdbId), now, cancellationToken);
             var oscarFilms = await dbContext.OscarFilms
                 .Include(film => film.Title)
                 .Where(film => filmKeys.Contains(film.StableKey))

@@ -3,6 +3,7 @@ using MediaDock.Api.BackgroundJobs;
 using MediaDock.Api.Middleware;
 using MediaDock.Application.GoldenGlobes;
 using MediaDock.Application.Metadata;
+using MediaDock.Infrastructure.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -257,6 +258,11 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
             .Where(row => row.Title == title && row.Year == ceremonyYear && row.NomineeType == sourceType)
             .ToListAsync(cancellationToken);
         if (rows.Count == 0) throw new ApiNotFoundException("Golden Globes film group not found.");
+        if (imdbId is not null)
+        {
+            await ImdbTitleMetadataMapper.EnsureAsync(
+                dbContext, [imdbId], timeProvider.GetUtcNow(), cancellationToken);
+        }
 
         if (imdbId is null)
         {

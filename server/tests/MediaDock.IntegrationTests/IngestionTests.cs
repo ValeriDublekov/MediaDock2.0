@@ -258,6 +258,11 @@ public sealed class IngestionTests
         Assert.Equal(2, first.Summary.OccurrencesCreated);
         Assert.Equal(5, first.Summary.OmdbRequests);
         Assert.Equal("tt2222222", (await db.Titles.SingleAsync()).ImdbId);
+        var sharedMetadata = await db.ImdbTitles.AsNoTracking().SingleAsync();
+        Assert.Equal("tt2222222", sharedMetadata.ImdbId);
+        Assert.Equal("enriched", sharedMetadata.MetadataStatus);
+        Assert.Equal(8.7m, sharedMetadata.ImdbRating);
+        Assert.Null((await db.Titles.SingleAsync()).ImdbRating);
         var alternateTitleLog = await db.ParseLogs.SingleAsync(log => log.RawTitle.StartsWith("Wrong Film / Right Film"));
         Assert.Equal(new[] { "Wrong Film", "Right Film" }, alternateTitleLog.LookupTitles);
         Assert.Contains(await db.ParseLogs.ToListAsync(), log => log.IgnoreReason == "ambiguous_title_match" && log.RetryState == "terminal");
@@ -288,6 +293,7 @@ public sealed class IngestionTests
             FeedType = "movie",
             Url = SuccessfulFeedUrl
         });
+        db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt0133093", UpdatedAt = importedAt });
         db.OscarFilms.Add(new OscarFilm
         {
             StableKey = "imdb:tt0133093",
@@ -463,6 +469,7 @@ public sealed class IngestionTests
             UpdatedAt = now
         };
         db.Sources.Add(source);
+        db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt11111111", UpdatedAt = now });
         db.Titles.Add(existingTitle);
         await db.SaveChangesAsync();
 
@@ -512,6 +519,7 @@ public sealed class IngestionTests
                 FeedType = "movie",
                 Url = SuccessfulFeedUrl
             };
+            seedDb.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt33333333", UpdatedAt = DateTimeOffset.UtcNow });
             seedDb.Sources.Add(source);
             await seedDb.SaveChangesAsync();
             sourceId = source.Id;

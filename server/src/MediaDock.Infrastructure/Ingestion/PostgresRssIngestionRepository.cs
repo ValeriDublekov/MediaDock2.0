@@ -197,7 +197,16 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
                 dbContext.Titles.Add(title);
             }
 
+            var canonicalImdbId = imdbId ?? ImdbIdNormalizer.Normalize(title.ImdbId);
+            var imdbTitle = canonicalImdbId is null
+                ? null
+                : (await ImdbTitleMetadataMapper.EnsureAsync(
+                    dbContext, [canonicalImdbId], observedAt, cancellationToken))[canonicalImdbId];
             TitleMetadataMapper.Apply(title, metadata, observedAt);
+            if (imdbTitle is not null)
+            {
+                ImdbTitleMetadataMapper.Apply(imdbTitle, metadata, observedAt);
+            }
 
             var occurrence = await dbContext.Occurrences.FirstOrDefaultAsync(
                 entity => entity.SourceId == source.Id && entity.SourceItemKey == sourceItemKey,

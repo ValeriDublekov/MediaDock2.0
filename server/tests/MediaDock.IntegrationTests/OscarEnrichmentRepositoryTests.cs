@@ -186,7 +186,7 @@ public sealed class OscarEnrichmentRepositoryTests
     }
 
     [Fact]
-    public async Task SaveOutcomeUpdatesTitleMetadataWithoutCreatingOccurrenceOrChangingLastSeenAt()
+    public async Task SaveOutcomeUpdatesSharedMetadataWithoutCreatingOccurrenceOrChangingLastSeenAt()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_oscar_enrichment_save_test").Build();
         await postgres.StartAsync();
@@ -237,10 +237,13 @@ public sealed class OscarEnrichmentRepositoryTests
         Assert.Equal(attemptedAt, savedFilm.LastEnrichmentAttemptAt);
         Assert.Equal("tt12345678", savedFilm.ImdbId);
         Assert.Equal("OMDb Film", savedFilm.Title.TitleText);
-        Assert.Equal(8.2m, savedFilm.Title.ImdbRating);
-        Assert.Equal("Director", savedFilm.Title.Director);
+        Assert.Null(savedFilm.Title.ImdbRating);
         Assert.Equal(lastSeenAt, savedFilm.Title.LastSeenAt);
         Assert.Equal(attemptedAt, savedFilm.Title.UpdatedAt);
+        var sharedMetadata = await db.ImdbTitles.AsNoTracking().SingleAsync(title => title.ImdbId == "tt12345678");
+        Assert.Equal("enriched", sharedMetadata.MetadataStatus);
+        Assert.Equal(8.2m, sharedMetadata.ImdbRating);
+        Assert.Equal("Director", sharedMetadata.Director);
         Assert.Empty(await db.Occurrences.ToListAsync());
     }
 
@@ -260,6 +263,7 @@ public sealed class OscarEnrichmentRepositoryTests
         var film = CreateFilm("film-identity", "Identity Film", 2025, "pending", importedAt);
         film.ImdbId = "tt11111111";
         film.Title.ImdbId = "tt11111111";
+        db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt11111111", UpdatedAt = importedAt });
         db.OscarFilms.Add(film);
         await db.SaveChangesAsync();
 

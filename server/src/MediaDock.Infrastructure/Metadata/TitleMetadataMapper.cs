@@ -25,17 +25,20 @@ internal static class TitleMetadataMapper
         {
             title.ImdbId = imdbId;
         }
-        title.ImdbRating = metadata.ImdbRating;
-        title.ImdbVotes = metadata.ImdbVotes;
-        title.Metascore = metadata.Metascore;
-        title.Genres = metadata.Genres;
-        title.Countries = metadata.Countries;
-        title.Director = metadata.Director;
-        title.Plot = metadata.Plot;
-        title.PosterUrl = metadata.PosterUrl;
-        title.Runtime = metadata.Runtime;
-        title.Awards = metadata.Awards;
-        title.BoxOffice = metadata.BoxOffice;
+        if (ImdbIdNormalizer.Normalize(title.ImdbId) is null)
+        {
+            title.ImdbRating = metadata.ImdbRating;
+            title.ImdbVotes = metadata.ImdbVotes;
+            title.Metascore = metadata.Metascore;
+            title.Genres = metadata.Genres;
+            title.Countries = metadata.Countries;
+            title.Director = metadata.Director;
+            title.Plot = metadata.Plot;
+            title.PosterUrl = metadata.PosterUrl;
+            title.Runtime = metadata.Runtime;
+            title.Awards = metadata.Awards;
+            title.BoxOffice = metadata.BoxOffice;
+        }
         if (updateLastSeenAt)
         {
             title.FirstSeenAt ??= updatedAt;

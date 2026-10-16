@@ -1,6 +1,7 @@
 using System.Text;
 using MediaDock.Infrastructure.GoldenGlobes;
 using MediaDock.Infrastructure.Persistence;
+using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace MediaDock.IntegrationTests;
@@ -61,6 +62,10 @@ public sealed class GoldenGlobeDatasetImporterTests
         autoTypeCorrection.NomineeType = "movie";
         autoTypeCorrection.EnrichmentStatus = "enriched";
         autoTypeCorrection.ImdbId = "tt12345679";
+        db.ImdbTitles.AddRange(
+            new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = DateTimeOffset.UtcNow },
+            new ImdbTitle { ImdbId = "tt00000001", UpdatedAt = DateTimeOffset.UtcNow },
+            new ImdbTitle { ImdbId = "tt12345679", UpdatedAt = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync();
 
         var repeatedImport = await importer.ImportAsync(Encoding.UTF8.GetBytes(csv));

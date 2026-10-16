@@ -38,6 +38,12 @@ public sealed class GoldenGlobeApiTests
             var manualTypeMismatch = CreateNomination(
                 "manual-type-mismatch", "Manual Type Mismatch", 2025, false, "tt76543210", bestPicture, "enriched", "series");
             manualTypeMismatch.IsImdbIdManual = true;
+            db.ImdbTitles.AddRange(
+                new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = DateTimeOffset.UtcNow },
+                new ImdbTitle { ImdbId = "tt87654321", UpdatedAt = DateTimeOffset.UtcNow },
+                new ImdbTitle { ImdbId = "tt8749198", UpdatedAt = DateTimeOffset.UtcNow },
+                new ImdbTitle { ImdbId = "tt32345678", UpdatedAt = DateTimeOffset.UtcNow },
+                new ImdbTitle { ImdbId = "tt76543210", UpdatedAt = DateTimeOffset.UtcNow });
             db.GoldenGlobeNominations.AddRange(
                 CreateNomination("a-picture", "A Film", 2025, true, "tt12345678", bestPicture, "enriched"),
                 CreateNomination("a-director", "A Film", 2025, false, "tt12345678", bestDirector, "enriched"),
@@ -284,6 +290,7 @@ public sealed class GoldenGlobeApiTests
             });
             Assert.Equal(1, await db.BackgroundJobs.CountAsync(job => job.JobType == "golden_globe_manual_refresh"));
             Assert.Contains("tt12345678", (await db.BackgroundJobs.SingleAsync(job => job.Id == first.RefreshJob.Id)).ResultSummary!);
+            Assert.Equal("pending", (await db.ImdbTitles.SingleAsync(title => title.ImdbId == "tt12345678")).MetadataStatus);
 
             using var clearResponse = await client.PutAsJsonAsync("/api/golden-globes/imdb-link", new { filmId = request.filmId, imdbId = (string?)null });
             Assert.Equal(HttpStatusCode.OK, clearResponse.StatusCode);

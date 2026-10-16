@@ -112,8 +112,8 @@ Run all tests through `python -B scripts/run_tests.py <suite>`; do not invoke `d
 
 ## Progress
 
-- [ ] Session 1: schema and migration (implementation complete; focused `PersistenceTests` passes 4/4; `Category=Persistence` remains blocked by 11 Oscar/Golden Globes writer failures pending Session 2)
-- [ ] Session 2: metadata write paths
+- [x] Session 1: schema and migration (implementation complete; focused `PersistenceTests` passes 4/4; `Category=Persistence` passes 24/24 after writer paths and FK-aware fixtures were updated)
+- [x] Session 2: metadata write paths (focused ratings, RSS, Oscar, Golden Globes, and API integration filters plus Oscar and Golden Globes unit filters pass)
 - [ ] Session 3: metadata read paths
 - [ ] Session 4: exact-ID lookup and background enrichment
 - [ ] Session 5: personal ratings API

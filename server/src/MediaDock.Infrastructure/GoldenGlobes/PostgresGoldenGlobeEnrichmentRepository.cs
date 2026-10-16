@@ -1,5 +1,6 @@
 using MediaDock.Application.GoldenGlobes;
 using MediaDock.Application.Metadata;
+using MediaDock.Infrastructure.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
@@ -38,9 +39,14 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
     public async Task SaveOutcomeAsync(string title, int ceremonyYear, string sourceType, GoldenGlobeEnrichmentUpdate update, CancellationToken cancellationToken = default)
     {
         EnsureEnrichedOutcomeHasValidImdbId(update);
+        var imdbId = ImdbIdNormalizer.Normalize(update.ImdbId);
+        if (imdbId is not null)
+        {
+            await ImdbTitleMetadataMapper.EnsureAsync(db, [imdbId], update.AttemptedAt, cancellationToken);
+        }
         var rows = db.GoldenGlobeNominations
             .Where(x => x.Title == title && x.Year == ceremonyYear && x.NomineeType == sourceType && !x.IsImdbIdManual);
-        if (update.ImdbId is null)
+        if (imdbId is null)
         {
             await rows.ExecuteUpdateAsync(setters => setters
                 .SetProperty(x => x.EnrichmentStatus, update.Status)
@@ -57,7 +63,7 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
                 .SetProperty(x => x.LastEnrichmentAttemptAt, update.AttemptedAt)
                 .SetProperty(x => x.NextEnrichmentAttemptAt, update.NextAttemptAt)
                 .SetProperty(x => x.LastEnrichmentError, update.ErrorCode)
-                .SetProperty(x => x.ImdbId, update.ImdbId)
+                .SetProperty(x => x.ImdbId, imdbId)
                 .SetProperty(x => x.NomineeType, update.ResolvedNomineeType ?? sourceType), cancellationToken);
         }
     }
@@ -68,6 +74,7 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
         CancellationToken cancellationToken = default)
     {
         EnsureEnrichedOutcomeHasValidImdbId(update);
+        await ImdbTitleMetadataMapper.EnsureAsync(db, [candidate.ImdbId], update.AttemptedAt, cancellationToken);
         var affected = await db.GoldenGlobeNominations
             .Where(x => x.Title == candidate.Title
                 && x.Year == candidate.CeremonyYear

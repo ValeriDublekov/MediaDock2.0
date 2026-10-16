@@ -28,6 +28,9 @@ public sealed class MovieAwardsApiTests
         {
             await db.Database.MigrateAsync();
             var now = DateTimeOffset.UtcNow;
+            db.ImdbTitles.AddRange(
+                new ImdbTitle { ImdbId = "tt1234567", UpdatedAt = now },
+                new ImdbTitle { ImdbId = "tt7654321", UpdatedAt = now });
             db.OscarFilms.Add(new OscarFilm
             {
                 StableKey = "shared-oscar-film",

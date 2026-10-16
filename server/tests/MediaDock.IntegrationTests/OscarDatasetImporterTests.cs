@@ -111,6 +111,19 @@ public sealed class OscarDatasetImporterTests
         await db.Database.MigrateAsync();
 
         var now = new DateTimeOffset(2026, 9, 29, 0, 0, 0, TimeSpan.Zero);
+        db.ImdbTitles.Add(new ImdbTitle
+        {
+            ImdbId = "tt12300742",
+            TitleText = "Existing Film, Extended",
+            Year = 2025,
+            MediaType = "movie",
+            ImdbRating = 8.4m,
+            ImdbVotes = 42000,
+            Director = "Existing OMDb director",
+            Plot = "Keep this OMDb plot.",
+            MetadataStatus = "enriched",
+            UpdatedAt = now.AddDays(-1)
+        });
         db.Titles.Add(new Title
         {
             TitleText = "Existing Film, Extended",
@@ -164,6 +177,12 @@ public sealed class OscarDatasetImporterTests
             Assert.Equal(8.4m, existingTitle.ImdbRating);
             Assert.Equal("Existing OMDb director", existingTitle.Director);
             Assert.Equal("Keep this OMDb plot.", existingTitle.Plot);
+            var existingMetadata = await db.ImdbTitles.SingleAsync(title => title.ImdbId == "tt12300742");
+            Assert.Equal(8.4m, existingMetadata.ImdbRating);
+            Assert.Equal(42000, existingMetadata.ImdbVotes);
+            Assert.Equal("Existing OMDb director", existingMetadata.Director);
+            Assert.Equal("Keep this OMDb plot.", existingMetadata.Plot);
+            Assert.Equal("enriched", existingMetadata.MetadataStatus);
 
             var placeholder = await db.Titles.SingleAsync(title => title.ImdbId == "tt9999999");
             Assert.Equal("New Film", placeholder.TitleText);
@@ -171,6 +190,7 @@ public sealed class OscarDatasetImporterTests
             Assert.Null(placeholder.ImdbRating);
             Assert.Null(placeholder.FirstSeenAt);
             Assert.Null(placeholder.LastSeenAt);
+            Assert.Equal("pending", (await db.ImdbTitles.SingleAsync(title => title.ImdbId == "tt9999999")).MetadataStatus);
 
             var importedFilm = await db.OscarFilms.SingleAsync(film => film.ImdbId == "tt9999999");
             importedFilm.EnrichmentStatus = "enriched";
@@ -224,6 +244,7 @@ public sealed class OscarDatasetImporterTests
             ImdbId = "tt11111111",
             UpdatedAt = now
         };
+        db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt11111111", UpdatedAt = now });
         db.Titles.Add(existingTitle);
         await db.SaveChangesAsync();
 

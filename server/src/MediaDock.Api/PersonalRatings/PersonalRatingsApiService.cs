@@ -1,5 +1,6 @@
 using MediaDock.Api.Middleware;
 using MediaDock.Application.PersonalRatings;
+using MediaDock.Infrastructure.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -55,6 +56,7 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
             .Where(rating => rating.UserId == userId && ids.Contains(rating.ImdbId))
             .ToDictionaryAsync(rating => rating.ImdbId, cancellationToken);
         var importedAt = DateTimeOffset.UtcNow;
+        await ImdbTitleMetadataMapper.EnsureAsync(dbContext, ids, importedAt, cancellationToken);
         var added = 0;
         var updated = 0;
         var unchanged = 0;

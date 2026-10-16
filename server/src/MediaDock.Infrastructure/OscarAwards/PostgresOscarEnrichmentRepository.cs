@@ -80,6 +80,9 @@ public sealed class PostgresOscarEnrichmentRepository(MediaDockDbContext dbConte
             var imdbId = metadataImdbId ?? filmImdbId ?? titleImdbId;
             if (imdbId is not null)
             {
+                var imdbTitle = (await ImdbTitleMetadataMapper.EnsureAsync(
+                    dbContext, [imdbId], update.AttemptedAt, cancellationToken))[imdbId];
+                ImdbTitleMetadataMapper.Apply(imdbTitle, metadata, update.AttemptedAt);
                 var canonicalTitle = await dbContext.Titles
                     .SingleOrDefaultAsync(
                         title => title.Id != film.TitleId && title.ImdbId == imdbId,

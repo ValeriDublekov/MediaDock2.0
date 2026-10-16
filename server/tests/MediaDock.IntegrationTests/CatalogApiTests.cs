@@ -90,6 +90,22 @@ public sealed class CatalogApiTests
         olderTitle.ImdbRating = 7.2m;
         newerTitle.ImdbRating = 8.5m;
         seriesTitle.ImdbRating = 6.8m;
+        db.ImdbTitles.AddRange(
+            new ImdbTitle
+            {
+                ImdbId = "tt1999", ImdbRating = 7.2m, ImdbVotes = 1000,
+                Genres = ["Action", "Sci-Fi"], Countries = ["USA"], UpdatedAt = olderTitle.UpdatedAt
+            },
+            new ImdbTitle
+            {
+                ImdbId = "tt2003", ImdbRating = 8.5m, ImdbVotes = 1000,
+                Genres = ["Action", "Sci-Fi"], Countries = ["USA"], UpdatedAt = newerTitle.UpdatedAt
+            },
+            new ImdbTitle
+            {
+                ImdbId = "tt2010", ImdbRating = 6.8m, ImdbVotes = 1000,
+                Genres = ["Drama"], Countries = ["USA"], UpdatedAt = seriesTitle.UpdatedAt
+            });
         db.Sources.Add(source);
         db.Titles.AddRange(olderTitle, newerTitle, seriesTitle, yearlessTitle);
         await db.SaveChangesAsync();

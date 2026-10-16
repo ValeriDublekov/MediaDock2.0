@@ -1,0 +1,79 @@
+using MediaDock.Application.Metadata;
+using MediaDock.Infrastructure.Persistence;
+using MediaDock.Infrastructure.Persistence.Entities;
+using Microsoft.EntityFrameworkCore;
+
+namespace MediaDock.Infrastructure.Metadata;
+
+public static class ImdbTitleMetadataMapper
+{
+    public static async Task<IReadOnlyDictionary<string, ImdbTitle>> EnsureAsync(
+        MediaDockDbContext dbContext,
+        IEnumerable<string?> imdbIds,
+        DateTimeOffset updatedAt,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedIds = imdbIds
+            .Select(ImdbIdNormalizer.Normalize)
+            .OfType<string>()
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var titlesById = dbContext.ImdbTitles.Local
+            .Where(title => normalizedIds.Contains(title.ImdbId, StringComparer.Ordinal))
+            .ToDictionary(title => title.ImdbId, StringComparer.Ordinal);
+        var idsToEnsure = normalizedIds
+            .Where(imdbId => !titlesById.ContainsKey(imdbId))
+            .ToArray();
+        if (idsToEnsure.Length == 0)
+        {
+            return titlesById;
+        }
+
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO imdb_titles (imdb_id, metadata_status, enrichment_attempt_count, updated_at)
+            SELECT requested.imdb_id, 'pending', 0, {updatedAt}
+            FROM unnest({idsToEnsure}) AS requested(imdb_id)
+            ON CONFLICT (imdb_id) DO NOTHING
+            """,
+            cancellationToken);
+
+        var persistedTitles = await dbContext.ImdbTitles
+            .Where(title => idsToEnsure.Contains(title.ImdbId))
+            .ToListAsync(cancellationToken);
+        foreach (var title in persistedTitles)
+        {
+            titlesById.Add(title.ImdbId, title);
+        }
+
+        return titlesById;
+    }
+
+    public static void Apply(ImdbTitle title, MetadataDetails metadata, DateTimeOffset updatedAt)
+    {
+        var metadataImdbId = ImdbIdNormalizer.Normalize(metadata.ImdbId);
+        if (metadataImdbId is not null && metadataImdbId != title.ImdbId)
+        {
+            throw new InvalidOperationException("IMDb metadata identity conflicts with its canonical row.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(metadata.Title)) title.TitleText = metadata.Title;
+        if (metadata.Year.HasValue) title.Year = metadata.Year;
+        if (!string.IsNullOrWhiteSpace(metadata.MediaType)) title.MediaType = metadata.MediaType;
+        if (metadata.ImdbRating.HasValue) title.ImdbRating = metadata.ImdbRating;
+        if (metadata.ImdbVotes.HasValue) title.ImdbVotes = metadata.ImdbVotes;
+        if (metadata.Metascore.HasValue) title.Metascore = metadata.Metascore;
+        if (metadata.Genres.Length > 0) title.Genres = metadata.Genres;
+        if (metadata.Countries.Length > 0) title.Countries = metadata.Countries;
+        if (!string.IsNullOrWhiteSpace(metadata.Director)) title.Director = metadata.Director;
+        if (!string.IsNullOrWhiteSpace(metadata.Plot)) title.Plot = metadata.Plot;
+        if (!string.IsNullOrWhiteSpace(metadata.PosterUrl)) title.PosterUrl = metadata.PosterUrl;
+        if (!string.IsNullOrWhiteSpace(metadata.Runtime)) title.Runtime = metadata.Runtime;
+        if (!string.IsNullOrWhiteSpace(metadata.Awards)) title.Awards = metadata.Awards;
+        if (!string.IsNullOrWhiteSpace(metadata.BoxOffice)) title.BoxOffice = metadata.BoxOffice;
+        title.MetadataStatus = "enriched";
+        title.NextEnrichmentAttemptAt = null;
+        title.LastEnrichmentError = null;
+        title.UpdatedAt = updatedAt;
+    }
+}
