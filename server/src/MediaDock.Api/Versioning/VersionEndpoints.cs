@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Configuration;
 
@@ -27,6 +28,7 @@ internal static class VersionEndpoints
             .WithName("GetVersion")
             .WithSummary("Get the version of the running application.")
             .WithDescription("Returns build metadata embedded in the deployed application image.")
+            .AllowAnonymous()
             .Produces<VersionResponse>(StatusCodes.Status200OK);
 
         return app;

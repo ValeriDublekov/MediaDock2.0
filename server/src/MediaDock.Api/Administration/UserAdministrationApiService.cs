@@ -38,7 +38,9 @@ public enum UserAdministrationResult
     Conflict
 }
 
-public sealed class UserAdministrationApiService(MediaDockDbContext db)
+public sealed class UserAdministrationApiService(
+    MediaDockDbContext db,
+    AccessControlSettings accessControlSettings)
 {
     private const string AdminMutationLockName = "mediadock-user-administration";
     private const string OpenModeActor = "open-mode";
@@ -128,6 +130,11 @@ public sealed class UserAdministrationApiService(MediaDockDbContext db)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await AcquireMutationLockAsync(cancellationToken);
+        if (accessControlSettings.Enforced && !actorId.HasValue)
+        {
+            return UserAdministrationResult.Forbidden;
+        }
+
         var actorEmail = actorId.HasValue
             ? await GetActiveAdministratorEmailAsync(actorId.Value, cancellationToken)
             : OpenModeActor;
@@ -173,6 +180,11 @@ public sealed class UserAdministrationApiService(MediaDockDbContext db)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await AcquireMutationLockAsync(cancellationToken);
+        if (accessControlSettings.Enforced && !actorId.HasValue)
+        {
+            return UserAdministrationResult.Forbidden;
+        }
+
         if (actorId.HasValue
             && await GetActiveAdministratorEmailAsync(actorId.Value, cancellationToken) is null)
         {

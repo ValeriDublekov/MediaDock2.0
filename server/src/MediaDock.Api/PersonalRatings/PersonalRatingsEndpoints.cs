@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using MediaDock.Api.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MediaDock.Api.PersonalRatings;
@@ -18,6 +20,7 @@ internal static class PersonalRatingsEndpoints
             .WithName("ImportPersonalRatings")
             .WithSummary("Merge personal IMDb ratings from a JSON export.")
             .WithDescription("Repeated imports add new IMDb IDs and update changed ratings; ratings absent from the file are retained.")
+            .RequireAuthorization(AccessPolicies.PersonalData)
             .WithMetadata(new RequestSizeLimitAttribute(PersonalRatingsApiService.MaximumUploadBytes + 1024 * 1024))
             .DisableAntiforgery()
             .Produces<PersonalRatingsImportResponse>(StatusCodes.Status200OK)

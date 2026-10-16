@@ -1,4 +1,6 @@
 using MediaDock.Api.Common;
+using MediaDock.Api.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,6 +16,7 @@ internal static class BackgroundJobEndpoints
             return job is null ? Results.NoContent() : Results.Ok(job);
         })
             .WithName("GetActiveBackgroundJob")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<BackgroundJobResponse>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status204NoContent);
 
@@ -38,6 +41,7 @@ internal static class BackgroundJobEndpoints
         })
             .WithName("EnqueueBackgroundScan")
             .WithSummary("Queue a manual RSS scan.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
@@ -62,6 +66,7 @@ internal static class BackgroundJobEndpoints
         })
             .WithName("EnqueueFailedEntryRecheck")
             .WithSummary("Queue a recheck of retryable torrent entries, including legacy failures uniquely matched to current feeds.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
@@ -86,6 +91,7 @@ internal static class BackgroundJobEndpoints
         })
             .WithName("EnqueueOscarEnrichment")
             .WithSummary("Queue a manual Oscar film metadata enrichment run.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
@@ -106,7 +112,8 @@ internal static class BackgroundJobEndpoints
             }
             var statusUrl = $"/api/background-jobs/{result.Job.Id}";
             return Results.Accepted(statusUrl, new BackgroundJobAcceptedResponse(result.Job.Id, result.Job.Status, statusUrl));
-        }).WithName("EnqueueGoldenGlobeEnrichment").WithSummary("Queue a manual Golden Globes metadata enrichment run.");
+        }).WithName("EnqueueGoldenGlobeEnrichment").WithSummary("Queue a manual Golden Globes metadata enrichment run.")
+            .RequireAuthorization(AccessPolicies.Administrator);
 
         app.MapPost("/api/background-jobs/oscar-import", async (
             [FromForm] OscarImportForm form,
@@ -119,6 +126,7 @@ internal static class BackgroundJobEndpoints
         })
             .WithName("EnqueueOscarImport")
             .WithSummary("Queue a CSV or TSV Oscar dataset import.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .WithMetadata(new RequestSizeLimitAttribute(maximumUploadBytes + 1024 * 1024))
             .DisableAntiforgery()
             .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
@@ -135,6 +143,7 @@ internal static class BackgroundJobEndpoints
         })
             .WithName("EnqueueGoldenGlobeImport")
             .WithSummary("Queue a CSV or TSV Golden Globes dataset import.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .WithMetadata(new RequestSizeLimitAttribute(maximumUploadBytes + 1024 * 1024))
             .DisableAntiforgery()
             .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
@@ -145,6 +154,7 @@ internal static class BackgroundJobEndpoints
             BackgroundJobApiService service,
             CancellationToken token) => Results.Ok(await service.GetAsync(id, token)))
             .WithName("GetBackgroundJob")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<BackgroundJobResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
@@ -154,6 +164,7 @@ internal static class BackgroundJobEndpoints
             BackgroundJobApiService service,
             CancellationToken token) => Results.Ok(await service.GetEventsAsync(id, query, token)))
             .WithName("GetBackgroundJobEvents")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<BackgroundJobEventsResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound);

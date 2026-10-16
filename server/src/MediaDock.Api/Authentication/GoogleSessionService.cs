@@ -24,7 +24,12 @@ public sealed class GoogleSessionService(MediaDockDbContext db)
             return new CurrentSessionResponse(
                 true,
                 identity.ToResponse(),
-                new CurrentSessionUser(linkedUser.NormalizedEmail, linkedUser.GivenName, linkedUser.FamilyName, linkedUser.Status),
+                new CurrentSessionUser(
+                    linkedUser.NormalizedEmail,
+                    linkedUser.GivenName,
+                    linkedUser.FamilyName,
+                    linkedUser.Status,
+                    linkedUser.Role),
                 "linked")
             {
                 RegistrationRequest = registrationRequest
@@ -40,6 +45,7 @@ public sealed class GoogleSessionService(MediaDockDbContext db)
                 user.GivenName,
                 user.FamilyName,
                 user.Status,
+                user.Role,
                 HasExternalIdentity = user.ExternalIdentities.Any()
             })
             .SingleOrDefaultAsync(cancellationToken);
@@ -61,7 +67,8 @@ public sealed class GoogleSessionService(MediaDockDbContext db)
                 matchingUser.NormalizedEmail,
                 matchingUser.GivenName,
                 matchingUser.FamilyName,
-                matchingUser.Status),
+                matchingUser.Status,
+                matchingUser.Role),
             "link_confirmation_required");
     }
 

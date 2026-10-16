@@ -1,6 +1,6 @@
 # Users and Access Control: Implementation Plan
 
-**Status:** Partially implemented; broad access control and per-user data ownership remain planned
+**Status:** Optional OIDC and a configurable access-control gate are implemented; enforcement defaults off. Per-user favorites/ratings queries and the corresponding user experience remain planned.
 **Source design:** [Users and access control plan](USERS_AND_ACCESS_CONTROL_PLAN.md)
 **Personal data/settings detail:** Follow the [user settings and personal data migration plan](USER_SETTINGS_MIGRATION_PLAN.md) for the ownership inventory, legacy backfill rule, `MinMovieRating` behavior, and user/admin menu split.
 
@@ -12,11 +12,11 @@ This document turns the source design into bounded implementation sessions. Each
 
 ## Analysis and Safety Decisions
 
-Before the Google authentication foundation, the implementation has one shared `favorite_movies` row per `title_id` and one shared `personal_ratings` row per IMDb ID. After that foundation, optional authentication identifies a caller, but the API still has no authorization enforcement and those records remain shared. Consequently, adding identity or ownership columns alone does not make personal data private, and a client-supplied user ID must never establish ownership.
+Before the Google authentication foundation, the implementation had one shared `favorite_movies` row per `title_id` and one shared `personal_ratings` row per IMDb ID. Optional authentication identifies a caller; the access gate is now available but remains disabled by default for rollout compatibility. When enabled, system routes are protected, while favorites and ratings are denied until their queries derive and enforce the current owner. Adding identity or ownership columns alone does not make personal data private, and a client-supplied user ID must never establish ownership.
 
 The original source design placed user/role management before enforcement. That would be unsafe even after optional sign-in exists: without authorization, any client that reaches the API could create accounts, change roles, or deactivate an account. A persistent warning explains the risk but does not prevent it.
 
-**Temporary open-mode exception (2026-10-09):** while authorization is disabled, the current Users listing and account review/status actions intentionally do not require a signed-in administrator. This exposes account details and account-management actions to every client within the configured API network boundary. Mutations retain anti-forgery validation, but it is not authorization; decisions without an active administrator identity are attributed to `open-mode`. Before enabling security, multi-user operation, or access from untrusted networks, restore active-admin checks on every Users endpoint. Continue to preserve the shared single-profile behavior: do not expose per-user data ownership or accept a client-supplied owner ID. The warning and existing loopback/LAN boundary remain mandatory.
+**Open-mode behavior:** `ACCESS_CONTROL_ENFORCED` defaults to `false` for rollout compatibility. In that mode authorization policies are bypassed for shared, system, and operation routes, including Users; the persistent warning and loopback/LAN boundary remain mandatory. When enabled, every non-public route requires an active linked user, system/admin routes require an active `admin`, and roles/status are re-read from PostgreSQL each request. Favorites and ratings are denied in all modes until their owner-scoped API sessions are complete. No client-supplied owner ID is accepted.
 
 Treat these decisions as a gate, not implementation assumptions. Close them in Session 0:
 
@@ -26,6 +26,8 @@ Treat these decisions as a gate, not implementation assumptions. Close them in S
 - Deactivation and deletion policy. Recommended initial behavior: deactivate and retain personal rows; do not cascade-delete or reassign them implicitly.
 - Initial roles/capabilities. The identity schema uses `admin` and `user`; administrators do not read or edit another user's personal rows by default. Authorization capabilities and enforcement remain to be decided here.
 - Exact routes available anonymously, the explicit authorization-disabled configuration, and the conditions under which enforcement may be enabled.
+
+The implemented anonymous policy surface is health, version, and authentication protocol endpoints. Enable enforcement only after Google sign-in is configured, a bootstrap administrator is linked, and operator validation confirms that the account can access admin routes.
 
 Record the decisions in the source design or a short decision record before Session 1. If any decision changes the ownership or identity model, update this sequence before coding.
 
@@ -49,7 +51,7 @@ Record the decisions in the source design or a short decision record before Sess
 
 ### Session 2: Authentication and Controlled Bootstrap
 
-**Goal:** verify and complete the trusted server-side user context from the prerequisite plan without yet turning on authorization enforcement.
+**Goal:** verify and complete the trusted server-side user context from the prerequisite plan without enabling authorization enforcement by default.
 
 **Work:** reuse and verify the existing OIDC/session implementation, validated issuer/audience/signature/nonce/state and verified claims, explicit bootstrap/account linking, sign-in/sign-out, and server-side mapping from provider identity to internal `users.id`. The bootstrap tool trusts host-supplied values, so obtain them from the authenticated session response; do not duplicate the Google login flow or expose bootstrap, approval, or role mutation publicly. Close only identified gaps. Resolve active state and role from current server-side data when authorization is enforced (or use an equivalently immediate revocation mechanism), rather than trusting stale client role state. When authorization is enabled, missing, unknown, or deactivated identity must fail closed; never fall back to the bootstrap owner. Keep the authorization-disabled mode explicitly configured and visibly unsafe.
 
@@ -120,3 +122,5 @@ At the end of each session, record the completed session number, changed files, 
 **Incremental handoff (2026-10-09):** Added `GET /api/admin/users`, protected registration-request decisions, and account activation/deactivation. Every request resolves the validated Google issuer/subject to a currently active admin in PostgreSQL; mutations require anti-forgery validation, decisions are transactional, and the last active administrator cannot be deactivated. Configuration > Users provides search, filters, pagination, approval/rejection, and activation controls. The auth/admin integration suite passed 9/9; the web suite passed 93/93; Oxlint and the production web build succeeded. Lint reports five existing warnings outside the Users feature. The broader access matrix, ownership migration, role changes, and per-user favorites/ratings remain unimplemented.
 
 **Open-mode handoff (2026-10-09):** At the operator's request, `GET /api/admin/users`, registration decisions, and account status changes now work without sign-in. Mutations still require anti-forgery validation; unauthenticated decisions use `DecidedBy = "open-mode"`. Focused integration tests cover anonymous listing, approval, and status change. This exposes account data and management actions to all clients within the configured network boundary; restore active-admin authorization before broader exposure or enabling security.
+
+**Access-control gate handoff (2026-10-16):** Added `AccessControl:Enforced` / `ACCESS_CONTROL_ENFORCED` (default `false`), a server-derived current-user resolver, active-user fallback authorization, and database-backed admin policy. Account status and role are resolved from the validated `(issuer, subject)` identity on each request, so unknown/deactivated users fail closed and role changes apply immediately. System configuration, user administration, operational history, jobs, deployment, and manual Golden Globes linking require an admin when enforcement is enabled; shared catalog/award reads require an active user. Favorites and ratings are denied in every mode until owner scoping is implemented. Admin mutation services reject a missing actor under enforcement instead of falling back to `open-mode`. The `/api/auth/session` projection reports the database role and enforcement mode; the UI warning follows that mode. `python -B scripts/run_tests.py server-integration --filter "Category=Api"` passed 37/37; focused admin-policy and missing-actor tests passed 1/1 each; `python -B scripts/run_tests.py web` passed 101/101; lint/build succeeded. No production setting, migration, or deployment was changed. Next entry point: per-user favorites and rating isolation in the user-settings migration plan.

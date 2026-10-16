@@ -1,5 +1,7 @@
 using MediaDock.Api.Catalog;
 using MediaDock.Api.Common;
+using MediaDock.Api.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MediaDock.Api.Operations;
@@ -19,6 +21,7 @@ internal static class OperationalHistoryEndpoints
             .WithName("GetParseLogs")
             .WithSummary("Search paginated parse-log history.")
             .WithDescription("Returns a stable page of recent parser and ingestion decisions.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<PageResponse<ParseLogResponse>>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -33,6 +36,7 @@ internal static class OperationalHistoryEndpoints
             .WithName("GetScanRuns")
             .WithSummary("List paginated scan history.")
             .WithDescription("Returns a stable page of recent scan summaries; this endpoint does not start scans.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<PageResponse<ScanRunResponse>>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 

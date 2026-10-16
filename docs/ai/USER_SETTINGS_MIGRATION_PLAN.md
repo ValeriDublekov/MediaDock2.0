@@ -1,6 +1,6 @@
 # User Settings and Personal Data Migration Plan
 
-**Status:** Session 1 schema and legacy backfill complete; per-user API enforcement is not implemented yet
+**Status:** Session 1 schema/backfill and Session 2 authorization gate complete; favorites/ratings remain unavailable until their owner-scoped API sessions.
 **Updated:** 2026-10-16
 **Prerequisite:** Reuse the identity and authorization work in the [users and access control implementation plan](USERS_AND_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md). This plan does not recreate Google sign-in, user records, or account administration.
 
@@ -98,7 +98,9 @@ Add the compound ownership keys and restrictive user foreign keys for favorites 
 
 Complete/reuse the server-derived active-user context and authorization policies from the access-control plan before exposing per-user endpoints. Protect all existing admin/global mutation and operation routes. Ensure session/current-user role or capabilities are resolved from current server state, not trusted from browser input or stale client role claims.
 
-**Exit checks:** anonymous, unknown, and deactivated callers fail closed; ordinary users cannot call admin/global writes; an admin cannot read another user's personal rows by default; no endpoint accepts a client-selected owner ID.
+**Exit checks:** anonymous, unknown, and deactivated callers fail closed when enforcement is enabled; ordinary users cannot call admin/global writes; personal endpoints fail closed in every mode until owner scoping exists; no endpoint accepts a client-selected owner ID. The explicit disabled mode remains open for other routes and visibly warned.
+
+**Handoff (2026-10-16):** Added an explicit `ACCESS_CONTROL_ENFORCED` switch, a server-derived active-user context keyed by validated `(issuer, subject)`, and current-database role checks on each request. Enforced mode requires active users for shared catalog/award reads and admins for global configuration, user administration, operations, jobs, deployment, and manual Golden Globes links. Unknown/deactivated identities fail closed; admin mutation services also reject missing actors transactionally rather than falling back to open mode. Favorites and ratings stay denied in all modes until owner-scoped implementation, and no client owner ID is used. `/api/auth/session` projects current role and enforcement state; the persistent warning follows the server flag. Changed API auth/policy code, access integration tests, web session types/banner/tests, Compose and `.env.example`, API/architecture/runbook documentation, and the access-control plans. Verification: focused admin-policy and missing-actor tests passed 1/1 each; `python -B scripts/run_tests.py server-integration --filter "Category=Api"` passed 37/37; `python -B scripts/run_tests.py web` passed 101/101; `npm --prefix web run lint` succeeded with five warnings outside the changed files; `npm --prefix web run build` succeeded; `git diff --check` was clean. No production migration, configuration change, or deployment was performed. No blockers. Next entry point: Session 3 per-user favorites.
 
 ### Session 3: Per-User Favorites
 

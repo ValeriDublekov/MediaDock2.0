@@ -16,6 +16,7 @@ const anonymousSession: CurrentSession = {
   user: null,
   accountState: 'anonymous',
   signInEnabled: true,
+  authorizationEnforced: false,
   registrationRequest: null,
 }
 
@@ -32,13 +33,14 @@ const unmatchedSession: CurrentSession = {
   user: null,
   accountState: 'unmatched',
   signInEnabled: true,
+  authorizationEnforced: false,
   registrationRequest: null,
 }
 
 function linkedSession(registrationRequest: CurrentSession['registrationRequest'] = null): CurrentSession {
   return {
     ...unmatchedSession,
-    user: { email: 'person@example.com', givenName: 'Stored', familyName: 'Account', status: 'pending' },
+    user: { email: 'person@example.com', givenName: 'Stored', familyName: 'Account', status: 'pending', role: null },
     accountState: 'linked',
     registrationRequest,
   }

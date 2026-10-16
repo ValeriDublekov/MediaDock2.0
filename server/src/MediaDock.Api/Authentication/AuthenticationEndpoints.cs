@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -30,11 +31,13 @@ internal static class AuthenticationEndpoints
         })
             .WithName("StartGoogleSignIn")
             .WithSummary("Start the optional Google sign-in flow.")
+            .AllowAnonymous()
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
         app.MapGet("/api/auth/session", async Task<Results<Ok<CurrentSessionResponse>, ProblemHttpResult>> (
             HttpContext context,
             GoogleSignInSettings signInSettings,
+            AccessControlSettings accessControlSettings,
             GoogleSessionService sessionService,
             ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
@@ -45,7 +48,8 @@ internal static class AuthenticationEndpoints
             {
                 return TypedResults.Ok(CurrentSessionResponse.Anonymous with
                 {
-                    SignInEnabled = signInSettings.Enabled
+                    SignInEnabled = signInSettings.Enabled,
+                    AuthorizationEnforced = accessControlSettings.Enforced
                 });
             }
 
@@ -87,10 +91,15 @@ internal static class AuthenticationEndpoints
             }
 
             var session = await sessionService.GetCurrentSessionAsync(identity!, cancellationToken);
-            return TypedResults.Ok(session with { SignInEnabled = signInSettings.Enabled });
+            return TypedResults.Ok(session with
+            {
+                SignInEnabled = signInSettings.Enabled,
+                AuthorizationEnforced = accessControlSettings.Enforced
+            });
         })
             .WithName("GetCurrentSession")
             .WithSummary("Return the optional Google identity associated with this browser session.")
+            .AllowAnonymous()
             .Produces<CurrentSessionResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status401Unauthorized);
 
@@ -102,7 +111,8 @@ internal static class AuthenticationEndpoints
             return TypedResults.Ok(new AntiforgeryTokenResponse(tokens.RequestToken!));
         })
             .WithName("GetAntiforgeryToken")
-            .WithSummary("Issue a request token for cookie-authenticated state changes.");
+            .WithSummary("Issue a request token for cookie-authenticated state changes.")
+            .AllowAnonymous();
 
         app.MapPost("/api/auth/google/link", async Task<Results<NoContent, UnauthorizedHttpResult, ProblemHttpResult>> (
             HttpContext context,
@@ -134,6 +144,7 @@ internal static class AuthenticationEndpoints
         })
             .WithName("LinkGoogleAccount")
             .WithSummary("Confirm one-time linking to the account matching the verified Google email.")
+            .AllowAnonymous()
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status409Conflict)
@@ -177,6 +188,7 @@ internal static class AuthenticationEndpoints
         })
             .WithName("RequestRegistration")
             .WithSummary("Submit an idempotent registration request for the validated Google identity.")
+            .AllowAnonymous()
             .Produces<RegistrationRequestResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status409Conflict)
@@ -205,6 +217,7 @@ internal static class AuthenticationEndpoints
         })
             .WithName("Logout")
             .WithSummary("Clear the MediaDock browser session.")
+            .AllowAnonymous()
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -224,7 +237,7 @@ public sealed record CurrentSessionIdentity(
     public bool ProfileComplete => GivenName is not null && FamilyName is not null;
 }
 
-public sealed record CurrentSessionUser(string Email, string GivenName, string FamilyName, string Status);
+public sealed record CurrentSessionUser(string Email, string GivenName, string FamilyName, string Status, string? Role);
 public sealed record CurrentSessionRegistrationRequest(string Status, DateTimeOffset RequestedAt, DateTimeOffset? DecidedAt);
 
 public sealed record CurrentSessionResponse(
@@ -235,6 +248,7 @@ public sealed record CurrentSessionResponse(
 {
     public static CurrentSessionResponse Anonymous { get; } = new(false, null, null, "anonymous");
     public bool SignInEnabled { get; init; }
+    public bool AuthorizationEnforced { get; init; }
     public CurrentSessionRegistrationRequest? RegistrationRequest { get; init; }
 }
 

@@ -1,4 +1,6 @@
 using MediaDock.Api.Middleware;
+using MediaDock.Api.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MediaDock.Api.Sources;
@@ -6,7 +8,7 @@ namespace MediaDock.Api.Sources;
 internal static class SourceSettingsEndpoints
 {
     private const string LanTrustedWriteDescription =
-        "LAN-trusted MVP write endpoint. Requests are unauthenticated; do not expose this API beyond a trusted LAN.";
+        "System configuration write. Requires an active administrator when access control is enforced; disabled open mode is unprotected.";
 
     public static WebApplication MapSourceSettingsEndpoints(this WebApplication app)
     {
@@ -19,6 +21,7 @@ internal static class SourceSettingsEndpoints
         })
             .WithName("GetSourceProfiles")
             .WithSummary("List the fixed RSS profiles and their URLs.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<IReadOnlyList<SourceProfileResponse>>(StatusCodes.Status200OK);
 
         app.MapPost("/api/sources/{profileId}/urls", async Task<Created<SourceUrlResponse>> (
@@ -33,6 +36,7 @@ internal static class SourceSettingsEndpoints
             .WithName("AddSourceUrl")
             .WithSummary("Add an RSS URL to a fixed profile.")
             .WithDescription(LanTrustedWriteDescription)
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<SourceUrlResponse>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status409Conflict);
@@ -50,6 +54,7 @@ internal static class SourceSettingsEndpoints
             .WithName("ReplaceSourceUrl")
             .WithSummary("Replace an RSS URL within its fixed profile.")
             .WithDescription(LanTrustedWriteDescription)
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<SourceUrlResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound)
@@ -67,6 +72,7 @@ internal static class SourceSettingsEndpoints
             .WithName("RemoveSourceUrl")
             .WithSummary("Remove an RSS URL from its fixed profile.")
             .WithDescription(LanTrustedWriteDescription)
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound);
@@ -81,6 +87,7 @@ internal static class SourceSettingsEndpoints
             .WithName("GetSettings")
             .WithSummary("Get application matching settings.")
             .WithDescription("Returns saved settings or their defaults when no settings row exists.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<SettingsResponse>(StatusCodes.Status200OK);
 
         app.MapPut("/api/settings", async Task<Ok<SettingsResponse>> (
@@ -94,6 +101,7 @@ internal static class SourceSettingsEndpoints
             .WithName("UpdateSettings")
             .WithSummary("Replace application matching settings.")
             .WithDescription(LanTrustedWriteDescription)
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<SettingsResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -106,6 +114,7 @@ internal static class SourceSettingsEndpoints
         })
             .WithName("GetOmdbSettings")
             .WithSummary("Get OMDb settings without exposing the API key.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<ProviderSettingsResponse>(StatusCodes.Status200OK);
 
         app.MapGet("/api/settings/providers/omdb/usage", async Task<Ok<IReadOnlyList<OmdbDailyUsageResponse>>> (
@@ -117,6 +126,7 @@ internal static class SourceSettingsEndpoints
         })
             .WithName("GetOmdbDailyUsage")
             .WithSummary("Get the last 30 UTC days of OMDb request usage and safe error codes.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<IReadOnlyList<OmdbDailyUsageResponse>>(StatusCodes.Status200OK);
 
         app.MapPost("/api/settings/providers/omdb/test", async Task<Ok<OmdbDiagnosticResponse>> (
@@ -129,6 +139,7 @@ internal static class SourceSettingsEndpoints
             .WithName("TestOmdbProvider")
             .WithSummary("Send one OMDb diagnostic request for a fixed IMDb ID.")
             .WithDescription("LAN-trusted diagnostic endpoint. Sends exactly one request to OMDb without checking or consuming MediaDock's shared daily request budget.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<OmdbDiagnosticResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
@@ -143,6 +154,7 @@ internal static class SourceSettingsEndpoints
             .WithName("UpdateOmdbSettings")
             .WithSummary("Update OMDb settings and the write-only API key.")
             .WithDescription(LanTrustedWriteDescription)
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<ProviderSettingsResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 

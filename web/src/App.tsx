@@ -225,9 +225,11 @@ function AppContent() {
           <AuthStatus onSessionChange={onSessionChange} />
         </header>
 
-        <aside className="open-mode-warning" role="note">
-          Sign-in is optional and verifies identity only. Application permissions are not enforced, and data remains accessible to clients within the configured network boundary.
-        </aside>
+        {(!authChecked || session?.authorizationEnforced !== true) && (
+          <aside className="open-mode-warning" role="note">
+            Sign-in is optional and verifies identity only. Application permissions are not enforced for shared, system, or account-administration routes. Keep the API within its configured network boundary. Favorites and personal ratings are unavailable until user ownership is enforced.
+          </aside>
+        )}
 
         {!authChecked ? (
           <div className="session-check" role="status">Checking sign-in status</div>

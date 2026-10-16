@@ -1,4 +1,6 @@
 using System.Net;
+using MediaDock.Api.Authentication;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MediaDock.Api.Operations;
 
@@ -23,6 +25,7 @@ internal static class DeploymentControlEndpoints
         })
             .WithName("GetDeploymentStatus")
             .WithSummary("Get deployment status and recent output.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<DeploymentStatusResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
@@ -59,6 +62,7 @@ internal static class DeploymentControlEndpoints
         })
             .WithName("StartDeployment")
             .WithSummary("Run an immediate deployment check or retry a failed staging gate.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<DeploymentActionResponse>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status409Conflict)

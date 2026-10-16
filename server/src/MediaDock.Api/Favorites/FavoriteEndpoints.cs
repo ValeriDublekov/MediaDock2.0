@@ -1,4 +1,6 @@
 using MediaDock.Api.Common;
+using MediaDock.Api.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MediaDock.Api.Favorites;
@@ -11,18 +13,21 @@ internal static class FavoriteEndpoints
             [AsParameters] FavoriteQuery query, FavoriteApiService service, CancellationToken cancellationToken) =>
             TypedResults.Ok(await service.GetAsync(query, cancellationToken)))
             .WithName("GetFavorites").WithSummary("List favorite movies and their current sources.")
+            .RequireAuthorization(AccessPolicies.PersonalData)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
         app.MapPost("/api/favorites", async Task<Ok<FavoriteMovieResponse>> (
             CreateFavoriteRequest request, FavoriteApiService service, CancellationToken cancellationToken) =>
             TypedResults.Ok(await service.AddAsync(request, cancellationToken)))
             .WithName("AddFavorite").WithSummary("Add a movie from a verified catalog.")
+            .RequireAuthorization(AccessPolicies.PersonalData)
             .ProducesProblem(StatusCodes.Status400BadRequest).ProducesProblem(StatusCodes.Status404NotFound);
 
         app.MapPatch("/api/favorites/{titleId:long}", async Task<Ok<FavoriteMovieResponse>> (
             long titleId, UpdateFavoriteRequest request, FavoriteApiService service, CancellationToken cancellationToken) =>
             TypedResults.Ok(await service.UpdateAsync(titleId, request, cancellationToken)))
             .WithName("UpdateFavorite").WithSummary("Update favorite movie markers.")
+            .RequireAuthorization(AccessPolicies.PersonalData)
             .ProducesProblem(StatusCodes.Status400BadRequest).ProducesProblem(StatusCodes.Status404NotFound);
 
         app.MapDelete("/api/favorites/{titleId:long}", async Task<NoContent> (
@@ -30,7 +35,8 @@ internal static class FavoriteEndpoints
         {
             await service.DeleteAsync(titleId, cancellationToken);
             return TypedResults.NoContent();
-        }).WithName("DeleteFavorite").WithSummary("Remove a movie from favorites.");
+        }).WithName("DeleteFavorite").WithSummary("Remove a movie from favorites.")
+            .RequireAuthorization(AccessPolicies.PersonalData);
 
         return app;
     }

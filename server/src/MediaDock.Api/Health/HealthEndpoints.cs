@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MediaDock.Api.Health;
@@ -11,6 +12,7 @@ internal static class HealthEndpoints
             .WithName("HealthLive")
             .WithSummary("Check whether the API process is alive.")
             .WithDescription("Returns success when the API process can handle requests.")
+            .AllowAnonymous()
             .Produces<HealthResponse>(StatusCodes.Status200OK);
 
         app.MapGet("/health/ready", async Task<Results<Ok<HealthResponse>, ProblemHttpResult>> (
@@ -33,6 +35,7 @@ internal static class HealthEndpoints
             .WithName("HealthReady")
             .WithSummary("Check whether the API can reach PostgreSQL.")
             .WithDescription("Returns a problem response while the database is unavailable.")
+            .AllowAnonymous()
             .Produces<HealthResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 

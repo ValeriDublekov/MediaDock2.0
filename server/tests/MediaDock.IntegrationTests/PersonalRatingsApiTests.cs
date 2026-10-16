@@ -14,7 +14,7 @@ namespace MediaDock.IntegrationTests;
 public sealed class PersonalRatingsApiTests
 {
     [Fact]
-    public async Task ImportMergesRepeatedFilesAndRejectsInvalidJsonWithoutChangingSavedRatings()
+    public async Task ImportRemainsClosedUntilOwnerScopedWritesAreImplemented()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_personal_ratings_api_test").Build();
         await postgres.StartAsync();
@@ -25,46 +25,9 @@ public sealed class PersonalRatingsApiTests
         using var factory = new ApiFactory(connectionString);
         using var client = factory.CreateClient();
 
-        using var firstResponse = await client.PostAsync("/api/personal-ratings/import", CreateUpload(
-            "[{\"id\":\"tt14452776\",\"rating\":8},{\"id\":\"tt1172049\",\"rating\":6}]"));
-        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
-        var firstResult = await firstResponse.Content.ReadFromJsonAsync<PersonalRatingsImportResponse>();
-        Assert.NotNull(firstResult);
-        Assert.Equal(2, firstResult.Added);
-        Assert.Equal(2, firstResult.TotalRatings);
-
-        using var repeatedResponse = await client.PostAsync("/api/personal-ratings/import", CreateUpload(
-            "[{\"id\":\"tt14452776\",\"rating\":9},{\"id\":\"tt1172049\",\"rating\":6},{\"id\":\"tt0000003\",\"rating\":7}]"));
-        Assert.Equal(HttpStatusCode.OK, repeatedResponse.StatusCode);
-        var repeatedResult = await repeatedResponse.Content.ReadFromJsonAsync<PersonalRatingsImportResponse>();
-        Assert.NotNull(repeatedResult);
-        Assert.Equal(1, repeatedResult.Added);
-        Assert.Equal(1, repeatedResult.Updated);
-        Assert.Equal(1, repeatedResult.Unchanged);
-        Assert.Equal(3, repeatedResult.TotalRatings);
-
-        using var invalidResponse = await client.PostAsync("/api/personal-ratings/import", CreateUpload(
-            "[{\"id\":\"tt1234567\",\"rating\":0}]"));
-        Assert.Equal(HttpStatusCode.BadRequest, invalidResponse.StatusCode);
-        Assert.Equal(3, await db.PersonalRatings.CountAsync());
-        Assert.Equal(9, (await db.PersonalRatings.SingleAsync(rating => rating.ImdbId == "tt14452776")).Rating);
-
-        using var partialResponse = await client.PostAsync("/api/personal-ratings/import", CreateUpload(
-            "[{\"id\":\"tt0000003\",\"rating\":7}]"));
-        Assert.Equal(HttpStatusCode.OK, partialResponse.StatusCode);
-        Assert.Equal(3, (await partialResponse.Content.ReadFromJsonAsync<PersonalRatingsImportResponse>())!.TotalRatings);
-        Assert.Equal(6, (await db.PersonalRatings.SingleAsync(rating => rating.ImdbId == "tt1172049")).Rating);
-
-        using var partialWithErrorsResponse = await client.PostAsync("/api/personal-ratings/import", CreateUpload(
-            "[{\"id\":\"tt12345678\",\"rating\":8},{\"id\":\"tt5555555\",\"rating\":null},{\"id\":\"tt4444444\"}]"));
-        Assert.Equal(HttpStatusCode.OK, partialWithErrorsResponse.StatusCode);
-        var partialWithErrorsResult = await partialWithErrorsResponse.Content.ReadFromJsonAsync<PersonalRatingsImportResponse>();
-        Assert.NotNull(partialWithErrorsResult);
-        Assert.Equal(1, partialWithErrorsResult.Added);
-        Assert.Equal(4, partialWithErrorsResult.TotalRatings);
-        Assert.Equal(new[] { "tt5555555", "tt4444444" }, partialWithErrorsResult.Errors.Select(error => error.Id));
-        Assert.All(partialWithErrorsResult.Errors, error => Assert.Equal("Missing rating.", error.Message));
-        Assert.Equal(4, await db.PersonalRatings.CountAsync());
+        using var response = await client.PostAsync("/api/personal-ratings/import", CreateUpload("[]"));
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Empty(await db.PersonalRatings.ToListAsync());
     }
 
     private static MultipartFormDataContent CreateUpload(string json)

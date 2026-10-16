@@ -1,4 +1,6 @@
 using MediaDock.Api.Common;
+using MediaDock.Api.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
@@ -28,6 +30,7 @@ internal static class GoldenGlobeEndpoints
                 TypedResults.Ok(await service.SetImdbIdAsync(request, cancellationToken)))
             .WithName("SetGoldenGlobeImdbId")
             .WithSummary("Manually link or clear an IMDb ID and queue its metadata refresh.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<GoldenGlobeImdbLinkResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound);

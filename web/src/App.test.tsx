@@ -67,6 +67,7 @@ const anonymousSession: CurrentSession = {
   user: null,
   accountState: 'anonymous',
   signInEnabled: true,
+  authorizationEnforced: false,
   registrationRequest: null,
 }
 
@@ -83,6 +84,7 @@ const unmatchedSession: CurrentSession = {
   user: null,
   accountState: 'unmatched',
   signInEnabled: true,
+  authorizationEnforced: false,
   registrationRequest: null,
 }
 
@@ -113,6 +115,15 @@ describe('App routes', () => {
     expect(await screen.findByRole('heading', { name: heading })).toBeTruthy()
     expect(screen.getByRole('note').textContent).toContain('Application permissions are not enforced')
     expect(screen.getByTestId('location').textContent).toBe(path)
+  })
+
+  it('hides the open-mode warning only when the server confirms enforcement', async () => {
+    authMock.session = { ...anonymousSession, authorizationEnforced: true }
+
+    renderAt('/catalog')
+
+    expect(await screen.findByRole('heading', { name: 'Catalog' })).toBeTruthy()
+    expect(screen.queryByRole('note')).toBeNull()
   })
 
   it('redirects the configuration root to torrent settings', async () => {
@@ -160,7 +171,7 @@ describe('App routes', () => {
     vi.mocked(requestRegistration).mockResolvedValue({ status: 'pending', requestedAt: '2026-10-09T10:00:00Z', decidedAt: null })
     vi.mocked(getCurrentSession).mockResolvedValue({
       ...unmatchedSession,
-      user: { email: 'person@example.com', givenName: 'Google', familyName: 'Profile', status: 'pending' },
+      user: { email: 'person@example.com', givenName: 'Google', familyName: 'Profile', status: 'pending', role: null },
       accountState: 'linked',
       registrationRequest: { status: 'pending', requestedAt: '2026-10-09T10:00:00Z', decidedAt: null },
     })

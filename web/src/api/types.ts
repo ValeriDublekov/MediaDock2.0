@@ -374,6 +374,7 @@ export interface CurrentSessionUser {
   givenName: string
   familyName: string
   status: string
+  role: 'admin' | 'user' | null
 }
 
 export interface RegistrationRequestStatus {
@@ -410,6 +411,7 @@ export interface CurrentSession {
   user: CurrentSessionUser | null
   accountState: 'anonymous' | 'linked' | 'link_confirmation_required' | 'unmatched' | 'account_conflict'
   signInEnabled: boolean
+  authorizationEnforced: boolean
   registrationRequest: RegistrationRequestStatus | null
 }
 

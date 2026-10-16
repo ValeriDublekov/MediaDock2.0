@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using MediaDock.Api.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -26,7 +27,8 @@ internal static class UserAdministrationEndpoints
             }
         })
             .WithName("GetAdminUsers")
-            .WithSummary("List accounts and registration requests in the current open-access mode.")
+            .WithSummary("List accounts and registration requests.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<AdminUsersPageResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
@@ -56,6 +58,7 @@ internal static class UserAdministrationEndpoints
         })
             .WithName("DecideAdminRegistrationRequest")
             .WithSummary("Approve or reject a pending registration request.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden)
@@ -88,6 +91,7 @@ internal static class UserAdministrationEndpoints
         })
             .WithName("SetAdminUserStatus")
             .WithSummary("Activate or deactivate a non-pending user account.")
+            .RequireAuthorization(AccessPolicies.Administrator)
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden)

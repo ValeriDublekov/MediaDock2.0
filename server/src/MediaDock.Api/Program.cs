@@ -26,6 +26,7 @@ builder.Services.AddValidation();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddGoogleSignIn(builder.Configuration);
+builder.Services.AddAccessControl(builder.Configuration);
 builder.Services.AddDbContext<MediaDockDbContext>(options =>
 	options.UseNpgsql(builder.Configuration.GetConnectionString("MediaDock")
 		?? throw new InvalidOperationException("ConnectionStrings:MediaDock must be configured.")));
@@ -105,6 +106,7 @@ if (builder.Configuration.GetValue<bool>("bootstrap-admin"))
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsProduction())
 {

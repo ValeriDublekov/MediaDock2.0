@@ -194,6 +194,7 @@ describe('typed API client', () => {
       user: null,
       accountState: 'anonymous',
       signInEnabled: true,
+      authorizationEnforced: false,
       registrationRequest: null,
     }
     const stub = fetchStub(response(200, session))

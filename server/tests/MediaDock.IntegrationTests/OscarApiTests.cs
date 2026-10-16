@@ -18,107 +18,26 @@ namespace MediaDock.IntegrationTests;
 public sealed class OscarApiTests
 {
     [Fact]
-    public async Task FavoritesMergeOriginsAndKeepIndependentMarkersWhenTorrentAppears()
+    public async Task FavoritesRemainClosedUntilOwnerScopedQueriesAreImplemented()
     {
-        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_favorite_api_test").Build();
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_favorite_gate_test").Build();
         await postgres.StartAsync();
         var connectionString = postgres.GetConnectionString();
         await using var db = new MediaDockDbContext(new DbContextOptionsBuilder<MediaDockDbContext>()
             .UseNpgsql(connectionString).Options);
         await db.Database.MigrateAsync();
-        var now = DateTimeOffset.UtcNow;
-        var film = CreateFilm("favorite-film", "Favorite Film", 2024, "pending", now, null,
-            CreateNomination("favorite-nomination", 97, "BEST PICTURE", "Best Picture", "Producer", true));
-        db.OscarFilms.Add(film);
-        await db.SaveChangesAsync();
         using var factory = new ApiFactory(connectionString);
         using var client = factory.CreateClient();
 
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/favorites",
-            new { titleId = film.TitleId, from = "catalog" })).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/favorites",
-            new { titleId = film.TitleId, from = "invalid" })).StatusCode);
-        var added = await (await client.PostAsJsonAsync("/api/favorites",
-            new { titleId = film.TitleId, from = "oscar" })).Content.ReadFromJsonAsync<FavoriteMovieResponse>();
-        Assert.NotNull(added);
-        Assert.True(added.ToWatch);
-        Assert.False(added.ToDownload);
-        Assert.Equal(1, added.WinCount);
-
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PatchAsJsonAsync($"/api/favorites/{film.TitleId}",
-            new { toDownload = true })).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PatchAsJsonAsync($"/api/favorites/{film.TitleId}",
-            new { })).StatusCode);
-        await client.PatchAsJsonAsync($"/api/favorites/{film.TitleId}", new { toWatch = false });
-        await client.PostAsJsonAsync("/api/favorites", new { titleId = film.TitleId, from = "oscar" });
-
-        db.Sources.Add(new Source { StableKey = "favorite-feed", Name = "Feed", FeedType = "movie", Url = "https://feed.rutracker.cc" });
-        await db.SaveChangesAsync();
-        db.Occurrences.Add(new Occurrence
-        {
-            TitleId = film.TitleId, SourceId = db.Sources.Local.Single().Id, SourceItemKey = "entry:favorite",
-            TorrentUrl = "https://example.org/torrent", RawTitle = "Favorite Film", SourceFeedName = "Feed",
-            FirstSeenAt = now, LastSeenAt = now
-        });
-        await db.SaveChangesAsync();
-        var page = await client.GetFromJsonAsync<PageResponse<FavoriteMovieResponse>>("/api/favorites?status=all&pageSize=1");
-        Assert.NotNull(page);
-        Assert.Equal(1, page.TotalCount);
-        Assert.Equal(1, page.Items[0].OccurrenceCount);
-        Assert.False(page.Items[0].ToWatch);
-        Assert.False(page.Items[0].ToDownload);
-        Assert.Equal(0, (await client.GetFromJsonAsync<PageResponse<FavoriteMovieResponse>>(
-            "/api/favorites?status=to_download"))!.TotalCount);
-        var catalogAdds = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ => client.PostAsJsonAsync(
-            "/api/favorites", new { titleId = film.TitleId, from = "catalog" })));
-        Assert.All(catalogAdds, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
-        var merged = await catalogAdds[0].Content.ReadFromJsonAsync<FavoriteMovieResponse>();
-        Assert.NotNull(merged);
-        Assert.False(merged.ToWatch);
-        Assert.True(merged.ToDownload);
-        Assert.True(merged.AddedFromOscar);
-        Assert.True(merged.AddedFromCatalog);
-        Assert.Equal(1, await db.FavoriteMovies.CountAsync());
-        Assert.Equal(1, (await client.GetFromJsonAsync<PageResponse<FavoriteMovieResponse>>(
-            "/api/favorites?status=to_download"))!.TotalCount);
-        Assert.Equal(0, (await client.GetFromJsonAsync<PageResponse<FavoriteMovieResponse>>(
-            "/api/favorites?status=to_watch"))!.TotalCount);
-        await client.PatchAsJsonAsync($"/api/favorites/{film.TitleId}", new { toDownload = false });
-        var repeated = await (await client.PostAsJsonAsync("/api/favorites",
-            new { titleId = film.TitleId, from = "catalog" })).Content.ReadFromJsonAsync<FavoriteMovieResponse>();
-        Assert.NotNull(repeated);
-        Assert.False(repeated.ToDownload);
-        var torrentOnly = new Title
-        {
-            TitleText = "Torrent Only", NormalizedTitle = "torrent only", Year = 2025,
-            MediaType = "movie", UpdatedAt = now
-        };
-        db.Titles.Add(torrentOnly);
-        await db.SaveChangesAsync();
-        db.Occurrences.Add(new Occurrence
-        {
-            TitleId = torrentOnly.Id, SourceId = db.Sources.Local.Single().Id,
-            SourceItemKey = "entry:torrent-only", TorrentUrl = "https://example.org/another",
-            RawTitle = "Torrent Only", SourceFeedName = "Feed", FirstSeenAt = now, LastSeenAt = now
-        });
-        await db.SaveChangesAsync();
-        var torrentAdded = await (await client.PostAsJsonAsync("/api/favorites",
-            new { titleId = torrentOnly.Id, from = "catalog" })).Content.ReadFromJsonAsync<FavoriteMovieResponse>();
-        Assert.NotNull(torrentAdded);
-        Assert.True(torrentAdded.ToDownload);
-        Assert.False(torrentAdded.ToWatch);
-        Assert.Equal(0, torrentAdded.OscarFilmCount);
-        var all = await client.GetFromJsonAsync<PageResponse<FavoriteMovieResponse>>(
-            "/api/favorites?status=all&pageSize=1");
-        Assert.NotNull(all);
-        Assert.Equal(2, all.TotalCount);
-        Assert.Equal(2, all.TotalPages);
-        Assert.Single(all.Items);
-        Assert.Equal(torrentOnly.Id, (await client.GetFromJsonAsync<PageResponse<FavoriteMovieResponse>>(
-            "/api/favorites?status=to_download&pageSize=1"))!.Items.Single().TitleId);
-        Assert.Single((await client.GetFromJsonAsync<OscarFilmResponse[]>($"/api/titles/{film.TitleId}/oscars"))!);
-        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/favorites/{film.TitleId}")).StatusCode);
-        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/favorites/{film.TitleId}")).StatusCode);
+        using var listResponse = await client.GetAsync("/api/favorites");
+        Assert.Equal(HttpStatusCode.Unauthorized, listResponse.StatusCode);
+        using var addResponse = await client.PostAsJsonAsync("/api/favorites", new { titleId = 1, from = "catalog" });
+        Assert.Equal(HttpStatusCode.Unauthorized, addResponse.StatusCode);
+        using var updateResponse = await client.PatchAsJsonAsync("/api/favorites/1", new { toWatch = true });
+        Assert.Equal(HttpStatusCode.Unauthorized, updateResponse.StatusCode);
+        using var deleteResponse = await client.DeleteAsync("/api/favorites/1");
+        Assert.Equal(HttpStatusCode.Unauthorized, deleteResponse.StatusCode);
+        Assert.Empty(await db.FavoriteMovies.ToListAsync());
     }
 
     [Fact]
