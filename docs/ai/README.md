@@ -17,14 +17,6 @@ Start here for work in this repository. Use the [local operations runbook](../..
 | Tests | [Testing](TESTING.md) for scoped commands, test categories, and required dependencies. |
 | Operations | [Server access](SERVER_ACCESS.md) for the local SSH profile and session workflow; [Security and operations](SECURITY_AND_OPERATIONS.md) for runtime boundaries; the [local runbook](../../README.md) for setup and maintenance. |
 
-## Open Plans And Notes
+## Current Status
 
-- [UI design and visual acceptance](UI_DESIGN_PLAN.md)
-- [Golden Globes enrichment and manual IMDb linking](GOLDEN_GLOBES_ENRICHMENT_PLAN.md)
-- [Personal IMDb ratings follow-up](IMDB_PERSONAL_RATINGS_PLAN.md)
-- [Torrent title recognition and feed acceptance](TORRENT_TITLE_RECOGNITION_PLAN.md)
-- [Google authentication and registration requests](GOOGLE_AUTHENTICATION_PLAN.md)
-- [API-hosted background ingestion production cutover](BACKGROUND_INGESTION_PLAN.md)
-- [Users and access control design](USERS_AND_ACCESS_CONTROL_PLAN.md)
-- [Users and access control implementation](USERS_AND_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md)
-- [User settings and personal data migration](USER_SETTINGS_MIGRATION_PLAN.md)
+[Implementation status](IMPLEMENTATION_STATUS.md) summarizes shipped behavior and known limitations. Use the [local runbook](../../README.md) and [security and operations guide](SECURITY_AND_OPERATIONS.md) for operator procedures and deployment gates. Verify production state on the host; repository source and documentation do not prove what is deployed.
