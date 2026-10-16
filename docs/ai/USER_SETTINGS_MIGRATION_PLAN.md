@@ -1,6 +1,6 @@
 # User Settings and Personal Data Migration Plan
 
-**Status:** Session 0 complete; no per-user data ownership is implemented yet
+**Status:** Sessions 0-6 are implemented and verified in source; production rollout remains pending separate operator approval. `DATA_CONTRACTS.md` was left unchanged per the Session 6 instruction.
 **Updated:** 2026-10-16
 **Prerequisite:** Reuse the identity and authorization work in the [users and access control implementation plan](USERS_AND_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md). This plan does not recreate Google sign-in, user records, or account administration.
 
@@ -14,8 +14,8 @@ The migration branches directly on the number of rows in `users`. If there are n
 
 | Data or setting | Current implementation | Target ownership and action |
 | --- | --- | --- |
-| Favorites | `favorite_movies` has one row per `title_id`; includes `ToWatch`, `ToDownload`, source-origin flags, and timestamps. | Per user. Key by `(user_id, title_id)`. Keep both independent markers and origin/timestamp fields on that user's row. |
-| Personal IMDb ratings | `personal_ratings` has one row per `imdb_id`; distinct from the shared OMDb `Title.ImdbRating`. Import is a merge-only upload. | Per user. Key by `(user_id, imdb_id)`. Keep the existing validation and add/update/unchanged merge behavior within the current user's rows. |
+| Favorites | `favorite_movies` has one row per `(user_id, title_id)`; includes `ToWatch`, `ToDownload`, source-origin flags, and timestamps. Reads and mutations use the active server-resolved owner. | Per user. Keep both independent markers and origin/timestamp fields on that user's row. |
+| Personal IMDb ratings | `personal_ratings` has one row per `(user_id, imdb_id)`; distinct from the shared OMDb `Title.ImdbRating`. Import is a merge-only upload scoped to the active owner. | Per user. Keep the existing validation and add/update/unchanged merge behavior within the current user's rows. |
 | Personal rating filters | A personal-rating import exists. `excludeRated` and saved per-user catalog-filter defaults are not implemented; catalog filters remain transient. | No saved filters in this migration. If `excludeRated` or saved defaults are added later, they must use only the current user's ratings and be separately approved. |
 | Catalog filter values | Catalog views hold filter inputs in view state; no saved per-user catalog-filter preference was found. | Do not migrate transient filters. Add per-user saved defaults only after their scope and reset behavior are specified. |
 | `MinMovieRating`, `MinSeriesRating`, `MinImdbVotes` | Stored in the singleton `settings` row and editable in Configuration > Torrent settings. | Retain as legacy singleton settings for compatibility only; see the Session 0 decision below. Do not copy them to user preferences. |
@@ -59,9 +59,9 @@ The current `MinMovieRating`, `MinSeriesRating`, and `MinImdbVotes` fields are s
 
 ## UI and Navigation Split
 
-Today, Configuration contains **System**, **Torrent settings**, **Ingestion**, **Personal IMDb ratings**, **OMDb provider**, and **Users**. Move the personal ratings workflow out of Configuration, and keep global controls together under a clearly admin-only **Administration** or **Configuration** section.
+Configuration originally contained **System**, **Torrent settings**, **Ingestion**, **Personal IMDb ratings**, **OMDb provider**, and **Users**. Session 5 moved Personal IMDb ratings into the active user's Account navigation; global controls remain grouped under the admin-only **Administration** section.
 
-- **User/account menu:** personal account/profile actions, personal IMDb ratings import/management, and approved personal preferences. Favorites remain easy to reach in the library navigation, but are fetched and mutated for the signed-in user only.
+- **User/account menu:** personal IMDb ratings import for the active user. Future profile actions or preferences require separate approval. Favorites remain easy to reach in the library navigation, but are fetched and mutated for the signed-in user only.
 - **Admin menu:** RSS source URLs and global matching rules; award imports/enrichment and shared scan controls; OMDb key, quota, and usage; user administration; system version/deployment; and global operational history.
 - **Shared library navigation:** Catalog, Oscar catalog, and Golden Globes catalog remain shared read views. Personal controls shown inside them, such as favorite actions or a personal-rating filter, use the current user's data.
 - Use the current user's server-projected role/capabilities to decide whether to render the admin menu, refreshing that state after account changes. Enforce every action on the API regardless of menu visibility. Keep an explicit access warning while authorization is disabled.
@@ -121,6 +121,14 @@ Move Personal IMDb ratings and approved personal preferences into the user/accou
 Update the data/API contracts, architecture, implementation status, testing guide, personal-ratings plan, and operator migration notes. Validate the complete vertical slice with migration integration tests; only then prepare a separately approved deployment.
 
 **Exit checks:** all migration, isolation, authorization, UI, and import criteria pass; production rollout remains behind the normal operator approval and deployment gate.
+
+**Handoff (2026-10-16):** Reconciled the current ownership and navigation inventory with source and tests; updated the architecture, implementation status, testing guide, personal-ratings plan, security/operations guide, and local operator runbook. Reviewed `API_CONTRACTS.md`, which already documents the owner-resolved routes and open-mode behavior. Left `DATA_CONTRACTS.md` unchanged as requested; its existing schema section already documents the composite ownership keys and restrictive foreign keys. Corrected the enforced-access integration test to use a valid ratings import and prove a forged `userId` cannot change the admin's server-resolved owner.
+
+**Verification:** Docker Engine 29.8.1 was available. `python -B scripts/run_tests.py all` passed: server-unit 99/99, server-integration 75/75, web 109/109, deploy 3/3, and runner 4/4. The focused `EnforcedUserAdministrationRequiresServerResolvedActiveAdmin` integration test also passed 1/1 after the correction.
+
+**Migration branches:** The integration suite exercised zero users (legacy rows deleted), one deactivated user (rows backfilled), and multiple users including a deactivated account (rows copied to each), preserving favorite markers/origins/timestamps and rating values/timestamps. Composite uniqueness and restrictive user deletion passed. No production migration or deployment was performed.
+
+**Decisions and next entry point:** Minimum-rating fields remain legacy singleton settings; no catalog preferences or `excludeRated` were added. No blockers remain in the source verification. The next step is a separately approved staging/production rollout: verify the environment's migration state, take and validate a backup, confirm the expected user-count branch, and use the normal deployment gate.
 
 ## Verification Matrix
 

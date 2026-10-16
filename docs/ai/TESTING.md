@@ -49,7 +49,7 @@ The host deployment-control bridge uses only Python's standard library and can
 be checked without systemd or Docker:
 
 ```powershell
-python -B -m unittest deploy.test_deploy_control
+python -B scripts/run_tests.py deploy
 ```
 
 ## .NET Unit Tests
@@ -66,11 +66,11 @@ Run from the repository root after solution restore. The [unit-test project](../
 [`GoldenGlobeEnrichmentServiceTests`](../../server/tests/MediaDock.UnitTests/GoldenGlobeEnrichmentServiceTests.cs) verifies ceremony-year matching, terminal outcomes, exponential retries, and provider/local quota behavior with stubbed metadata lookups.
 
 ```powershell
-dotnet test server/tests/MediaDock.UnitTests/MediaDock.UnitTests.csproj --no-restore
-dotnet test server/tests/MediaDock.UnitTests/MediaDock.UnitTests.csproj --no-restore --filter "Category=Parsing"
-dotnet test server/tests/MediaDock.UnitTests/MediaDock.UnitTests.csproj --no-restore --filter "Category=RssTransport"
-dotnet test server/tests/MediaDock.UnitTests/MediaDock.UnitTests.csproj --no-restore --filter "Category=Matching"
-dotnet test server/tests/MediaDock.UnitTests/MediaDock.UnitTests.csproj --no-restore --filter "Category=GoldenGlobes"
+python -B scripts/run_tests.py server-unit
+python -B scripts/run_tests.py server-unit --filter "Category=Parsing"
+python -B scripts/run_tests.py server-unit --filter "Category=RssTransport"
+python -B scripts/run_tests.py server-unit --filter "Category=Matching"
+python -B scripts/run_tests.py server-unit --filter "Category=GoldenGlobes"
 ```
 
 ## PostgreSQL Integration Tests
@@ -79,19 +79,19 @@ Run from the repository root after solution restore. These tests require Docker 
 
 | Category | Coverage and test data |
 | --- | --- |
-| `Persistence` | Applies migrations and checks schema/occurrence uniqueness in [PersistenceTests](../../server/tests/MediaDock.IntegrationTests/PersistenceTests.cs); Golden Globes tests cover CSV/TSV import idempotency, candidate eligibility, and grouped-outcome persistence in [GoldenGlobeDatasetImporterTests](../../server/tests/MediaDock.IntegrationTests/GoldenGlobeDatasetImporterTests.cs) and [GoldenGlobeEnrichmentRepositoryTests](../../server/tests/MediaDock.IntegrationTests/GoldenGlobeEnrichmentRepositoryTests.cs). Oscar tests also verify import/enrichment persistence and the separate run-audit lifecycle in [OscarDatasetImporterTests](../../server/tests/MediaDock.IntegrationTests/OscarDatasetImporterTests.cs) and [OscarEnrichmentRepositoryTests](../../server/tests/MediaDock.IntegrationTests/OscarEnrichmentRepositoryTests.cs). |
+| `Persistence` | Applies migrations and checks schema/occurrence uniqueness in [PersistenceTests](../../server/tests/MediaDock.IntegrationTests/PersistenceTests.cs). [IdentityPersistenceTests](../../server/tests/MediaDock.IntegrationTests/IdentityPersistenceTests.cs) verifies the ownership migration's zero-user deletion, one-user backfill, multi-user copy (including deactivated accounts), preserved values/timestamps, composite keys, and restrictive user deletion. Golden Globes tests cover CSV/TSV import idempotency, candidate eligibility, and grouped-outcome persistence in [GoldenGlobeDatasetImporterTests](../../server/tests/MediaDock.IntegrationTests/GoldenGlobeDatasetImporterTests.cs) and [GoldenGlobeEnrichmentRepositoryTests](../../server/tests/MediaDock.IntegrationTests/GoldenGlobeEnrichmentRepositoryTests.cs). Oscar tests also verify import/enrichment persistence and the separate run-audit lifecycle in [OscarDatasetImporterTests](../../server/tests/MediaDock.IntegrationTests/OscarDatasetImporterTests.cs) and [OscarEnrichmentRepositoryTests](../../server/tests/MediaDock.IntegrationTests/OscarEnrichmentRepositoryTests.cs). |
 | `Ingestion` | Checks idempotency, metadata caching, and partial failures against PostgreSQL. [IngestionTests](../../server/tests/MediaDock.IntegrationTests/IngestionTests.cs) supplies inline RSS/XML and OMDb/JSON responses through `MockProviderHandler` and a synthetic API key; it does not call either service. |
 | `Infrastructure` | Checks PostgreSQL advisory-lock coordination with separate contexts in [AdvisoryLockTests](../../server/tests/MediaDock.IntegrationTests/AdvisoryLockTests.cs). |
 | `Api` | Exercises the in-process API with `WebApplicationFactory` and disposable PostgreSQL; Golden Globes catalog grouping, filtering, pagination, year validation, manual-link normalization/group scope/idempotency/clearing, enrichment duplicate conflicts, and import persistence are covered in [GoldenGlobeApiTests](../../server/tests/MediaDock.IntegrationTests/GoldenGlobeApiTests.cs) and [BackgroundJobApiTests](../../server/tests/MediaDock.IntegrationTests/BackgroundJobApiTests.cs). |
 | `Background jobs` | [BackgroundJobSchedulerTests](../../server/tests/MediaDock.IntegrationTests/BackgroundJobSchedulerTests.cs) cover Sofia DST and catch-up boundaries; [BackgroundJobExecutionTests](../../server/tests/MediaDock.IntegrationTests/BackgroundJobExecutionTests.cs) executes queued award imports and manual Golden Globes exact-ID refresh through the real API-hosted dispatcher, checking OMDb `i=` usage, shared-budget accounting, ID-keyed metadata cache, catalog projection, and payload cleanup. |
 
 ```powershell
-dotnet test server/tests/MediaDock.IntegrationTests/MediaDock.IntegrationTests.csproj --no-restore
-dotnet test server/tests/MediaDock.IntegrationTests/MediaDock.IntegrationTests.csproj --no-restore --filter "Category=Persistence"
-dotnet test server/tests/MediaDock.IntegrationTests/MediaDock.IntegrationTests.csproj --no-restore --filter "Category=Ingestion"
-dotnet test server/tests/MediaDock.IntegrationTests/MediaDock.IntegrationTests.csproj --no-restore --filter "Category=Infrastructure"
-dotnet test server/tests/MediaDock.IntegrationTests/MediaDock.IntegrationTests.csproj --no-restore --filter "Category=Api"
-dotnet test server/tests/MediaDock.IntegrationTests/MediaDock.IntegrationTests.csproj --no-restore --filter "FullyQualifiedName~GoldenGlobe"
+python -B scripts/run_tests.py server-integration
+python -B scripts/run_tests.py server-integration --filter "Category=Persistence"
+python -B scripts/run_tests.py server-integration --filter "Category=Ingestion"
+python -B scripts/run_tests.py server-integration --filter "Category=Infrastructure"
+python -B scripts/run_tests.py server-integration --filter "Category=Api"
+python -B scripts/run_tests.py server-integration --filter "FullyQualifiedName~GoldenGlobe"
 ```
 
 Both .NET test projects also contain an untagged `UnitTest1.Test1` placeholder; it does not represent feature coverage.

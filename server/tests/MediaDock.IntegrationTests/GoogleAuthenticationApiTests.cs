@@ -932,11 +932,35 @@ public sealed class GoogleAuthenticationApiTests
         using var userFavoritesResponse = await userClient.GetAsync("/api/favorites");
         Assert.Equal(HttpStatusCode.OK, userFavoritesResponse.StatusCode);
         using var ratingsContent = new MultipartFormDataContent();
-        ratingsContent.Add(new StringContent("[]"), "File", "ratings.json");
-        using var adminRatingsResponse = await adminClient.PostAsync(
-            "/api/personal-ratings/import?userId=2",
-            ratingsContent);
-        Assert.Equal(HttpStatusCode.Forbidden, adminRatingsResponse.StatusCode);
+        var ratingsFile = new ByteArrayContent(
+            System.Text.Encoding.UTF8.GetBytes("[{\"id\":\"tt1234567\",\"rating\":8}]"));
+        ratingsFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+        ratingsContent.Add(ratingsFile, "File", "ratings.json");
+        var adminRatingsToken = await GetAntiforgeryTokenAsync(adminClient);
+        using var adminRatingsRequest = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/api/personal-ratings/import?userId=2")
+        {
+            Content = ratingsContent
+        };
+        adminRatingsRequest.Headers.Add("RequestVerificationToken", adminRatingsToken);
+        using var adminRatingsResponse = await adminClient.SendAsync(adminRatingsRequest);
+        Assert.True(
+            adminRatingsResponse.StatusCode == HttpStatusCode.OK,
+            await adminRatingsResponse.Content.ReadAsStringAsync());
+
+        await using var verifyRatingsDb = new MediaDockDbContext(options);
+        var adminUserId = await verifyRatingsDb.Users
+            .Where(user => user.NormalizedEmail == "admin@example.com")
+            .Select(user => user.Id)
+            .SingleAsync();
+        var otherUserId = await verifyRatingsDb.Users
+            .Where(user => user.NormalizedEmail == "user@example.com")
+            .Select(user => user.Id)
+            .SingleAsync();
+        var importedRating = await verifyRatingsDb.PersonalRatings.SingleAsync(rating => rating.ImdbId == "tt1234567");
+        Assert.Equal(adminUserId, importedRating.UserId);
+        Assert.NotEqual(otherUserId, importedRating.UserId);
 
         await using var roleChangeDb = new MediaDockDbContext(options);
         await roleChangeDb.Users

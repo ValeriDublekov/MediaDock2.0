@@ -50,6 +50,8 @@ Favorites follow the same direct API-to-EF pattern: [FavoriteEndpoints](../../se
 
 Personal-rating imports use the same server-derived owner boundary: [PersonalRatingsEndpoints](../../server/src/MediaDock.Api/PersonalRatings/PersonalRatingsEndpoints.cs) validates the antiforgery token and resolves the active user, and [PersonalRatingsApiService](../../server/src/MediaDock.Api/PersonalRatings/PersonalRatingsApiService.cs) scopes merge lookups, inserts, and totals by `UserId`. The active-user requirement applies even when general access-control enforcement is disabled. The bounded file is fully validated before the owner-scoped transaction; shared OMDb ratings are not changed.
 
+The web shell places personal ratings under Account and global settings/history under Administration, while the catalogs remain in shared library navigation. It derives those navigation and route affordances from the server-projected session; this is not an authorization boundary. API policies and the active-owner resolver remain authoritative. The legacy personal-ratings configuration URL redirects to the account route.
+
 ## Optional Google Identity Flow
 
 ```mermaid
