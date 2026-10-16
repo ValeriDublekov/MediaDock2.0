@@ -1,6 +1,6 @@
 # User Settings and Personal Data Migration Plan
 
-**Status:** Sessions 1-4 schema/backfill, authorization gate, per-user favorites, and owner-scoped personal-rating imports are complete. No personal preferences or `excludeRated` filter have been separately approved; Session 5 menu separation is next.
+**Status:** Session 0 complete; no per-user data ownership is implemented yet
 **Updated:** 2026-10-16
 **Prerequisite:** Reuse the identity and authorization work in the [users and access control implementation plan](USERS_AND_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md). This plan does not recreate Google sign-in, user records, or account administration.
 
@@ -15,8 +15,8 @@ The migration branches directly on the number of rows in `users`. If there are n
 | Data or setting | Current implementation | Target ownership and action |
 | --- | --- | --- |
 | Favorites | `favorite_movies` has one row per `title_id`; includes `ToWatch`, `ToDownload`, source-origin flags, and timestamps. | Per user. Key by `(user_id, title_id)`. Keep both independent markers and origin/timestamp fields on that user's row. |
-| Personal IMDb ratings | `personal_ratings` has one row per `(user_id, imdb_id)`; distinct from the shared OMDb `Title.ImdbRating`. The import is a merge-only upload scoped to the active user. | Per user. Keep the existing validation and add/update/unchanged merge behavior within the current user's rows. |
-| Personal rating filters | A personal-rating import exists. `excludeRated` and saved per-user catalog-filter defaults are not implemented or separately approved; catalog filters remain transient. | No saved filters in this migration. Any later `excludeRated` or saved defaults require separate approval and must use only the current user's ratings. |
+| Personal IMDb ratings | `personal_ratings` has one row per `imdb_id`; distinct from the shared OMDb `Title.ImdbRating`. Import is a merge-only upload. | Per user. Key by `(user_id, imdb_id)`. Keep the existing validation and add/update/unchanged merge behavior within the current user's rows. |
+| Personal rating filters | A personal-rating import exists. `excludeRated` and saved per-user catalog-filter defaults are not implemented; catalog filters remain transient. | No saved filters in this migration. If `excludeRated` or saved defaults are added later, they must use only the current user's ratings and be separately approved. |
 | Catalog filter values | Catalog views hold filter inputs in view state; no saved per-user catalog-filter preference was found. | Do not migrate transient filters. Add per-user saved defaults only after their scope and reset behavior are specified. |
 | `MinMovieRating`, `MinSeriesRating`, `MinImdbVotes` | Stored in the singleton `settings` row and editable in Configuration > Torrent settings. | Retain as legacy singleton settings for compatibility only; see the Session 0 decision below. Do not copy them to user preferences. |
 | `ExcludedGenres`, `ExcludedCountries` | Stored in singleton `settings`; the RSS repository loads these into `IngestionMatchSettings`, and ingestion applies them through `MatchPolicy`. | Global admin settings. They affect the shared ingestion/catalog result, not an individual user's view. A future personal catalog filter must use separate fields and logic. |
@@ -52,7 +52,7 @@ The current `MinMovieRating`, `MinSeriesRating`, and `MinImdbVotes` fields are s
 - Resolve the current internal `users.id` from the validated identity on the server for every personal request. Require an active account; unknown, anonymous, or deactivated callers receive the appropriate authorization failure. Never fall back to a default/legacy owner.
 - Do not accept an owner ID in a route, query, or request body. Admin status does not grant access to another user's favorites or ratings by default.
 - Scope favorite list/count/page/add/update/delete queries by the resolved owner, preserving source checks, idempotent additions, marker independence, and existing pagination semantics.
-- Session 4 scopes the personal-rating import's existing-row lookup, inserts, and result count to the active owner. There is no rating-read endpoint or `excludeRated` filter. Preserve whole-file validation before writes, bounded in-memory upload, merge-only semantics, and reporting of skipped missing-rating rows; do not change shared OMDb title ratings. Any new filter requires separate approval and owner scoping.
+- Scope personal-rating import, reads, and any `excludeRated` filter by owner. Preserve whole-file validation before writes, bounded in-memory upload, merge-only semantics, and reporting of skipped missing-rating rows. Do not change shared OMDb title ratings.
 - Split global settings contracts from personal preferences. Keep RSS exclusions and provider settings in admin-owned APIs. Put only approved personal preferences in a current-user API (for example, `/api/me/preferences`); never expose a generic settings write that can cross ownership domains.
 - On account changes or sign-out, refresh or clear client-side favorites/ratings state so data from a previous session cannot remain visible.
 - Reuse the authorization matrix in the access-control implementation plan. Finish server enforcement before enabling multi-user data access; client navigation is only a convenience.
@@ -92,15 +92,11 @@ Add the compound ownership keys and restrictive user foreign keys for favorites 
 
 **Exit checks:** PostgreSQL integration coverage for a fresh schema, legacy rows with zero users (deleted), one user (backfilled), and multiple users (copied to each), preserving all row values in the applicable branch. Run the narrow suite with `python -B scripts/run_tests.py server-integration --filter "Category=Persistence"`; Docker is required.
 
-**Handoff:** Added required `user_id` ownership, compound keys, and restrictive user foreign keys for favorites and personal ratings. The additive migration deletes ownerless rows when there are no users, assigns legacy rows to the sole user regardless of status, and copies every legacy row to all users when there are multiple. PostgreSQL tests cover fresh schema, all three branches, preservation of favorite markers/origins/timestamps and rating values/timestamps, per-user key uniqueness, and restrictive user deletion. `python -B scripts/run_tests.py server-integration --filter "Category=Persistence"` passed (23/23). The singleton settings row and its fields remain unchanged; no personal preferences were created. No production migration or deployment was performed; no blockers. Next entry point: Session 2 current-user context and authorization gate.
-
 ### Session 2: Current-User Context and Authorization Gate
 
 Complete/reuse the server-derived active-user context and authorization policies from the access-control plan before exposing per-user endpoints. Protect all existing admin/global mutation and operation routes. Ensure session/current-user role or capabilities are resolved from current server state, not trusted from browser input or stale client role claims.
 
-**Exit checks:** anonymous, unknown, and deactivated callers fail closed when enforcement is enabled; ordinary users cannot call admin/global writes; personal endpoints fail closed in every mode until owner scoping exists; no endpoint accepts a client-selected owner ID. The explicit disabled mode remains open for other routes and visibly warned.
-
-**Handoff (2026-10-16):** Added an explicit `ACCESS_CONTROL_ENFORCED` switch, a server-derived active-user context keyed by validated `(issuer, subject)`, and current-database role checks on each request. Enforced mode requires active users for shared catalog/award reads and admins for global configuration, user administration, operations, jobs, deployment, and manual Golden Globes links. Unknown/deactivated identities fail closed; admin mutation services also reject missing actors transactionally rather than falling back to open mode. Favorites and ratings stay denied in all modes until owner-scoped implementation, and no client owner ID is used. `/api/auth/session` projects current role and enforcement state; the persistent warning follows the server flag. Changed API auth/policy code, access integration tests, web session types/banner/tests, Compose and `.env.example`, API/architecture/runbook documentation, and the access-control plans. Verification: focused admin-policy and missing-actor tests passed 1/1 each; `python -B scripts/run_tests.py server-integration --filter "Category=Api"` passed 37/37; `python -B scripts/run_tests.py web` passed 101/101; `npm --prefix web run lint` succeeded with five warnings outside the changed files; `npm --prefix web run build` succeeded; `git diff --check` was clean. No production migration, configuration change, or deployment was performed. No blockers. Next entry point: Session 3 per-user favorites.
+**Exit checks:** anonymous, unknown, and deactivated callers fail closed; ordinary users cannot call admin/global writes; an admin cannot read another user's personal rows by default; no endpoint accepts a client-selected owner ID.
 
 ### Session 3: Per-User Favorites
 
@@ -108,23 +104,11 @@ Scope favorite reads and mutations, API projections, and any favorite-backed cat
 
 **Exit checks:** two users can independently add the same title, choose different `ToWatch`/`ToDownload` values, and remove/update only their own rows. API tests cover list/count/page isolation and attempts to access another user's row by ID.
 
-**Handoff (2026-10-16):** Favorites now require an active user resolved from the validated `(issuer, subject)` on every request, including open mode. List/count/page/status, add/upsert, update, and delete operations are owner-scoped; client-supplied owner IDs do not select a user, and admin status does not expose another user's rows. Existing source validation, origin merging, independent markers, pagination, and shared torrent/award projections are retained. The browser fetches favorites only for an active linked account and remounts the provider on identity changes. Personal ratings remain denied pending Session 4; no preferences or singleton settings semantics changed.
-
-**Files changed:** favorites API authorization/service/endpoints and forbidden response mapping; API isolation tests; browser session/favorites state and tests; API, data, architecture, testing, and migration-plan documentation.
-
-**Verification:** `python -B scripts/run_tests.py server-integration --filter "Category=Api"` passed (38/38); the focused owner-isolation test passed (1/1); `python -B scripts/run_tests.py web` passed (103/103); `npm --prefix web run lint` succeeded with five existing warnings; `npm --prefix web run build` succeeded; editor diagnostics found no errors.
-
-**Migration and settings:** No migration or production data change was performed. Session 1's migration branches remain unchanged. The Session 0 decisions remain in force: minimum thresholds are legacy singleton settings, saved catalog filters are out of scope, and no personal preferences were added.
-
-**Blockers:** None. Next entry point: Session 4 per-user ratings and approved preferences.
-
 ### Session 4: Per-User Ratings and Approved Preferences
 
-**Work:** The import resolves the active internal user from the validated session in every mode. Existing-row lookup, writes, and the response total are scoped by `user_id`; the compound `(user_id, imdb_id)` key permits different ratings for the same title. Whole-file validation, bounded in-memory processing, merge-only behavior, and missing-rating reporting remain unchanged. No preference or filter was separately approved, so no catalog preferences or `excludeRated` behavior were added; minimum-threshold settings remain legacy singleton values.
+Scope personal rating import and all rating lookups by user. Add only separately approved user preferences; this migration does not create catalog preferences or move minimum-threshold fields. Any later personal catalog defaults must use explicitly named fields and apply only to UI filter prefills. Keep global exclusions/provider settings in the admin settings contract. Add `excludeRated` only as a user-scoped filter, if approved.
 
-**Exit checks:** PostgreSQL API coverage proves two users and an administrator can keep different ratings for one IMDb ID, client-supplied owner IDs are ignored, and anonymous, unknown, and deactivated callers are denied in open mode. Parser validation and merge behavior are covered without changing shared OMDb title ratings. No personal filter was added, so there is no prefilled value or RSS behavior to verify.
-
-**Handoff (2026-10-16):** Changed `AccessControl.cs`, `PersonalRatingsEndpoints.cs`, `PersonalRatingsApiService.cs`, `PersonalRatingsApiTests.cs`, `client.ts`, and `client.test.ts`, plus API, data, architecture, security, testing, implementation-status, access-control, and ratings-plan documentation. `python -B scripts/run_tests.py server-integration --filter "FullyQualifiedName~PersonalRatingsApiTests"` passed (1/1) with PostgreSQL Testcontainers; `python -B scripts/run_tests.py server-unit --filter "FullyQualifiedName~PersonalRatingsJsonParserTests"` passed (9/9); `python -B scripts/run_tests.py web --filter client.test.ts` passed (20/20). The integration test covers cross-user/admin isolation, forged owner IDs, invalid-file no-partial-write, missing-antiforgery-token rejection, and anonymous/unknown/deactivated denial. No schema or production database migration, settings change, or deployment was performed. No preferences or `excludeRated` filter were approved or added. No blockers. Next entry point: Session 5 user and admin menus.
+**Exit checks:** two users can rate the same IMDb ID differently; importing for one does not affect or reveal another user's rows; existing import validation/merge guarantees remain. Any prefilled filter is proven to load the current user's value and not alter RSS ingestion.
 
 ### Session 5: User and Admin Menus
 
