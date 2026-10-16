@@ -49,6 +49,12 @@ internal sealed class TitleConfiguration : IEntityTypeConfiguration<Title>
         builder.Property(entity => entity.FirstSeenAt).HasColumnName("first_seen_at");
         builder.Property(entity => entity.LastSeenAt).HasColumnName("last_seen_at");
         builder.Property(entity => entity.UpdatedAt).HasColumnName("updated_at");
+        builder.HasOne(entity => entity.ImdbTitle)
+            .WithMany()
+            .HasForeignKey(entity => entity.ImdbId)
+            .HasPrincipalKey(imdbTitle => imdbTitle.ImdbId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_titles_imdb_titles_imdb_id");
         builder.HasIndex(entity => entity.ImdbId)
             .IsUnique()
             .HasDatabaseName("ux_titles_imdb_id")

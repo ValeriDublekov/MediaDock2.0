@@ -28,5 +28,6 @@ public sealed class Title
     public DateTimeOffset? LastSeenAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
+    public ImdbTitle? ImdbTitle { get; set; }
     public ICollection<Occurrence> Occurrences { get; set; } = new List<Occurrence>();
 }

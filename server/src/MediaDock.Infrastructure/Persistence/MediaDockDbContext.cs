@@ -11,6 +11,7 @@ public sealed class MediaDockDbContext : DbContext
     }
 
     public DbSet<Title> Titles => Set<Title>();
+    public DbSet<ImdbTitle> ImdbTitles => Set<ImdbTitle>();
     public DbSet<Source> Sources => Set<Source>();
     public DbSet<Occurrence> Occurrences => Set<Occurrence>();
     public DbSet<RssItemProcessingState> RssItemStates => Set<RssItemProcessingState>();

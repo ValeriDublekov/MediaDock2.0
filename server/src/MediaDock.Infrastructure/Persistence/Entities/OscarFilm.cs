@@ -18,5 +18,6 @@ public sealed class OscarFilm
     public DateTimeOffset UpdatedAt { get; set; }
 
     public Title Title { get; set; } = null!;
+    public ImdbTitle? ImdbTitle { get; set; }
     public ICollection<OscarNomination> Nominations { get; set; } = new List<OscarNomination>();
 }

@@ -19,4 +19,5 @@ public sealed class GoldenGlobeNomination
     public string? LastEnrichmentError { get; set; }
 
     public GoldenGlobeAward Award { get; set; } = null!;
+    public ImdbTitle? ImdbTitle { get; set; }
 }

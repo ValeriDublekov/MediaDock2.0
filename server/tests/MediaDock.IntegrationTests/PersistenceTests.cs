@@ -106,6 +106,7 @@ public sealed class PersistenceTests
         Assert.Contains("20260930122500_InitialRelationalSchema", appliedMigrations);
         Assert.Contains("20261004200000_AddGoldenGlobeEnrichment", appliedMigrations);
         Assert.Contains("20261016071457_AddUserOwnershipToFavoritesAndRatings", appliedMigrations);
+        Assert.Contains("20261016160138_AddSharedImdbTitles", appliedMigrations);
 
         await db.Database.OpenConnectionAsync();
         await using (var command = db.Database.GetDbConnection().CreateCommand())
@@ -123,7 +124,8 @@ public sealed class PersistenceTests
                 {
                     "titles", "sources", "occurrences", "scan_runs", "parse_logs", "settings", "metadata_cache",
                     "oscar_films", "oscar_nominations", "oscar_enrichment_runs", "omdb_daily_usage",
-                    "golden_globe_awards", "golden_globe_nominations", "favorite_movies", "personal_ratings", "users"
+                    "golden_globe_awards", "golden_globe_nominations", "favorite_movies", "personal_ratings", "users",
+                    "imdb_titles"
                 },
                 tableName => Assert.Contains(tableName, tables));
         }
@@ -203,15 +205,23 @@ public sealed class PersistenceTests
         await db.Database.MigrateAsync();
 
         var now = new DateTimeOffset(2026, 9, 30, 0, 0, 0, TimeSpan.Zero);
+        var imdbTitle = new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = now };
         var title = CreateTitle("Canonical", "canonical", "tt12345678", now);
+        title.ImdbTitle = imdbTitle;
+        db.ImdbTitles.Add(imdbTitle);
         db.Titles.Add(title);
         await db.SaveChangesAsync();
 
         await AssertRejectedAsync(db, CreateTitle("Duplicate ID", "duplicate id", "tt12345678", now));
 
-        db.Titles.AddRange(
-            CreateTitle("Same Film", "same film", "tt20000001", now),
-            CreateTitle("Same Film", "same film", "tt20000002", now));
+        var firstSameFilmImdbTitle = new ImdbTitle { ImdbId = "tt20000001", UpdatedAt = now };
+        var secondSameFilmImdbTitle = new ImdbTitle { ImdbId = "tt20000002", UpdatedAt = now };
+        var firstSameFilmTitle = CreateTitle("Same Film", "same film", "tt20000001", now);
+        firstSameFilmTitle.ImdbTitle = firstSameFilmImdbTitle;
+        var secondSameFilmTitle = CreateTitle("Same Film", "same film", "tt20000002", now);
+        secondSameFilmTitle.ImdbTitle = secondSameFilmImdbTitle;
+        db.ImdbTitles.AddRange(firstSameFilmImdbTitle, secondSameFilmImdbTitle);
+        db.Titles.AddRange(firstSameFilmTitle, secondSameFilmTitle);
         await db.SaveChangesAsync();
         Assert.Equal(3, await db.Titles.CountAsync());
 
@@ -302,6 +312,154 @@ public sealed class PersistenceTests
         });
     }
 
+    [Fact]
+    [Trait("Category", "Persistence")]
+    public async Task SharedImdbMigrationBackfillsNormalizedIdsAndPreservesLocalMetadata()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_shared_imdb_migration_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync("20261016071457_AddUserOwnershipToFavoritesAndRatings");
+
+        var now = new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero);
+        var firstUser = CreateUser("first@example.com", now);
+        var secondUser = CreateUser("second@example.com", now);
+        db.Users.AddRange(firstUser, secondUser);
+
+        var firstTitle = CreateTitle("Earlier title", "earlier title", " TT12345678 ", now.AddDays(-1));
+        firstTitle.ImdbRating = 7.1m;
+        var duplicateTitle = CreateTitle("Latest metadata", "latest metadata", "tt12345678", now);
+        duplicateTitle.ImdbRating = 8.4m;
+        duplicateTitle.ImdbVotes = 1200;
+        duplicateTitle.Genres = ["Drama"];
+        duplicateTitle.Plot = "Backfilled plot";
+        var localTitle = CreateTitle("Local-only title", "local-only title", null, now);
+        localTitle.ImdbRating = 6.1m;
+        localTitle.Genres = ["Local genre"];
+        localTitle.Plot = "Keep this title-local metadata";
+        db.Titles.AddRange(firstTitle, duplicateTitle, localTitle);
+        await db.SaveChangesAsync();
+
+        db.PersonalRatings.AddRange(
+            new PersonalRating
+            {
+                UserId = firstUser.Id,
+                ImdbId = " TT87654321 ",
+                Rating = 5,
+                UpdatedAt = now.AddDays(-1)
+            },
+            new PersonalRating
+            {
+                UserId = firstUser.Id,
+                ImdbId = "tt87654321",
+                Rating = 8,
+                UpdatedAt = now
+            },
+            new PersonalRating
+            {
+                UserId = secondUser.Id,
+                ImdbId = "TT87654321",
+                Rating = 6,
+                UpdatedAt = now
+            });
+        db.OscarFilms.Add(new OscarFilm
+        {
+            TitleId = firstTitle.Id,
+            StableKey = "legacy-imdb-film",
+            FilmTitle = "Legacy film",
+            NormalizedTitle = "legacy film",
+            FilmYear = 2025,
+            ImdbId = "TT12345678",
+            ImportedAt = now,
+            UpdatedAt = now
+        });
+        var award = new GoldenGlobeAward { Name = "Legacy award" };
+        db.GoldenGlobeAwards.Add(award);
+        db.GoldenGlobeNominations.Add(new GoldenGlobeNomination
+        {
+            ImportKey = "legacy-imdb-nomination",
+            Year = 2025,
+            Award = award,
+            Title = "Legacy nominee",
+            NomineeType = "movie",
+            ImdbId = " TT87654321 ",
+            EnrichmentStatus = "pending"
+        });
+        await db.SaveChangesAsync();
+
+        await db.Database.MigrateAsync();
+        db.ChangeTracker.Clear();
+
+        var imdbTitles = await db.ImdbTitles.AsNoTracking().OrderBy(title => title.ImdbId).ToListAsync();
+        Assert.Equal(new[] { "tt12345678", "tt87654321" }, imdbTitles.Select(title => title.ImdbId));
+        var backfilled = imdbTitles.Single(title => title.ImdbId == "tt12345678");
+        Assert.Equal("Latest metadata", backfilled.TitleText);
+        Assert.Equal(8.4m, backfilled.ImdbRating);
+        Assert.Equal(1200, backfilled.ImdbVotes);
+        Assert.Equal(new[] { "Drama" }, backfilled.Genres);
+        Assert.Equal("Backfilled plot", backfilled.Plot);
+        Assert.Equal("enriched", backfilled.MetadataStatus);
+        Assert.Equal("pending", imdbTitles.Single(title => title.ImdbId == "tt87654321").MetadataStatus);
+
+        var migratedTitles = await db.Titles.AsNoTracking().OrderBy(title => title.Id).ToListAsync();
+        Assert.Equal("tt12345678", migratedTitles[0].ImdbId);
+        Assert.Null(migratedTitles[1].ImdbId);
+        Assert.Null(migratedTitles[2].ImdbId);
+        Assert.Equal(6.1m, migratedTitles[2].ImdbRating);
+        Assert.Equal(new[] { "Local genre" }, migratedTitles[2].Genres);
+        Assert.Equal("Keep this title-local metadata", migratedTitles[2].Plot);
+
+        var ratings = await db.PersonalRatings.AsNoTracking().OrderBy(rating => rating.UserId).ToListAsync();
+        Assert.Equal(2, ratings.Count);
+        Assert.All(ratings, rating => Assert.Equal("tt87654321", rating.ImdbId));
+        Assert.Equal(8, ratings.Single(rating => rating.UserId == firstUser.Id).Rating);
+        Assert.Equal(6, ratings.Single(rating => rating.UserId == secondUser.Id).Rating);
+        Assert.Equal("tt12345678", (await db.OscarFilms.AsNoTracking().SingleAsync()).ImdbId);
+        Assert.Equal("tt87654321", (await db.GoldenGlobeNominations.AsNoTracking().SingleAsync()).ImdbId);
+
+        var noIdTitle = CreateTitle("Nullable IMDb", "nullable imdb", null, now);
+        db.Titles.Add(noIdTitle);
+        var noIdOscarFilm = new OscarFilm
+        {
+            Title = noIdTitle,
+            StableKey = "nullable-imdb-film",
+            FilmTitle = noIdTitle.TitleText,
+            NormalizedTitle = noIdTitle.NormalizedTitle,
+            FilmYear = 2025,
+            ImportedAt = now,
+            UpdatedAt = now
+        };
+        db.OscarFilms.Add(noIdOscarFilm);
+        db.GoldenGlobeNominations.Add(new GoldenGlobeNomination
+        {
+            ImportKey = "nullable-imdb-nomination",
+            Year = 2025,
+            AwardId = award.Id,
+            Title = "Nullable nominee",
+            NomineeType = "movie",
+            EnrichmentStatus = "pending"
+        });
+        await db.SaveChangesAsync();
+
+        db.PersonalRatings.Add(new PersonalRating
+        {
+            UserId = firstUser.Id,
+            ImdbId = "tt99999999",
+            Rating = 7,
+            UpdatedAt = now
+        });
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        db.ChangeTracker.Clear();
+
+        var referencedImdbTitle = await db.ImdbTitles.SingleAsync(title => title.ImdbId == "tt12345678");
+        db.ImdbTitles.Remove(referencedImdbTitle);
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+    }
+
     private static Title CreateTitle(
         string title,
         string normalizedTitle,
@@ -318,6 +476,16 @@ public sealed class PersistenceTests
         FirstSeenAt = firstSeenAt,
         LastSeenAt = lastSeenAt,
         UpdatedAt = updatedAt
+    };
+
+    private static User CreateUser(string email, DateTimeOffset now) => new()
+    {
+        NormalizedEmail = email,
+        GivenName = "Given",
+        FamilyName = "Family",
+        Status = "pending",
+        CreatedAt = now,
+        UpdatedAt = now
     };
 
     private static async Task AssertRejectedAsync(MediaDockDbContext db, object entity)

@@ -47,6 +47,12 @@ internal sealed class OscarFilmConfiguration : IEntityTypeConfiguration<OscarFil
             .HasForeignKey(entity => entity.TitleId)
             .OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("fk_oscar_films_titles_title_id");
+        builder.HasOne(entity => entity.ImdbTitle)
+            .WithMany()
+            .HasForeignKey(entity => entity.ImdbId)
+            .HasPrincipalKey(imdbTitle => imdbTitle.ImdbId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_oscar_films_imdb_titles_imdb_id");
     }
 }
 

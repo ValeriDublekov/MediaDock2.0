@@ -52,5 +52,9 @@ internal sealed class GoldenGlobeNominationConfiguration : IEntityTypeConfigurat
         builder.HasIndex(x => new { x.Year, x.AwardId }).HasDatabaseName("ix_golden_globe_nominations_year_award");
         builder.HasOne(x => x.Award).WithMany(x => x.Nominations).HasForeignKey(x => x.AwardId)
             .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_golden_globe_nominations_awards_award_id");
+        builder.HasOne(x => x.ImdbTitle).WithMany().HasForeignKey(x => x.ImdbId)
+            .HasPrincipalKey(imdbTitle => imdbTitle.ImdbId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_golden_globe_nominations_imdb_titles_imdb_id");
     }
 }

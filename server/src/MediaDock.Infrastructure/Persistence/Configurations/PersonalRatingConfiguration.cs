@@ -15,6 +15,13 @@ internal sealed class PersonalRatingConfiguration : IEntityTypeConfiguration<Per
         builder.Property(entity => entity.ImdbId).HasColumnName("imdb_id").HasMaxLength(14);
         builder.Property(entity => entity.Rating).HasColumnName("rating");
         builder.Property(entity => entity.UpdatedAt).HasColumnName("updated_at");
+        builder.HasOne(entity => entity.ImdbTitle)
+            .WithMany()
+            .HasForeignKey(entity => entity.ImdbId)
+            .HasPrincipalKey(imdbTitle => imdbTitle.ImdbId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired()
+            .HasConstraintName("fk_personal_ratings_imdb_titles_imdb_id");
         builder.HasOne(entity => entity.User)
             .WithMany()
             .HasForeignKey(entity => entity.UserId)

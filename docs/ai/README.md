@@ -14,6 +14,7 @@ Start here for work in this repository. Use the [local operations runbook](../..
 | API | [API contracts](API_CONTRACTS.md) for routes, DTOs, validation, and errors; [Architecture](ARCHITECTURE.md) for cross-layer flows. |
 | Persistence | [Data contracts](DATA_CONTRACTS.md) for entities, schema, and invariants; [Architecture](ARCHITECTURE.md) for persistence flows. |
 | Background ingestion | [Architecture](ARCHITECTURE.md) for the API-hosted queue, dispatcher, and scheduler; [API contracts](API_CONTRACTS.md) for job routes; [Implementation status](IMPLEMENTATION_STATUS.md) for source and production rollout status. |
+| Personal IMDb ratings work | [Implementation plan](PERSONAL_IMDB_RATINGS_PLAN.md) for the cross-session schema, enrichment, API, and UI rollout. |
 | Tests | [Testing](TESTING.md) for scoped commands, test categories, and required dependencies. |
 | Operations | [Server access](SERVER_ACCESS.md) for the local SSH profile and session workflow; [Security and operations](SECURITY_AND_OPERATIONS.md) for runtime boundaries; the [local runbook](../../README.md) for setup and maintenance. |
 

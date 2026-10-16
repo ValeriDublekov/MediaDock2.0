@@ -495,6 +495,8 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("AwardId");
 
+                    b.HasIndex("ImdbId");
+
                     b.HasIndex("ImportKey")
                         .IsUnique()
                         .HasDatabaseName("ux_golden_globe_nominations_import_key");
@@ -509,6 +511,123 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_golden_globe_nominations_enrichment_status", "enrichment_status IN ('pending', 'enriched', 'problem', 'not_found', 'temporary_error')");
 
                             t.HasCheckConstraint("ck_golden_globe_nominations_nominee_type", "nominee_type IN ('movie', 'series')");
+                        });
+                });
+
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.ImdbTitle", b =>
+                {
+                    b.Property<string>("ImdbId")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("imdb_id");
+
+                    b.Property<string>("Awards")
+                        .HasColumnType("text")
+                        .HasColumnName("awards");
+
+                    b.Property<string>("BoxOffice")
+                        .HasColumnType("text")
+                        .HasColumnName("box_office");
+
+                    b.PrimitiveCollection<string[]>("Countries")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasColumnName("countries")
+                        .HasDefaultValueSql("ARRAY[]::text[]");
+
+                    b.Property<string>("Director")
+                        .HasColumnType("text")
+                        .HasColumnName("director");
+
+                    b.Property<int>("EnrichmentAttemptCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("enrichment_attempt_count");
+
+                    b.PrimitiveCollection<string[]>("Genres")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text[]")
+                        .HasColumnName("genres")
+                        .HasDefaultValueSql("ARRAY[]::text[]");
+
+                    b.Property<decimal?>("ImdbRating")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("numeric(4,1)")
+                        .HasColumnName("imdb_rating");
+
+                    b.Property<long?>("ImdbVotes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("imdb_votes");
+
+                    b.Property<DateTimeOffset?>("LastEnrichmentAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_enrichment_attempt_at");
+
+                    b.Property<string>("LastEnrichmentError")
+                        .HasColumnType("text")
+                        .HasColumnName("last_enrichment_error");
+
+                    b.Property<string>("MediaType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("media_type");
+
+                    b.Property<string>("MetadataStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasDefaultValue("pending")
+                        .HasColumnName("metadata_status");
+
+                    b.Property<decimal?>("Metascore")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("metascore");
+
+                    b.Property<DateTimeOffset?>("NextEnrichmentAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_enrichment_attempt_at");
+
+                    b.Property<string>("Plot")
+                        .HasColumnType("text")
+                        .HasColumnName("plot");
+
+                    b.Property<string>("PosterUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("poster_url");
+
+                    b.Property<string>("Runtime")
+                        .HasColumnType("text")
+                        .HasColumnName("runtime");
+
+                    b.Property<string>("TitleText")
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.HasKey("ImdbId")
+                        .HasName("pk_imdb_titles");
+
+                    b.ToTable("imdb_titles", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_imdb_titles_enrichment_attempt_count", "enrichment_attempt_count >= 0");
+
+                            t.HasCheckConstraint("ck_imdb_titles_imdb_id_normalized", "imdb_id <> '' AND imdb_id = lower(btrim(imdb_id))");
+
+                            t.HasCheckConstraint("ck_imdb_titles_metadata_status", "metadata_status IN ('pending', 'enriched', 'not_found', 'temporary_error')");
                         });
                 });
 
@@ -868,6 +987,8 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.HasIndex("FilmYear")
                         .HasDatabaseName("ix_oscar_films_film_year");
 
+                    b.HasIndex("ImdbId");
+
                     b.HasIndex("StableKey")
                         .IsUnique()
                         .HasDatabaseName("ux_oscar_films_stable_key");
@@ -1123,6 +1244,8 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.HasKey("UserId", "ImdbId")
                         .HasName("pk_personal_ratings");
+
+                    b.HasIndex("ImdbId");
 
                     b.ToTable("personal_ratings", null, t =>
                         {
@@ -1638,7 +1761,15 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_golden_globe_nominations_awards_award_id");
 
+                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.ImdbTitle", "ImdbTitle")
+                        .WithMany()
+                        .HasForeignKey("ImdbId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_golden_globe_nominations_imdb_titles_imdb_id");
+
                     b.Navigation("Award");
+
+                    b.Navigation("ImdbTitle");
                 });
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.Occurrence", b =>
@@ -1664,12 +1795,20 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.OscarFilm", b =>
                 {
+                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.ImdbTitle", "ImdbTitle")
+                        .WithMany()
+                        .HasForeignKey("ImdbId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_oscar_films_imdb_titles_imdb_id");
+
                     b.HasOne("MediaDock.Infrastructure.Persistence.Entities.Title", "Title")
                         .WithMany()
                         .HasForeignKey("TitleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_oscar_films_titles_title_id");
+
+                    b.Navigation("ImdbTitle");
 
                     b.Navigation("Title");
                 });
@@ -1705,12 +1844,21 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.PersonalRating", b =>
                 {
+                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.ImdbTitle", "ImdbTitle")
+                        .WithMany()
+                        .HasForeignKey("ImdbId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_personal_ratings_imdb_titles_imdb_id");
+
                     b.HasOne("MediaDock.Infrastructure.Persistence.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_personal_ratings_users_user_id");
+
+                    b.Navigation("ImdbTitle");
 
                     b.Navigation("User");
                 });
@@ -1735,6 +1883,17 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_rss_item_states_sources_source_id");
+                });
+
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.Title", b =>
+                {
+                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.ImdbTitle", "ImdbTitle")
+                        .WithMany()
+                        .HasForeignKey("ImdbId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_titles_imdb_titles_imdb_id");
+
+                    b.Navigation("ImdbTitle");
                 });
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.BackgroundJob", b =>
