@@ -2,6 +2,8 @@ namespace MediaDock.Infrastructure.Persistence.Entities;
 
 public sealed class FavoriteMovie
 {
+    public long UserId { get; set; }
+    public User User { get; set; } = null!;
     public long TitleId { get; set; }
     public Title Title { get; set; } = null!;
     public bool ToWatch { get; set; }

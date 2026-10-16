@@ -10,9 +10,15 @@ internal sealed class PersonalRatingConfiguration : IEntityTypeConfiguration<Per
     {
         builder.ToTable("personal_ratings", table =>
             table.HasCheckConstraint("ck_personal_ratings_rating", "rating BETWEEN 1 AND 10"));
-        builder.HasKey(entity => entity.ImdbId).HasName("pk_personal_ratings");
+        builder.HasKey(entity => new { entity.UserId, entity.ImdbId }).HasName("pk_personal_ratings");
+        builder.Property(entity => entity.UserId).HasColumnName("user_id");
         builder.Property(entity => entity.ImdbId).HasColumnName("imdb_id").HasMaxLength(14);
         builder.Property(entity => entity.Rating).HasColumnName("rating");
         builder.Property(entity => entity.UpdatedAt).HasColumnName("updated_at");
+        builder.HasOne(entity => entity.User)
+            .WithMany()
+            .HasForeignKey(entity => entity.UserId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_personal_ratings_users_user_id");
     }
 }

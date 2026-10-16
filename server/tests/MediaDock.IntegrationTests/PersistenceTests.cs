@@ -105,6 +105,7 @@ public sealed class PersistenceTests
         var appliedMigrations = await db.Database.GetAppliedMigrationsAsync();
         Assert.Contains("20260930122500_InitialRelationalSchema", appliedMigrations);
         Assert.Contains("20261004200000_AddGoldenGlobeEnrichment", appliedMigrations);
+        Assert.Contains("20261016071457_AddUserOwnershipToFavoritesAndRatings", appliedMigrations);
 
         await db.Database.OpenConnectionAsync();
         await using (var command = db.Database.GetDbConnection().CreateCommand())
@@ -122,7 +123,7 @@ public sealed class PersistenceTests
                 {
                     "titles", "sources", "occurrences", "scan_runs", "parse_logs", "settings", "metadata_cache",
                     "oscar_films", "oscar_nominations", "oscar_enrichment_runs", "omdb_daily_usage",
-                    "golden_globe_awards", "golden_globe_nominations"
+                    "golden_globe_awards", "golden_globe_nominations", "favorite_movies", "personal_ratings", "users"
                 },
                 tableName => Assert.Contains(tableName, tables));
         }

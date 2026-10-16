@@ -27,3 +27,4 @@ Start here for work in this repository. Use the [local operations runbook](../..
 - [API-hosted background ingestion production cutover](BACKGROUND_INGESTION_PLAN.md)
 - [Users and access control design](USERS_AND_ACCESS_CONTROL_PLAN.md)
 - [Users and access control implementation](USERS_AND_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md)
+- [User settings and personal data migration](USER_SETTINGS_MIGRATION_PLAN.md)

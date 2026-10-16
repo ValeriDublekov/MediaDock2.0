@@ -2,6 +2,7 @@
 
 **Status:** Partially implemented; broad access control and per-user data ownership remain planned
 **Source design:** [Users and access control plan](USERS_AND_ACCESS_CONTROL_PLAN.md)
+**Personal data/settings detail:** Follow the [user settings and personal data migration plan](USER_SETTINGS_MIGRATION_PLAN.md) for the ownership inventory, legacy backfill rule, `MinMovieRating` behavior, and user/admin menu split.
 
 **Prerequisite:** The [Google authentication and registration requests plan](GOOGLE_AUTHENTICATION_PLAN.md) is complete for source implementation and documentation. It adds optional OIDC sign-in and identity persistence without enforcing authorization or changing shared personal data. Reuse its schema, session, linking, registration-request, and bootstrap flows; do not recreate them here. Google Cloud client provisioning and the production LAN HTTPS callback remain operator setup gates, not blockers to starting this plan's code work.
 

@@ -344,6 +344,10 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.FavoriteMovie", b =>
                 {
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
                     b.Property<long>("TitleId")
                         .HasColumnType("bigint")
                         .HasColumnName("title_id");
@@ -372,8 +376,10 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.HasKey("TitleId")
+                    b.HasKey("UserId", "TitleId")
                         .HasName("pk_favorite_movies");
+
+                    b.HasIndex("TitleId");
 
                     b.ToTable("favorite_movies", null, t =>
                         {
@@ -1098,6 +1104,10 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.PersonalRating", b =>
                 {
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
                     b.Property<string>("ImdbId")
                         .HasMaxLength(14)
                         .HasColumnType("character varying(14)")
@@ -1111,7 +1121,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
-                    b.HasKey("ImdbId")
+                    b.HasKey("UserId", "ImdbId")
                         .HasName("pk_personal_ratings");
 
                     b.ToTable("personal_ratings", null, t =>
@@ -1607,7 +1617,16 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_favorite_movies_titles_title_id");
 
+                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_favorite_movies_users_user_id");
+
                     b.Navigation("Title");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeNomination", b =>
@@ -1682,6 +1701,18 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_parse_logs_sources_source_id");
 
                     b.Navigation("Source");
+                });
+
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.PersonalRating", b =>
+                {
+                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_personal_ratings_users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.RegistrationRequest", b =>

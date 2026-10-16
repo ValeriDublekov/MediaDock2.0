@@ -9,7 +9,7 @@ public sealed class IdentityPersistenceTests
 {
     [Fact]
     [Trait("Category", "Persistence")]
-    public async Task IdentityMigrationPreservesExistingSharedFavoritesAndRatings()
+    public async Task UserOwnershipMigrationDeletesLegacyRowsWhenNoUsersExist()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_identity_upgrade_test").Build();
         await postgres.StartAsync();
@@ -21,38 +21,42 @@ public sealed class IdentityPersistenceTests
         await db.Database.MigrateAsync("20261005120000_AddGoldenGlobeNomineeType");
 
         var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
-        var title = new Title
-        {
-            TitleText = "Shared title",
-            NormalizedTitle = "shared title",
-            MediaType = "movie",
-            ImdbId = "tt12345678",
-            UpdatedAt = now
-        };
-        db.Titles.Add(title);
+        await SeedLegacyFavoriteAndRatingAsync(db, now.AddDays(-1), now);
+
+        await db.Database.MigrateAsync();
+        db.ChangeTracker.Clear();
+
+        Assert.Empty(await db.FavoriteMovies.AsNoTracking().ToListAsync());
+        Assert.Empty(await db.PersonalRatings.AsNoTracking().ToListAsync());
+        Assert.Empty(await db.Users.ToListAsync());
+    }
+
+    [Fact]
+    [Trait("Category", "Persistence")]
+    public async Task UserOwnershipMigrationBackfillsLegacyRowsToTheOnlyUser()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_single_user_ownership_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync("20261007170000_AddParseLogFeedPayload");
+
+        var now = new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero);
+        var user = CreateUser("deactivated@example.com", now);
+        user.Status = "deactivated";
+        user.Role = "user";
+        db.Users.Add(user);
         await db.SaveChangesAsync();
-        db.FavoriteMovies.Add(new FavoriteMovie
-        {
-            TitleId = title.Id,
-            ToWatch = false,
-            ToDownload = true,
-            AddedFromOscar = true,
-            AddedFromCatalog = false,
-            CreatedAt = now.AddDays(-1),
-            UpdatedAt = now
-        });
-        db.PersonalRatings.Add(new PersonalRating
-        {
-            ImdbId = "tt12345678",
-            Rating = 8,
-            UpdatedAt = now
-        });
-        await db.SaveChangesAsync();
+        var title = await SeedLegacyFavoriteAndRatingAsync(db, now.AddDays(-1), now);
 
         await db.Database.MigrateAsync();
         db.ChangeTracker.Clear();
 
         var favorite = await db.FavoriteMovies.AsNoTracking().SingleAsync();
+        Assert.Equal(user.Id, favorite.UserId);
         Assert.Equal(title.Id, favorite.TitleId);
         Assert.False(favorite.ToWatch);
         Assert.True(favorite.ToDownload);
@@ -62,10 +66,84 @@ public sealed class IdentityPersistenceTests
         Assert.Equal(now, favorite.UpdatedAt);
 
         var rating = await db.PersonalRatings.AsNoTracking().SingleAsync();
+        Assert.Equal(user.Id, rating.UserId);
         Assert.Equal("tt12345678", rating.ImdbId);
         Assert.Equal(8, rating.Rating);
         Assert.Equal(now, rating.UpdatedAt);
-        Assert.Empty(await db.Users.ToListAsync());
+
+        db.Users.Remove(await db.Users.SingleAsync(existingUser => existingUser.Id == user.Id));
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        db.ChangeTracker.Clear();
+    }
+
+    [Fact]
+    [Trait("Category", "Persistence")]
+    public async Task UserOwnershipMigrationCopiesLegacyRowsToEveryUserAndEnforcesCompositeKeys()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_multi_user_ownership_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync("20261007170000_AddParseLogFeedPayload");
+
+        var now = new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero);
+        var firstUser = CreateUser("first@example.com", now);
+        var secondUser = CreateUser("deactivated@example.com", now);
+        secondUser.Status = "deactivated";
+        secondUser.Role = "user";
+        db.Users.AddRange(firstUser, secondUser);
+        await db.SaveChangesAsync();
+        var title = await SeedLegacyFavoriteAndRatingAsync(db, now.AddDays(-1), now);
+
+        await db.Database.MigrateAsync();
+        db.ChangeTracker.Clear();
+
+        var favorites = await db.FavoriteMovies.AsNoTracking().OrderBy(favorite => favorite.UserId).ToListAsync();
+        Assert.Equal(new[] { firstUser.Id, secondUser.Id }.OrderBy(id => id), favorites.Select(favorite => favorite.UserId));
+        Assert.All(favorites, favorite =>
+        {
+            Assert.Equal(title.Id, favorite.TitleId);
+            Assert.False(favorite.ToWatch);
+            Assert.True(favorite.ToDownload);
+            Assert.True(favorite.AddedFromOscar);
+            Assert.False(favorite.AddedFromCatalog);
+            Assert.Equal(now.AddDays(-1), favorite.CreatedAt);
+            Assert.Equal(now, favorite.UpdatedAt);
+        });
+
+        var ratings = await db.PersonalRatings.AsNoTracking().OrderBy(rating => rating.UserId).ToListAsync();
+        Assert.Equal(new[] { firstUser.Id, secondUser.Id }.OrderBy(id => id), ratings.Select(rating => rating.UserId));
+        Assert.All(ratings, rating =>
+        {
+            Assert.Equal("tt12345678", rating.ImdbId);
+            Assert.Equal(8, rating.Rating);
+            Assert.Equal(now, rating.UpdatedAt);
+        });
+
+        db.FavoriteMovies.Add(new FavoriteMovie
+        {
+            UserId = firstUser.Id,
+            TitleId = title.Id,
+            ToWatch = true,
+            AddedFromOscar = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        db.ChangeTracker.Clear();
+
+        db.PersonalRatings.Add(new PersonalRating
+        {
+            UserId = firstUser.Id,
+            ImdbId = "tt12345678",
+            Rating = 9,
+            UpdatedAt = now
+        });
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        db.ChangeTracker.Clear();
     }
 
     [Fact]
@@ -236,6 +314,30 @@ public sealed class IdentityPersistenceTests
         CreatedAt = now,
         UpdatedAt = now
     };
+
+    private static async Task<Title> SeedLegacyFavoriteAndRatingAsync(
+        MediaDockDbContext db,
+        DateTimeOffset createdAt,
+        DateTimeOffset updatedAt)
+    {
+        var title = new Title
+        {
+            TitleText = "Shared title",
+            NormalizedTitle = "shared title",
+            MediaType = "movie",
+            ImdbId = "tt12345678",
+            UpdatedAt = updatedAt
+        };
+        db.Titles.Add(title);
+        await db.SaveChangesAsync();
+
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO favorite_movies (title_id, to_watch, to_download, added_from_oscar, added_from_catalog, created_at, updated_at) VALUES ({title.Id}, {false}, {true}, {true}, {false}, {createdAt}, {updatedAt})");
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO personal_ratings (imdb_id, rating, updated_at) VALUES ({"tt12345678"}, {8}, {updatedAt})");
+
+        return title;
+    }
 
     private static async Task<bool> TryBootstrapAsync(
         DbContextOptions<MediaDockDbContext> options,
