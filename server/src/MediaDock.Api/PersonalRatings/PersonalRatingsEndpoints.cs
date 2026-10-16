@@ -1,5 +1,8 @@
-using Microsoft.AspNetCore.Http.HttpResults;
+using System.Security.Claims;
 using MediaDock.Api.Authentication;
+using MediaDock.Api.Middleware;
+using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,22 +12,36 @@ internal static class PersonalRatingsEndpoints
 {
     public static WebApplication MapPersonalRatingsEndpoints(this WebApplication app)
     {
-        app.MapPost("/api/personal-ratings/import", async Task<Ok<PersonalRatingsImportResponse>> (
+        app.MapPost("/api/personal-ratings/import", async Task<IResult> (
             [FromForm] PersonalRatingsImportForm form,
+            HttpContext context,
+            IAntiforgery antiforgery,
+            ClaimsPrincipal principal,
+            CurrentUserContext currentUserContext,
             PersonalRatingsApiService service,
             CancellationToken cancellationToken) =>
         {
-            var result = await service.ImportAsync(form, cancellationToken);
+            if (!await antiforgery.IsRequestValidAsync(context))
+            {
+                return TypedResults.Problem(
+                    statusCode: StatusCodes.Status400BadRequest,
+                    title: "A valid anti-forgery token is required.");
+            }
+
+            var currentUser = await currentUserContext.ResolveAsync(principal, cancellationToken)
+                ?? throw new ApiForbiddenException("An active linked user is required.");
+            var result = await service.ImportAsync(currentUser.Id, form, cancellationToken);
             return TypedResults.Ok(result);
         })
             .WithName("ImportPersonalRatings")
             .WithSummary("Merge personal IMDb ratings from a JSON export.")
             .WithDescription("Repeated imports add new IMDb IDs and update changed ratings; ratings absent from the file are retained.")
-            .RequireAuthorization(AccessPolicies.PersonalData)
+            .RequireAuthorization(AccessPolicies.OwnerScopedPersonalRatings)
             .WithMetadata(new RequestSizeLimitAttribute(PersonalRatingsApiService.MaximumUploadBytes + 1024 * 1024))
             .DisableAntiforgery()
             .Produces<PersonalRatingsImportResponse>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 
         return app;
     }

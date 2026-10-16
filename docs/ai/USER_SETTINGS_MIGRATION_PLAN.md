@@ -1,6 +1,6 @@
 # User Settings and Personal Data Migration Plan
 
-**Status:** Sessions 1-3 schema/backfill, authorization gate, and per-user favorites are complete; personal ratings remain unavailable until Session 4 owner-scoped API work.
+**Status:** Sessions 1-4 schema/backfill, authorization gate, per-user favorites, and owner-scoped personal-rating imports are complete. No personal preferences or `excludeRated` filter have been separately approved; Session 5 menu separation is next.
 **Updated:** 2026-10-16
 **Prerequisite:** Reuse the identity and authorization work in the [users and access control implementation plan](USERS_AND_ACCESS_CONTROL_IMPLEMENTATION_PLAN.md). This plan does not recreate Google sign-in, user records, or account administration.
 
@@ -15,8 +15,8 @@ The migration branches directly on the number of rows in `users`. If there are n
 | Data or setting | Current implementation | Target ownership and action |
 | --- | --- | --- |
 | Favorites | `favorite_movies` has one row per `title_id`; includes `ToWatch`, `ToDownload`, source-origin flags, and timestamps. | Per user. Key by `(user_id, title_id)`. Keep both independent markers and origin/timestamp fields on that user's row. |
-| Personal IMDb ratings | `personal_ratings` has one row per `imdb_id`; distinct from the shared OMDb `Title.ImdbRating`. Import is a merge-only upload. | Per user. Key by `(user_id, imdb_id)`. Keep the existing validation and add/update/unchanged merge behavior within the current user's rows. |
-| Personal rating filters | A personal-rating import exists. `excludeRated` and saved per-user catalog-filter defaults are not implemented; catalog filters remain transient. | No saved filters in this migration. If `excludeRated` or saved defaults are added later, they must use only the current user's ratings and be separately approved. |
+| Personal IMDb ratings | `personal_ratings` has one row per `(user_id, imdb_id)`; distinct from the shared OMDb `Title.ImdbRating`. The import is a merge-only upload scoped to the active user. | Per user. Keep the existing validation and add/update/unchanged merge behavior within the current user's rows. |
+| Personal rating filters | A personal-rating import exists. `excludeRated` and saved per-user catalog-filter defaults are not implemented or separately approved; catalog filters remain transient. | No saved filters in this migration. Any later `excludeRated` or saved defaults require separate approval and must use only the current user's ratings. |
 | Catalog filter values | Catalog views hold filter inputs in view state; no saved per-user catalog-filter preference was found. | Do not migrate transient filters. Add per-user saved defaults only after their scope and reset behavior are specified. |
 | `MinMovieRating`, `MinSeriesRating`, `MinImdbVotes` | Stored in the singleton `settings` row and editable in Configuration > Torrent settings. | Retain as legacy singleton settings for compatibility only; see the Session 0 decision below. Do not copy them to user preferences. |
 | `ExcludedGenres`, `ExcludedCountries` | Stored in singleton `settings`; the RSS repository loads these into `IngestionMatchSettings`, and ingestion applies them through `MatchPolicy`. | Global admin settings. They affect the shared ingestion/catalog result, not an individual user's view. A future personal catalog filter must use separate fields and logic. |
@@ -52,7 +52,7 @@ The current `MinMovieRating`, `MinSeriesRating`, and `MinImdbVotes` fields are s
 - Resolve the current internal `users.id` from the validated identity on the server for every personal request. Require an active account; unknown, anonymous, or deactivated callers receive the appropriate authorization failure. Never fall back to a default/legacy owner.
 - Do not accept an owner ID in a route, query, or request body. Admin status does not grant access to another user's favorites or ratings by default.
 - Scope favorite list/count/page/add/update/delete queries by the resolved owner, preserving source checks, idempotent additions, marker independence, and existing pagination semantics.
-- Scope personal-rating import, reads, and any `excludeRated` filter by owner. Preserve whole-file validation before writes, bounded in-memory upload, merge-only semantics, and reporting of skipped missing-rating rows. Do not change shared OMDb title ratings.
+- Session 4 scopes the personal-rating import's existing-row lookup, inserts, and result count to the active owner. There is no rating-read endpoint or `excludeRated` filter. Preserve whole-file validation before writes, bounded in-memory upload, merge-only semantics, and reporting of skipped missing-rating rows; do not change shared OMDb title ratings. Any new filter requires separate approval and owner scoping.
 - Split global settings contracts from personal preferences. Keep RSS exclusions and provider settings in admin-owned APIs. Put only approved personal preferences in a current-user API (for example, `/api/me/preferences`); never expose a generic settings write that can cross ownership domains.
 - On account changes or sign-out, refresh or clear client-side favorites/ratings state so data from a previous session cannot remain visible.
 - Reuse the authorization matrix in the access-control implementation plan. Finish server enforcement before enabling multi-user data access; client navigation is only a convenience.
@@ -120,9 +120,11 @@ Scope favorite reads and mutations, API projections, and any favorite-backed cat
 
 ### Session 4: Per-User Ratings and Approved Preferences
 
-Scope personal rating import and all rating lookups by user. Add only separately approved user preferences; this migration does not create catalog preferences or move minimum-threshold fields. Any later personal catalog defaults must use explicitly named fields and apply only to UI filter prefills. Keep global exclusions/provider settings in the admin settings contract. Add `excludeRated` only as a user-scoped filter, if approved.
+**Work:** The import resolves the active internal user from the validated session in every mode. Existing-row lookup, writes, and the response total are scoped by `user_id`; the compound `(user_id, imdb_id)` key permits different ratings for the same title. Whole-file validation, bounded in-memory processing, merge-only behavior, and missing-rating reporting remain unchanged. No preference or filter was separately approved, so no catalog preferences or `excludeRated` behavior were added; minimum-threshold settings remain legacy singleton values.
 
-**Exit checks:** two users can rate the same IMDb ID differently; importing for one does not affect or reveal another user's rows; existing import validation/merge guarantees remain. Any prefilled filter is proven to load the current user's value and not alter RSS ingestion.
+**Exit checks:** PostgreSQL API coverage proves two users and an administrator can keep different ratings for one IMDb ID, client-supplied owner IDs are ignored, and anonymous, unknown, and deactivated callers are denied in open mode. Parser validation and merge behavior are covered without changing shared OMDb title ratings. No personal filter was added, so there is no prefilled value or RSS behavior to verify.
+
+**Handoff (2026-10-16):** Changed `AccessControl.cs`, `PersonalRatingsEndpoints.cs`, `PersonalRatingsApiService.cs`, `PersonalRatingsApiTests.cs`, `client.ts`, and `client.test.ts`, plus API, data, architecture, security, testing, implementation-status, access-control, and ratings-plan documentation. `python -B scripts/run_tests.py server-integration --filter "FullyQualifiedName~PersonalRatingsApiTests"` passed (1/1) with PostgreSQL Testcontainers; `python -B scripts/run_tests.py server-unit --filter "FullyQualifiedName~PersonalRatingsJsonParserTests"` passed (9/9); `python -B scripts/run_tests.py web --filter client.test.ts` passed (20/20). The integration test covers cross-user/admin isolation, forged owner IDs, invalid-file no-partial-write, missing-antiforgery-token rejection, and anonymous/unknown/deactivated denial. No schema or production database migration, settings change, or deployment was performed. No preferences or `excludeRated` filter were approved or added. No blockers. Next entry point: Session 5 user and admin menus.
 
 ### Session 5: User and Admin Menus
 

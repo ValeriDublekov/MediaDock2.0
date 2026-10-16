@@ -296,7 +296,8 @@ describe('typed API client', () => {
   })
 
   it('sends one personal ratings JSON file as multipart', async () => {
-    const stub = fetchStub(response(200, {
+    const tokenStub = fetchStub(response(200, { requestToken: 'ratings-csrf' }))
+    const importStub = fetchStub(response(200, {
       ratingsInFile: 1,
       added: 1,
       updated: 0,
@@ -305,16 +306,22 @@ describe('typed API client', () => {
       importedAt: '2026-10-02T10:00:00Z',
       errors: [],
     }))
+    const fetcher: typeof fetch = async (input, init) =>
+      String(input) === '/api/auth/antiforgery'
+        ? tokenStub.fetcher(input, init)
+        : importStub.fetcher(input, init)
     const file = new File(['[{"id":"tt14452776","rating":8}]'], 'ratings.json', { type: 'application/json' })
 
-    await importPersonalRatings(file, stub.fetcher)
+    await importPersonalRatings(file, fetcher)
 
-    const init = stub.calls[0]?.init
+    const init = importStub.calls[0]?.init
     const body = init?.body
-    expect(String(stub.calls[0]?.input)).toBe('/api/personal-ratings/import')
+    expect(String(tokenStub.calls[0]?.input)).toBe('/api/auth/antiforgery')
+    expect(String(importStub.calls[0]?.input)).toBe('/api/personal-ratings/import')
     expect(init?.method).toBe('POST')
     expect(body).toBeInstanceOf(FormData)
     expect(new Headers(init?.headers).has('Content-Type')).toBe(false)
+    expect(new Headers(init?.headers).get('RequestVerificationToken')).toBe('ratings-csrf')
     expect((body as FormData).get('File')).toBe(file)
   })
 

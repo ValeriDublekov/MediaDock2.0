@@ -1,6 +1,6 @@
 # Users and Access Control: Implementation Plan
 
-**Status:** Optional OIDC and a configurable access-control gate are implemented; enforcement defaults off. Per-user favorites/ratings queries and the corresponding user experience remain planned.
+**Status:** Optional OIDC and a configurable access-control gate are implemented; enforcement defaults off. Per-user favorites and personal-rating imports are owner-scoped. User/admin menu separation and remaining account-administration work are tracked below.
 **Source design:** [Users and access control plan](USERS_AND_ACCESS_CONTROL_PLAN.md)
 **Personal data/settings detail:** Follow the [user settings and personal data migration plan](USER_SETTINGS_MIGRATION_PLAN.md) for the ownership inventory, legacy backfill rule, `MinMovieRating` behavior, and user/admin menu split.
 
@@ -12,11 +12,11 @@ This document turns the source design into bounded implementation sessions. Each
 
 ## Analysis and Safety Decisions
 
-Before the Google authentication foundation, the implementation had one shared `favorite_movies` row per `title_id` and one shared `personal_ratings` row per IMDb ID. Optional authentication identifies a caller; the access gate is now available but remains disabled by default for rollout compatibility. When enabled, system routes are protected, while favorites and ratings are denied until their queries derive and enforce the current owner. Adding identity or ownership columns alone does not make personal data private, and a client-supplied user ID must never establish ownership.
+The legacy schema had one shared `favorite_movies` row per `title_id` and one shared `personal_ratings` row per IMDb ID; the ownership migration now assigns or copies those rows according to the documented user-count rule. Optional authentication identifies a caller; the access gate remains disabled by default for rollout compatibility. Favorites and personal-rating imports now resolve the active owner from the validated identity and are scoped even in open mode. Adding identity or ownership columns alone does not make personal data private, and a client-supplied user ID must never establish ownership.
 
 The original source design placed user/role management before enforcement. That would be unsafe even after optional sign-in exists: without authorization, any client that reaches the API could create accounts, change roles, or deactivate an account. A persistent warning explains the risk but does not prevent it.
 
-**Open-mode behavior:** `ACCESS_CONTROL_ENFORCED` defaults to `false` for rollout compatibility. In that mode authorization policies are bypassed for shared, system, and operation routes, including Users; the persistent warning and loopback/LAN boundary remain mandatory. When enabled, every non-public route requires an active linked user, system/admin routes require an active `admin`, and roles/status are re-read from PostgreSQL each request. Favorites and ratings are denied in all modes until their owner-scoped API sessions are complete. No client-supplied owner ID is accepted.
+**Open-mode behavior:** `ACCESS_CONTROL_ENFORCED` defaults to `false` for rollout compatibility. In that mode authorization policies are bypassed for shared, system, and operation routes, including Users; the persistent warning and loopback/LAN boundary remain mandatory. When enabled, every non-public route requires an active linked user, system/admin routes require an active `admin`, and roles/status are re-read from PostgreSQL each request. Favorites and personal-rating imports always require an active linked user and remain owner-scoped in every mode. No client-supplied owner ID is accepted.
 
 Treat these decisions as a gate, not implementation assumptions. Close them in Session 0:
 
@@ -75,11 +75,15 @@ Record the decisions in the source design or a short decision record before Sess
 
 ### Session 5: Scope Personal Ratings and Import to the Owner
 
+**Status:** Complete (2026-10-16).
+
 **Goal:** isolate ratings and preserve the current safe merge semantics per account.
 
-**Work:** scope import reads/writes and result counts to the authenticated owner. Keep the bounded in-memory parser, whole-file validation before mutation, merge-only behavior, and row-level missing-rating reporting. Do not change shared OMDb title ratings or delete personal ratings absent from a subsequent export.
+**Work:** the import resolves the active internal user from the validated identity in every mode and scopes existing-row lookup, writes, and result counts to that owner. The bounded in-memory parser, whole-file validation before mutation, merge-only behavior, and row-level missing-rating reporting are retained. Shared OMDb title ratings are unchanged, and ratings omitted from later exports are not deleted.
 
-**Exit checks:** tests prove two users can store different ratings for the same IMDb ID; importing as one user cannot read, update, or affect the other user's data. Retain coverage for malformed files, size/row bounds, unchanged/updated/added counts, and no partial writes on invalid input.
+**Exit checks:** PostgreSQL API tests prove two users and an administrator can store different ratings for the same IMDb ID; importing as one user cannot read, update, or affect another user's rows. Anonymous, unknown, and deactivated callers are denied even in open mode; client owner IDs are ignored; malformed input makes no partial writes. Parser unit tests retain validation and missing-rating-row coverage.
+
+**Handoff (2026-10-16):** Added the `OwnerScopedPersonalRatings` policy and owner resolution at the endpoint; the service scopes all import reads, writes, and totals by `UserId`. The multipart route validates the existing antiforgery cookie/header pair, and the browser client obtains and sends the request token. `python -B scripts/run_tests.py server-integration --filter "FullyQualifiedName~PersonalRatingsApiTests"` passed (1/1), `python -B scripts/run_tests.py server-unit --filter "FullyQualifiedName~PersonalRatingsJsonParserTests"` passed (9/9), and `python -B scripts/run_tests.py web --filter client.test.ts` passed (20/20). No new migration, production write, or deployment was performed. No preferences or catalog filter were approved. Next entry point: Session 6 User Administration API.
 
 ### Session 6: User Administration API
 

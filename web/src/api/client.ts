@@ -372,8 +372,13 @@ export function getMovieAwards(imdbIds: string[], fetcher?: typeof fetch) {
   return requestJson<MovieAwardRecognition[]>(withQuery('/movie-awards', { imdbIds }), {}, fetcher)
 }
 
-export function importPersonalRatings(file: File, fetcher?: typeof fetch) {
+export async function importPersonalRatings(file: File, fetcher?: typeof fetch) {
+  const requestToken = await getAuthRequestToken(fetcher)
   const body = new FormData()
   body.append('File', file)
-  return requestJson<PersonalRatingsImportResult>('/personal-ratings/import', { method: 'POST', body }, fetcher)
+  return requestJson<PersonalRatingsImportResult>('/personal-ratings/import', {
+    method: 'POST',
+    body,
+    headers: { RequestVerificationToken: requestToken },
+  }, fetcher)
 }

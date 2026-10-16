@@ -11,6 +11,7 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
     public const int MaximumUploadBytes = 5 * 1024 * 1024;
 
     public async Task<PersonalRatingsImportResponse> ImportAsync(
+        long userId,
         PersonalRatingsImportForm form,
         CancellationToken cancellationToken)
     {
@@ -51,7 +52,7 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var ids = importedRatings.Keys.ToArray();
         var existingRatings = await dbContext.PersonalRatings
-            .Where(rating => ids.Contains(rating.ImdbId))
+            .Where(rating => rating.UserId == userId && ids.Contains(rating.ImdbId))
             .ToDictionaryAsync(rating => rating.ImdbId, cancellationToken);
         var importedAt = DateTimeOffset.UtcNow;
         var added = 0;
@@ -76,6 +77,7 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
 
             dbContext.PersonalRatings.Add(new PersonalRating
             {
+                UserId = userId,
                 ImdbId = imdbId,
                 Rating = rating,
                 UpdatedAt = importedAt
@@ -84,7 +86,8 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        var totalRatings = await dbContext.PersonalRatings.CountAsync(cancellationToken);
+        var totalRatings = await dbContext.PersonalRatings
+            .CountAsync(rating => rating.UserId == userId, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
         return new PersonalRatingsImportResponse(

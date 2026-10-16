@@ -9,8 +9,8 @@ namespace MediaDock.Api.Authentication;
 public static class AccessPolicies
 {
     public const string Administrator = "Administrator";
-    public const string PersonalData = "PersonalData";
     public const string OwnerScopedFavorites = "OwnerScopedFavorites";
+    public const string OwnerScopedPersonalRatings = "OwnerScopedPersonalRatings";
 }
 
 public sealed record AccessControlSettings(bool Enforced)
@@ -47,7 +47,6 @@ public sealed class CurrentUserContext(MediaDockDbContext db)
 public sealed record CurrentUserRequirement(
     string? RequiredRole = null,
     bool RequireActiveUserInOpenMode = false) : IAuthorizationRequirement;
-public sealed record PersonalDataNotOwnerScopedRequirement : IAuthorizationRequirement;
 
 public sealed class CurrentUserAuthorizationHandler(
     AccessControlSettings settings,
@@ -96,10 +95,10 @@ public static class AccessControlServiceCollectionExtensions
                 AccessPolicies.Administrator,
                 policy => policy.AddRequirements(new CurrentUserRequirement("admin")));
             options.AddPolicy(
-                AccessPolicies.PersonalData,
-                policy => policy.AddRequirements(new PersonalDataNotOwnerScopedRequirement()));
-            options.AddPolicy(
                 AccessPolicies.OwnerScopedFavorites,
+                policy => policy.AddRequirements(new CurrentUserRequirement(RequireActiveUserInOpenMode: true)));
+            options.AddPolicy(
+                AccessPolicies.OwnerScopedPersonalRatings,
                 policy => policy.AddRequirements(new CurrentUserRequirement(RequireActiveUserInOpenMode: true)));
         });
         return services;
