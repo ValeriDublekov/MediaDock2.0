@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { getCurrentSession, requestRegistration } from './api/client'
 import type { AuthDiagnostic, CurrentSession } from './api/types'
@@ -13,24 +13,22 @@ import { IngestionSettingsView, OmdbProviderView, PersonalRatingsView, SystemSet
 import { AuthStatus } from './features/auth/AuthStatus'
 import { UsersView } from './features/users/UsersView'
 
-type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'sources' | 'history'
+type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'account' | 'administration'
 
 const sections: { id: Section; path: string; number: string; label: string }[] = [
   { id: 'catalog', path: '/catalog', number: '01', label: 'Catalog' },
   { id: 'oscar', path: '/oscar', number: '02', label: 'Oscar catalog' },
   { id: 'golden-globes', path: '/golden-globes', number: '03', label: 'Golden Globes catalog' },
   { id: 'favorites', path: '/favorites', number: '04', label: 'Favorites' },
-  { id: 'sources', path: '/configuration/torrent', number: '05', label: 'Configuration' },
-  { id: 'history', path: '/history', number: '06', label: 'Scan history' },
 ]
 
-const configurationPages = [
+const administrationPages = [
   { path: '/configuration/system', label: 'System', description: 'Review deployment controls and the running version.' },
   { path: '/configuration/torrent', label: 'Torrent settings', description: 'Manage RSS profiles and matching rules.' },
   { path: '/configuration/ingestion', label: 'Ingestion', description: 'Import and enrich award datasets.' },
-  { path: '/configuration/personal-ratings', label: 'Personal IMDb ratings', description: 'Import and maintain your IMDb ratings.' },
   { path: '/configuration/omdb', label: 'OMDb provider', description: 'Configure provider credentials and shared request limits.' },
   { path: '/configuration/users', label: 'Users', description: 'Review registration requests and manage account status.' },
+  { path: '/history', label: 'Scan history', description: 'Review completed scans and individual parser decisions.' },
 ]
 
 const sectionContent: Record<Section, { eyebrow: string; title: string; description: string }> = {
@@ -54,16 +52,37 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
     title: 'Favorites',
     description: 'Movies saved from the catalog and Oscar awards.',
   },
-  sources: {
-    eyebrow: 'CONFIGURATION',
-    title: 'Configuration',
-    description: 'Configure feeds, metadata, and system operations.',
+  account: {
+    eyebrow: 'ACCOUNT',
+    title: 'My account',
+    description: 'Manage personal data for the signed-in account.',
   },
-  history: {
-    eyebrow: 'OPERATIONS',
-    title: 'Scan history',
-    description: 'Review completed scans and individual parser decisions.',
+  administration: {
+    eyebrow: 'ADMINISTRATION',
+    title: 'Administration',
+    description: 'Manage shared configuration, accounts, and operational history.',
   },
+}
+
+function RouteAccessRequired({ title, message }: { title: string; message: string }) {
+  return (
+    <section aria-labelledby="route-access-required-heading" className="management-section">
+      <h2 id="route-access-required-heading">{title}</h2>
+      <p className="section-caption">{message}</p>
+    </section>
+  )
+}
+
+function AdminArea({ isAdmin, children }: { isAdmin: boolean; children: ReactNode }) {
+  return isAdmin
+    ? children
+    : <RouteAccessRequired message="This page requires an active administrator account." title="Administrator access required" />
+}
+
+function ActiveAccountArea({ isActiveAccount, children }: { isActiveAccount: boolean; children: ReactNode }) {
+  return isActiveAccount
+    ? children
+    : <RouteAccessRequired message="Sign in with an active linked account to manage personal IMDb ratings." title="Personal ratings unavailable" />
 }
 
 function RegistrationGate({
@@ -147,62 +166,41 @@ function AppContent() {
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const section = sections.find((item) => item.id === 'sources'
-    ? location.pathname.startsWith('/configuration')
-    : item.path === location.pathname)?.id ?? 'catalog'
-  const configurationPage = configurationPages.find((page) => page.path === location.pathname)
+  const isActiveAccount = session?.accountState === 'linked' && session.user?.status === 'active'
+  const accountKey = isActiveAccount && session?.identity
+    ? `${session.identity.issuer}:${session.identity.subject}`
+    : null
+  const isAdmin = isActiveAccount && session?.user?.role === 'admin'
+  const isAdministrationPath = location.pathname.startsWith('/configuration') || location.pathname === '/history'
+  const section: Section = isAdministrationPath
+    ? 'administration'
+    : location.pathname.startsWith('/account')
+      ? 'account'
+      : sections.find((item) => item.path === location.pathname)?.id ?? 'catalog'
+  const administrationPage = isAdmin ? administrationPages.find((page) => page.path === location.pathname) : undefined
   const requestedScanRunId = Number(searchParams.get('scanRunId'))
   const historyScanRunId = Number.isSafeInteger(requestedScanRunId) && requestedScanRunId > 0
     ? requestedScanRunId
     : null
   const content = sectionContent[section]
-  const title = configurationPage?.label ?? content.title
-  const description = configurationPage?.description ?? content.description
-  const favoriteAccountKey = session?.accountState === 'linked' && session.user?.status === 'active'
-    ? session.identity ? `${session.identity.issuer}:${session.identity.subject}` : null
-    : null
+  const title = administrationPage?.label ?? content.title
+  const description = administrationPage?.description ?? content.description
   const registrationSession = session?.authenticated && session.accountState === 'unmatched' ? session : null
   const recoveryDiagnostic = session === null ? authDiagnostic : null
   const isAccessGated = !authChecked || registrationSession !== null || recoveryDiagnostic !== null
 
   return (
-    <FavoriteProvider accountKey={favoriteAccountKey} key={favoriteAccountKey ?? 'no-active-owner'}>
+    <FavoriteProvider accountKey={accountKey} key={accountKey ?? 'no-active-owner'}>
     <div className={`app-shell${isAccessGated ? ' is-gated' : ''}`}>
-      {!isAccessGated && <aside className={`sidebar${section === 'sources' ? ' is-configuration' : ''}`}>
+      {!isAccessGated && <aside className="sidebar">
         <NavLink className="brand" to="/catalog">
           <span className="brand-mark" aria-hidden="true">MD</span>
           <span className="brand-name">MediaDock</span>
         </NavLink>
 
-        <div className="sidebar-label">LIBRARY</div>
-        <nav className="primary-nav" aria-label="Main navigation">
-          {sections.map((item) => item.id === 'sources' ? (
-            <div className="configuration-nav-group" key={item.id}>
-              <NavLink
-                aria-current={section === item.id ? 'page' : undefined}
-                className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
-                end
-                to={item.path}
-              >
-                <span className="nav-number">{item.number}</span>
-                <span>{item.label}</span>
-              </NavLink>
-              {section === 'sources' && (
-                <nav aria-label="Configuration navigation" className="configuration-nav">
-                  {configurationPages.map((page) => (
-                    <NavLink
-                      className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
-                      end
-                      key={page.path}
-                      to={page.path}
-                    >
-                      {page.label}
-                    </NavLink>
-                  ))}
-                </nav>
-              )}
-            </div>
-          ) : (
+        <div className="sidebar-label sidebar-label-first">LIBRARY</div>
+        <nav className="primary-nav" aria-label="Library navigation">
+          {sections.map((item) => (
             <NavLink
               aria-current={section === item.id ? 'page' : undefined}
               className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
@@ -216,6 +214,52 @@ function AppContent() {
           ))}
         </nav>
 
+        {isActiveAccount && (
+          <div className="account-nav-group">
+            <div className="sidebar-label">ACCOUNT</div>
+            <nav aria-label="Account navigation" className="configuration-nav">
+              <NavLink
+                className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
+                end
+                to="/account/personal-ratings"
+              >
+                Personal IMDb ratings
+              </NavLink>
+            </nav>
+          </div>
+        )}
+
+        {isAdmin && (
+          <div className="configuration-nav-group">
+            <div className="sidebar-label">ADMINISTRATION</div>
+            <nav aria-label="Administration section navigation" className="admin-root-nav">
+              <NavLink
+                aria-current={section === 'administration' ? 'page' : undefined}
+                className={`nav-item${section === 'administration' ? ' is-active' : ''}`}
+                end
+                to="/configuration/torrent"
+              >
+                <span className="nav-number">05</span>
+                <span>Administration</span>
+              </NavLink>
+            </nav>
+            {section === 'administration' && (
+              <nav aria-label="Administration navigation" className="configuration-nav">
+                {administrationPages.map((page) => (
+                  <NavLink
+                    className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
+                    end
+                    key={page.path}
+                    to={page.path}
+                  >
+                    {page.label}
+                  </NavLink>
+                ))}
+              </nav>
+            )}
+          </div>
+        )}
+
         <div className="sidebar-footer">
           <span className="status-mark" aria-hidden="true" />
           <span>Local instance</span>
@@ -225,13 +269,13 @@ function AppContent() {
 
       <main className="main-shell">
         <header className="topbar">
-          <div className="breadcrumb">MEDIADOCK <span>/</span> {recoveryDiagnostic ? 'SIGN-IN DIAGNOSTICS' : registrationSession ? 'ACCOUNT ACCESS' : !authChecked ? 'SIGN-IN CHECK' : <>{content.eyebrow}{configurationPage && <> <span>/</span> {configurationPage.label.toUpperCase()}</>}</>}</div>
+          <div className="breadcrumb">MEDIADOCK <span>/</span> {recoveryDiagnostic ? 'SIGN-IN DIAGNOSTICS' : registrationSession ? 'ACCOUNT ACCESS' : !authChecked ? 'SIGN-IN CHECK' : <>{content.eyebrow}{administrationPage && <> <span>/</span> {administrationPage.label.toUpperCase()}</>}</>}</div>
           <AuthStatus onSessionChange={onSessionChange} />
         </header>
 
         {(!authChecked || session?.authorizationEnforced !== true) && (
           <aside className="open-mode-warning" role="note">
-            Sign-in is optional and verifies identity only. Application permissions are not enforced for shared, system, or account-administration routes. Keep the API within its configured network boundary. Favorites require an active linked account; personal ratings remain unavailable until owner scoping is implemented.
+            Access control is disabled: shared, system, and administration APIs are not authorization-protected. Keep the API within its configured network boundary. Favorites and personal ratings still require an active linked account and remain owner-scoped.
           </aside>
         )}
 
@@ -262,14 +306,28 @@ function AppContent() {
             <Route path="/oscar" element={<OscarCatalogView />} />
             <Route path="/golden-globes" element={<GoldenGlobeCatalogView />} />
             <Route path="/favorites" element={<FavoritesView />} />
-            <Route path="/configuration" element={<Navigate replace to="/configuration/torrent" />} />
-            <Route path="/configuration/torrent" element={<SourceSettingsView onOpenHistory={(scanRunId) => navigate(scanRunId ? `/history?scanRunId=${scanRunId}` : '/history')} />} />
-            <Route path="/configuration/ingestion" element={<IngestionSettingsView />} />
-            <Route path="/configuration/personal-ratings" element={<PersonalRatingsView />} />
-            <Route path="/configuration/omdb" element={<OmdbProviderView />} />
-            <Route path="/configuration/system" element={<SystemSettingsView />} />
-            <Route path="/configuration/users" element={<UsersView />} />
-            <Route path="/history" element={<HistoryView scanRunId={historyScanRunId} onClearScanRun={() => setSearchParams({})} />} />
+            <Route path="/configuration/personal-ratings" element={<Navigate replace to="/account/personal-ratings" />} />
+            <Route path="/account" element={<Navigate replace to="/account/personal-ratings" />} />
+            <Route path="/account/personal-ratings" element={(
+              <ActiveAccountArea isActiveAccount={isActiveAccount}>
+                <PersonalRatingsView key={accountKey ?? 'no-active-account'} />
+              </ActiveAccountArea>
+            )} />
+            <Route path="/configuration" element={<AdminArea isAdmin={isAdmin}><Navigate replace to="/configuration/torrent" /></AdminArea>} />
+            <Route path="/configuration/torrent" element={(
+              <AdminArea isAdmin={isAdmin}>
+                <SourceSettingsView onOpenHistory={(scanRunId) => navigate(scanRunId ? `/history?scanRunId=${scanRunId}` : '/history')} />
+              </AdminArea>
+            )} />
+            <Route path="/configuration/ingestion" element={<AdminArea isAdmin={isAdmin}><IngestionSettingsView /></AdminArea>} />
+            <Route path="/configuration/omdb" element={<AdminArea isAdmin={isAdmin}><OmdbProviderView /></AdminArea>} />
+            <Route path="/configuration/system" element={<AdminArea isAdmin={isAdmin}><SystemSettingsView /></AdminArea>} />
+            <Route path="/configuration/users" element={<AdminArea isAdmin={isAdmin}><UsersView /></AdminArea>} />
+            <Route path="/history" element={(
+              <AdminArea isAdmin={isAdmin}>
+                <HistoryView scanRunId={historyScanRunId} onClearScanRun={() => setSearchParams({})} />
+              </AdminArea>
+            )} />
             <Route path="*" element={<Navigate replace to="/catalog" />} />
           </Routes>
         </div>}

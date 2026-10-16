@@ -156,6 +156,22 @@ describe('SourceSettingsView', () => {
     expect((await screen.findByText(/Skipped entries with missing ratings:/)).textContent).toContain('tt1234567 (Missing rating.)')
   })
 
+  it.each([
+    [401, 'The sign-in session has expired.'],
+    [403, 'This account is not allowed to import IMDb ratings.'],
+  ])('shows API %s errors on the personal ratings form', async (status, message) => {
+    vi.mocked(importPersonalRatings).mockRejectedValue(Object.assign(new Error(message), { status }))
+
+    render(<PersonalRatingsView />)
+
+    const file = new File(['[]'], 'ratings.json', { type: 'application/json' })
+    const fileInput = await screen.findByLabelText('IMDb ratings JSON')
+    Object.defineProperty(fileInput, 'files', { configurable: true, value: [file] })
+    fireEvent.submit(fileInput.closest('form')!)
+
+    expect((await screen.findByRole('alert')).textContent).toContain(message)
+  })
+
   it('loads only RSS and matching data on torrent settings', async () => {
     render(<SourceSettingsView />)
 

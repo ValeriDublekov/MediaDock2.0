@@ -1,12 +1,16 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { getCurrentSession, requestRegistration } from './api/client'
 import type { AuthDiagnostic, CurrentSession } from './api/types'
 import App from './App'
 
-const authMock = vi.hoisted(() => ({ session: null as CurrentSession | null, diagnostic: null as AuthDiagnostic | null }))
+const authMock = vi.hoisted(() => ({
+  session: null as CurrentSession | null,
+  diagnostic: null as AuthDiagnostic | null,
+  nextSession: null as CurrentSession | null,
+}))
 
 vi.mock('./api/client', () => ({
   getCurrentSession: vi.fn(),
@@ -23,7 +27,17 @@ vi.mock('./features/auth/AuthStatus', async () => {
           onSessionChange(authMock.session, authMock.diagnostic)
         }
       }, [onSessionChange])
-      return <div>Authentication status</div>
+      return <div>
+        Authentication status
+        {authMock.nextSession && <button onClick={() => {
+          const nextSession = authMock.nextSession
+          authMock.nextSession = null
+          if (nextSession) {
+            authMock.session = nextSession
+            onSessionChange(nextSession)
+          }
+        }} type="button">Switch account</button>}
+      </div>
     },
   }
 })
@@ -42,7 +56,14 @@ vi.mock('./features/sources/SourceSettingsView', () => ({
 vi.mock('./features/sources/ConfigurationSettingsViews', () => ({
   IngestionSettingsView: () => <div>Ingestion route content</div>,
   OmdbProviderView: () => <div>OMDb route content</div>,
-  PersonalRatingsView: () => <div>Ratings route content</div>,
+  PersonalRatingsView: () => {
+    const [hasImportResult, setHasImportResult] = useState(false)
+    return <div>
+      <div>Ratings route content</div>
+      <button onClick={() => setHasImportResult(true)} type="button">Mark import result</button>
+      {hasImportResult && <div>Previous account import result</div>}
+    </div>
+  },
   SystemSettingsView: () => <div>System route content</div>,
 }))
 vi.mock('./features/history/HistoryView', () => ({
@@ -88,10 +109,22 @@ const unmatchedSession: CurrentSession = {
   registrationRequest: null,
 }
 
+const activeUserSession: CurrentSession = {
+  ...unmatchedSession,
+  user: { email: 'person@example.com', givenName: 'Stored', familyName: 'Account', status: 'active', role: 'user' },
+  accountState: 'linked',
+}
+
+const activeAdminSession: CurrentSession = {
+  ...activeUserSession,
+  user: { ...activeUserSession.user!, role: 'admin' },
+}
+
 describe('App routes', () => {
   beforeEach(() => {
     authMock.session = anonymousSession
     authMock.diagnostic = null
+    authMock.nextSession = null
     vi.mocked(getCurrentSession).mockReset()
     vi.mocked(requestRegistration).mockReset()
   })
@@ -102,19 +135,89 @@ describe('App routes', () => {
     ['/oscar', 'Oscar catalog'],
     ['/golden-globes', 'Golden Globes catalog'],
     ['/favorites', 'Favorites'],
-    ['/configuration/torrent', 'Torrent settings'],
-    ['/configuration/ingestion', 'Ingestion'],
-    ['/configuration/personal-ratings', 'Personal IMDb ratings'],
-    ['/configuration/omdb', 'OMDb provider'],
-    ['/configuration/system', 'System'],
-    ['/configuration/users', 'Users'],
-    ['/history', 'Scan history'],
   ])('opens %s directly', async (path, heading) => {
     renderAt(path)
 
     expect(await screen.findByRole('heading', { name: heading })).toBeTruthy()
-    expect(screen.getByRole('note').textContent).toContain('Application permissions are not enforced')
+    expect(screen.getByRole('note').textContent).toContain('Access control is disabled')
     expect(screen.getByTestId('location').textContent).toBe(path)
+  })
+
+  it('shows shared library navigation without personal or admin links to anonymous visitors', async () => {
+    renderAt('/catalog')
+
+    expect(await screen.findByRole('navigation', { name: 'Library navigation' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: /Favorites/ })).toBeTruthy()
+    expect(screen.queryByRole('navigation', { name: 'Account navigation' })).toBeNull()
+    expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
+  })
+
+  it('shows personal ratings to active users but keeps administration hidden', async () => {
+    authMock.session = activeUserSession
+
+    renderAt('/account/personal-ratings')
+
+    expect(await screen.findByText('Ratings route content')).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Account navigation' }).textContent).toContain('Personal IMDb ratings')
+    expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Users' })).toBeNull()
+  })
+
+  it('shows admin controls separately from account and library navigation', async () => {
+    authMock.session = activeAdminSession
+
+    renderAt('/configuration/users')
+
+    expect(await screen.findByText('Users route content')).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Library navigation' })).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Account navigation' }).textContent).toContain('Personal IMDb ratings')
+    const administrationNavigation = screen.getByRole('navigation', { name: 'Administration navigation' })
+    expect(administrationNavigation.textContent).toContain('Users')
+    expect(administrationNavigation.textContent).not.toContain('Personal IMDb ratings')
+    expect(screen.getByRole('navigation', { name: 'Administration section navigation' }).textContent).toContain('Administration')
+  })
+
+  it.each([
+    '/configuration/torrent',
+    '/configuration/ingestion',
+    '/configuration/omdb',
+    '/configuration/system',
+    '/configuration/users',
+    '/history',
+  ])('blocks an ordinary user from the admin URL %s', async (path) => {
+    authMock.session = activeUserSession
+
+    renderAt(path)
+
+    expect(await screen.findByRole('heading', { name: 'Administrator access required' })).toBeTruthy()
+    expect(screen.queryByText(/route content/)).toBeNull()
+  })
+
+  it('requires an active linked account for personal ratings and redirects the old route', async () => {
+    renderAt('/configuration/personal-ratings')
+
+    expect(await screen.findByRole('heading', { name: 'Personal ratings unavailable' })).toBeTruthy()
+    expect(screen.getByTestId('location').textContent).toBe('/account/personal-ratings')
+    expect(screen.queryByText('Ratings route content')).toBeNull()
+  })
+
+  it('clears the previous account ratings view and refreshes role navigation on account change', async () => {
+    const switchedAdminSession: CurrentSession = {
+      ...activeAdminSession,
+      identity: { ...activeAdminSession.identity!, subject: 'second-account' },
+    }
+    authMock.session = activeUserSession
+    authMock.nextSession = switchedAdminSession
+
+    renderAt('/account/personal-ratings')
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark import result' }))
+    expect(screen.getByText('Previous account import result')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch account' }))
+
+    expect(await screen.findByRole('navigation', { name: 'Administration section navigation' })).toBeTruthy()
+    expect(screen.queryByText('Previous account import result')).toBeNull()
+    expect(screen.getByRole('navigation', { name: 'Account navigation' }).textContent).toContain('Personal IMDb ratings')
   })
 
   it('hides the open-mode warning only when the server confirms enforcement', async () => {
@@ -127,6 +230,7 @@ describe('App routes', () => {
   })
 
   it('redirects the configuration root to torrent settings', async () => {
+    authMock.session = activeAdminSession
     renderAt('/configuration')
 
     expect(await screen.findByRole('heading', { name: 'Torrent settings' })).toBeTruthy()
@@ -134,16 +238,17 @@ describe('App routes', () => {
   })
 
   it('shows configuration subnavigation and opens its pages', () => {
+    authMock.session = activeAdminSession
     renderAt('/catalog')
 
-    fireEvent.click(screen.getByRole('link', { name: /Configuration/ }))
+    fireEvent.click(screen.getByRole('link', { name: /Administration/ }))
     expect(screen.getByTestId('location').textContent).toBe('/configuration/torrent')
-    const configurationLink = screen.getByRole('link', { name: /Configuration/ })
-    const configurationNavigation = screen.getByRole('navigation', { name: 'Configuration navigation' })
-    const historyLink = screen.getByRole('link', { name: /Scan history/ })
-    expect(configurationLink.compareDocumentPosition(configurationNavigation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(configurationNavigation.compareDocumentPosition(historyLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(configurationNavigation.querySelector('a')?.textContent).toBe('System')
+    const administrationLink = screen.getByRole('link', { name: /Administration/ })
+    const administrationNavigation = screen.getByRole('navigation', { name: 'Administration navigation' })
+    const historyLink = screen.getByRole('link', { name: 'Scan history' })
+    expect(administrationLink.compareDocumentPosition(administrationNavigation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(administrationNavigation.compareDocumentPosition(historyLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(administrationNavigation.querySelector('a')?.textContent).toBe('System')
 
     fireEvent.click(screen.getByRole('link', { name: 'OMDb provider' }))
     expect(screen.getByTestId('location').textContent).toBe('/configuration/omdb')
@@ -151,12 +256,13 @@ describe('App routes', () => {
   })
 
   it('updates the URL through navigation and preserves a selected scan in history', () => {
+    authMock.session = activeAdminSession
     renderAt('/catalog')
 
     fireEvent.click(screen.getByRole('link', { name: /Golden Globes catalog/ }))
     expect(screen.getByTestId('location').textContent).toBe('/golden-globes')
 
-    fireEvent.click(screen.getByRole('link', { name: /Configuration/ }))
+    fireEvent.click(screen.getByRole('link', { name: /Administration/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Open scan 42' }))
     expect(screen.getByTestId('location').textContent).toBe('/history?scanRunId=42')
     expect(screen.getByText('History scan: 42')).toBeTruthy()
