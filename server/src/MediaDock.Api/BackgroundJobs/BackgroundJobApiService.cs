@@ -66,6 +66,20 @@ internal sealed class BackgroundJobApiService(
         return ToResponse(job);
     }
 
+    public async Task<BackgroundJobResponse> GetOwnedImdbTitleEnrichmentAsync(
+        long ownerUserId,
+        long id,
+        CancellationToken cancellationToken)
+    {
+        var job = await dbContext.BackgroundJobs.AsNoTracking()
+            .Where(job => job.Id == id
+                && job.JobType == "imdb_title_enrichment"
+                && job.OwnerUserId == ownerUserId)
+            .SingleOrDefaultAsync(cancellationToken)
+            ?? throw new ApiNotFoundException("Metadata enrichment job not found.");
+        return ToResponse(job);
+    }
+
     public async Task<BackgroundJobEventsResponse> GetEventsAsync(
         long id,
         BackgroundJobEventQuery query,

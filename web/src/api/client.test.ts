@@ -22,6 +22,7 @@ import {
   getOscarCategories,
   getOscarFilms,
   getPersonalRatings,
+  getPersonalRatingsEnrichmentJob,
   getProviderSettings,
   enqueuePersonalRatingsEnrichment,
   importPersonalRatings,
@@ -110,6 +111,14 @@ describe('typed API client', () => {
     expect(String(calls[1]?.input)).toBe('/api/personal-ratings/enrichment')
     expect(calls[1]?.init?.method).toBe('POST')
     expect(new Headers(calls[1]?.init?.headers).get('RequestVerificationToken')).toBe('ratings-enrichment-csrf')
+  })
+
+  it('loads personal ratings enrichment status from its owner-scoped route', async () => {
+    const stub = fetchStub(response(200, { id: 12, jobType: 'imdb_title_enrichment', status: 'running' }))
+
+    await getPersonalRatingsEnrichmentJob(12, stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/personal-ratings/enrichment/12')
   })
 
   it('serializes Oscar filters and requests one film with its nomination details', async () => {

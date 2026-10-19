@@ -337,6 +337,19 @@ public sealed class PersonalRatingsApiTests
         using var jobStatus = JsonDocument.Parse(jobStatusJson);
         Assert.Equal(JsonValueKind.Null, jobStatus.RootElement.GetProperty("resultSummary").ValueKind);
 
+        using var ownerScopedStatusResponse = await firstClient.GetAsync(
+            $"/api/personal-ratings/enrichment/{firstJob.JobId}");
+        Assert.Equal(HttpStatusCode.OK, ownerScopedStatusResponse.StatusCode);
+        var ownerScopedStatusJson = await ownerScopedStatusResponse.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("tt1111111", ownerScopedStatusJson, StringComparison.Ordinal);
+        using var ownerScopedStatus = JsonDocument.Parse(ownerScopedStatusJson);
+        Assert.Equal("imdb_title_enrichment", ownerScopedStatus.RootElement.GetProperty("jobType").GetString());
+        Assert.Equal("queued", ownerScopedStatus.RootElement.GetProperty("status").GetString());
+
+        using var crossOwnerStatusResponse = await secondClient.GetAsync(
+            $"/api/personal-ratings/enrichment/{firstJob.JobId}");
+        Assert.Equal(HttpStatusCode.NotFound, crossOwnerStatusResponse.StatusCode);
+
         using var eventsResponse = await firstClient.GetAsync(
             $"/api/background-jobs/{firstJob.JobId}/events?afterId=0&pageSize=50");
         Assert.Equal(HttpStatusCode.OK, eventsResponse.StatusCode);

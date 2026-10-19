@@ -324,6 +324,10 @@ export function getBackgroundJob(id: number, fetcher?: typeof fetch) {
   return requestJson<BackgroundJob>(`/background-jobs/${id}`, {}, fetcher)
 }
 
+export function getPersonalRatingsEnrichmentJob(id: number, fetcher?: typeof fetch) {
+  return requestJson<BackgroundJob>(`/personal-ratings/enrichment/${id}`, {}, fetcher)
+}
+
 export function getBackgroundJobEvents(
   id: number,
   query: { afterId: number; pageSize: number },

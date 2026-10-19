@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { enqueuePersonalRatingsEnrichment, getOmdbDailyUsage, getPersonalRatings, getProviderSettings, getVersion, importPersonalRatings, testOmdbApi, updateProviderSettings } from '../../api/client'
-import type { OmdbDailyUsage, OmdbDiagnostic, PageResponse, PersonalRating, PersonalRatingsImportResult, PersonalRatingsSort, ProviderSettings, ProviderSettingsInput, SystemVersion } from '../../api/types'
+import { enqueuePersonalRatingsEnrichment, getOmdbDailyUsage, getPersonalRatings, getPersonalRatingsEnrichmentJob, getProviderSettings, getVersion, importPersonalRatings, testOmdbApi, updateProviderSettings } from '../../api/client'
+import type { BackgroundJob, OmdbDailyUsage, OmdbDiagnostic, PageResponse, PersonalRating, PersonalRatingsImportResult, PersonalRatingsSort, ProviderSettings, ProviderSettingsInput, SystemVersion } from '../../api/types'
 import { ErrorState, LoadingState } from '../../components/Feedback'
 import { EmptyState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
-import { formatDate } from '../../shared/format'
+import { formatDate, formatWords } from '../../shared/format'
 import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
 import { DeploymentControlPanel } from './DeploymentControlPanel'
 
@@ -21,8 +21,6 @@ const emptyProviderSettings: ProviderSettingsDraft = {
 }
 
 const personalRatingsPageSize = 25
-const maximumMetadataRefreshes = 10
-const metadataRefreshDelayMs = 1500
 
 function providerSettingsToDraft(settings: ProviderSettings): ProviderSettingsDraft {
   return {
@@ -46,8 +44,8 @@ export function PersonalRatingsView() {
   const [ratingsError, setRatingsError] = useState<string | null>(null)
   const [ratingsAttempt, setRatingsAttempt] = useState(0)
   const [enrichmentError, setEnrichmentError] = useState<string | null>(null)
+  const [enrichmentJob, setEnrichmentJob] = useState<BackgroundJob | null>(null)
   const requestedEnrichment = useRef(new Set<string>())
-  const metadataRefreshes = useRef(new Map<string, number>())
 
   useEffect(() => {
     let active = true
@@ -65,41 +63,50 @@ export function PersonalRatingsView() {
   useEffect(() => {
     const queryKey = `${page}:${sort}`
     if (loadingRatings || ratingsError || !ratings || ratings.page !== page || !ratings.items.some((rating) => rating.metadataStatus === 'pending')) return
+    if (requestedEnrichment.current.has(queryKey)) return
 
-    let active = true
-    let timeout: number | undefined
-    const scheduleRefresh = () => {
-      const refreshCount = metadataRefreshes.current.get(queryKey) ?? 0
-      if (refreshCount >= maximumMetadataRefreshes) return
-      metadataRefreshes.current.set(queryKey, refreshCount + 1)
-      timeout = window.setTimeout(() => {
-        if (!active) return
-        setLoadingRatings(true)
-        setRatingsAttempt((current) => current + 1)
-      }, metadataRefreshDelayMs)
-    }
-
-    if (requestedEnrichment.current.has(queryKey)) {
-      scheduleRefresh()
-    } else {
-      requestedEnrichment.current.add(queryKey)
-      enqueuePersonalRatingsEnrichment()
-        .then(() => {
-          if (!active) return
-          setEnrichmentError(null)
-          scheduleRefresh()
-        })
-        .catch((requestError: unknown) => {
-          requestedEnrichment.current.delete(queryKey)
-          if (active) setEnrichmentError(requestError instanceof Error ? requestError.message : 'Could not queue metadata enrichment.')
-        })
-    }
-
-    return () => {
-      active = false
-      if (timeout !== undefined) window.clearTimeout(timeout)
-    }
+    requestedEnrichment.current.add(queryKey)
+    enqueuePersonalRatingsEnrichment()
+      .then(async (accepted) => {
+        if (!accepted) return
+        const job = await getPersonalRatingsEnrichmentJob(accepted.jobId)
+        setEnrichmentJob(job)
+        setEnrichmentError(null)
+        if (job.status !== 'queued' && job.status !== 'running') {
+          setLoadingRatings(true)
+          setRatingsAttempt((current) => current + 1)
+        }
+      })
+      .catch((requestError: unknown) => {
+        requestedEnrichment.current.delete(queryKey)
+        setEnrichmentError(requestError instanceof Error ? requestError.message : 'Could not queue metadata enrichment.')
+      })
   }, [loadingRatings, page, ratings, ratingsError, sort])
+
+  useEffect(() => {
+    if (!enrichmentJob || (enrichmentJob.status !== 'queued' && enrichmentJob.status !== 'running')) return
+
+    let current = true
+    const poll = async () => {
+      try {
+        const latest = await getPersonalRatingsEnrichmentJob(enrichmentJob.id)
+        if (!current) return
+        setEnrichmentJob(latest)
+        setEnrichmentError(null)
+        if (latest.status !== 'queued' && latest.status !== 'running') {
+          setLoadingRatings(true)
+          setRatingsAttempt((attempt) => attempt + 1)
+        }
+      } catch (requestError: unknown) {
+        if (current) setEnrichmentError(requestError instanceof Error ? requestError.message : 'Could not refresh metadata enrichment status.')
+      }
+    }
+    const interval = window.setInterval(() => { void poll() }, 2000)
+    return () => {
+      current = false
+      window.clearInterval(interval)
+    }
+  }, [enrichmentJob?.id, enrichmentJob?.status])
 
   async function importRatings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -166,6 +173,12 @@ export function PersonalRatingsView() {
           <button aria-pressed={sort === 'desc'} className={`button ${sort === 'desc' ? '' : 'button-secondary'}`} onClick={() => changeRatingsSort('desc')} type="button">Highest first</button>
         </div>
       </div>
+      {enrichmentJob && <div aria-label="Personal ratings enrichment status" className="ingestion-current" role="status">
+        <span className={`state-pill is-${enrichmentJob.status}`}>{formatWords(enrichmentJob.status)}</span>
+        <span>Personal ratings metadata</span>
+        <span className="section-caption">{enrichmentJob.currentStage ? formatWords(enrichmentJob.currentStage) : enrichmentJob.status === 'queued' ? 'Waiting for execution' : 'Processing metadata'}</span>
+        {enrichmentJob.errorCode && <span className="form-error">{formatWords(enrichmentJob.errorCode)}</span>}
+      </div>}
       {enrichmentError && <p className="form-error" role="alert">Metadata enrichment could not be queued: {enrichmentError}</p>}
       {loadingRatings && <LoadingState label="Loading personal IMDb ratings" />}
       {!loadingRatings && ratingsError && <ErrorState message={ratingsError} onRetry={() => {

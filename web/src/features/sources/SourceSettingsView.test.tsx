@@ -11,6 +11,7 @@ import {
   getOmdbDailyUsage,
   getProviderSettings,
   getPersonalRatings,
+  getPersonalRatingsEnrichmentJob,
   getSettings,
   getSources,
   getVersion,
@@ -20,7 +21,7 @@ import {
   updateProviderSettings,
   updateSettings,
 } from '../../api/client'
-import type { OmdbDailyUsage, PersonalRating, ProviderSettings, Settings, SourceProfile, SystemVersion } from '../../api/types'
+import type { BackgroundJob, OmdbDailyUsage, PersonalRating, ProviderSettings, Settings, SourceProfile, SystemVersion } from '../../api/types'
 import { OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './ConfigurationSettingsViews'
 import { SourceSettingsView } from './SourceSettingsView'
 
@@ -32,6 +33,7 @@ vi.mock('../../api/client', () => ({
   getActiveBackgroundJob: vi.fn(),
   getBackgroundJob: vi.fn(),
   getBackgroundJobEvents: vi.fn(),
+  getPersonalRatingsEnrichmentJob: vi.fn(),
   getOmdbDailyUsage: vi.fn(),
   getPersonalRatings: vi.fn(),
   getProviderSettings: vi.fn(),
@@ -69,6 +71,23 @@ function personalRatingsPage(items: PersonalRating[], page = 1, totalPages = 1) 
   return { items, page, pageSize: 25, totalCount: totalPages * 25, totalPages }
 }
 
+const personalRatingsJob: BackgroundJob = {
+  id: 12,
+  jobType: 'imdb_title_enrichment',
+  trigger: 'manual',
+  status: 'queued',
+  enqueuedAt: '2026-10-19T10:00:00Z',
+  startedAt: null,
+  finishedAt: null,
+  currentStage: 'queued',
+  currentSource: null,
+  progressUpdatedAt: null,
+  errorCode: null,
+  resultSummary: null,
+  scanRunId: null,
+  inputFileName: null,
+}
+
 describe('SourceSettingsView', () => {
   beforeEach(() => {
     vi.mocked(addSourceUrl).mockReset()
@@ -81,6 +100,7 @@ describe('SourceSettingsView', () => {
     vi.mocked(getPersonalRatings).mockReset().mockResolvedValue({
       items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0,
     })
+    vi.mocked(getPersonalRatingsEnrichmentJob).mockReset().mockResolvedValue(personalRatingsJob)
     vi.mocked(enqueuePersonalRatingsEnrichment).mockReset().mockResolvedValue(undefined)
     vi.mocked(getProviderSettings).mockReset().mockResolvedValue(providerSettings)
     vi.mocked(getSettings).mockReset().mockResolvedValue({
@@ -202,28 +222,37 @@ describe('SourceSettingsView', () => {
     expect(screen.getByRole('button', { name: 'Lowest first' }).getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('queues metadata once and refreshes a pending visible page until it completes', async () => {
+  it('shows enrichment job status and refreshes ratings when the job completes', async () => {
     vi.useFakeTimers()
+    vi.mocked(enqueuePersonalRatingsEnrichment).mockResolvedValue({ jobId: 12, status: 'queued' })
     vi.mocked(getPersonalRatings)
       .mockResolvedValueOnce(personalRatingsPage([personalRating('tt1234567', 'Pending title', 8, 'pending')]))
       .mockResolvedValueOnce(personalRatingsPage([personalRating('tt1234567', 'Resolved title', 8, 'enriched')]))
+    vi.mocked(getPersonalRatingsEnrichmentJob)
+      .mockResolvedValueOnce(personalRatingsJob)
+      .mockResolvedValueOnce({ ...personalRatingsJob, status: 'succeeded', currentStage: 'completed', finishedAt: '2026-10-19T10:00:03Z' })
 
     render(<PersonalRatingsView />)
     await act(async () => {
       await Promise.resolve()
       await Promise.resolve()
       await Promise.resolve()
+      await Promise.resolve()
     })
     expect(enqueuePersonalRatingsEnrichment).toHaveBeenCalledOnce()
+    expect(screen.getByRole('status', { name: 'Personal ratings enrichment status' }).textContent).toContain('queued')
+    expect(screen.queryByText('Loading personal IMDb ratings')).toBeNull()
 
-    await act(async () => { await vi.advanceTimersByTimeAsync(1500) })
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
     await act(async () => {
       await Promise.resolve()
       await Promise.resolve()
       await Promise.resolve()
     })
     expect(screen.getByRole('link', { name: 'Resolved title' })).toBeTruthy()
+    expect(screen.getByRole('status', { name: 'Personal ratings enrichment status' }).textContent).toContain('succeeded')
     expect(getPersonalRatings).toHaveBeenCalledTimes(2)
+    expect(getPersonalRatingsEnrichmentJob).toHaveBeenCalledTimes(2)
     expect(enqueuePersonalRatingsEnrichment).toHaveBeenCalledOnce()
   })
 

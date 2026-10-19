@@ -32,6 +32,27 @@ internal static class PersonalRatingsEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
+        app.MapGet("/api/personal-ratings/enrichment/{jobId:long}", async Task<Ok<BackgroundJobResponse>> (
+            long jobId,
+            ClaimsPrincipal principal,
+            CurrentUserContext currentUserContext,
+            BackgroundJobApiService backgroundJobService,
+            CancellationToken cancellationToken) =>
+        {
+            var currentUser = await currentUserContext.ResolveAsync(principal, cancellationToken)
+                ?? throw new ApiForbiddenException("An active linked user is required.");
+            return TypedResults.Ok(await backgroundJobService.GetOwnedImdbTitleEnrichmentAsync(
+                currentUser.Id,
+                jobId,
+                cancellationToken));
+        })
+            .WithName("GetPersonalRatingsEnrichmentStatus")
+            .WithSummary("Get the current user's personal IMDb metadata enrichment status.")
+            .RequireAuthorization(AccessPolicies.OwnerScopedPersonalRatings)
+            .Produces<BackgroundJobResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         app.MapPost("/api/personal-ratings/enrichment", async Task<IResult> (
             HttpContext context,
             IAntiforgery antiforgery,
