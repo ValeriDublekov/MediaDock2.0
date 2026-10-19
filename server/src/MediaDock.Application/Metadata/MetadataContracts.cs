@@ -18,7 +18,8 @@ public enum OmdbRequestPurpose
 {
     RssIngestion,
     OscarEnrichment,
-    GoldenGlobeEnrichment
+    GoldenGlobeEnrichment,
+    ImdbTitleEnrichment
 }
 
 public sealed record MetadataDetails(

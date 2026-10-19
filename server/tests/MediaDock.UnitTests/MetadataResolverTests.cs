@@ -53,6 +53,83 @@ public sealed class MetadataResolverTests
     }
 
     [Fact]
+    public async Task ResolveByImdbIdCachesVerifiedMetadataWithoutATitle()
+    {
+        var now = new DateTimeOffset(2026, 10, 2, 8, 0, 0, TimeSpan.Zero);
+        var client = new RecordingOmdbClient();
+        var resolver = new MetadataResolver(client, new InMemoryMetadataCacheStore());
+
+        var result = await resolver.ResolveByImdbIdAsync(
+            " TT11564570 ",
+            now,
+            requestPurpose: OmdbRequestPurpose.ImdbTitleEnrichment);
+        var cached = await resolver.ResolveByImdbIdAsync("tt11564570", now.AddMinutes(1));
+
+        Assert.Equal(MetadataLookupStatus.Found, result.Status);
+        Assert.False(result.CacheHit);
+        Assert.Equal("tt11564570", result.Metadata?.ImdbId);
+        Assert.Equal(MetadataLookupStatus.Found, cached.Status);
+        Assert.True(cached.CacheHit);
+        Assert.Equal(0, cached.HttpAttempts);
+        Assert.Equal([""], client.RequestedTitles);
+        Assert.Equal(["tt11564570"], client.RequestedImdbIds);
+        Assert.Equal([OmdbRequestPurpose.ImdbTitleEnrichment], client.RequestPurposes);
+    }
+
+    [Fact]
+    public async Task ResolveByImdbIdDoesNotCacheMismatchedMetadata()
+    {
+        var now = new DateTimeOffset(2026, 10, 2, 8, 0, 0, TimeSpan.Zero);
+        var client = new RecordingOmdbClient { ReturnedImdbIdOverride = "tt8579674" };
+        var resolver = new MetadataResolver(client, new InMemoryMetadataCacheStore());
+
+        var first = await resolver.ResolveByImdbIdAsync("tt11564570", now);
+        var second = await resolver.ResolveByImdbIdAsync("tt11564570", now.AddMinutes(1));
+
+        Assert.Equal(MetadataLookupStatus.ProviderFailure, first.Status);
+        Assert.Equal("imdb_id_mismatch", first.ErrorCode);
+        Assert.False(first.CacheHit);
+        Assert.Equal(MetadataLookupStatus.ProviderFailure, second.Status);
+        Assert.False(second.CacheHit);
+        Assert.Equal(["tt11564570", "tt11564570"], client.RequestedImdbIds);
+    }
+
+    [Fact]
+    public async Task ResolveByImdbIdCachesConfirmedNotFoundSeparatelyFromTransientErrors()
+    {
+        var now = new DateTimeOffset(2026, 10, 2, 8, 0, 0, TimeSpan.Zero);
+        var client = new RecordingOmdbClient { LookupStatus = MetadataLookupStatus.ConfirmedNotFound };
+        var resolver = new MetadataResolver(client, new InMemoryMetadataCacheStore());
+
+        var first = await resolver.ResolveByImdbIdAsync("tt11564570", now);
+        var cached = await resolver.ResolveByImdbIdAsync("tt11564570", now.AddMinutes(1));
+
+        Assert.Equal(MetadataLookupStatus.ConfirmedNotFound, first.Status);
+        Assert.False(first.CacheHit);
+        Assert.Equal(MetadataLookupStatus.ConfirmedNotFound, cached.Status);
+        Assert.True(cached.CacheHit);
+        Assert.Equal(0, cached.HttpAttempts);
+        Assert.Single(client.RequestedImdbIds);
+    }
+
+    [Fact]
+    public async Task ResolveByImdbIdDoesNotCacheTransientFailures()
+    {
+        var now = new DateTimeOffset(2026, 10, 2, 8, 0, 0, TimeSpan.Zero);
+        var client = new RecordingOmdbClient { LookupStatus = MetadataLookupStatus.TransportFailure };
+        var resolver = new MetadataResolver(client, new InMemoryMetadataCacheStore());
+
+        var first = await resolver.ResolveByImdbIdAsync("tt11564570", now);
+        var second = await resolver.ResolveByImdbIdAsync("tt11564570", now.AddMinutes(1));
+
+        Assert.Equal(MetadataLookupStatus.TransportFailure, first.Status);
+        Assert.Equal(MetadataLookupStatus.TransportFailure, second.Status);
+        Assert.False(first.CacheHit);
+        Assert.False(second.CacheHit);
+        Assert.Equal(["tt11564570", "tt11564570"], client.RequestedImdbIds);
+    }
+
+    [Fact]
     public async Task ResolveGoldenGlobeSearchDoesNotFilterByNomineeType()
     {
         var now = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
@@ -130,6 +207,10 @@ public sealed class MetadataResolverTests
     private sealed class RecordingOmdbClient : IOmdbClient
     {
         public List<string?> RequestedImdbIds { get; } = [];
+        public List<string> RequestedTitles { get; } = [];
+        public List<OmdbRequestPurpose> RequestPurposes { get; } = [];
+        public MetadataLookupStatus LookupStatus { get; init; } = MetadataLookupStatus.Found;
+        public string? ReturnedImdbIdOverride { get; init; }
 
         public Task<MetadataLookupResult> LookupAsync(
             string title,
@@ -140,10 +221,17 @@ public sealed class MetadataResolverTests
             string? imdbId = null)
         {
             RequestedImdbIds.Add(imdbId);
+            RequestedTitles.Add(title);
+            RequestPurposes.Add(requestPurpose);
+            if (LookupStatus != MetadataLookupStatus.Found)
+            {
+                return Task.FromResult(new MetadataLookupResult(LookupStatus, HttpAttempts: 1, ErrorCode: "not_found"));
+            }
+
             var metadata = new MetadataDetails(
-                title,
+                string.IsNullOrWhiteSpace(title) ? "Resolved title" : title,
                 year,
-                imdbId,
+                ReturnedImdbIdOverride ?? imdbId,
                 "movie",
                 "movie",
                 "standard",

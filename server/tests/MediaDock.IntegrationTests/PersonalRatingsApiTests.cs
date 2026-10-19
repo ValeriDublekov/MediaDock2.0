@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using System.Text.Encodings.Web;
 using MediaDock.Api.Authentication;
 using MediaDock.Api.PersonalRatings;
@@ -25,6 +26,145 @@ namespace MediaDock.IntegrationTests;
 [Trait("Category", "Api")]
 public sealed class PersonalRatingsApiTests
 {
+    [Fact]
+    public async Task EnrichmentQueueIsOwnerScopedDeduplicatedAndOmitsRatingDataFromGlobalJobs()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_personal_ratings_enrichment_api_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        long firstUserId;
+        long secondUserId;
+        long deferredUserId;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            var now = DateTimeOffset.UtcNow;
+
+            User CreateUser(string email, string subject)
+            {
+                var user = new User
+                {
+                    NormalizedEmail = email,
+                    GivenName = "Test",
+                    FamilyName = "User",
+                    Status = "active",
+                    Role = "user",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                user.ExternalIdentities.Add(new ExternalIdentity
+                {
+                    User = user,
+                    Issuer = GoogleSignInSettings.GoogleIssuer,
+                    Subject = subject,
+                    CreatedAt = now
+                });
+                return user;
+            }
+
+            var firstUser = CreateUser("enrichment-first@example.com", "ratings-enrichment-first");
+            var secondUser = CreateUser("enrichment-second@example.com", "ratings-enrichment-second");
+            var deferredUser = CreateUser("enrichment-deferred@example.com", "ratings-enrichment-deferred");
+            db.Users.AddRange(firstUser, secondUser, deferredUser);
+            await db.SaveChangesAsync();
+            firstUserId = firstUser.Id;
+            secondUserId = secondUser.Id;
+            deferredUserId = deferredUser.Id;
+
+            db.ImdbTitles.AddRange(
+                new Infrastructure.Persistence.Entities.ImdbTitle
+                {
+                    ImdbId = "tt1111111",
+                    MetadataStatus = "pending",
+                    UpdatedAt = now
+                },
+                new Infrastructure.Persistence.Entities.ImdbTitle
+                {
+                    ImdbId = "tt2222222",
+                    MetadataStatus = "pending",
+                    UpdatedAt = now
+                },
+                new Infrastructure.Persistence.Entities.ImdbTitle
+                {
+                    ImdbId = "tt3333333",
+                    MetadataStatus = "temporary_error",
+                    NextEnrichmentAttemptAt = now.AddHours(1),
+                    UpdatedAt = now
+                });
+            db.PersonalRatings.AddRange(
+                new PersonalRating { UserId = firstUserId, ImdbId = "tt1111111", Rating = 8, UpdatedAt = now },
+                new PersonalRating { UserId = secondUserId, ImdbId = "tt2222222", Rating = 7, UpdatedAt = now },
+                new PersonalRating { UserId = deferredUserId, ImdbId = "tt3333333", Rating = 6, UpdatedAt = now });
+            await db.SaveChangesAsync();
+        }
+
+        using var anonymousFactory = new ApiFactory(connectionString);
+        using var anonymousClient = anonymousFactory.CreateClient();
+        using var anonymousResponse = await anonymousClient.PostAsync("/api/personal-ratings/enrichment", content: null);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
+
+        using var firstFactory = new ApiFactory(
+            connectionString, CreatePrincipal("ratings-enrichment-first", "enrichment-first@example.com"));
+        using var firstClient = firstFactory.CreateClient();
+        using var secondFactory = new ApiFactory(
+            connectionString, CreatePrincipal("ratings-enrichment-second", "enrichment-second@example.com"));
+        using var secondClient = secondFactory.CreateClient();
+        using var deferredFactory = new ApiFactory(
+            connectionString, CreatePrincipal("ratings-enrichment-deferred", "enrichment-deferred@example.com"));
+        using var deferredClient = deferredFactory.CreateClient();
+        var firstToken = await GetAntiforgeryTokenAsync(firstClient);
+        var secondToken = await GetAntiforgeryTokenAsync(secondClient);
+        var deferredToken = await GetAntiforgeryTokenAsync(deferredClient);
+
+        using var missingTokenResponse = await firstClient.PostAsync("/api/personal-ratings/enrichment", content: null);
+        Assert.Equal(HttpStatusCode.BadRequest, missingTokenResponse.StatusCode);
+
+        using var firstResponse = await EnqueueEnrichmentAsync(firstClient, firstToken);
+        Assert.Equal(HttpStatusCode.Accepted, firstResponse.StatusCode);
+        var firstJob = await firstResponse.Content.ReadFromJsonAsync<PersonalRatingsEnrichmentAcceptedResponse>();
+        Assert.NotNull(firstJob);
+
+        using var duplicateResponse = await EnqueueEnrichmentAsync(firstClient, firstToken);
+        Assert.Equal(HttpStatusCode.Accepted, duplicateResponse.StatusCode);
+        var duplicateJob = await duplicateResponse.Content.ReadFromJsonAsync<PersonalRatingsEnrichmentAcceptedResponse>();
+        Assert.Equal(firstJob.JobId, duplicateJob?.JobId);
+
+        using var secondResponse = await EnqueueEnrichmentAsync(secondClient, secondToken);
+        Assert.Equal(HttpStatusCode.Accepted, secondResponse.StatusCode);
+        var secondJob = await secondResponse.Content.ReadFromJsonAsync<PersonalRatingsEnrichmentAcceptedResponse>();
+        Assert.NotNull(secondJob);
+        Assert.NotEqual(firstJob.JobId, secondJob.JobId);
+
+        using var deferredResponse = await EnqueueEnrichmentAsync(deferredClient, deferredToken);
+        Assert.Equal(HttpStatusCode.NoContent, deferredResponse.StatusCode);
+
+        using var jobStatusResponse = await firstClient.GetAsync($"/api/background-jobs/{firstJob.JobId}");
+        var jobStatusJson = await jobStatusResponse.Content.ReadAsStringAsync();
+        Assert.True(jobStatusResponse.StatusCode == HttpStatusCode.OK, jobStatusJson);
+        Assert.DoesNotContain("tt1111111", jobStatusJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("ownerUserId", jobStatusJson, StringComparison.OrdinalIgnoreCase);
+        using var jobStatus = JsonDocument.Parse(jobStatusJson);
+        Assert.Equal(JsonValueKind.Null, jobStatus.RootElement.GetProperty("resultSummary").ValueKind);
+
+        using var eventsResponse = await firstClient.GetAsync(
+            $"/api/background-jobs/{firstJob.JobId}/events?afterId=0&pageSize=50");
+        Assert.Equal(HttpStatusCode.OK, eventsResponse.StatusCode);
+        var eventsJson = await eventsResponse.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("tt1111111", eventsJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("enrichment-first@example.com", eventsJson, StringComparison.Ordinal);
+
+        await using var verifyDb = new MediaDockDbContext(options);
+        var jobs = await verifyDb.BackgroundJobs.AsNoTracking()
+            .Where(job => job.JobType == "imdb_title_enrichment")
+            .ToListAsync();
+        Assert.Equal(2, jobs.Count);
+        Assert.Equal(firstUserId, jobs.Single(job => job.Id == firstJob.JobId).OwnerUserId);
+        Assert.Equal(secondUserId, jobs.Single(job => job.Id == secondJob.JobId).OwnerUserId);
+    }
+
     [Fact]
     public async Task ImportIsScopedToCurrentActiveUserEvenWhenAccessControlIsOpen()
     {
@@ -198,6 +338,13 @@ public sealed class PersonalRatingsApiTests
         {
             Content = CreateUpload(json, userId)
         };
+        request.Headers.Add("RequestVerificationToken", requestToken);
+        return await client.SendAsync(request);
+    }
+
+    private static async Task<HttpResponseMessage> EnqueueEnrichmentAsync(HttpClient client, string requestToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/personal-ratings/enrichment");
         request.Headers.Add("RequestVerificationToken", requestToken);
         return await client.SendAsync(request);
     }

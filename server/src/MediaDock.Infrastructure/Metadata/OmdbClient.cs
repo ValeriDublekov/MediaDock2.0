@@ -62,12 +62,14 @@ public sealed class OmdbClient : IOmdbClient
         OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion,
         string? imdbId = null)
     {
-        if (string.IsNullOrWhiteSpace(title) || sourceType is not ("movie" or "series"))
+        var normalizedImdbId = ImdbIdNormalizer.Normalize(imdbId);
+        if (sourceType is not ("movie" or "series")
+            || normalizedImdbId is null && string.IsNullOrWhiteSpace(title)
+            || normalizedImdbId is not null && !ImdbIdNormalizer.IsValid(normalizedImdbId))
         {
             return new MetadataLookupResult(MetadataLookupStatus.InvalidRequest, ErrorCode: "invalid_lookup");
         }
 
-        var normalizedImdbId = ImdbIdNormalizer.Normalize(imdbId);
         var first = await RequestAsync(title.Trim(), year, sourceType, requestPurpose, cancellationToken, normalizedImdbId);
         if (normalizedImdbId is not null
             || first.Status != MetadataLookupStatus.ConfirmedNotFound

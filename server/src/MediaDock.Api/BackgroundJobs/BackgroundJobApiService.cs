@@ -279,6 +279,70 @@ internal sealed class BackgroundJobApiService(
         }
     }
 
+    public async Task<EnqueuedBackgroundJob?> EnqueueImdbTitleEnrichmentAsync(
+        long ownerUserId,
+        CancellationToken cancellationToken)
+    {
+        var active = await dbContext.BackgroundJobs.AsNoTracking()
+            .Where(job => job.JobType == "imdb_title_enrichment"
+                && job.OwnerUserId == ownerUserId
+                && (job.Status == "queued" || job.Status == "running"))
+            .OrderByDescending(job => job.EnqueuedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (active is not null)
+        {
+            return new EnqueuedBackgroundJob(ToResponse(active), false);
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var hasEligibleRatings = await dbContext.PersonalRatings.AnyAsync(rating =>
+            rating.UserId == ownerUserId
+            && dbContext.ImdbTitles.Any(title => title.ImdbId == rating.ImdbId
+                && (title.MetadataStatus == "pending"
+                    || ((title.MetadataStatus == "temporary_error" || title.MetadataStatus == "not_found")
+                        && (title.NextEnrichmentAttemptAt == null || title.NextEnrichmentAttemptAt <= now)))),
+            cancellationToken);
+        if (!hasEligibleRatings)
+        {
+            return null;
+        }
+
+        var job = new BackgroundJob
+        {
+            JobType = "imdb_title_enrichment",
+            Trigger = "manual",
+            Status = "queued",
+            EnqueuedAt = now,
+            OwnerUserId = ownerUserId,
+            CurrentStage = "queued"
+        };
+        job.Events.Add(new BackgroundJobEvent
+        {
+            OccurredAt = now,
+            Level = "information",
+            EventCode = "job_queued",
+            Message = "IMDb metadata enrichment queued."
+        });
+        dbContext.BackgroundJobs.Add(job);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return new EnqueuedBackgroundJob(ToResponse(job), true);
+        }
+        catch (DbUpdateException exception) when (IsActiveImdbTitleEnrichmentConflict(exception))
+        {
+            dbContext.ChangeTracker.Clear();
+            var existing = await dbContext.BackgroundJobs.AsNoTracking()
+                .Where(item => item.JobType == "imdb_title_enrichment"
+                    && item.OwnerUserId == ownerUserId
+                    && (item.Status == "queued" || item.Status == "running"))
+                .OrderByDescending(item => item.EnqueuedAt)
+                .SingleAsync(cancellationToken);
+            return new EnqueuedBackgroundJob(ToResponse(existing), false);
+        }
+    }
+
     public async Task<BackgroundJobResponse> EnqueueGoldenGlobeImportAsync(
         GoldenGlobeImportForm form,
         CancellationToken cancellationToken)
@@ -382,4 +446,11 @@ internal sealed class BackgroundJobApiService(
 
     private static bool IsActiveGoldenGlobeEnrichmentConflict(DbUpdateException exception) =>
         exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "ux_background_jobs_active_golden_globe_enrichment" };
+
+    private static bool IsActiveImdbTitleEnrichmentConflict(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "ux_background_jobs_active_imdb_title_enrichment_owner"
+        };
 }

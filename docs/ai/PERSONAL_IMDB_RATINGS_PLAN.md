@@ -115,7 +115,7 @@ Run all tests through `python -B scripts/run_tests.py <suite>`; do not invoke `d
 - [x] Session 1: schema and migration (implementation complete; focused `PersistenceTests` passes 4/4; `Category=Persistence` passes 24/24 after writer paths and FK-aware fixtures were updated)
 - [x] Session 2: metadata write paths (focused ratings, RSS, Oscar, Golden Globes, and API integration filters plus Oscar and Golden Globes unit filters pass)
 - [x] Session 3: metadata read paths (focused catalog, favorites, Oscar, and Golden Globes integration tests pass 8/8; Golden Globes unit tests pass 16/16)
-- [ ] Session 4: exact-ID lookup and background enrichment
+- [x] Session 4: exact-ID lookup and background enrichment (focused resolver/budget/service unit filters pass; Personal Ratings API, background-job API, and dispatcher integration filters pass 2/2, 2/2, and 6/6 with Docker)
 - [ ] Session 5: personal ratings API
 - [ ] Session 6: web client and account view
 - [ ] Session 7: documentation and full verification

@@ -54,6 +54,54 @@ public sealed class OmdbClientBudgetTests
     }
 
     [Fact]
+    public async Task LookupCanUseImdbIdWithoutTitle()
+    {
+        var handler = new NotFoundHandler();
+        using var httpClient = new HttpClient(handler);
+        var client = new OmdbClient(httpClient, "test-key");
+
+        var result = await client.LookupAsync(
+            string.Empty,
+            null,
+            "movie",
+            requestPurpose: OmdbRequestPurpose.OscarEnrichment,
+            imdbId: "tt11564570");
+
+        Assert.Equal(MetadataLookupStatus.ConfirmedNotFound, result.Status);
+        Assert.Equal(1, handler.RequestCount);
+        Assert.Contains("&i=tt11564570", handler.LastRequestUri!.Query);
+        Assert.DoesNotContain("&t=", handler.LastRequestUri.Query);
+        Assert.DoesNotContain("&type=", handler.LastRequestUri.Query);
+        Assert.DoesNotContain("&y=", handler.LastRequestUri.Query);
+    }
+
+    [Fact]
+    public async Task ExactImdbLookupUsesTheSharedEnrichmentBudgetPurpose()
+    {
+        var budget = new SequentialRequestBudget(false);
+        var handler = new NotFoundHandler();
+        using var httpClient = new HttpClient(handler);
+        var client = new OmdbClient(
+            httpClient,
+            "test-key",
+            requestBudget: budget,
+            dailyRequestLimit: 1);
+
+        var result = await client.LookupAsync(
+            string.Empty,
+            null,
+            "movie",
+            requestPurpose: OmdbRequestPurpose.ImdbTitleEnrichment,
+            imdbId: "tt11564570");
+
+        Assert.Equal(MetadataLookupStatus.RequestBudgetExhausted, result.Status);
+        Assert.Equal("daily_budget_exhausted", result.ErrorCode);
+        Assert.Equal(0, result.HttpAttempts);
+        Assert.Equal(0, handler.RequestCount);
+        Assert.Equal([OmdbRequestPurpose.ImdbTitleEnrichment], budget.RequestPurposes);
+    }
+
+    [Fact]
     public async Task LookupPersistsProviderQuotaExhaustionForTheReservedUtcDay()
     {
         var budget = new SequentialRequestBudget(true);

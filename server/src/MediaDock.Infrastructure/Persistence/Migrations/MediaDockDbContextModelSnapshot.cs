@@ -153,6 +153,10 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("job_type");
 
+                    b.Property<long?>("OwnerUserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("owner_user_id");
+
                     b.Property<DateTimeOffset?>("ProgressUpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("progress_updated_at");
@@ -206,6 +210,11 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ux_background_jobs_active_golden_globe_enrichment")
                         .HasFilter("job_type = 'golden_globe_enrichment' AND status IN ('queued', 'running')");
 
+                    b.HasIndex(new[] { "OwnerUserId" }, "ux_background_jobs_active_imdb_title_enrichment_owner")
+                        .IsUnique()
+                        .HasDatabaseName("ux_background_jobs_active_imdb_title_enrichment_owner")
+                        .HasFilter("job_type = 'imdb_title_enrichment' AND status IN ('queued', 'running')");
+
                     b.HasIndex(new[] { "JobType" }, "ux_background_jobs_active_oscar_enrichment")
                         .IsUnique()
                         .HasDatabaseName("ux_background_jobs_active_oscar_enrichment")
@@ -218,17 +227,19 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.ToTable("background_jobs", null, t =>
                         {
-                            t.HasCheckConstraint("ck_background_jobs_input_type", "(job_type IN ('oscar_import', 'golden_globe_import') AND (input_bytes IS NOT NULL OR status IN ('succeeded', 'partial', 'failed'))) OR (job_type IN ('rss_scan', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh') AND input_bytes IS NULL)");
+                            t.HasCheckConstraint("ck_background_jobs_input_type", "(job_type IN ('oscar_import', 'golden_globe_import') AND (input_bytes IS NOT NULL OR status IN ('succeeded', 'partial', 'failed'))) OR (job_type IN ('rss_scan', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment') AND input_bytes IS NULL)");
 
                             t.HasCheckConstraint("ck_background_jobs_lifecycle", "(status = 'queued' AND started_at IS NULL AND finished_at IS NULL) OR (status = 'running' AND started_at IS NOT NULL AND finished_at IS NULL) OR (status IN ('succeeded', 'partial', 'failed') AND started_at IS NOT NULL AND finished_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_background_jobs_owner_user_id", "(job_type = 'imdb_title_enrichment' AND owner_user_id IS NOT NULL) OR (job_type <> 'imdb_title_enrichment' AND owner_user_id IS NULL)");
 
                             t.HasCheckConstraint("ck_background_jobs_status", "status IN ('queued', 'running', 'succeeded', 'partial', 'failed')");
 
                             t.HasCheckConstraint("ck_background_jobs_trigger", "trigger IN ('manual', 'schedule')");
 
-                            t.HasCheckConstraint("ck_background_jobs_type", "job_type IN ('rss_scan', 'oscar_import', 'golden_globe_import', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh')");
+                            t.HasCheckConstraint("ck_background_jobs_type", "job_type IN ('rss_scan', 'oscar_import', 'golden_globe_import', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment')");
 
-                            t.HasCheckConstraint("ck_background_jobs_type_trigger", "(job_type = 'rss_scan' AND trigger IN ('manual', 'schedule')) OR (job_type IN ('oscar_import', 'golden_globe_import', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh') AND trigger = 'manual')");
+                            t.HasCheckConstraint("ck_background_jobs_type_trigger", "(job_type = 'rss_scan' AND trigger IN ('manual', 'schedule')) OR (job_type IN ('oscar_import', 'golden_globe_import', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment') AND trigger = 'manual')");
                         });
                 });
 
@@ -1698,6 +1709,12 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.BackgroundJob", b =>
                 {
+                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_background_jobs_users_owner_user_id");
+
                     b.HasOne("MediaDock.Infrastructure.Persistence.Entities.ScanRun", "ScanRun")
                         .WithMany()
                         .HasForeignKey("ScanRunId")

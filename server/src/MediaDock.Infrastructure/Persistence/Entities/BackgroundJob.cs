@@ -11,6 +11,7 @@ public sealed class BackgroundJob
     public DateTimeOffset? FinishedAt { get; set; }
     public DateTimeOffset? ScheduledSlotUtc { get; set; }
     public long? ScanRunId { get; set; }
+    public long? OwnerUserId { get; set; }
     public string? CurrentStage { get; set; }
     public string? CurrentSource { get; set; }
     public DateTimeOffset? ProgressUpdatedAt { get; set; }

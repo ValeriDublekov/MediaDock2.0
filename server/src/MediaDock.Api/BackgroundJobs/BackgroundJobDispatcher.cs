@@ -3,6 +3,7 @@ using System.Text.Json;
 using MediaDock.Application.Ingestion;
 using MediaDock.Application.GoldenGlobes;
 using MediaDock.Application.OscarAwards;
+using MediaDock.Application.PersonalRatings;
 using MediaDock.Infrastructure.Ingestion;
 using MediaDock.Infrastructure.OscarAwards;
 using MediaDock.Infrastructure.GoldenGlobes;
@@ -195,6 +196,11 @@ internal sealed class BackgroundJobDispatcher(
                 await ExecuteGoldenGlobeEnrichmentAsync(services, dbContext, job, stoppingToken);
                 return;
             }
+            if (job.JobType == "imdb_title_enrichment")
+            {
+                await ExecuteImdbTitleEnrichmentAsync(services, dbContext, job, stoppingToken);
+                return;
+            }
             if (job.JobType == "golden_globe_manual_refresh")
             {
                 await ExecuteGoldenGlobeManualRefreshAsync(services, dbContext, job, stoppingToken);
@@ -316,12 +322,14 @@ internal sealed class BackgroundJobDispatcher(
             job.CurrentStage = "failed";
             job.ErrorCode = errorCode;
             job.ProgressUpdatedAt = now;
-            job.ResultSummary = JsonSerializer.Serialize(new
-            {
-                error = errorMessage ?? "The job failed before its error details could be persisted.",
-                exceptionType,
-                innerError
-            });
+            job.ResultSummary = job.JobType == "imdb_title_enrichment"
+                ? null
+                : JsonSerializer.Serialize(new
+                {
+                    error = errorMessage ?? "The job failed before its error details could be persisted.",
+                    exceptionType,
+                    innerError
+                });
             job.InputBytes = null;
             await dbContext.SaveChangesAsync();
         }
@@ -382,6 +390,29 @@ internal sealed class BackgroundJobDispatcher(
         await SetStageAsync(dbContext, job, "golden_globe_enrichment", "Golden Globes enrichment started.", cancellationToken);
         var result = await services.GetRequiredService<GoldenGlobeEnrichmentService>().RunAsync(cancellationToken);
         await CompleteJobAsync(dbContext, job, result.Status, result.Summary, null, CancellationToken.None);
+    }
+
+    private async Task ExecuteImdbTitleEnrichmentAsync(
+        IServiceProvider services,
+        MediaDockDbContext dbContext,
+        BackgroundJob job,
+        CancellationToken cancellationToken)
+    {
+        if (job.OwnerUserId is not long ownerUserId)
+        {
+            throw new InvalidDataException("The queued IMDb enrichment owner is unavailable.");
+        }
+
+        await LoadProviderSettingsAsync(services, dbContext, cancellationToken);
+        await SetStageAsync(
+            dbContext,
+            job,
+            "imdb_title_enrichment",
+            "IMDb metadata enrichment started.",
+            cancellationToken);
+        var result = await services.GetRequiredService<ImdbTitleEnrichmentService>()
+            .RunAsync(ownerUserId, cancellationToken);
+        await CompleteJobAsync(dbContext, job, result.Status, null, null, CancellationToken.None);
     }
 
     private async Task ExecuteGoldenGlobeManualRefreshAsync(

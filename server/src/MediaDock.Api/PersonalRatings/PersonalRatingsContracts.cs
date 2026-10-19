@@ -15,3 +15,5 @@ public sealed record PersonalRatingsImportResponse(
     IReadOnlyList<PersonalRatingsImportError> Errors);
 
 public sealed record PersonalRatingsImportError(string Id, string Message);
+
+public sealed record PersonalRatingsEnrichmentAcceptedResponse(long JobId, string Status);
