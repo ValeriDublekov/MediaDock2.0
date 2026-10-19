@@ -94,7 +94,9 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
     private IQueryable<FavoriteMovieResponse> Project(IQueryable<FavoriteMovie> favorites) =>
         favorites.Select(favorite => new FavoriteMovieResponse(
             favorite.TitleId, favorite.Title.TitleText, favorite.Title.Year, favorite.Title.MediaType,
-            favorite.Title.ImdbRating, favorite.Title.PosterUrl, favorite.ToWatch, favorite.ToDownload,
+            favorite.Title.ImdbTitle == null ? favorite.Title.ImdbRating : favorite.Title.ImdbTitle.ImdbRating,
+            favorite.Title.ImdbTitle == null ? favorite.Title.PosterUrl : favorite.Title.ImdbTitle.PosterUrl,
+            favorite.ToWatch, favorite.ToDownload,
             favorite.AddedFromOscar, favorite.AddedFromCatalog, favorite.CreatedAt, favorite.UpdatedAt,
             dbContext.OscarFilms.Count(film => film.TitleId == favorite.TitleId),
             dbContext.OscarNominations.Count(nomination => nomination.OscarFilm.TitleId == favorite.TitleId),

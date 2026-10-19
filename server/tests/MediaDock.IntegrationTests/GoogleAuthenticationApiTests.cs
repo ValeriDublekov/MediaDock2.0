@@ -90,6 +90,9 @@ public sealed class GoogleAuthenticationApiTests
                     NormalizedTitle = "shared film",
                     Year = 2025,
                     MediaType = "movie",
+                    ImdbId = "tt12345678",
+                    ImdbRating = 1.0m,
+                    PosterUrl = "https://example.test/local-shared.jpg",
                     FirstSeenAt = now,
                     LastSeenAt = now,
                     UpdatedAt = now
@@ -100,11 +103,20 @@ public sealed class GoogleAuthenticationApiTests
                     NormalizedTitle = "second user film",
                     Year = 2024,
                     MediaType = "movie",
+                    ImdbRating = 6.3m,
+                    PosterUrl = "https://example.test/local-second.jpg",
                     FirstSeenAt = now,
                     LastSeenAt = now,
                     UpdatedAt = now
                 }
             };
+            db.ImdbTitles.Add(new ImdbTitle
+            {
+                ImdbId = "tt12345678",
+                ImdbRating = 9.1m,
+                PosterUrl = "https://example.test/canonical-shared.jpg",
+                UpdatedAt = now
+            });
             db.Sources.Add(source);
             db.Titles.AddRange(titles);
             db.Occurrences.AddRange(titles.Select((title, index) => new Occurrence
@@ -179,6 +191,8 @@ public sealed class GoogleAuthenticationApiTests
         Assert.NotNull(firstAdded);
         Assert.False(firstAdded.AddedFromOscar);
         Assert.True(firstAdded.AddedFromCatalog);
+        Assert.Equal(9.1m, firstAdded.ImdbRating);
+        Assert.Equal("https://example.test/canonical-shared.jpg", firstAdded.PosterUrl);
 
         using var firstOscarAddResponse = await firstClient.PostAsJsonAsync(
             "/api/favorites",
@@ -251,6 +265,10 @@ public sealed class GoogleAuthenticationApiTests
             .Single(favorite => favorite.TitleId == firstTitleId);
         Assert.False(secondUserSharedFavorite.ToWatch);
         Assert.True(secondUserSharedFavorite.ToDownload);
+        var localMetadataFavorite = new[] { secondPageOne.Items[0], secondPageTwo.Items[0] }
+            .Single(favorite => favorite.TitleId == secondTitleId);
+        Assert.Equal(6.3m, localMetadataFavorite.ImdbRating);
+        Assert.Equal("https://example.test/local-second.jpg", localMetadataFavorite.PosterUrl);
 
         using var firstWatchFilterResponse = await firstClient.GetAsync("/api/favorites?status=to_watch");
         using var secondWatchFilterResponse = await secondClient.GetAsync("/api/favorites?status=to_watch");

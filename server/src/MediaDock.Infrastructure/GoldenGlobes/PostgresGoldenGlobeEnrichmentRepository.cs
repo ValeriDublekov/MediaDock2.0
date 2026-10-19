@@ -2,6 +2,7 @@ using MediaDock.Application.GoldenGlobes;
 using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.Metadata;
 using MediaDock.Infrastructure.Persistence;
+using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 
@@ -40,15 +41,17 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
     {
         EnsureEnrichedOutcomeHasValidImdbId(update);
         var imdbId = ImdbIdNormalizer.Normalize(update.ImdbId);
+        IReadOnlyDictionary<string, ImdbTitle>? imdbTitles = null;
         if (imdbId is not null)
         {
-            await ImdbTitleMetadataMapper.EnsureAsync(db, [imdbId], update.AttemptedAt, cancellationToken);
+            imdbTitles = await ImdbTitleMetadataMapper.EnsureAsync(db, [imdbId], update.AttemptedAt, cancellationToken);
         }
         var rows = db.GoldenGlobeNominations
             .Where(x => x.Title == title && x.Year == ceremonyYear && x.NomineeType == sourceType && !x.IsImdbIdManual);
+        int affected;
         if (imdbId is null)
         {
-            await rows.ExecuteUpdateAsync(setters => setters
+            affected = await rows.ExecuteUpdateAsync(setters => setters
                 .SetProperty(x => x.EnrichmentStatus, update.Status)
                 .SetProperty(x => x.EnrichmentAttemptCount, update.AttemptCount)
                 .SetProperty(x => x.LastEnrichmentAttemptAt, update.AttemptedAt)
@@ -57,7 +60,7 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
         }
         else
         {
-            await rows.ExecuteUpdateAsync(setters => setters
+            affected = await rows.ExecuteUpdateAsync(setters => setters
                 .SetProperty(x => x.EnrichmentStatus, update.Status)
                 .SetProperty(x => x.EnrichmentAttemptCount, update.AttemptCount)
                 .SetProperty(x => x.LastEnrichmentAttemptAt, update.AttemptedAt)
@@ -65,6 +68,11 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
                 .SetProperty(x => x.LastEnrichmentError, update.ErrorCode)
                 .SetProperty(x => x.ImdbId, imdbId)
                 .SetProperty(x => x.NomineeType, update.ResolvedNomineeType ?? sourceType), cancellationToken);
+        }
+        if (affected > 0 && update.Metadata is { } metadata && imdbTitles is not null && imdbId is not null)
+        {
+            ImdbTitleMetadataMapper.Apply(imdbTitles[imdbId], metadata, update.AttemptedAt);
+            await db.SaveChangesAsync(cancellationToken);
         }
     }
 
@@ -74,7 +82,7 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
         CancellationToken cancellationToken = default)
     {
         EnsureEnrichedOutcomeHasValidImdbId(update);
-        await ImdbTitleMetadataMapper.EnsureAsync(db, [candidate.ImdbId], update.AttemptedAt, cancellationToken);
+        var imdbTitles = await ImdbTitleMetadataMapper.EnsureAsync(db, [candidate.ImdbId], update.AttemptedAt, cancellationToken);
         var affected = await db.GoldenGlobeNominations
             .Where(x => x.Title == candidate.Title
                 && x.Year == candidate.CeremonyYear
@@ -89,6 +97,11 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
                 .SetProperty(x => x.NextEnrichmentAttemptAt, update.NextAttemptAt)
                 .SetProperty(x => x.LastEnrichmentError, update.ErrorCode)
                 .SetProperty(x => x.ImdbId, candidate.ImdbId), cancellationToken);
+        if (affected > 0 && update.Metadata is { } metadata)
+        {
+            ImdbTitleMetadataMapper.Apply(imdbTitles[candidate.ImdbId], metadata, update.AttemptedAt);
+            await db.SaveChangesAsync(cancellationToken);
+        }
         return affected > 0;
     }
 
@@ -96,5 +109,11 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
     {
         if (update.Status == GoldenGlobeEnrichmentStatuses.Enriched && !ImdbIdNormalizer.IsValid(update.ImdbId))
             throw new InvalidOperationException("An enriched Golden Globes outcome must include a valid IMDb ID.");
+        if (update.Metadata is { } metadata
+            && (update.Status != GoldenGlobeEnrichmentStatuses.Enriched
+                || ImdbIdNormalizer.Normalize(metadata.ImdbId) != ImdbIdNormalizer.Normalize(update.ImdbId)))
+        {
+            throw new InvalidOperationException("Verified Golden Globes metadata must match an enriched IMDb ID.");
+        }
     }
 }

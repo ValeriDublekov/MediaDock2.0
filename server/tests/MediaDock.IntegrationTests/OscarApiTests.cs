@@ -67,7 +67,27 @@ public sealed class OscarApiTests
             CreateFilm("year-bounds-2021", "Year Bounds Example", 2021, "pending", now, null,
                 CreateNomination("year-bounds-sound", 93, "SOUND", "Sound", "Sound Team", false))
         };
-        db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt15398776", UpdatedAt = now });
+        films[0].Title.ImdbRating = 1.0m;
+        films[0].Title.PosterUrl = "https://example.test/local-oppenheimer.jpg";
+        db.ImdbTitles.Add(new ImdbTitle
+        {
+            ImdbId = "tt15398776",
+            TitleText = "Canonical Oppenheimer",
+            Year = 2024,
+            MediaType = "movie",
+            ImdbRating = 8.3m,
+            ImdbVotes = 400000,
+            Metascore = 90m,
+            Genres = ["Biography", "Drama"],
+            Countries = ["USA", "UK"],
+            Director = "Canonical Director",
+            Plot = "Canonical plot.",
+            PosterUrl = "https://example.test/canonical-oppenheimer.jpg",
+            Runtime = "180 min",
+            Awards = "Canonical awards.",
+            BoxOffice = "$900 million",
+            UpdatedAt = now
+        });
         db.OscarFilms.AddRange(films);
         await db.SaveChangesAsync();
         Assert.Empty(await db.Occurrences.AsNoTracking().ToListAsync());
@@ -113,8 +133,25 @@ public sealed class OscarApiTests
         Assert.NotNull(winners);
         var winner = Assert.Single(winners.Items);
         Assert.Equal("Oppenheimer", winner.Title);
+        Assert.Equal("Canonical Oppenheimer", winner.MetadataTitle);
+        Assert.Equal(2024, winner.MetadataYear);
         Assert.Equal(8.3m, winner.ImdbRating);
+        Assert.Equal(400000, winner.ImdbVotes);
+        Assert.Equal(90m, winner.Metascore);
+        Assert.Equal(new[] { "Biography", "Drama" }, winner.Genres);
+        Assert.Equal(new[] { "USA", "UK" }, winner.Countries);
+        Assert.Equal("Canonical Director", winner.Director);
+        Assert.Equal("Canonical plot.", winner.Plot);
+        Assert.Equal("https://example.test/canonical-oppenheimer.jpg", winner.PosterUrl);
+        Assert.Equal("180 min", winner.Runtime);
+        Assert.Equal("Canonical awards.", winner.Awards);
+        Assert.Equal("$900 million", winner.BoxOffice);
         Assert.Contains(winner.Nominations, nomination => nomination.IsWinner);
+
+        using var canonicalSearchResponse = await client.GetAsync("/api/oscars?search=Canonical%20Oppenheimer");
+        var canonicalSearch = await canonicalSearchResponse.Content.ReadFromJsonAsync<PageResponse<OscarFilmResponse>>();
+        Assert.NotNull(canonicalSearch);
+        Assert.Equal("Oppenheimer", Assert.Single(canonicalSearch.Items).Title);
 
         using var nomineeResponse = await client.GetAsync(
             "/api/oscars?search=poor&yearFrom=2022&yearTo=2024&category=DIRECTING&result=nominee&enrichmentStatus=not_found");
@@ -125,6 +162,11 @@ public sealed class OscarApiTests
         Assert.Equal("Poor Things", nominee.Title);
         Assert.Equal("not_found", nominee.EnrichmentStatus);
         Assert.Null(nominee.ImdbRating);
+
+        using var allFilmsResponse = await client.GetAsync("/api/oscars?pageSize=100");
+        var allFilms = await allFilmsResponse.Content.ReadFromJsonAsync<PageResponse<OscarFilmResponse>>();
+        Assert.NotNull(allFilms);
+        Assert.Equal(7.0m, Assert.Single(allFilms.Items, film => film.Title == "Category Mix Example").ImdbRating);
 
         using var ratingFilteredResponse = await client.GetAsync("/api/oscars?imdbRatingFrom=8&imdbRatingTo=9");
         var ratingFilteredPage = await ratingFilteredResponse.Content.ReadFromJsonAsync<PageResponse<OscarFilmResponse>>();

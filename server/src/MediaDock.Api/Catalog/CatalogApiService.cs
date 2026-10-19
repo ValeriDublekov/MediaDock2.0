@@ -53,11 +53,12 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
             .FirstOrDefaultAsync(cancellationToken);
         var imdbRatingBounds = await dbContext.Titles
             .AsNoTracking()
-            .Where(title => title.Occurrences.Any() && title.ImdbRating.HasValue)
+            .Where(title => title.Occurrences.Any()
+                && (title.ImdbTitle == null ? title.ImdbRating.HasValue : title.ImdbTitle.ImdbRating.HasValue))
             .GroupBy(_ => 1)
             .Select(group => new ImdbRatingBounds(
-                group.Min(title => title.ImdbRating!.Value),
-                group.Max(title => title.ImdbRating!.Value)))
+                group.Min(title => (title.ImdbTitle == null ? title.ImdbRating : title.ImdbTitle.ImdbRating)!.Value),
+                group.Max(title => (title.ImdbTitle == null ? title.ImdbRating : title.ImdbTitle.ImdbRating)!.Value)))
             .FirstOrDefaultAsync(cancellationToken);
 
         IQueryable<Title> titles = dbContext.Titles
@@ -68,7 +69,9 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
         {
             var pattern = $"%{query.Search.Trim()}%";
             titles = titles.Where(title => EF.Functions.ILike(title.TitleText, pattern)
-                || EF.Functions.ILike(title.NormalizedTitle, pattern));
+                || EF.Functions.ILike(title.NormalizedTitle, pattern)
+                || (title.ImdbTitle != null && title.ImdbTitle.TitleText != null
+                    && EF.Functions.ILike(title.ImdbTitle.TitleText, pattern)));
         }
 
         if (query.MediaType is not null)
@@ -105,24 +108,28 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
 
         if (query.ImdbRatingFrom is { } minimumRating)
         {
-            titles = titles.Where(title => title.ImdbRating >= minimumRating);
+            titles = titles.Where(title => (title.ImdbTitle == null ? title.ImdbRating : title.ImdbTitle.ImdbRating) >= minimumRating);
         }
 
         if (query.ImdbRatingTo is { } maximumRating)
         {
-            titles = titles.Where(title => title.ImdbRating <= maximumRating);
+            titles = titles.Where(title => (title.ImdbTitle == null ? title.ImdbRating : title.ImdbTitle.ImdbRating) <= maximumRating);
         }
 
         if (!string.IsNullOrWhiteSpace(query.Genre))
         {
             var genre = query.Genre.Trim();
-            titles = titles.Where(title => title.Genres.Contains(genre));
+            titles = titles.Where(title => title.ImdbTitle == null
+                ? title.Genres.Contains(genre)
+                : title.ImdbTitle.Genres.Contains(genre));
         }
 
         if (!string.IsNullOrWhiteSpace(query.Country))
         {
             var country = query.Country.Trim();
-            titles = titles.Where(title => title.Countries.Contains(country));
+            titles = titles.Where(title => title.ImdbTitle == null
+                ? title.Countries.Contains(country)
+                : title.ImdbTitle.Countries.Contains(country));
         }
 
         if (query.SourceId is { } sourceId)
@@ -144,10 +151,10 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
                 title.SourceType,
                 title.ContentKind,
                 title.ImdbId,
-                title.ImdbRating,
-                title.PosterUrl,
-                title.Genres,
-                title.Countries,
+                title.ImdbTitle == null ? title.ImdbRating : title.ImdbTitle.ImdbRating,
+                title.ImdbTitle == null ? title.PosterUrl : title.ImdbTitle.PosterUrl,
+                title.ImdbTitle == null ? title.Genres : title.ImdbTitle.Genres,
+                title.ImdbTitle == null ? title.Countries : title.ImdbTitle.Countries,
                 title.LastSeenAt,
                 title.Occurrences.Count))
             .ToListAsync(cancellationToken);
@@ -171,17 +178,17 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
                 entity.BroadcastRangeEndYear,
                 entity.BroadcastRangeRaw,
                 entity.ImdbId,
-                entity.ImdbRating,
-                entity.ImdbVotes,
-                entity.Metascore,
-                entity.Genres,
-                entity.Countries,
-                entity.Director,
-                entity.Plot,
-                entity.PosterUrl,
-                entity.Runtime,
-                entity.Awards,
-                entity.BoxOffice,
+                entity.ImdbTitle == null ? entity.ImdbRating : entity.ImdbTitle.ImdbRating,
+                entity.ImdbTitle == null ? entity.ImdbVotes : entity.ImdbTitle.ImdbVotes,
+                entity.ImdbTitle == null ? entity.Metascore : entity.ImdbTitle.Metascore,
+                entity.ImdbTitle == null ? entity.Genres : entity.ImdbTitle.Genres,
+                entity.ImdbTitle == null ? entity.Countries : entity.ImdbTitle.Countries,
+                entity.ImdbTitle == null ? entity.Director : entity.ImdbTitle.Director,
+                entity.ImdbTitle == null ? entity.Plot : entity.ImdbTitle.Plot,
+                entity.ImdbTitle == null ? entity.PosterUrl : entity.ImdbTitle.PosterUrl,
+                entity.ImdbTitle == null ? entity.Runtime : entity.ImdbTitle.Runtime,
+                entity.ImdbTitle == null ? entity.Awards : entity.ImdbTitle.Awards,
+                entity.ImdbTitle == null ? entity.BoxOffice : entity.ImdbTitle.BoxOffice,
                 entity.FirstSeenAt,
                 entity.LastSeenAt,
                 entity.UpdatedAt,

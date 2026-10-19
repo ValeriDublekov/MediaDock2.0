@@ -1,4 +1,5 @@
 using MediaDock.Application.GoldenGlobes;
+using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.GoldenGlobes;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
@@ -34,7 +35,12 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
             "Grouped Film",
             2025,
             "movie",
-            new GoldenGlobeEnrichmentUpdate("enriched", 2, attemptedAt, null, null, "TT12345678"));
+            new GoldenGlobeEnrichmentUpdate(
+                "enriched", 2, attemptedAt, null, null, "TT12345678",
+                Metadata: new MetadataDetails(
+                    "Canonical Grouped Film", 2024, "tt12345678", "movie", "movie", "standard", null,
+                    8.4m, 12345, 81m, ["Drama"], ["United States"], "Director", "Verified plot.",
+                    "https://example.test/grouped.jpg", "101 min", "1 win", "$10")));
 
         var updatedNominations = await db.GoldenGlobeNominations.AsNoTracking()
             .Where(row => row.Title == "Grouped Film" && row.Year == 2025)
@@ -56,6 +62,22 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
         Assert.Equal("pending", otherYear.EnrichmentStatus);
         Assert.Equal(0, otherYear.EnrichmentAttemptCount);
         Assert.Null(otherYear.ImdbId);
+
+        var canonicalMetadata = await db.ImdbTitles.AsNoTracking().SingleAsync(row => row.ImdbId == "tt12345678");
+        Assert.Equal("Canonical Grouped Film", canonicalMetadata.TitleText);
+        Assert.Equal(2024, canonicalMetadata.Year);
+        Assert.Equal(8.4m, canonicalMetadata.ImdbRating);
+        Assert.Equal(12345, canonicalMetadata.ImdbVotes);
+        Assert.Equal(81m, canonicalMetadata.Metascore);
+        Assert.Equal(new[] { "Drama" }, canonicalMetadata.Genres);
+        Assert.Equal(new[] { "United States" }, canonicalMetadata.Countries);
+        Assert.Equal("Director", canonicalMetadata.Director);
+        Assert.Equal("Verified plot.", canonicalMetadata.Plot);
+        Assert.Equal("https://example.test/grouped.jpg", canonicalMetadata.PosterUrl);
+        Assert.Equal("101 min", canonicalMetadata.Runtime);
+        Assert.Equal("1 win", canonicalMetadata.Awards);
+        Assert.Equal("$10", canonicalMetadata.BoxOffice);
+        Assert.Equal("enriched", canonicalMetadata.MetadataStatus);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => new PostgresGoldenGlobeEnrichmentRepository(db).SaveOutcomeAsync(
             "Grouped Film",
@@ -192,6 +214,20 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
         Assert.True(stored.IsImdbIdManual);
         Assert.Equal(3, stored.ImdbIdVersion);
         Assert.Equal("pending", stored.EnrichmentStatus);
+
+        var verifiedMetadata = new MetadataDetails(
+            "Versioned Film", 2024, "tt12345678", "movie", "movie", "standard", null,
+            8.1m, 1000, null, [], [], null, null, "https://example.test/versioned.jpg", null, null, null);
+        var currentCandidate = staleCandidate with { LinkVersion = 3 };
+        var currentApplied = await repository.SaveManualOutcomeAsync(currentCandidate,
+            new GoldenGlobeEnrichmentUpdate("enriched", 2, attemptedAt, null, null, "tt12345678", Metadata: verifiedMetadata));
+
+        Assert.True(currentApplied);
+        var updatedCanonicalMetadata = await db.ImdbTitles.AsNoTracking().SingleAsync(row => row.ImdbId == "tt12345678");
+        Assert.Equal(8.1m, updatedCanonicalMetadata.ImdbRating);
+        Assert.Equal("https://example.test/versioned.jpg", updatedCanonicalMetadata.PosterUrl);
+        var enrichedNomination = await db.GoldenGlobeNominations.AsNoTracking().SingleAsync();
+        Assert.Equal("enriched", enrichedNomination.EnrichmentStatus);
     }
 
     private static GoldenGlobeNomination CreateNomination(

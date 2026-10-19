@@ -87,14 +87,19 @@ public sealed class CatalogApiTests
         var newerTitle = CreateTitle("The Matrix Reloaded", "the matrix reloaded", 2003, "movie", ["Action", "Sci-Fi"]);
         var seriesTitle = CreateTitle("Example Series", "example series", 2010, "series", ["Drama"]);
         var yearlessTitle = CreateTitle("Year Unknown", "year unknown", null, "movie", ["Drama"]);
-        olderTitle.ImdbRating = 7.2m;
-        newerTitle.ImdbRating = 8.5m;
-        seriesTitle.ImdbRating = 6.8m;
+        olderTitle.ImdbRating = 1.2m;
+        newerTitle.ImdbRating = 1.3m;
+        newerTitle.Genres = ["Drama"];
+        newerTitle.Countries = ["Canada"];
+        seriesTitle.ImdbRating = 1.4m;
         db.ImdbTitles.AddRange(
             new ImdbTitle
             {
-                ImdbId = "tt1999", ImdbRating = 7.2m, ImdbVotes = 1000,
-                Genres = ["Action", "Sci-Fi"], Countries = ["USA"], UpdatedAt = olderTitle.UpdatedAt
+                ImdbId = "tt1999", TitleText = "Canonical Matrix", ImdbRating = 7.2m, ImdbVotes = 1000,
+            Metascore = 73m, Genres = ["Action", "Sci-Fi"], Countries = ["USA"],
+            Director = "The Wachowskis", Plot = "Canonical plot.", PosterUrl = "https://example.test/matrix.jpg",
+            Runtime = "136 min", Awards = "Canonical awards.", BoxOffice = "$100",
+            UpdatedAt = olderTitle.UpdatedAt
             },
             new ImdbTitle
             {
@@ -187,6 +192,12 @@ public sealed class CatalogApiTests
         Assert.Equal(new ImdbRatingBounds(6.8m, 8.5m), firstPage.ImdbRatingBounds);
         Assert.Equal("The Matrix Reloaded", Assert.Single(firstPage.Items).Title);
         Assert.Equal("tt2003", Assert.Single(firstPage.Items).ImdbId);
+        Assert.Equal(8.5m, Assert.Single(firstPage.Items).ImdbRating);
+
+        using var canonicalSearchResponse = await client.GetAsync("/api/catalog?search=Canonical%20Matrix");
+        var canonicalSearch = await canonicalSearchResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
+        Assert.NotNull(canonicalSearch);
+        Assert.Equal("The Matrix", Assert.Single(canonicalSearch.Items).Title);
 
         using var ratingFilteredResponse = await client.GetAsync("/api/catalog?search=matrix&imdbRatingFrom=8&imdbRatingTo=9");
         var ratingFilteredPage = await ratingFilteredResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
@@ -198,7 +209,9 @@ public sealed class CatalogApiTests
         var unfilteredCatalog = await unfilteredCatalogResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
         Assert.NotNull(unfilteredCatalog);
         Assert.Equal(new YearBounds(1999, 2010), unfilteredCatalog.YearBounds);
-        Assert.Null(Assert.Single(unfilteredCatalog.Items, title => title.Title == "Year Unknown").Year);
+        var yearlessCatalogTitle = Assert.Single(unfilteredCatalog.Items, title => title.Title == "Year Unknown");
+        Assert.Null(yearlessCatalogTitle.Year);
+        Assert.Equal(8.0m, yearlessCatalogTitle.ImdbRating);
 
         using var inProgressSeriesResponse = await client.GetAsync("/api/catalog?feedTypes=series_ongoing");
         var inProgressSeries = await inProgressSeriesResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
@@ -225,6 +238,16 @@ public sealed class CatalogApiTests
         Assert.NotNull(titleDetails);
         Assert.Equal("The Matrix", titleDetails.Title);
         Assert.Equal(1, titleDetails.OccurrenceCount);
+        Assert.Equal(7.2m, titleDetails.ImdbRating);
+        Assert.Equal(1000, titleDetails.ImdbVotes);
+        Assert.Equal(73m, titleDetails.Metascore);
+        Assert.Equal(new[] { "Action", "Sci-Fi" }, titleDetails.Genres);
+        Assert.Equal("The Wachowskis", titleDetails.Director);
+        Assert.Equal("Canonical plot.", titleDetails.Plot);
+        Assert.Equal("https://example.test/matrix.jpg", titleDetails.PosterUrl);
+        Assert.Equal("136 min", titleDetails.Runtime);
+        Assert.Equal("Canonical awards.", titleDetails.Awards);
+        Assert.Equal("$100", titleDetails.BoxOffice);
 
         using var missingTitleResponse = await client.GetAsync("/api/titles/999999");
         Assert.Equal(HttpStatusCode.NotFound, missingTitleResponse.StatusCode);

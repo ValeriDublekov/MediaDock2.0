@@ -49,11 +49,17 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
             .FirstOrDefaultAsync(cancellationToken);
         var imdbRatingBounds = await dbContext.OscarFilms
             .AsNoTracking()
-            .Where(film => film.Title.ImdbRating.HasValue)
+            .Where(film => (film.ImdbTitle == null
+                ? film.Title.ImdbTitle == null ? film.Title.ImdbRating : film.Title.ImdbTitle.ImdbRating
+                : film.ImdbTitle.ImdbRating).HasValue)
             .GroupBy(_ => 1)
             .Select(group => new ImdbRatingBounds(
-                group.Min(film => film.Title.ImdbRating!.Value),
-                group.Max(film => film.Title.ImdbRating!.Value)))
+                group.Min(film => (film.ImdbTitle == null
+                    ? film.Title.ImdbTitle == null ? film.Title.ImdbRating : film.Title.ImdbTitle.ImdbRating
+                    : film.ImdbTitle.ImdbRating)!.Value),
+                group.Max(film => (film.ImdbTitle == null
+                    ? film.Title.ImdbTitle == null ? film.Title.ImdbRating : film.Title.ImdbTitle.ImdbRating
+                    : film.ImdbTitle.ImdbRating)!.Value)))
             .FirstOrDefaultAsync(cancellationToken);
 
         IQueryable<OscarFilm> films = dbContext.OscarFilms.AsNoTracking();
@@ -63,7 +69,11 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
             films = films.Where(film => EF.Functions.ILike(film.FilmTitle, pattern)
                 || EF.Functions.ILike(film.NormalizedTitle, pattern)
                 || EF.Functions.ILike(film.Title.TitleText, pattern)
-                || EF.Functions.ILike(film.Title.NormalizedTitle, pattern));
+                || EF.Functions.ILike(film.Title.NormalizedTitle, pattern)
+                || (film.ImdbTitle != null && film.ImdbTitle.TitleText != null
+                    && EF.Functions.ILike(film.ImdbTitle.TitleText, pattern))
+                || (film.Title.ImdbTitle != null && film.Title.ImdbTitle.TitleText != null
+                    && EF.Functions.ILike(film.Title.ImdbTitle.TitleText, pattern)));
         }
 
         if (query.YearFrom is { } minimumYear)
@@ -78,12 +88,16 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
 
         if (query.ImdbRatingFrom is { } minimumRating)
         {
-            films = films.Where(film => film.Title.ImdbRating >= minimumRating);
+            films = films.Where(film => (film.ImdbTitle == null
+                ? film.Title.ImdbTitle == null ? film.Title.ImdbRating : film.Title.ImdbTitle.ImdbRating
+                : film.ImdbTitle.ImdbRating) >= minimumRating);
         }
 
         if (query.ImdbRatingTo is { } maximumRating)
         {
-            films = films.Where(film => film.Title.ImdbRating <= maximumRating);
+            films = films.Where(film => (film.ImdbTitle == null
+                ? film.Title.ImdbTitle == null ? film.Title.ImdbRating : film.Title.ImdbTitle.ImdbRating
+                : film.ImdbTitle.ImdbRating) <= maximumRating);
         }
 
         var categoryValues = query.Categories is { Length: > 0 }
@@ -125,6 +139,8 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
         var totalCount = await films.CountAsync(cancellationToken);
         var items = await films
             .Include(film => film.Title)
+                .ThenInclude(title => title.ImdbTitle)
+            .Include(film => film.ImdbTitle)
             .Include(film => film.Nominations)
             .OrderByDescending(film => film.FilmYear)
             .ThenBy(film => film.NormalizedTitle)
@@ -149,6 +165,8 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
         var film = await dbContext.OscarFilms
             .AsNoTracking()
             .Include(candidate => candidate.Title)
+                .ThenInclude(title => title.ImdbTitle)
+            .Include(candidate => candidate.ImdbTitle)
             .Include(candidate => candidate.Nominations)
             .FirstOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
 
@@ -165,53 +183,59 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
         var films = await dbContext.OscarFilms.AsNoTracking()
             .Where(film => film.TitleId == titleId)
             .Include(film => film.Title)
+                .ThenInclude(title => title.ImdbTitle)
+            .Include(film => film.ImdbTitle)
             .Include(film => film.Nominations)
             .OrderBy(film => film.Id)
             .ToListAsync(cancellationToken);
         return films.Select(ToResponse).ToArray();
     }
 
-    private static OscarFilmResponse ToResponse(OscarFilm film) => new(
-        film.Id,
-        film.TitleId,
-        film.FilmTitle,
-        film.Title.TitleText,
-        film.Title.Year,
-        film.FilmYear,
-        film.ImdbId ?? film.Title.ImdbId,
-        film.EnrichmentStatus,
-        film.EnrichmentAttemptCount,
-        film.LastEnrichmentAttemptAt,
-        film.NextEnrichmentAttemptAt,
-        film.LastEnrichmentError,
-        film.Title.MediaType,
-        film.Title.ImdbRating,
-        film.Title.ImdbVotes,
-        film.Title.Metascore,
-        film.Title.Genres,
-        film.Title.Countries,
-        film.Title.Director,
-        film.Title.Plot,
-        film.Title.PosterUrl,
-        film.Title.Runtime,
-        film.Title.Awards,
-        film.Title.BoxOffice,
-        film.Nominations
-            .OrderBy(nomination => nomination.Ceremony)
-            .ThenBy(nomination => nomination.CanonicalCategory)
-            .ThenBy(nomination => nomination.Id)
-            .Select(nomination => new OscarNominationResponse(
-                nomination.Id,
-                nomination.Ceremony,
-                nomination.Class,
-                nomination.CanonicalCategory,
-                nomination.Category,
-                nomination.Name,
-                nomination.Nominees,
-                nomination.NomineeIds,
-                nomination.Detail,
-                nomination.IsWinner))
-            .ToArray());
+    private static OscarFilmResponse ToResponse(OscarFilm film)
+    {
+        var imdbTitle = film.ImdbTitle ?? film.Title.ImdbTitle;
+        return new OscarFilmResponse(
+            film.Id,
+            film.TitleId,
+            film.FilmTitle,
+            imdbTitle?.TitleText ?? film.Title.TitleText,
+            imdbTitle?.Year ?? film.Title.Year,
+            film.FilmYear,
+            film.ImdbId ?? film.Title.ImdbId,
+            film.EnrichmentStatus,
+            film.EnrichmentAttemptCount,
+            film.LastEnrichmentAttemptAt,
+            film.NextEnrichmentAttemptAt,
+            film.LastEnrichmentError,
+            film.Title.MediaType,
+            imdbTitle is null ? film.Title.ImdbRating : imdbTitle.ImdbRating,
+            imdbTitle is null ? film.Title.ImdbVotes : imdbTitle.ImdbVotes,
+            imdbTitle is null ? film.Title.Metascore : imdbTitle.Metascore,
+            imdbTitle is null ? film.Title.Genres : imdbTitle.Genres,
+            imdbTitle is null ? film.Title.Countries : imdbTitle.Countries,
+            imdbTitle is null ? film.Title.Director : imdbTitle.Director,
+            imdbTitle is null ? film.Title.Plot : imdbTitle.Plot,
+            imdbTitle is null ? film.Title.PosterUrl : imdbTitle.PosterUrl,
+            imdbTitle is null ? film.Title.Runtime : imdbTitle.Runtime,
+            imdbTitle is null ? film.Title.Awards : imdbTitle.Awards,
+            imdbTitle is null ? film.Title.BoxOffice : imdbTitle.BoxOffice,
+            film.Nominations
+                .OrderBy(nomination => nomination.Ceremony)
+                .ThenBy(nomination => nomination.CanonicalCategory)
+                .ThenBy(nomination => nomination.Id)
+                .Select(nomination => new OscarNominationResponse(
+                    nomination.Id,
+                    nomination.Ceremony,
+                    nomination.Class,
+                    nomination.CanonicalCategory,
+                    nomination.Category,
+                    nomination.Name,
+                    nomination.Nominees,
+                    nomination.NomineeIds,
+                    nomination.Detail,
+                    nomination.IsWinner))
+                .ToArray());
+    }
 
     private static PageResponse<T> CreatePage<T>(
         IReadOnlyList<T> items,

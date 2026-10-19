@@ -4,7 +4,15 @@ namespace MediaDock.Application.GoldenGlobes;
 
 public sealed record GoldenGlobeEnrichmentCandidate(string Title, int CeremonyYear, int AttemptCount, string SourceType = "movie");
 public sealed record GoldenGlobeManualRefreshCandidate(string Title, int CeremonyYear, string SourceType, string ImdbId, int LinkVersion, int AttemptCount);
-public sealed record GoldenGlobeEnrichmentUpdate(string Status, int AttemptCount, DateTimeOffset AttemptedAt, DateTimeOffset? NextAttemptAt, string? ErrorCode, string? ImdbId, string? ResolvedNomineeType = null);
+public sealed record GoldenGlobeEnrichmentUpdate(
+    string Status,
+    int AttemptCount,
+    DateTimeOffset AttemptedAt,
+    DateTimeOffset? NextAttemptAt,
+    string? ErrorCode,
+    string? ImdbId,
+    string? ResolvedNomineeType = null,
+    MetadataDetails? Metadata = null);
 public sealed record GoldenGlobeEnrichmentSummary(int EligibleTitles, int AttemptedTitles, int EnrichedTitles, int ProblemTitles, int NotFoundTitles, int TemporaryErrors, int CacheHits, int HttpAttempts, bool StoppedForQuota);
 public sealed record GoldenGlobeEnrichmentResult(GoldenGlobeEnrichmentSummary Summary, string Status);
 public sealed record GoldenGlobeManualRefreshResult(string Status, string? ErrorCode, string ImdbId, int HttpAttempts, bool CacheHit, bool Applied);
@@ -76,7 +84,9 @@ public sealed class GoldenGlobeEnrichmentService(
                 && resolution.ErrorCode is "ambiguous_match" or "no_confident_match" or "candidate_mismatch" or "no_golden_globe_match")
             { status = GoldenGlobeEnrichmentStatuses.Problem; error = resolution.ErrorCode; next = null; problems++; }
             else errors++;
-            await repository.SaveOutcomeAsync(candidate.Title, candidate.CeremonyYear, candidate.SourceType, new(status, attempt, attemptedAt, next, error, imdb, resolvedNomineeType), cancellationToken);
+            await repository.SaveOutcomeAsync(candidate.Title, candidate.CeremonyYear, candidate.SourceType,
+                new(status, attempt, attemptedAt, next, error, imdb, resolvedNomineeType,
+                    status == GoldenGlobeEnrichmentStatuses.Enriched ? resolution.Metadata : null), cancellationToken);
             attempted++;
             if (resolution.Status == MetadataLookupStatus.QuotaExceeded) { quota = true; break; }
         }
@@ -143,7 +153,8 @@ public sealed class GoldenGlobeEnrichmentService(
             attemptedAt,
             nextAttempt,
             error,
-            candidate.ImdbId);
+            candidate.ImdbId,
+            Metadata: status == GoldenGlobeEnrichmentStatuses.Enriched ? resolution.Metadata : null);
         var applied = await repository.SaveManualOutcomeAsync(candidate, update, cancellationToken);
         return new(status, error, candidate.ImdbId, resolution.HttpAttempts, resolution.CacheHit, applied);
     }
