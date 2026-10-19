@@ -11,12 +11,12 @@ Start here for work in this repository. Use the [local operations runbook](../..
 | Task | Read |
 | --- | --- |
 | Frontend | [Architecture](ARCHITECTURE.md) for the web/API boundary and request flow; [Testing](TESTING.md) for frontend tests and commands. |
-| API | [API contracts](API_CONTRACTS.md) for routes, DTOs, validation, and errors; [Architecture](ARCHITECTURE.md) for cross-layer flows. |
-| Persistence | [Data contracts](DATA_CONTRACTS.md) for entities, schema, and invariants; [Architecture](ARCHITECTURE.md) for persistence flows. |
-| Background ingestion | [Architecture](ARCHITECTURE.md) for the API-hosted queue, dispatcher, and scheduler; [API contracts](API_CONTRACTS.md) for job routes; [Implementation status](IMPLEMENTATION_STATUS.md) for source and production rollout status. |
-| Personal IMDb ratings work | [Implementation plan](PERSONAL_IMDB_RATINGS_PLAN.md) for the cross-session schema, enrichment, API, and UI rollout. |
-| Tests | [Testing](TESTING.md) for scoped commands, test categories, and required dependencies; [test diagnostics plan](TEST_DIAGNOSTICS_PLAN.md) for workspace-local artifacts, concise failures, and file line inventory. |
-| AI workflow efficiency | [Workflow efficiency plan](WORKFLOW_EFFICIENCY_PLAN.md) for linked multi-phase plans, focused verification, artifact triage, and approval/resource retrospectives. |
+| API | [Shared API conventions](API_CONTRACTS.md); [catalogs and awards](API_CATALOGS_AND_AWARDS.md), [identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md), or [operations and jobs](API_OPERATIONS_AND_JOBS.md) for route-specific contracts; [Architecture](ARCHITECTURE.md) for cross-layer flows. |
+| Persistence | [Data contracts](DATA_CONTRACTS.md) for canonical ownership and migration cautions; [Data schema](DATA_SCHEMA.md) for entities and constraints; [Data behavior](DATA_BEHAVIOR.md) for transactions and idempotency; [Architecture](ARCHITECTURE.md) for cross-layer flows. |
+| Background ingestion | [Architecture](ARCHITECTURE.md) for the API-hosted queue, dispatcher, and scheduler; [operations and jobs API](API_OPERATIONS_AND_JOBS.md) for job routes; [Implementation status](IMPLEMENTATION_STATUS.md) for source and production rollout status. |
+| Personal IMDb ratings | [Identity and personal data API](API_IDENTITY_AND_PERSONAL_DATA.md) for routes and DTOs; [Data contracts](DATA_CONTRACTS.md) for ownership and migration cautions; [Data schema](DATA_SCHEMA.md) for keys and foreign keys; [Data behavior](DATA_BEHAVIOR.md) for import and enrichment persistence. |
+| Tests | [Testing](TESTING.md) for scoped commands, test categories, required dependencies, runner artifacts, and file line inventory. |
+| AI workflow and documentation structure | [Workflow efficiency plan](WORKFLOW_EFFICIENCY_PLAN.md) for linked multi-phase plans and focused verification; [documentation optimization review](DOCUMENTATION_OPTIMIZATION_REVIEW.md) for the file-by-file assessment and staged restructuring steps. |
 | Operations | [Server access](SERVER_ACCESS.md) for the local SSH profile and session workflow; [Security and operations](SECURITY_AND_OPERATIONS.md) for runtime boundaries; the [local runbook](../../README.md) for setup and maintenance. |
 
 ## Current Status

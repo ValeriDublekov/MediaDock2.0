@@ -15,6 +15,7 @@ For every test run in this repository, use `python -B scripts/run_tests.py <suit
 - Start from the named file, symbol, failing behavior, or test. Inspect `git status --short` before editing and preserve existing user changes. Read the AI documentation index and only the task-specific references that apply.
 - Before the first edit, identify the code or document that directly controls the behavior. State one falsifiable local hypothesis and the cheapest check that could disconfirm it. If one nearby dependency is unclear, read that boundary, then choose the smallest testable change.
 - Make the smallest focused edit. After the first substantive edit, run the narrowest available check before further exploration or edits. For documentation-only changes, use `git diff --check` only when no more specific check exists.
+- Minimize tool and approval overhead: prefer workspace file/search tools for read-only inspection, batch related safe terminal actions and final checks into one concise invocation, and keep command output bounded. Do not repeat a passing check without a change or required gate, and never bypass an approval prompt.
 - If a test fails, start with the runner summary. Read only the relevant excerpt from the reported artifact, fix the cause, and rerun the same focused command. Do not repeat a passing suite without a source change or a required gate.
 - Stop when the task-specific checks and required repository gates pass. Report what changed, checks run, and any blocker; do not add a retrospective to routine or single-step work.
 

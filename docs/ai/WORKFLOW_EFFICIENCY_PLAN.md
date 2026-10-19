@@ -14,9 +14,9 @@ Make repository work predictable and low-overhead: inspect the smallest relevant
 
 ## Current Baseline
 
-- `scripts/run_tests.py` defaults artifacts to `.test-tmp/`, creates a unique directory per run, supports `--artifacts-dir`, suppresses passing-test output, and summarizes failures.
-- The repository instruction file requires the AI documentation index, the standard test runner, narrow filters, and relevant Docker-backed integration tests. It does not yet define an ordered context-edit-check workflow or when to create plan/progress files.
-- `TESTING.md` still describes the artifact location generically as a temporary directory; it must match the runner's actual default and retention behavior.
+- Phase 1 is implemented: the repository instruction file defines the ordered context-edit-check workflow and plan/progress file triggers.
+- `TESTING.md` documents the runner's `.test-tmp/` default, unique per-run directories, `--artifacts-dir`, retained artifacts, and concise failure summaries.
+- `scripts/run_tests.py` already provides these behaviors; no runner code or automation was needed.
 - Approval prompts are not guaranteed to be fully recorded in session history. Report only prompts directly observed; never infer counts from file paths or test artifacts.
 
 ## Plan and Progress File Rules
@@ -31,18 +31,18 @@ At the start of a planned multi-session task, inspect the worktree and read the 
 
 ## Rollout
 
-### Phase 1: Encode the workflow
+### Phase 1: Encode the workflow (complete)
 
 1. Add an `Efficient Task Workflow` section to `.github/instructions/mediadock.instructions.md` with ordered rules for local context, pre-edit hypothesis, smallest change, immediate focused validation, failure triage, and stopping criteria.
 2. Add the plan/progress file triggers above to the instruction file. Do not require a retrospective for short or routine tasks.
 3. Correct `TESTING.md` to document `.test-tmp/`, `--artifacts-dir`, unique per-run directories, and retained reports.
 4. Leave `scripts/run_tests.py` unchanged; its current behavior already provides the required artifact handling and concise failure summaries.
 
-**Exit criteria:** the instruction file tells the AI what to do, in what order, and when to stop; the test guide matches the runner; no runner code or extra automation was added without evidence.
+**Exit criteria met:** the instruction file tells the AI what to do, in what order, and when to stop; the test guide matches the runner; no runner code or extra automation was added without evidence.
 
-### Phase 2: Apply and evaluate
+### Phase 2: Apply and evaluate (pending)
 
-1. Apply the instruction workflow in the next non-trivial feature task. Use the plan/progress file structure only if its triggers are met.
+1. Apply the instruction workflow in the next non-trivial feature task. This documentation review is not that feature-task evaluation. Use the plan/progress file structure only if its triggers are met.
 2. At completion, check whether each changed behavior got a focused check, any passing suite was rerun without a source change or required gate, and any failure required opening more output than the runner summary plus a relevant excerpt.
 3. Record only directly observed approval prompts. Do not estimate token use or claim an efficiency improvement from one task.
 4. Change instructions to fix a clear contradiction or ambiguity immediately. Add runner automation only after the same avoidable overhead appears in at least two independent tasks, unless a concrete correctness or safety defect needs immediate repair.

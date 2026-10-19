@@ -2,39 +2,13 @@
 
 This guide covers security and operations for this standalone application; see [project context](PROJECT_CONTEXT.md). The [local runbook](../../README.md) is canonical for Docker, backup, and restore commands. The [systemd runbook](../../deploy/systemd/README.md) is canonical for host scheduling and unit installation.
 
-## Historical Production Snapshot
-
-Archived handoff notes only; do not treat them as live state. Verify current deployment details in the [local runbook](../../README.md) and [systemd runbook](../../deploy/systemd/README.md).
-
-Production was first deployed from GitHub `main` commit
-`2dd39927d5a0b02d74c9f7f8e3212a8e74c731c8` from
-`/opt/docker/projects/mediadock-next`. The live SHA is in the server's root-managed
-`/var/lib/mediadock-deploy/deploy-state`. The legacy checkout is retained beside
-it for rollback. The new app uses database `mediadock2` with one baseline
-migration; the original `mediadock` database and six-migration history remain
-unchanged. The pre-migration dump passed `pg_restore -l` and was verified in
-the latest Restic snapshot.
-
-Readiness, UI, and catalog checks returned HTTP 200. The API is bound to the
-specific trusted LAN interface at port `8081`; PostgreSQL remains loopback-only.
-The deploy timer is enabled for the new GitHub `main`. The production image
-predates the background-job migrations. The legacy Worker service is installed,
-its timer is disabled/uninstalled, and no scan has run. The API has no authentication, so
-allowed LAN clients can read and change application data. Router port-forward
-and non-LAN denial checks remain outstanding; do not treat LAN checks as proof
-of public-network isolation. Since 2026-10-09, `media.valyo.eu` is routed
-through Cloudflare Tunnel with Cloudflare Access; an unauthenticated HTTPS
-readiness request returned HTTP 302. This edge policy does not add API-level
-authorization, and direct-origin non-LAN denial remains unverified. See the
-[systemd runbook](../../deploy/systemd/README.md) for current operations.
-
 ## Trust Boundary
 
 For an explicitly trusted reverse proxy, the API can accept only `X-Forwarded-Proto` from the configured `ForwardedHeaders:TrustedNetwork` CIDR (`FORWARDED_HEADERS_TRUSTED_NETWORK` in Compose). Forwarded-header processing is disabled when the setting is empty, trusts no default proxy ranges, and has a one-hop limit. For Cloudflare Tunnel, configure this as the CIDR of the dedicated `mediadock-next-cloudflared` bridge, which must contain only the API and Tunnel connector. Do not trust the default Compose network or a public/wildcard CIDR. This setting is needed because the Tunnel's origin connection is HTTP while the browser callback is HTTPS; it does not make the API authorized.
 
 The Compose stack publishes the API on `${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}` and PostgreSQL on `127.0.0.1:${POSTGRES_PORT:-5432}` ([Compose](../../compose.yaml)). The API defaults to loopback. A LAN deployment may bind only to a specific trusted interface and must use a matching `DOCKER-USER` source allowlist; PostgreSQL stays loopback-only. The API's container port is for Compose networking. The documented endpoints use HTTP, not TLS. Loopback limits remote network access but does not authenticate local processes or users that can reach the port.
 
-The current source tree registers authentication and authorization for the optional Google OIDC flow and its server-managed session, but Google sign-in is disabled by default. `ACCESS_CONTROL_ENFORCED` also defaults to `false`; in this explicit open mode, most authorization policies are bypassed and the rest of the API remains unprotected. Favorites and personal-rating imports are exceptions: both require an active linked user in every mode and use only that user's rows. The ratings importer resolves the owner from the validated server session, requires an antiforgery token, and gives an administrator access only to their own ratings; a client cannot select another owner. When enforcement is enabled, shared catalog/award reads require an active account and global configuration, user administration, operations, and jobs require an active administrator. In open mode, clients that can reach the API can still read catalog and operational data, change feed configuration and matching rules, replace the saved OMDb key, and manage user accounts. Anti-forgery validation protects only the state-changing routes on which it is required; it is not authorization. A Google session alone does not grant access. Do not publish the port on a wildcard interface or forward it through a proxy, tunnel, or other network path for untrusted clients; loopback is not a substitute for authorization. The production-status section above describes the older deployed image; no production migration or deployment is part of this coding session.
+The current source tree registers authentication and authorization for the optional Google OIDC flow and its server-managed session, but Google sign-in is disabled by default. `ACCESS_CONTROL_ENFORCED` also defaults to `false`; in this explicit open mode, most authorization policies are bypassed and the rest of the API remains unprotected. Favorites and personal-rating imports are exceptions: both require an active linked user in every mode and use only that user's rows. The ratings importer resolves the owner from the validated server session, requires an antiforgery token, and gives an administrator access only to their own ratings; a client cannot select another owner. When enforcement is enabled, shared catalog/award reads require an active account and global configuration, user administration, operations, and jobs require an active administrator. In open mode, clients that can reach the API can still read catalog and operational data, change feed configuration and matching rules, replace the saved OMDb key, and manage user accounts. Anti-forgery validation protects only the state-changing routes on which it is required; it is not authorization. A Google session alone does not grant access. Do not publish the port on a wildcard interface or forward it through a proxy, tunnel, or other network path for untrusted clients; loopback is not a substitute for authorization.
 
 For local sign-in, use the exact same-origin callback `http://localhost:8080/signin-oidc`, enable the feature explicitly, and provide the Google Web application client ID/secret through ignored host configuration. `GOOGLE_AUTH_CALLBACK_URI` defaults to the localhost callback; other configured callbacks must be HTTPS hostnames, and the exact URI must be registered with Google. For `media.valyo.eu`, configure Authorized JavaScript origin `https://media.valyo.eu` and Authorized redirect URI `https://media.valyo.eu/signin-oidc` (no trailing slash), then set `GOOGLE_AUTH_CALLBACK_URI` to that exact URI. Keep sign-in disabled until the Tunnel route, Cloudflare Access policy, and callback have been verified end to end. Cloudflare Access does not add application-level API authorization; keep the origin protected and verify that no alternate untrusted route reaches it. The server validates Google issuer, audience, signature, token lifetime, OIDC state/nonce/correlation, and verified email; it does not save or return provider tokens. The MediaDock cookie is host-only, `HttpOnly`, `Secure`, `SameSite=Lax`, non-persistent, and expires absolutely after 12 hours without sliding renewal. Account-link, registration-request, and logout mutations require anti-forgery validation. The current raw HTTP LAN origin is not an acceptable sign-in origin. Google Cloud provisioning and Tunnel setup remain operator actions.
 
@@ -74,14 +48,6 @@ RSS, separate Oscar enrichment, and CSV import. A job interrupted by shutdown
 or crash is marked failed with the safe code `interrupted` after restart; it is
 not retried automatically. CSV upload bytes are bounded, persisted for queued
 work, omitted from responses, and erased at terminal state.
-
-Production has not yet migrated to this source architecture: the installed API
-image predates the background-job schema; the legacy Worker service is
-installed, its timer is not installed/enabled, and no scan has run. Before
-cutover, verify a fresh backup and the deployed migration state, stop/disable
-the legacy service/timer, test migrations on an isolated database, then follow
-the [systemd runbook](../../deploy/systemd/README.md). Do not treat publishing
-this source as proof that production has migrated.
 
 Oscar enrichment lifecycle and progress are stored in the separate `oscar_enrichment_runs` table; RSS `scan_runs` and `parse_logs` retain their existing meanings. The [local runbook](../../README.md) documents the audit and UTC-budget queries and the response to a provider quota stop. The Kaggle Oscar dataset page identifies the source dataset as CC0; keep the downloaded file, retrieval date/version, and checksum outside Git. OMDb describes its content terms as CC BY-NC 4.0; review the applicable terms before redistributing data or using it commercially.
 

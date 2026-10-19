@@ -1,5 +1,9 @@
+# Source Refactoring Review
 
-### 3. Refactoring assessment
+Date: 2026-10-19
+Disposition: Dated source-size assessment. Recommendations remain open for separate implementation decisions; this document is not test diagnostics guidance.
+
+## Assessment
 
 Run on 2026-10-19: `python -B scripts/report_file_lines.py --min-lines 300`. Counts below are the script's exact results, not estimates. The largest inventory entries include the Golden Globes dataset (8,513 lines), `web/package-lock.json` (2,408), and generated EF migration designers/snapshot (up to 1,955); none is a source-refactoring candidate based on size.
 
@@ -12,7 +16,7 @@ Prioritized recommendations:
 | 3 | `server/src/MediaDock.Application/Ingestion/RssIngestionService.cs` (965) | Normal scan and failed-entry recheck orchestration coexist with shared per-entry processing, feed parsing, progress, logging/redaction, and summaries. First consider extracting recheck orchestration, including legacy-feed recovery/matching. Keep shared per-entry processing centralized; a pure feed parser is a separate, lower-priority extraction. |
 | 4 | `server/src/MediaDock.Api/BackgroundJobs/BackgroundJobDispatcher.cs` (587) | Dispatcher recovery/claim/lease and terminal-state handling share a class with job-type execution handlers. Consider extracting typed handler collaborators while keeping lifecycle and job-state transitions owned by the dispatcher. |
 | 5 | `server/tests/MediaDock.IntegrationTests/IngestionTests.cs` (797) | Tests cover normal scans, failed-entry rechecks, and repository upsert identity/concurrency. Organize those as focused test classes/files. Keep the large provider fixture shared only where needed; avoid copying it into each file. |
-| 6 | `server/src/MediaDock.Application/Metadata/MetadataResolver.cs` (617) | General cache-backed resolution is combined with Golden Globes search, ranking, and candidate validation. This is a plausible domain boundary, but only one direct resolver test exercises the Golden Globes path. Add focused coverage for ranking, ambiguity, incomplete search, and budget outcomes before extracting it. |
+| 6 | `server/src/MediaDock.Infrastructure/Metadata/MetadataResolver.cs` (617) | General cache-backed resolution is combined with Golden Globes search, ranking, and candidate validation. This is a plausible domain boundary, but only one direct resolver test exercises the Golden Globes path. Add focused coverage for ranking, ambiguity, incomplete search, and budget outcomes before extracting it. |
 
 Other reviewed files and disposition:
 
@@ -27,4 +31,4 @@ Other reviewed files and disposition:
 | `server/src/MediaDock.Infrastructure/Ingestion/PostgresRssIngestionRepository.cs` (462) | Keep: retry lookup, run/log persistence, item state, and catalog upsert implement one ingestion repository boundary. |
 | `web/src/features/sources/BackgroundIngestionPanel.tsx` (393) | Defer: mode-specific actions sit beside shared polling, job status, events, and detail UI. If growth warrants a split, separate mode controls from the shared job view rather than duplicating polling. |
 
-No source refactoring is included in this plan phase. These are review recommendations only; implementation requires a separate decision. Do not nominate API contracts, shared styles, migration history, datasets, lockfiles, or deployment scripts for refactoring based on size alone.
+No source refactoring is included in this review. These are recommendations only; implementation requires a separate decision. Do not nominate API contracts, shared styles, migration history, datasets, lockfiles, or deployment scripts for refactoring based on size alone.

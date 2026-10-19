@@ -3,6 +3,15 @@
 Date: 2026-10-19
 Scope: Static review of EF entities/configurations, migrations, and selected persistence/read paths. This does not include live database row counts, production query plans, or a schema change.
 
+Disposition: Dated review, not routine task guidance. All four findings remain open as of 2026-10-19; no proposed source or schema changes have been implemented or validated by this review.
+
+| Finding | Status | Pending disposition |
+| --- | --- | --- |
+| 1. Overlapping `titles` and `imdb_titles` metadata | Open | Define field ownership and measure fallback/mismatch rows before choosing a migration. |
+| 2. Golden Globes reads expiring cache data | Open | Change the read path and add the expired/missing-cache integration case. |
+| 3. Oscar film identity lacks a database consistency rule | Open | Decide whether the IMDb ID is source or canonical identity, then document/enforce that invariant. |
+| 4. Search and array-filter indexes are unmeasured | Open | Collect representative production-like query plans before considering indexes. |
+
 ## Summary
 
 The schema is not broadly incoherent: shared IMDb metadata, owner-scoped ratings/favorites, source-specific award records, and most lifecycle invariants have clear ownership and database constraints. The main weakness is an incomplete transition from metadata stored on `titles` to the shared `imdb_titles` table. There is also a concrete read-path inconsistency in the Golden Globes catalog, which uses expiring cache data despite having a persistent canonical IMDb row.
