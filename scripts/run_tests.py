@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -21,6 +22,16 @@ INTEGRATION_PROJECT = "server/tests/MediaDock.IntegrationTests/MediaDock.Integra
 ALL_SUITES = ("server-unit", "server-integration", "web", "deploy", "runner")
 MAX_FAILURES = 12
 MAX_DETAIL_LINES = 16
+MAX_DIAGNOSTIC_LENGTH = 2000
+EF_COMMAND_LOG_LEVEL = "Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command"
+DIAGNOSTIC_PATTERNS = (
+    re.compile(r"\b(?:fatal )?error\s+(?:CS|MSB|NETSDK|NU)\d+\s*:", re.IGNORECASE),
+    re.compile(r"\b(?:fatal )?error:", re.IGNORECASE),
+    re.compile(r"^\s*(?:build failed|test run failed|test run aborted)\b", re.IGNORECASE),
+    re.compile(r"^\s*(?:failed|fail|error)\b", re.IGNORECASE),
+    re.compile(r"^\s*(?:unhandled exception|traceback \(most recent call last\):)", re.IGNORECASE),
+    re.compile(r"^\s*(?:[A-Za-z_][\w.]*Exception|AssertionError|ImportError|ModuleNotFoundError):"),
+)
 
 
 @dataclass
@@ -145,20 +156,50 @@ def build_command(name: str, filter_value: str | None, report_dir: Path, restore
     return command, log_path, report_path, str(cwd)
 
 
-def tail_lines(path: Path, limit: int = MAX_DETAIL_LINES) -> list[str]:
+def find_log_diagnostics(path: Path) -> list[str]:
+    diagnostics: list[str] = []
     try:
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        with path.open(encoding="utf-8", errors="replace") as log:
+            for line in log:
+                diagnostic = line.strip()
+                if not diagnostic or not any(pattern.search(diagnostic) for pattern in DIAGNOSTIC_PATTERNS):
+                    continue
+                if len(diagnostic) > MAX_DIAGNOSTIC_LENGTH:
+                    diagnostic = diagnostic[:MAX_DIAGNOSTIC_LENGTH] + "..."
+                diagnostics.append(diagnostic)
+                if len(diagnostics) == MAX_FAILURES:
+                    break
     except OSError:
         return []
-    return lines[-limit:]
+    return diagnostics
+
+
+def create_run_artifact_dir(base_dir: Path | None = None) -> Path:
+    if base_dir is None:
+        base_dir = ROOT / ".test-tmp"
+    elif not base_dir.is_absolute():
+        base_dir = ROOT / base_dir
+    base_dir.mkdir(parents=True, exist_ok=True)
+    return Path(tempfile.mkdtemp(prefix="mediadock-tests-", dir=base_dir))
 
 
 def run_suite(name: str, filter_value: str | None, report_dir: Path, restore: bool) -> SuiteResult:
     command, log_path, report_path, cwd = build_command(name, filter_value, report_dir, restore)
     started = time.monotonic()
     try:
+        environment = None
+        if name == "server-integration":
+            environment = os.environ.copy()
+            environment[EF_COMMAND_LOG_LEVEL] = "Warning"
         with log_path.open("w", encoding="utf-8", errors="replace") as output:
-            completed = subprocess.run(command, cwd=cwd, stdout=output, stderr=subprocess.STDOUT, check=False)
+            completed = subprocess.run(
+                command,
+                cwd=cwd,
+                stdout=output,
+                stderr=subprocess.STDOUT,
+                check=False,
+                env=environment,
+            )
         return_code = completed.returncode
     except OSError as error:
         log_path.write_text(f"Could not start {command[0]}: {error}\n", encoding="utf-8")
@@ -177,7 +218,9 @@ def run_suite(name: str, filter_value: str | None, report_dir: Path, restore: bo
         summary, failures = "No structured test report was produced", []
 
     if return_code != 0 and not failures:
-        failures = tail_lines(log_path)
+        failures = find_log_diagnostics(log_path)
+        if not failures:
+            failures = [f"Exit status {return_code}; full log: {log_path}"]
     return SuiteResult(name, return_code == 0, duration, summary, failures, log_path)
 
 
@@ -186,6 +229,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("suite", choices=("all", *ALL_SUITES), help="Test suite to run")
     parser.add_argument("--filter", help="Suite-specific test filter; cannot be used with 'all'")
     parser.add_argument("--restore", action="store_true", help="Allow dotnet test to restore packages")
+    parser.add_argument(
+        "--artifacts-dir",
+        type=Path,
+        help="Base directory for this run's logs and reports (default: .test-tmp/ under the repository root)",
+    )
     args = parser.parse_args()
     if args.filter and args.suite == "all":
         parser.error("--filter requires one specific suite")
@@ -197,7 +245,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     suites = ALL_SUITES if args.suite == "all" else (args.suite,)
-    report_dir = Path(tempfile.mkdtemp(prefix="mediadock-tests-"))
+    report_dir = create_run_artifact_dir(args.artifacts_dir)
     results = [run_suite(name, args.filter, report_dir, args.restore) for name in suites]
 
     print("Test results:")

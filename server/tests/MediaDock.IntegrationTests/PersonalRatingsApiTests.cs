@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Encodings.Web;
 using MediaDock.Api.Authentication;
+using MediaDock.Api.Common;
 using MediaDock.Api.PersonalRatings;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
@@ -26,6 +27,193 @@ namespace MediaDock.IntegrationTests;
 [Trait("Category", "Api")]
 public sealed class PersonalRatingsApiTests
 {
+    [Fact]
+    public async Task ListIsPagedSortedAndScopedToTheActiveUserInOpenMode()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_personal_ratings_list_api_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            var now = DateTimeOffset.UtcNow;
+
+            User CreateUser(string email, string subject, string status = "active", string role = "user")
+            {
+                var user = new User
+                {
+                    NormalizedEmail = email,
+                    GivenName = "Test",
+                    FamilyName = "User",
+                    Status = status,
+                    Role = role,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                user.ExternalIdentities.Add(new ExternalIdentity
+                {
+                    User = user,
+                    Issuer = GoogleSignInSettings.GoogleIssuer,
+                    Subject = subject,
+                    CreatedAt = now
+                });
+                return user;
+            }
+
+            var firstUser = CreateUser("list-first@example.com", "ratings-list-first");
+            var secondUser = CreateUser("list-second@example.com", "ratings-list-second");
+            var deactivatedUser = CreateUser("list-disabled@example.com", "ratings-list-disabled", "deactivated");
+            var adminUser = CreateUser("list-admin@example.com", "ratings-list-admin", role: "admin");
+            db.Users.AddRange(firstUser, secondUser, deactivatedUser, adminUser);
+            await db.SaveChangesAsync();
+
+            db.ImdbTitles.AddRange(
+                new Infrastructure.Persistence.Entities.ImdbTitle
+                {
+                    ImdbId = "tt0000001",
+                    MetadataStatus = "pending",
+                    UpdatedAt = now
+                },
+                new Infrastructure.Persistence.Entities.ImdbTitle
+                {
+                    ImdbId = "tt0000002",
+                    MetadataStatus = "not_found",
+                    UpdatedAt = now
+                },
+                new Infrastructure.Persistence.Entities.ImdbTitle
+                {
+                    ImdbId = "tt0000003",
+                    TitleText = "Lower Rated",
+                    Year = 1984,
+                    MediaType = "movie",
+                    ImdbRating = 6.5m,
+                    MetadataStatus = "enriched",
+                    UpdatedAt = now
+                },
+                new Infrastructure.Persistence.Entities.ImdbTitle
+                {
+                    ImdbId = "tt0000004",
+                    TitleText = "Higher Rated",
+                    Year = 2016,
+                    MediaType = "movie",
+                    ImdbRating = 8.1m,
+                    ImdbVotes = 12345,
+                    Metascore = 75m,
+                    PosterUrl = "https://example.com/poster.jpg",
+                    Genres = ["Drama"],
+                    Countries = ["United States"],
+                    Director = "Example Director",
+                    MetadataStatus = "enriched",
+                    UpdatedAt = now
+                },
+                new Infrastructure.Persistence.Entities.ImdbTitle
+                {
+                    ImdbId = "tt0000005",
+                    MetadataStatus = "pending",
+                    UpdatedAt = now
+                });
+            await db.SaveChangesAsync();
+
+            db.PersonalRatings.AddRange(
+                new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000001", Rating = 8, UpdatedAt = now },
+                new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000002", Rating = 8, UpdatedAt = now },
+                new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000003", Rating = 2, UpdatedAt = now },
+                new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000004", Rating = 10, UpdatedAt = now },
+                new PersonalRating { UserId = secondUser.Id, ImdbId = "tt0000001", Rating = 1, UpdatedAt = now },
+                new PersonalRating { UserId = secondUser.Id, ImdbId = "tt0000005", Rating = 9, UpdatedAt = now });
+            await db.SaveChangesAsync();
+        }
+
+        using var anonymousFactory = new ApiFactory(connectionString);
+        using var anonymousClient = anonymousFactory.CreateClient();
+        using var anonymousResponse = await anonymousClient.GetAsync("/api/personal-ratings");
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
+
+        using var unknownFactory = new ApiFactory(
+            connectionString, CreatePrincipal("ratings-list-unknown", "unknown@example.com"));
+        using var unknownClient = unknownFactory.CreateClient();
+        using var unknownResponse = await unknownClient.GetAsync("/api/personal-ratings");
+        Assert.Equal(HttpStatusCode.Forbidden, unknownResponse.StatusCode);
+
+        using var deactivatedFactory = new ApiFactory(
+            connectionString, CreatePrincipal("ratings-list-disabled", "list-disabled@example.com"));
+        using var deactivatedClient = deactivatedFactory.CreateClient();
+        using var deactivatedResponse = await deactivatedClient.GetAsync("/api/personal-ratings");
+        Assert.Equal(HttpStatusCode.Forbidden, deactivatedResponse.StatusCode);
+
+        using var firstFactory = new ApiFactory(
+            connectionString, CreatePrincipal("ratings-list-first", "list-first@example.com"));
+        using var firstClient = firstFactory.CreateClient();
+        using var secondFactory = new ApiFactory(
+            connectionString, CreatePrincipal("ratings-list-second", "list-second@example.com"));
+        using var secondClient = secondFactory.CreateClient();
+        using var adminFactory = new ApiFactory(
+            connectionString, CreatePrincipal("ratings-list-admin", "list-admin@example.com"));
+        using var adminClient = adminFactory.CreateClient();
+
+        using var defaultResponse = await firstClient.GetAsync("/api/personal-ratings");
+        Assert.Equal(HttpStatusCode.OK, defaultResponse.StatusCode);
+        var defaultPage = await defaultResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
+        Assert.NotNull(defaultPage);
+        Assert.Equal(4, defaultPage.TotalCount);
+        Assert.Equal(1, defaultPage.Page);
+        Assert.Equal(25, defaultPage.PageSize);
+        Assert.Equal(1, defaultPage.TotalPages);
+        Assert.Equal(
+            ["tt0000004", "tt0000001", "tt0000002", "tt0000003"],
+            defaultPage.Items.Select(item => item.ImdbId));
+        Assert.Equal("Higher Rated", defaultPage.Items[0].Title);
+        Assert.Equal(2016, defaultPage.Items[0].Year);
+        Assert.Equal(8.1m, defaultPage.Items[0].ImdbRating);
+        Assert.Equal(12345, defaultPage.Items[0].ImdbVotes);
+        Assert.Equal(75m, defaultPage.Items[0].Metascore);
+        Assert.Equal("https://example.com/poster.jpg", defaultPage.Items[0].PosterUrl);
+        Assert.Equal("tt0000001", defaultPage.Items[1].Title);
+        Assert.Equal("pending", defaultPage.Items[1].MetadataStatus);
+        Assert.Equal("tt0000002", defaultPage.Items[2].Title);
+        Assert.Equal("not_found", defaultPage.Items[2].MetadataStatus);
+
+        using var firstPageResponse = await firstClient.GetAsync("/api/personal-ratings?page=1&pageSize=2");
+        var firstPage = await firstPageResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
+        Assert.Equal(["tt0000004", "tt0000001"], firstPage?.Items.Select(item => item.ImdbId));
+        using var secondPageResponse = await firstClient.GetAsync("/api/personal-ratings?page=2&pageSize=2");
+        var secondPage = await secondPageResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
+        Assert.Equal(["tt0000002", "tt0000003"], secondPage?.Items.Select(item => item.ImdbId));
+        using var pastEndResponse = await firstClient.GetAsync("/api/personal-ratings?page=3&pageSize=2");
+        var pastEndPage = await pastEndResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
+        Assert.Empty(pastEndPage!.Items);
+        Assert.Equal(4, pastEndPage.TotalCount);
+        Assert.Equal(2, pastEndPage.TotalPages);
+
+        using var ascendingResponse = await firstClient.GetAsync("/api/personal-ratings?sort=asc");
+        var ascendingPage = await ascendingResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
+        Assert.Equal(
+            ["tt0000003", "tt0000001", "tt0000002", "tt0000004"],
+            ascendingPage?.Items.Select(item => item.ImdbId));
+
+        using var invalidPageResponse = await firstClient.GetAsync("/api/personal-ratings?page=0");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidPageResponse.StatusCode);
+        using var invalidPageSizeResponse = await firstClient.GetAsync("/api/personal-ratings?pageSize=101");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidPageSizeResponse.StatusCode);
+        using var invalidSortResponse = await firstClient.GetAsync("/api/personal-ratings?sort=invalid");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidSortResponse.StatusCode);
+
+        using var secondUserResponse = await secondClient.GetAsync("/api/personal-ratings");
+        var secondUserPage = await secondUserResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
+        Assert.Equal(2, secondUserPage?.TotalCount);
+        Assert.Equal(1, secondUserPage?.Items.Single(item => item.ImdbId == "tt0000001").Rating);
+        Assert.DoesNotContain(secondUserPage!.Items, item => item.ImdbId == "tt0000002");
+
+        using var adminResponse = await adminClient.GetAsync("/api/personal-ratings");
+        var adminPage = await adminResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
+        Assert.Empty(adminPage!.Items);
+        Assert.Equal(0, adminPage.TotalCount);
+        Assert.Equal(0, adminPage.TotalPages);
+    }
+
     [Fact]
     public async Task EnrichmentQueueIsOwnerScopedDeduplicatedAndOmitsRatingDataFromGlobalJobs()
     {

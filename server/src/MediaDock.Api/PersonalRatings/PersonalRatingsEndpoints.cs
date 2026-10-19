@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using MediaDock.Api.Authentication;
 using MediaDock.Api.BackgroundJobs;
+using MediaDock.Api.Common;
 using MediaDock.Api.Middleware;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -13,6 +14,24 @@ internal static class PersonalRatingsEndpoints
 {
     public static WebApplication MapPersonalRatingsEndpoints(this WebApplication app)
     {
+        app.MapGet("/api/personal-ratings", async Task<Ok<PageResponse<PersonalRatingResponse>>> (
+            [AsParameters] PersonalRatingsQuery query,
+            ClaimsPrincipal principal,
+            CurrentUserContext currentUserContext,
+            PersonalRatingsApiService service,
+            CancellationToken cancellationToken) =>
+        {
+            var currentUser = await currentUserContext.ResolveAsync(principal, cancellationToken)
+                ?? throw new ApiForbiddenException("An active linked user is required.");
+            return TypedResults.Ok(await service.GetAsync(currentUser.Id, query, cancellationToken));
+        })
+            .WithName("GetPersonalRatings")
+            .WithSummary("List the current user's personal IMDb ratings.")
+            .RequireAuthorization(AccessPolicies.OwnerScopedPersonalRatings)
+            .Produces<PageResponse<PersonalRatingResponse>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
         app.MapPost("/api/personal-ratings/enrichment", async Task<IResult> (
             HttpContext context,
             IAntiforgery antiforgery,
