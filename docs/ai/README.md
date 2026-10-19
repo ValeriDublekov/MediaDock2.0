@@ -16,6 +16,7 @@ Start here for work in this repository. Use the [local operations runbook](../..
 | Background ingestion | [Architecture](ARCHITECTURE.md) for the API-hosted queue, dispatcher, and scheduler; [API contracts](API_CONTRACTS.md) for job routes; [Implementation status](IMPLEMENTATION_STATUS.md) for source and production rollout status. |
 | Personal IMDb ratings work | [Implementation plan](PERSONAL_IMDB_RATINGS_PLAN.md) for the cross-session schema, enrichment, API, and UI rollout. |
 | Tests | [Testing](TESTING.md) for scoped commands, test categories, and required dependencies; [test diagnostics plan](TEST_DIAGNOSTICS_PLAN.md) for workspace-local artifacts, concise failures, and file line inventory. |
+| AI workflow efficiency | [Workflow efficiency plan](WORKFLOW_EFFICIENCY_PLAN.md) for editing discipline, focused verification, artifact triage, and approval/token measurement. |
 | Operations | [Server access](SERVER_ACCESS.md) for the local SSH profile and session workflow; [Security and operations](SECURITY_AND_OPERATIONS.md) for runtime boundaries; the [local runbook](../../README.md) for setup and maintenance. |
 
 ## Current Status
