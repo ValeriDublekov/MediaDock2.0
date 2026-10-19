@@ -21,14 +21,16 @@ import {
   getOscarFilm,
   getOscarCategories,
   getOscarFilms,
+  getPersonalRatings,
   getProviderSettings,
+  enqueuePersonalRatingsEnrichment,
   importPersonalRatings,
   requestJson,
   requestRegistration,
   runDeploymentAction,
   updateProviderSettings,
 } from './client'
-import type { CatalogTitle, GoldenGlobeFilm, OscarFilm, PageResponse, ProviderSettings, ProviderSettingsInput } from './types'
+import type { CatalogTitle, GoldenGlobeFilm, OscarFilm, PageResponse, PersonalRating, ProviderSettings, ProviderSettingsInput } from './types'
 
 function response(status: number, value: unknown): Response {
   return {
@@ -78,6 +80,36 @@ describe('typed API client', () => {
     expect(requestUrl.searchParams.get('imdbRatingFrom')).toBe('6.5')
     expect(requestUrl.searchParams.get('imdbRatingTo')).toBe('8.4')
     expect(requestUrl.searchParams.get('genre')).toBe('drama')
+  })
+
+  it('serializes personal ratings pagination and rating sort', async () => {
+    const page: PageResponse<PersonalRating> = { items: [], page: 2, pageSize: 25, totalCount: 26, totalPages: 2 }
+    const stub = fetchStub(response(200, page))
+
+    await getPersonalRatings({ page: 2, pageSize: 25, sort: 'asc' }, stub.fetcher)
+
+    const requestUrl = new URL(String(stub.calls[0]?.input), 'http://localhost')
+    expect(requestUrl.pathname).toBe('/api/personal-ratings')
+    expect(requestUrl.searchParams.get('page')).toBe('2')
+    expect(requestUrl.searchParams.get('pageSize')).toBe('25')
+    expect(requestUrl.searchParams.get('sort')).toBe('asc')
+  })
+
+  it('protects personal ratings enrichment enqueue with an antiforgery token', async () => {
+    const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = []
+    const fetcher: typeof fetch = async (input, init) => {
+      calls.push({ input, init })
+      return String(input) === '/api/auth/antiforgery'
+        ? response(200, { requestToken: 'ratings-enrichment-csrf' })
+        : response(202, { jobId: 12, status: 'queued' })
+    }
+
+    await enqueuePersonalRatingsEnrichment(fetcher)
+
+    expect(String(calls[0]?.input)).toBe('/api/auth/antiforgery')
+    expect(String(calls[1]?.input)).toBe('/api/personal-ratings/enrichment')
+    expect(calls[1]?.init?.method).toBe('POST')
+    expect(new Headers(calls[1]?.init?.headers).get('RequestVerificationToken')).toBe('ratings-enrichment-csrf')
   })
 
   it('serializes Oscar filters and requests one film with its nomination details', async () => {

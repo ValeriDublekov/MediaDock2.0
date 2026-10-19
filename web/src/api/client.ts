@@ -14,6 +14,9 @@ import type {
   OmdbDiagnostic,
   OmdbDailyUsage,
   PersonalRatingsImportResult,
+  PersonalRating,
+  PersonalRatingsEnrichmentAccepted,
+  PersonalRatingsSort,
   OscarCatalogQuery,
   OscarFilm,
   GoldenGlobeCatalogQuery,
@@ -155,6 +158,13 @@ export function getTitleOscars(id: number, fetcher?: typeof fetch) {
 
 export function getFavorites(query: { status?: 'all' | 'to_watch' | 'to_download'; page: number; pageSize: number }, fetcher?: typeof fetch) {
   return requestJson<PageResponse<FavoriteMovie>>(withQuery('/favorites', query), {}, fetcher)
+}
+
+export function getPersonalRatings(
+  query: { page: number; pageSize: number; sort: PersonalRatingsSort },
+  fetcher?: typeof fetch,
+) {
+  return requestJson<PageResponse<PersonalRating>>(withQuery('/personal-ratings', query), {}, fetcher)
 }
 
 export function addFavorite(titleId: number, from: 'oscar' | 'catalog', fetcher?: typeof fetch) {
@@ -381,4 +391,8 @@ export async function importPersonalRatings(file: File, fetcher?: typeof fetch) 
     body,
     headers: { RequestVerificationToken: requestToken },
   }, fetcher)
+}
+
+export function enqueuePersonalRatingsEnrichment(fetcher?: typeof fetch) {
+  return postAuthChange<PersonalRatingsEnrichmentAccepted | undefined>('/personal-ratings/enrichment', fetcher)
 }

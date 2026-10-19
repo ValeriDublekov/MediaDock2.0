@@ -117,5 +117,5 @@ Run all tests through `python -B scripts/run_tests.py <suite>`; do not invoke `d
 - [x] Session 3: metadata read paths (focused catalog, favorites, Oscar, and Golden Globes integration tests pass 8/8; Golden Globes unit tests pass 16/16)
 - [x] Session 4: exact-ID lookup and background enrichment (focused resolver/budget/service unit filters pass; Personal Ratings API, background-job API, and dispatcher integration filters pass 2/2, 2/2, and 6/6 with Docker)
 - [x] Session 5: personal ratings API (owner-scoped paged list, validated rating sort, metadata fallback/status, and enrichment/import contracts; `PersonalRatingsApiTests` passes 3/3 with Docker)
-- [ ] Session 6: web client and account view
+- [x] Session 6: web client and account view (typed list/enrichment client, paged and sortable Account view, bounded metadata refresh, and preserved import flow; client 22/22, view 9/9, App/account-switch 23/23; production build passes)
 - [ ] Session 7: documentation and full verification

@@ -1,7 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { getOmdbDailyUsage, getProviderSettings, getVersion, importPersonalRatings, testOmdbApi, updateProviderSettings } from '../../api/client'
-import type { OmdbDailyUsage, OmdbDiagnostic, PersonalRatingsImportResult, ProviderSettings, ProviderSettingsInput, SystemVersion } from '../../api/types'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { enqueuePersonalRatingsEnrichment, getOmdbDailyUsage, getPersonalRatings, getProviderSettings, getVersion, importPersonalRatings, testOmdbApi, updateProviderSettings } from '../../api/client'
+import type { OmdbDailyUsage, OmdbDiagnostic, PageResponse, PersonalRating, PersonalRatingsImportResult, PersonalRatingsSort, ProviderSettings, ProviderSettingsInput, SystemVersion } from '../../api/types'
 import { ErrorState, LoadingState } from '../../components/Feedback'
+import { EmptyState } from '../../components/Feedback'
+import { Pagination } from '../../components/Pagination'
 import { formatDate } from '../../shared/format'
 import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
 import { DeploymentControlPanel } from './DeploymentControlPanel'
@@ -18,6 +20,10 @@ const emptyProviderSettings: ProviderSettingsDraft = {
   omdbDailyRequestLimit: '0',
 }
 
+const personalRatingsPageSize = 25
+const maximumMetadataRefreshes = 10
+const metadataRefreshDelayMs = 1500
+
 function providerSettingsToDraft(settings: ProviderSettings): ProviderSettingsDraft {
   return {
     ...emptyProviderSettings,
@@ -33,6 +39,67 @@ export function PersonalRatingsView() {
   const [importingRatings, setImportingRatings] = useState(false)
   const [ratingsImportError, setRatingsImportError] = useState<string | null>(null)
   const [ratingsImportResult, setRatingsImportResult] = useState<PersonalRatingsImportResult | null>(null)
+  const [ratings, setRatings] = useState<PageResponse<PersonalRating> | null>(null)
+  const [page, setPage] = useState(1)
+  const [sort, setSort] = useState<PersonalRatingsSort>('desc')
+  const [loadingRatings, setLoadingRatings] = useState(true)
+  const [ratingsError, setRatingsError] = useState<string | null>(null)
+  const [ratingsAttempt, setRatingsAttempt] = useState(0)
+  const [enrichmentError, setEnrichmentError] = useState<string | null>(null)
+  const requestedEnrichment = useRef(new Set<string>())
+  const metadataRefreshes = useRef(new Map<string, number>())
+
+  useEffect(() => {
+    let active = true
+
+    getPersonalRatings({ page, pageSize: personalRatingsPageSize, sort })
+      .then((response) => { if (active) setRatings(response) })
+      .catch((requestError: unknown) => {
+        if (active) setRatingsError(requestError instanceof Error ? requestError.message : 'Could not load personal IMDb ratings.')
+      })
+      .finally(() => { if (active) setLoadingRatings(false) })
+
+    return () => { active = false }
+  }, [page, sort, ratingsAttempt])
+
+  useEffect(() => {
+    const queryKey = `${page}:${sort}`
+    if (loadingRatings || ratingsError || !ratings || ratings.page !== page || !ratings.items.some((rating) => rating.metadataStatus === 'pending')) return
+
+    let active = true
+    let timeout: number | undefined
+    const scheduleRefresh = () => {
+      const refreshCount = metadataRefreshes.current.get(queryKey) ?? 0
+      if (refreshCount >= maximumMetadataRefreshes) return
+      metadataRefreshes.current.set(queryKey, refreshCount + 1)
+      timeout = window.setTimeout(() => {
+        if (!active) return
+        setLoadingRatings(true)
+        setRatingsAttempt((current) => current + 1)
+      }, metadataRefreshDelayMs)
+    }
+
+    if (requestedEnrichment.current.has(queryKey)) {
+      scheduleRefresh()
+    } else {
+      requestedEnrichment.current.add(queryKey)
+      enqueuePersonalRatingsEnrichment()
+        .then(() => {
+          if (!active) return
+          setEnrichmentError(null)
+          scheduleRefresh()
+        })
+        .catch((requestError: unknown) => {
+          requestedEnrichment.current.delete(queryKey)
+          if (active) setEnrichmentError(requestError instanceof Error ? requestError.message : 'Could not queue metadata enrichment.')
+        })
+    }
+
+    return () => {
+      active = false
+      if (timeout !== undefined) window.clearTimeout(timeout)
+    }
+  }, [loadingRatings, page, ratings, ratingsError, sort])
 
   async function importRatings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -50,12 +117,24 @@ export function PersonalRatingsView() {
     try {
       const result = await importPersonalRatings(file)
       setRatingsImportResult(result)
+      setRatingsError(null)
+      setPage(1)
+      setLoadingRatings(true)
+      setRatingsAttempt((current) => current + 1)
       form.reset()
     } catch (requestError) {
       setRatingsImportError(requestError instanceof Error ? requestError.message : 'Could not import IMDb ratings.')
     } finally {
       setImportingRatings(false)
     }
+  }
+
+  function changeRatingsSort(nextSort: PersonalRatingsSort) {
+    if (sort === nextSort) return
+    setSort(nextSort)
+    setPage(1)
+    setLoadingRatings(true)
+    setRatingsError(null)
   }
 
   return (
@@ -80,6 +159,42 @@ export function PersonalRatingsView() {
           <button className="button" disabled={importingRatings} type="submit">{importingRatings ? 'Importing...' : 'Import ratings'}</button>
         </div>
       </form>
+      <div className="ratings-toolbar">
+        <h3>Your ratings</h3>
+        <div aria-label="Sort personal ratings by your score" className="favorite-filters" role="group">
+          <button aria-pressed={sort === 'asc'} className={`button ${sort === 'asc' ? '' : 'button-secondary'}`} onClick={() => changeRatingsSort('asc')} type="button">Lowest first</button>
+          <button aria-pressed={sort === 'desc'} className={`button ${sort === 'desc' ? '' : 'button-secondary'}`} onClick={() => changeRatingsSort('desc')} type="button">Highest first</button>
+        </div>
+      </div>
+      {enrichmentError && <p className="form-error" role="alert">Metadata enrichment could not be queued: {enrichmentError}</p>}
+      {loadingRatings && <LoadingState label="Loading personal IMDb ratings" />}
+      {!loadingRatings && ratingsError && <ErrorState message={ratingsError} onRetry={() => {
+        setRatingsError(null)
+        setLoadingRatings(true)
+        setRatingsAttempt((current) => current + 1)
+      }} />}
+      {!loadingRatings && !ratingsError && ratings?.items.length === 0 && <EmptyState title="No personal ratings yet" message="Import an IMDb ratings export to see your titles here." />}
+      {!loadingRatings && !ratingsError && ratings && ratings.items.length > 0 && <>
+        <div className="table-wrap">
+          <table className="data-table personal-ratings-table">
+            <thead><tr><th>TITLE</th><th>YOUR RATING</th><th>IMDb RATING</th><th>METADATA</th></tr></thead>
+            <tbody>{ratings.items.map((rating) => <tr key={rating.imdbId}>
+              <td>
+                <a className="title-link" href={`https://www.imdb.com/title/${encodeURIComponent(rating.imdbId)}/`} rel="noreferrer" target="_blank">{rating.title}</a>
+                <span className="subtle-line">{rating.imdbId} <span aria-hidden="true">·</span> {rating.year ?? 'Year unknown'}</span>
+              </td>
+              <td><span className="rating-value">{rating.rating} / 10</span></td>
+              <td>{rating.imdbRating === null ? 'Not rated' : rating.imdbRating.toFixed(1)}</td>
+              <td><span className="type-label">{rating.metadataStatus.replaceAll('_', ' ')}</span></td>
+            </tr>)}</tbody>
+          </table>
+        </div>
+        <Pagination page={ratings} onPageChange={(next) => {
+          setPage(next)
+          setLoadingRatings(true)
+          setRatingsError(null)
+        }} />
+      </>}
     </section>
   )
 }

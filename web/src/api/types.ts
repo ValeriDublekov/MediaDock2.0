@@ -226,6 +226,33 @@ export interface PersonalRatingsImportResult {
   }>
 }
 
+export type PersonalRatingsSort = 'asc' | 'desc'
+
+export interface PersonalRating {
+  imdbId: string
+  rating: number
+  title: string
+  year: number | null
+  mediaType: string | null
+  imdbRating: number | null
+  imdbVotes: number | null
+  metascore: number | null
+  genres: string[]
+  countries: string[]
+  director: string | null
+  plot: string | null
+  posterUrl: string | null
+  runtime: string | null
+  awards: string | null
+  boxOffice: string | null
+  metadataStatus: string
+}
+
+export interface PersonalRatingsEnrichmentAccepted {
+  jobId: number
+  status: string
+}
+
 export interface ParseLog {
   id: number
   sourceId: number | null

@@ -150,6 +150,9 @@ button:disabled { cursor: not-allowed; }
 .history-filters .field-search { min-width: min(260px, 32vw); }
 .history-filters .field input, .history-filters .field select { min-height: 36px; }
 .management-section { border-top: 1px solid #cbd6cd; padding: 20px 0 8px; }
+.ratings-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 22px 0 10px; border-top: 1px solid #d4ded5; padding-top: 12px; }
+.ratings-toolbar h3 { margin: 0; color: #30473a; font-size: 13px; font-weight: 700; }
+.personal-ratings-table td:first-child { min-width: 230px; }
 .section-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .section-title-row h2, .management-section h2, .management-grid h2 { margin: 0; color: #203a30; font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 400; }
 .section-title-row p, .section-caption { margin: 5px 0 0; color: #78847d; font-size: 11px; }

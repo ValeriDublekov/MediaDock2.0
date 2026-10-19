@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   addSourceUrl,
+  enqueuePersonalRatingsEnrichment,
   enqueueManualScan,
   enqueueOscarImport,
   getActiveBackgroundJob,
@@ -9,6 +10,7 @@ import {
   getBackgroundJobEvents,
   getOmdbDailyUsage,
   getProviderSettings,
+  getPersonalRatings,
   getSettings,
   getSources,
   getVersion,
@@ -18,18 +20,20 @@ import {
   updateProviderSettings,
   updateSettings,
 } from '../../api/client'
-import type { OmdbDailyUsage, ProviderSettings, Settings, SourceProfile, SystemVersion } from '../../api/types'
+import type { OmdbDailyUsage, PersonalRating, ProviderSettings, Settings, SourceProfile, SystemVersion } from '../../api/types'
 import { OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './ConfigurationSettingsViews'
 import { SourceSettingsView } from './SourceSettingsView'
 
 vi.mock('../../api/client', () => ({
   addSourceUrl: vi.fn(),
+  enqueuePersonalRatingsEnrichment: vi.fn(),
   enqueueManualScan: vi.fn(),
   enqueueOscarImport: vi.fn(),
   getActiveBackgroundJob: vi.fn(),
   getBackgroundJob: vi.fn(),
   getBackgroundJobEvents: vi.fn(),
   getOmdbDailyUsage: vi.fn(),
+  getPersonalRatings: vi.fn(),
   getProviderSettings: vi.fn(),
   getSettings: vi.fn(),
   getSources: vi.fn(),
@@ -53,6 +57,18 @@ const systemVersion: SystemVersion = {
   commitDateUtc: '2026-10-01T12:30:00+00:00',
 }
 
+function personalRating(imdbId: string, title: string, rating = 8, metadataStatus = 'enriched'): PersonalRating {
+  return {
+    imdbId, title, rating, year: 2024, mediaType: 'movie', imdbRating: 7.5, imdbVotes: 1000,
+    metascore: null, genres: [], countries: [], director: null, plot: null, posterUrl: null,
+    runtime: null, awards: null, boxOffice: null, metadataStatus,
+  }
+}
+
+function personalRatingsPage(items: PersonalRating[], page = 1, totalPages = 1) {
+  return { items, page, pageSize: 25, totalCount: totalPages * 25, totalPages }
+}
+
 describe('SourceSettingsView', () => {
   beforeEach(() => {
     vi.mocked(addSourceUrl).mockReset()
@@ -62,6 +78,10 @@ describe('SourceSettingsView', () => {
     vi.mocked(getBackgroundJob).mockReset()
     vi.mocked(getBackgroundJobEvents).mockReset().mockResolvedValue({ items: [], nextAfterId: 0 })
     vi.mocked(getOmdbDailyUsage).mockReset().mockResolvedValue([])
+    vi.mocked(getPersonalRatings).mockReset().mockResolvedValue({
+      items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0,
+    })
+    vi.mocked(enqueuePersonalRatingsEnrichment).mockReset().mockResolvedValue(undefined)
     vi.mocked(getProviderSettings).mockReset().mockResolvedValue(providerSettings)
     vi.mocked(getSettings).mockReset().mockResolvedValue({
       excludedGenres: [],
@@ -84,7 +104,10 @@ describe('SourceSettingsView', () => {
     vi.mocked(replaceSourceUrl).mockReset()
   })
 
-  afterEach(() => cleanup())
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+  })
 
   it('shows the deployed system version and source commit', async () => {
     render(<SystemSettingsView />)
@@ -152,8 +175,56 @@ describe('SourceSettingsView', () => {
     fireEvent.submit(fileInput.closest('form')!)
 
     await waitFor(() => expect(importPersonalRatings).toHaveBeenCalledWith(file))
-    expect((await screen.findByRole('status')).textContent).toContain('1 added, 1 updated, 1 unchanged. 12 ratings stored.')
+    const importStatus = await screen.findByText((_, element) =>
+      element?.getAttribute('role') === 'status' && (element.textContent ?? '').includes('Imported'))
+    expect(importStatus.textContent).toContain('1 added, 1 updated, 1 unchanged. 12 ratings stored.')
     expect((await screen.findByText(/Skipped entries with missing ratings:/)).textContent).toContain('tt1234567 (Missing rating.)')
+  })
+
+  it('lists personal ratings, paginates, and resets to page one when sorting changes', async () => {
+    vi.mocked(getPersonalRatings).mockImplementation(async ({ page, sort }) => personalRatingsPage([
+      personalRating(`tt000000${page}`, `Rating page ${page}`, sort === 'asc' ? 2 : 9),
+    ], page, 2))
+
+    render(<PersonalRatingsView />)
+
+    expect(await screen.findByRole('link', { name: 'Rating page 1' })).toBeTruthy()
+    expect(getPersonalRatings).toHaveBeenLastCalledWith({ page: 1, pageSize: 25, sort: 'desc' })
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(await screen.findByRole('link', { name: 'Rating page 2' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Lowest first' }))
+    expect(await screen.findByRole('link', { name: 'Rating page 1' })).toBeTruthy()
+    expect(getPersonalRatings).toHaveBeenLastCalledWith({ page: 1, pageSize: 25, sort: 'asc' })
+
+    const callsBeforeSelectedSort = vi.mocked(getPersonalRatings).mock.calls.length
+    fireEvent.click(screen.getByRole('button', { name: 'Lowest first' }))
+    expect(vi.mocked(getPersonalRatings).mock.calls).toHaveLength(callsBeforeSelectedSort)
+    expect(screen.getByRole('button', { name: 'Lowest first' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('queues metadata once and refreshes a pending visible page until it completes', async () => {
+    vi.useFakeTimers()
+    vi.mocked(getPersonalRatings)
+      .mockResolvedValueOnce(personalRatingsPage([personalRating('tt1234567', 'Pending title', 8, 'pending')]))
+      .mockResolvedValueOnce(personalRatingsPage([personalRating('tt1234567', 'Resolved title', 8, 'enriched')]))
+
+    render(<PersonalRatingsView />)
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(enqueuePersonalRatingsEnrichment).toHaveBeenCalledOnce()
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500) })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(screen.getByRole('link', { name: 'Resolved title' })).toBeTruthy()
+    expect(getPersonalRatings).toHaveBeenCalledTimes(2)
+    expect(enqueuePersonalRatingsEnrichment).toHaveBeenCalledOnce()
   })
 
   it.each([
