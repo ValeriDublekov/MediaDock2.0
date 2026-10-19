@@ -1,56 +1,59 @@
 # Workflow Efficiency Plan
 
-## Goal
+## Objective
 
-Reduce avoidable approval prompts, repeated test runs, broad log reads, and failed edit attempts while preserving repository safety rules and required verification. Do not claim exact token savings unless the active usage data actually provides them.
+Make repository work predictable and low-overhead: inspect the smallest relevant context, make a focused change, and run the cheapest check that can falsify it. Never reduce efficiency by bypassing approvals, security controls, or required verification.
+
+## Scope
+
+- Put mandatory, task-level workflow rules in `.github/instructions/mediadock.instructions.md`.
+- Keep this file as the rollout and evaluation plan, not a second copy of the instructions.
+- Keep `TESTING.md` as the source for test commands and artifact behavior.
+- Do not change the runner or add automation without evidence of a concrete gap.
+- Do not claim exact token or approval savings when the available history cannot establish them.
 
 ## Current Baseline
 
-- `scripts/run_tests.py` already defaults artifacts to the workspace-local `.test-tmp/`, supports `--artifacts-dir`, suppresses passing-test output, and summarizes recognized failures.
-- Repository instructions already require the test runner, narrow filters, Docker-backed integration tests when relevant, and the AI documentation index before project edits.
-- `TEST_DIAGNOSTICS_PLAN.md` already covers artifact placement, EF log noise, concise diagnostics, and the file inventory. This plan does not add another runner or log parser.
-- The local session store does not expose exact token usage or a complete record of approval prompts. Use observable proxies and label uncertainty.
+- `scripts/run_tests.py` defaults artifacts to `.test-tmp/`, creates a unique directory per run, supports `--artifacts-dir`, suppresses passing-test output, and summarizes failures.
+- The repository instruction file requires the AI documentation index, the standard test runner, narrow filters, and relevant Docker-backed integration tests. It does not yet define an ordered context-edit-check workflow or when to create plan/progress files.
+- `TESTING.md` still describes the artifact location generically as a temporary directory; it must match the runner's actual default and retention behavior.
+- Approval prompts are not guaranteed to be fully recorded in session history. Report only prompts directly observed; never infer counts from file paths or test artifacts.
 
-## Guardrails
+## Plan and Progress File Rules
 
-- Never bypass an approval prompt or weaken production, security, or test requirements to save time.
-- Do not contact live RSS or OMDb services during routine tests; use the existing isolated fixtures.
-- Preserve the repository rule: run tests only with `python -B scripts/run_tests.py <suite>`.
-- Keep `.test-tmp/` ignored and inside the workspace. Inspect generated reports only when a failure needs diagnosis.
+Use separate planning files only when the work spans multiple sessions or has multiple independently verifiable phases. Keep short or single-phase work in one plan or task; do not create a progress file just to record routine commands.
+
+- **Master plan:** goal, constraints, dependencies, phase links, and overall acceptance criteria.
+- **Phase file:** create one only when a phase needs its own tasks, focused checks, or exit criteria; link it to the master.
+- **Progress file:** create one only for multi-session work. Track the active phase, completed checks, blockers, and next action. Do not duplicate the plan or keep a second narrative log.
+
+At the start of a planned multi-session task, inspect the worktree and read the master, active phase, progress tracker if present, and only the task-specific documentation. Read another phase file only when a dependency requires it. Keep one source of truth for each fact.
 
 ## Rollout
 
-### Step 1: Encode the missing guidance
+### Phase 1: Encode the workflow
 
-1. Update `TESTING.md` to state explicitly that the default artifacts are under `.test-tmp/`, while retaining the custom `--artifacts-dir` option and report-retention behavior.
-2. Add a concise workflow section to `mediadock.instructions.md`: inspect exact local context, patch one file at a time for long documents, run the narrow check immediately after a substantive edit, and start failure diagnosis from the runner summary.
-3. Keep the current runner implementation. Change it only if a measured session shows a real gap, such as artifacts still escaping the workspace or useful failure details being omitted.
+1. Add an `Efficient Task Workflow` section to `.github/instructions/mediadock.instructions.md` with ordered rules for local context, pre-edit hypothesis, smallest change, immediate focused validation, failure triage, and stopping criteria.
+2. Add the plan/progress file triggers above to the instruction file. Do not require a retrospective for short or routine tasks.
+3. Correct `TESTING.md` to document `.test-tmp/`, `--artifacts-dir`, unique per-run directories, and retained reports.
+4. Leave `scripts/run_tests.py` unchanged; its current behavior already provides the required artifact handling and concise failure summaries.
 
-### Step 2: Apply the workflow in the next feature session
+**Exit criteria:** the instruction file tells the AI what to do, in what order, and when to stop; the test guide matches the runner; no runner code or extra automation was added without evidence.
 
-1. Read the relevant plan, AI documentation index, and current `git status`; identify the smallest code or documentation surface that owns the behavior.
-2. Before editing, state one local hypothesis and the cheapest check that could disconfirm it. Use exact nearby text for a small, single-file patch instead of a multi-document bulk patch.
-3. After the first substantive edit, run its narrowest available check before further exploration or edits. Use `git diff --check` for documentation-only changes when there is no more specific executable check.
-4. Select one focused suite/filter for each materially changed behavior. Check Docker once before relevant integration tests. Run `all` once at the end only when the task or release gate requires full verification.
-5. If a focused test fails, inspect the runner summary first, then only the relevant excerpt from the reported `.test-tmp/` log or report. Fix the cause and rerun that same filter; do not reopen complete TRX/EF output unless the summary is insufficient.
-6. Do not repeat a passing suite without a source change or a required final gate. When a fix changes code after the full suite, rerun the focused check and the required full gate.
+### Phase 2: Apply and evaluate
 
-### Step 3: Measure and decide
+1. Apply the instruction workflow in the next non-trivial feature task. Use the plan/progress file structure only if its triggers are met.
+2. At completion, check whether each changed behavior got a focused check, any passing suite was rerun without a source change or required gate, and any failure required opening more output than the runner summary plus a relevant excerpt.
+3. Record only directly observed approval prompts. Do not estimate token use or claim an efficiency improvement from one task.
+4. Change instructions to fix a clear contradiction or ambiguity immediately. Add runner automation only after the same avoidable overhead appears in at least two independent tasks, unless a concrete correctness or safety defect needs immediate repair.
 
-For the next completed feature session, record:
+**Evaluation rule:** one completed feature task checks whether the instructions are usable; it is not statistical proof of saved time, tokens, or approvals. Keep the workflow if it meets the exit criteria. Adjust it only in response to observed friction.
 
-- Test commands and approximate elapsed time, separating focused runs from the final full suite.
-- Reruns caused by actual failures versus redundant reruns with no intervening change.
-- Full log/report reads and whether the concise runner summary was sufficient.
-- Approval prompts observed, their cause, and whether a workspace-local path would have avoided them. Do not infer an exact count when the tool history does not provide one.
-- Token usage only if a trustworthy usage source exposes it; otherwise record `unavailable` and use the proxies above.
+## Acceptance Criteria
 
-After that session, compare the observations with this baseline. Make further runner or instruction changes only for a repeated, evidenced problem; do not add wrappers or automation speculatively.
-
-## Success Criteria
-
-- No approval prompt is caused solely by opening test artifacts outside the workspace.
-- Passing logs are not opened; failing logs are inspected only as narrowly as needed.
-- Each changed behavior gets a focused check, with reruns tied to a failure/fix or an explicitly required gate.
-- Required Docker integration and full-suite gates are run, not silently skipped.
-- The retrospective reports measured facts separately from estimates and clearly says when token or approval data is unavailable.
+- The instruction file defines a smallest-relevant-context workflow and requires a focused check immediately after the first substantive edit.
+- Repository tests run only through `python -B scripts/run_tests.py <suite>`; use the narrowest relevant suite/filter and run required integration or release gates.
+- Failure diagnosis starts with the runner summary and reads only the relevant artifact excerpt unless evidence shows that is insufficient.
+- No passing suite is repeated without an intervening source change or an explicitly required gate.
+- Multi-session planning files are created only when the defined triggers apply; short tasks stay lightweight.
+- Retrospectives are concise and optional for routine tasks; any reported approval or resource observations are directly supported by available evidence.

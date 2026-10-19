@@ -12,7 +12,7 @@ The .NET unit tests and web tests do not require PostgreSQL, Docker, RSS sources
 
 ## Compact Test Runner
 
-Run the standard-library Python runner from the repository root. It suppresses passing-test output, summarizes failures from .NET TRX and Vitest JSON reports, and keeps full logs and reports in a temporary `mediadock-tests-*` directory.
+Run the standard-library Python runner from the repository root. It suppresses passing-test output, summarizes failures from .NET TRX and Vitest JSON reports, and keeps full logs and reports under `.test-tmp/` by default. Each run gets a unique `mediadock-tests-*` directory; artifacts are retained for diagnosis. Use `--artifacts-dir <path>` to choose a different base directory (relative paths are resolved from the repository root).
 
 ```powershell
 python -B scripts/run_tests.py all
@@ -24,6 +24,21 @@ python -B scripts/run_tests.py runner
 ```
 
 `all` runs both .NET projects, web tests, deploy-control tests, and the runner's own parser tests; integration tests still require Docker. `--filter` applies to one selected suite: it uses the VSTest filter expression for .NET, a Vitest file-path filter for web, or Python unittest's `-k` name pattern. .NET restore is skipped by default; pass `--restore` when package restore is needed. The runner exits nonzero if any selected suite fails.
+
+Each test process's stdout and stderr are captured in its `.log`; raw output is not streamed to the terminal. Only the `server-integration` child process receives `Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command=Warning`, filtering EF Core database-command Information logs while retaining Warning and Error events. This does not change production logging configuration.
+
+Failure summaries show at most 12 failures and 16 lines per failure. If a structured test report is missing, the runner prints only recognized, bounded compiler/test diagnostics. If it finds none, it reports the exit status and full log path rather than dumping an arbitrary log tail.
+
+## File Line Inventory
+
+Use the inventory to identify large text files for review; line count alone is not a reason to refactor. Results are sorted by descending count. Binary files and known generated, dependency, cache, and test-artifact directories are skipped.
+
+```powershell
+python -B scripts/report_file_lines.py --min-lines 300
+python -B scripts/report_file_lines.py
+```
+
+`--min-lines 300` shows files with at least 300 lines. Omitting the option lists every eligible text file.
 
 ## Restore and Build
 

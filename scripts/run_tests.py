@@ -150,8 +150,12 @@ def build_command(name: str, filter_value: str | None, report_dir: Path, restore
         command = [sys.executable, "-B", "-m", "unittest"]
         if filter_value:
             command.extend(["-k", filter_value])
-        module = "deploy.test_deploy_control" if name == "deploy" else "scripts.test_run_tests"
-        command.append(module)
+        modules = (
+            ("deploy.test_deploy_control",)
+            if name == "deploy"
+            else ("scripts.test_run_tests", "scripts.test_report_file_lines")
+        )
+        command.extend(modules)
 
     return command, log_path, report_path, str(cwd)
 
