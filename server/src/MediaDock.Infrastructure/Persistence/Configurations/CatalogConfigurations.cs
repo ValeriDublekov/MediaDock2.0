@@ -21,6 +21,9 @@ internal sealed class TitleConfiguration : IEntityTypeConfiguration<Title>
                 "(first_seen_at IS NULL AND last_seen_at IS NULL) OR (first_seen_at IS NOT NULL AND last_seen_at IS NOT NULL AND first_seen_at <= last_seen_at)");
         });
         builder.HasKey(entity => entity.Id).HasName("pk_titles");
+        builder.HasIndex(entity => new { entity.Id, entity.ImdbId })
+            .IsUnique()
+            .HasDatabaseName("ux_titles_id_imdb_id");
         builder.Property(entity => entity.Id).UseIdentityByDefaultColumn().HasColumnName("id");
         builder.Property(entity => entity.TitleText).HasColumnName("title").IsRequired();
         builder.Property(entity => entity.NormalizedTitle).HasColumnName("normalized_title").IsRequired();

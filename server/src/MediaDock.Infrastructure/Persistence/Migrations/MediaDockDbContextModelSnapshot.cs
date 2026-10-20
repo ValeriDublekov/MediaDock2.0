@@ -1623,6 +1623,10 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ux_titles_imdb_id")
                         .HasFilter("imdb_id IS NOT NULL AND btrim(imdb_id) <> ''");
 
+                    b.HasIndex("Id", "ImdbId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_titles_id_imdb_id");
+
                     b.HasIndex("NormalizedTitle", "Year", "MediaType")
                         .HasDatabaseName("ix_titles_normalized_title_year_media_type");
 

@@ -82,6 +82,118 @@ public sealed class PersistenceTests
 
     [Fact]
     [Trait("Category", "Persistence")]
+    public async Task OscarFilmSourceImdbIdMustMatchLinkedTitleWhenPresent()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_oscar_imdb_identity_constraint_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+
+        var now = new DateTimeOffset(2026, 10, 20, 0, 0, 0, TimeSpan.Zero);
+        db.ImdbTitles.AddRange(
+            new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = now },
+            new ImdbTitle { ImdbId = "tt87654321", UpdatedAt = now });
+        var title = CreateTitle("Linked Film", "linked film", "tt12345678", now);
+        db.Titles.Add(title);
+        await db.SaveChangesAsync();
+
+        var mismatchedFilm = new OscarFilm
+        {
+            TitleId = title.Id,
+            StableKey = "mismatched-imdb-film",
+            FilmTitle = "Linked Film",
+            NormalizedTitle = "linked film",
+            FilmYear = 2025,
+            ImdbId = "tt87654321",
+            ImportedAt = now,
+            UpdatedAt = now
+        };
+        db.OscarFilms.Add(mismatchedFilm);
+        var mismatch = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        Assert.Equal(
+            "fk_oscar_films_titles_title_id_imdb_id",
+            (mismatch.InnerException as Npgsql.PostgresException)?.ConstraintName);
+        db.ChangeTracker.Clear();
+
+        db.OscarFilms.Add(new OscarFilm
+        {
+            TitleId = title.Id,
+            StableKey = "missing-source-imdb-film",
+            FilmTitle = "Linked Film",
+            NormalizedTitle = "linked film",
+            FilmYear = 2025,
+            ImportedAt = now,
+            UpdatedAt = now
+        });
+        await db.SaveChangesAsync();
+
+        await AssertRejectedAsync(db, new OscarFilm
+        {
+            TitleId = long.MaxValue,
+            StableKey = "missing-title-film",
+            FilmTitle = "Missing Title Film",
+            NormalizedTitle = "missing title film",
+            FilmYear = 2025,
+            ImportedAt = now,
+            UpdatedAt = now
+        });
+    }
+
+    [Fact]
+    [Trait("Category", "Persistence")]
+    public async Task OscarIdentityMigrationRejectsPreexistingMismatchesWithoutChangingData()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_oscar_imdb_migration_preflight_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync("20261020122556_EnforceTitleMetadataOwnership");
+
+        var now = new DateTimeOffset(2026, 10, 20, 0, 0, 0, TimeSpan.Zero);
+        db.ImdbTitles.AddRange(
+            new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = now },
+            new ImdbTitle { ImdbId = "tt87654321", UpdatedAt = now });
+        var title = CreateTitle("Linked Film", "linked film", "tt12345678", now);
+        db.Titles.Add(title);
+        await db.SaveChangesAsync();
+
+        db.OscarFilms.Add(new OscarFilm
+        {
+            TitleId = title.Id,
+            StableKey = "legacy-mismatched-film",
+            FilmTitle = "Linked Film",
+            NormalizedTitle = "linked film",
+            FilmYear = 2025,
+            ImdbId = "tt87654321",
+            ImportedAt = now,
+            UpdatedAt = now
+        });
+        await db.SaveChangesAsync();
+
+        var migrationFailure = await Assert.ThrowsAsync<Npgsql.PostgresException>(
+            () => db.Database.MigrateAsync());
+        Assert.Contains("Cannot enforce Oscar film IMDb identity", migrationFailure.Message);
+        Assert.DoesNotContain(
+            "20261020125713_EnforceOscarFilmTitleIdentity",
+            await db.Database.GetAppliedMigrationsAsync());
+
+        var unchangedFilm = await db.OscarFilms
+            .AsNoTracking()
+            .Include(film => film.Title)
+            .SingleAsync();
+        Assert.Equal("tt87654321", unchangedFilm.ImdbId);
+        Assert.Equal("tt12345678", unchangedFilm.Title.ImdbId);
+    }
+
+    [Fact]
+    [Trait("Category", "Persistence")]
     public async Task MigrationCreatesSchemaAndOccurrenceIdentityIsUnique()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_test").Build();
@@ -108,6 +220,7 @@ public sealed class PersistenceTests
         Assert.Contains("20261016071457_AddUserOwnershipToFavoritesAndRatings", appliedMigrations);
         Assert.Contains("20261016160138_AddSharedImdbTitles", appliedMigrations);
         Assert.Contains("20261020122556_EnforceTitleMetadataOwnership", appliedMigrations);
+        Assert.Contains("20261020125713_EnforceOscarFilmTitleIdentity", appliedMigrations);
 
         await db.Database.OpenConnectionAsync();
         await using (var command = db.Database.GetDbConnection().CreateCommand())
