@@ -44,15 +44,7 @@ sequenceDiagram
     Client-->>View: typed page response
 ```
 
-The [catalog view](../../web/src/features/catalog/CatalogView.tsx) builds the query and calls `getCatalog`. The [API client](../../web/src/api/client.ts) serializes query values, prefixes `/api`, and calls `fetch`; its TypeScript contracts live in [api/types.ts](../../web/src/api/types.ts). On the server, [API startup](../../server/src/MediaDock.Api/Program.cs) registers `ICatalogApiService` and maps routes from [CatalogEndpoints](../../server/src/MediaDock.Api/Catalog/CatalogEndpoints.cs). The endpoint delegates to [CatalogApiService](../../server/src/MediaDock.Api/Catalog/CatalogApiService.cs), which filters, counts, orders, pages, and projects EF queries over the Infrastructure [DbContext](../../server/src/MediaDock.Infrastructure/Persistence/MediaDockDbContext.cs). The HTTP query and response DTOs are in [CatalogContracts](../../server/src/MediaDock.Api/Catalog/CatalogContracts.cs).
-
-Favorites follow the same direct API-to-EF pattern: [FavoriteEndpoints](../../server/src/MediaDock.Api/Favorites/FavoriteEndpoints.cs) resolves the validated `(issuer, subject)` to the active internal user, and [FavoriteApiService](../../server/src/MediaDock.Api/Favorites/FavoriteApiService.cs) applies that owner to filtering, page projection, source-checked additions, marker updates, and deletion. This active-user requirement remains in force when general access-control enforcement is disabled. [FavoriteProvider](../../web/src/features/favorites/FavoriteContext.tsx) shares the current account's favorites between catalogs, dialogs, and the favorites screen; the provider remounts on account changes, clearing stale state. Title detail requests separately load Oscar records and torrent occurrences by canonical `TitleId`.
-
-Personal-rating list and import use the same server-derived owner boundary: [PersonalRatingsEndpoints](../../server/src/MediaDock.Api/PersonalRatings/PersonalRatingsEndpoints.cs) resolves the active user, and [PersonalRatingsApiService](../../server/src/MediaDock.Api/PersonalRatings/PersonalRatingsApiService.cs) scopes list queries, merge lookups, inserts, and totals by `UserId`. The active-user requirement applies even when general access-control enforcement is disabled. The list is paged and sorts only by personal rating (`asc` or `desc`) with IMDb ID as a stable tie-break; its metadata projection reads the canonical `imdb_titles` row and falls back to the IMDb ID while metadata is unavailable. Import validates the bounded file before its owner-scoped transaction and creates/reuses shared IMDb stubs; personal scores are not shared OMDb ratings.
-
-When a visible ratings page contains pending metadata, the Account [PersonalRatingsView](../../web/src/features/sources/ConfigurationSettingsViews.tsx) posts to the owner-scoped enrichment route. The API queues `imdb_title_enrichment` only for IDs in that user's ratings; a partial unique index deduplicates active jobs per owner. The dispatcher resolves exact IMDb IDs through the shared resolver/cache and OMDb budget, verifies returned identity, and writes metadata/lifecycle state to `imdb_titles`. A batch is capped at 100 candidates. The view polls the job through an owner-scoped status route while it is queued or running, displays its lifecycle status, then refreshes the ratings page at completion; it does not repeatedly reload the list while the job runs. The owner-scoped route returns no rating IDs or scores, and global job status/events remain private. No owner rating query invokes OMDb synchronously. Every reserved OMDb HTTP attempt counts toward the shared daily total; current usage reporting groups IMDb-title requests with the non-Oscar count displayed as RSS.
-
-The web shell places personal ratings under Account and global settings/history under Administration, while the catalogs remain in shared library navigation. It derives those navigation and route affordances from the server-projected session; this is not an authorization boundary. API policies and the active-owner resolver remain authoritative. The legacy personal-ratings configuration URL redirects to the account route.
+ The [catalog view](../../web/src/features/catalog/CatalogView.tsx) builds the query and calls `getCatalog`; the [API client](../../web/src/api/client.ts) sends it to the API. The endpoint delegates to [CatalogApiService](../../server/src/MediaDock.Api/Catalog/CatalogApiService.cs), which queries Infrastructure's [DbContext](../../server/src/MediaDock.Infrastructure/Persistence/MediaDockDbContext.cs) directly. HTTP contracts are documented in [catalogs and awards](API_CATALOGS_AND_AWARDS.md).
 
 ## Optional Google Identity Flow
 
@@ -79,11 +71,9 @@ sequenceDiagram
     Api-->>Browser: Request status
 ```
 
-Google OIDC uses the ASP.NET Core middleware with authorization code flow, PKCE, state/nonce/correlation checks, and server-side token validation. The callback is `/signin-oidc` on the configured same origin. The default local URI is `http://localhost:8080/signin-oidc`; local setup uses `localhost` consistently. Other configured callbacks must use HTTPS and a hostname. The session is held in a protected, host-only, `HttpOnly`, `Secure`, `SameSite=Lax` cookie with a 12-hour absolute lifetime and no sliding renewal. Provider tokens are neither saved nor returned to the browser. Link, registration-request, and logout mutations require anti-forgery validation.
+Optional sign-in is an API/browser/Google flow, not an authorization boundary. See [identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md) for its contracts and [security and operations](SECURITY_AND_OPERATIONS.md) for access and deployment requirements.
 
-Sign-in is optional and disabled by default. The validated Google identity may be explicitly linked to a pre-provisioned account or submit one idempotent registration request from the dedicated `Hello {First Name}` screen; no request is created merely by signing in. Registration requires the separate given-name and family-name claims, and unmatched users remain on that screen until the request is submitted. The one-shot `bootstrap-admin` Compose tool is operator-only and trusts its supplied values, so the operator must copy the verified identity fields from `GET /api/auth/session`; the tool does not independently validate them. `ACCESS_CONTROL_ENFORCED` defaults to `false`, preserving the explicitly unprotected open mode and its persistent warning. When enabled, the API resolves the validated `(issuer, subject)` to the active user and current database role on each protected request. Shared catalog/award reads require an active linked account; system configuration, Users, operational history, jobs, deployment, and manual Golden Globes linking require an active admin. Favorites and personal-rating imports always require an active linked account and are scoped to that owner, even in open mode. Health, version, and authentication-protocol routes remain policy-anonymous, while auth handlers continue validating claims and anti-forgery tokens. Keep the loopback/specific-interface-plus-firewall boundary regardless of mode. See [API contracts](API_CONTRACTS.md), [security and operations](SECURITY_AND_OPERATIONS.md), and the [local runbook](../../README.md) for route and operator details.
-
-For catalog behavior, start with the API endpoint, contract, or service that owns the change. Keep the current query there unless the code gains a real shared use case; do not add an Application abstraction just to make the layers look uniform.
+Catalog query behavior belongs in the API endpoint, contract, or service; do not add an Application abstraction unless a real shared use case emerges.
 
 ## API-Hosted Ingestion Flow
 
@@ -103,49 +93,7 @@ flowchart TD
     ui -->|"status + cursor events"| routes
 ```
 
-The API exposes producers and read-only status/event routes in
-[BackgroundJobEndpoints](../../server/src/MediaDock.Api/BackgroundJobs/BackgroundJobEndpoints.cs).
-HTTP requests validate and persist work; they never run a scan inline. The one
-hosted [BackgroundJobDispatcher](../../server/src/MediaDock.Api/BackgroundJobs/BackgroundJobDispatcher.cs)
-uses a scoped `MediaDockDbContext`, acquires the session advisory lock, claims
-one job in a short transaction, then executes the handler while retaining the
-lease. Queued jobs survive API restarts. Stale `running` jobs are marked
-`interrupted` after the next dispatcher acquires the lock; they are not retried.
-
-The [scheduler](../../server/src/MediaDock.Api/BackgroundJobs/BackgroundJobScheduler.cs)
-persists a checkpoint and UTC schedule slots. Its first activation initializes
-the checkpoint without replaying historical slots; later downtime coalesces
-missed due slots into one job. The 07:00/18:00 `Europe/Sofia` conversion is
-deterministic across DST. Partial unique indexes prevent more than one
-queued/running RSS scan and more than one active Oscar or Golden Globes
-enrichment job, while a unique slot index makes schedule enqueue idempotent.
-
-RSS, Oscar, and Golden Globes handlers load the OMDb key and shared daily limit from the singleton
-`settings` row inside the job scope. The atomic budget allows requests up to that
-configured shared limit; Oscar and Golden Globes requests consume the same total
-budget, while only Oscar requests increment the separate `OscarRequests` counter. An OMDb quota error
-also blocks further requests for that UTC day. Credentials never enter job payloads
-or API responses.
-`RssIngestionService` reports stage/source/counter snapshots at feed boundaries
-and periodically during processing. New parse logs store their `scan_run_id`;
-older rows remain unassociated. Oscar and Golden Globes enrichment are separate
-manual jobs using the same lock and resolver/cache/shared budget; Golden Globes
-enrichment does not write to RSS history or an enrichment-run audit table. Setting
-a manual Golden Globes IMDb ID commits the exact group pin and targeted refresh
-job atomically; clearing a link invalidates its current version. The dispatcher
-resolves the fixed IMDb ID, persists an ID-keyed cache entry, and applies results
-only if the stored link version still matches; batch enrichment skips manual pins. CSV/TSV
-uploads are bounded bytes stored with queued imports; importers parse them without
-a host path and clear the bytes at terminal state.
-
-### Advisory-Lock Boundary
-
-[PostgresAdvisoryScanLock](../../server/src/MediaDock.Infrastructure/Ingestion/PostgresAdvisoryScanLock.cs)
-uses PostgreSQL session-level `pg_try_advisory_lock` and releases it with
-`pg_advisory_unlock` when the async lease is disposed. The dispatcher holds the
-lease across queue claim and one RSS scan, Oscar or Golden Globes enrichment, or either dataset import.
-If another cooperating runner holds the same lock, the job remains queued for
-a later poll. The lock does not serialize ordinary API writes or migrations.
+HTTP producers durably enqueue work; the API-hosted [dispatcher](../../server/src/MediaDock.Api/BackgroundJobs/BackgroundJobDispatcher.cs) claims and executes one job. Routes and lifecycle contracts are in [operations and jobs](API_OPERATIONS_AND_JOBS.md); scheduling, persistence, and coordination behavior are in [data behavior](DATA_BEHAVIOR.md).
 
 ## Startup and Health
 
@@ -156,17 +104,7 @@ flowchart TD
     healthy --> migrate["migrate service: tools profile"]
 ```
 
-The [Compose file](../../compose.yaml) defines PostgreSQL (`db`), the API (`api`), and a one-shot `migrate` service. Both API and migration wait for the database healthcheck. The migration service uses the API image with `--migrate true`; [API startup](../../server/src/MediaDock.Api/Program.cs) applies EF Core migrations and exits before `app.Run`, so the hosted dispatcher does not start in migration mode. Normal API startup does not migrate, and Compose does not make `api` depend on `migrate`; the [runbook](../../README.md) documents the intended order.
-
-API startup registers `MediaDockDbContext` with Npgsql from `ConnectionStrings:MediaDock`. `/health/live` reports process liveness; `/health/ready` calls `Database.CanConnectAsync` and returns 503 when PostgreSQL is unavailable, as implemented by [HealthEndpoints](../../server/src/MediaDock.Api/Health/HealthEndpoints.cs) and [ReadinessService](../../server/src/MediaDock.Api/Health/ReadinessService.cs). Compose configures a healthcheck for `db`, not an API healthcheck; the readiness endpoint is not currently wired as a Compose healthcheck.
-
-The API image serves the bundled React app only in Production, via the default/static-file middleware and SPA fallback in `Program.cs`; its assets are produced by the [server Dockerfile](../../server/Dockerfile). Compose binds the API host port to loopback. Google identity is optional and does not authorize API access; preserve the open-mode warning and deployment boundary described in [project context](PROJECT_CONTEXT.md).
-
-The Configuration deployment panel proxies status and start requests through
-the API to a root-owned host control service over a read-only-mounted Unix
-socket. That service accepts only status, immediate start of the fixed deploy
-unit, or a retry of a failed staging gate. It does not expose a shell or Docker
-socket; see the [systemd runbook](../../deploy/systemd/README.md) for host setup.
+Compose defines PostgreSQL, the API, and a one-shot migration service; the database healthcheck gates both application services. Normal API startup does not apply migrations, so use the [local runbook](../../README.md) for rollout order. The API serves the bundled React client in Production; build details are in the [server Dockerfile](../../server/Dockerfile). Health-route contracts and network policy are documented in [operations and jobs](API_OPERATIONS_AND_JOBS.md) and [security and operations](SECURITY_AND_OPERATIONS.md).
 
 ## Where to Change Things
 

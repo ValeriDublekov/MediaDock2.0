@@ -13,6 +13,7 @@ For every test run in this repository, use `python -B scripts/run_tests.py <suit
 ## Efficient Task Workflow
 
 - Start from the named file, symbol, failing behavior, or test. Inspect `git status --short` before editing and preserve existing user changes. Read the AI documentation index and only the task-specific references that apply.
+- For Markdown changes, run `python -B scripts/check_markdown_links.py` to validate local links and anchors; use `python -B scripts/report_file_lines.py` when a file-line inventory is needed.
 - Before the first edit, identify the code or document that directly controls the behavior. State one falsifiable local hypothesis and the cheapest check that could disconfirm it. If one nearby dependency is unclear, read that boundary, then choose the smallest testable change.
 - Make the smallest focused edit. After the first substantive edit, run the narrowest available check before further exploration or edits. For documentation-only changes, use `git diff --check` only when no more specific check exists.
 - Minimize tool and approval overhead: prefer workspace file/search tools for read-only inspection, batch related safe terminal actions and final checks into one concise invocation, and keep command output bounded. Do not repeat a passing check without a change or required gate, and never bypass an approval prompt.

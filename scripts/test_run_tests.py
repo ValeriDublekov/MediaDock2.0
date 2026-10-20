@@ -79,6 +79,11 @@ class TestRunnerArtifactAndFallbackTests(unittest.TestCase):
         self.addCleanup(self.temp_dir.cleanup)
         self.directory = Path(self.temp_dir.name)
 
+    def test_runner_suite_includes_markdown_link_checker_tests(self) -> None:
+        command, _, _, _ = build_command("runner", None, self.directory, restore=False)
+
+        self.assertIn("scripts.test_check_markdown_links", command)
+
     def test_artifact_directory_defaults_to_unique_workspace_run_directories(self) -> None:
         with mock.patch("scripts.run_tests.ROOT", self.directory):
             first_run = create_run_artifact_dir()

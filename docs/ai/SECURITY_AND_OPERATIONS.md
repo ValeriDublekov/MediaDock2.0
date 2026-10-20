@@ -37,7 +37,7 @@ Per feed request, connection timeout is 5 seconds, request timeout is 20 seconds
 
 Schema changes are checked in as EF Core migrations ([migration history](../../server/src/MediaDock.Infrastructure/Persistence/Migrations/)). The normal API startup does not migrate. The explicit Compose `migrate` service sets `migrate=true`, applies pending migrations, and exits; run it in the order documented in the [local runbook](../../README.md) before starting the API after a schema change. Compose does not make API startup depend on that service. `/health/ready` checks database connectivity, not whether the expected schema migration has been applied.
 
-The per-user ownership migration is data-sensitive: it counts all `users` rows, including pending and deactivated accounts, then deletes legacy favorites/ratings for zero users, assigns them to the sole user, or copies them to every user when there are multiple. Its `Down` operation refuses when more than one user exists; it does not merge divergent personal rows. Review the per-user migration section in the [local runbook](../../README.md) and obtain separate operator approval before applying it outside disposable/staging databases. Passing tests does not authorize a production migration or deployment.
+The per-user ownership migration is data-sensitive; see [Data contracts](DATA_CONTRACTS.md) for its data effects and the [local runbook](../../README.md) for the migration procedure. Obtain separate operator approval before applying it outside disposable/staging databases. Passing tests does not authorize a production migration or deployment.
 
 The API-hosted `BackgroundJobDispatcher` processes manual and scheduled work
 from `background_jobs`; it is the only executor. Manual producers return after
