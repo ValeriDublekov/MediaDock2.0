@@ -92,6 +92,8 @@ public sealed class PostgresOscarEnrichmentRepository(MediaDockDbContext dbConte
                     film.Title = canonicalTitle;
                     film.TitleId = canonicalTitle.Id;
                 }
+
+                ImdbTitleMetadataMapper.MoveTitleFallbackMetadata(imdbTitle, film.Title);
             }
 
             var normalizedMetadata = metadata with { ImdbId = imdbId };

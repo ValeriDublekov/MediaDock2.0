@@ -107,6 +107,7 @@ public sealed class PersistenceTests
         Assert.Contains("20261004200000_AddGoldenGlobeEnrichment", appliedMigrations);
         Assert.Contains("20261016071457_AddUserOwnershipToFavoritesAndRatings", appliedMigrations);
         Assert.Contains("20261016160138_AddSharedImdbTitles", appliedMigrations);
+        Assert.Contains("20261020122556_EnforceTitleMetadataOwnership", appliedMigrations);
 
         await db.Database.OpenConnectionAsync();
         await using (var command = db.Database.GetDbConnection().CreateCommand())
@@ -391,11 +392,26 @@ public sealed class PersistenceTests
         });
         await db.SaveChangesAsync();
 
+        await db.Database.MigrateAsync("20261016160138_AddSharedImdbTitles");
+        var lateImdbTitle = new ImdbTitle
+        {
+            ImdbId = "tt88888888",
+            MetadataStatus = "pending",
+            UpdatedAt = now
+        };
+        var lateLinkedTitle = CreateTitle("Late linked title", "late linked title", "tt88888888", now);
+        lateLinkedTitle.ImdbRating = 6.7m;
+        lateLinkedTitle.Genres = ["Documentary"];
+        lateLinkedTitle.Plot = "Backfilled after the shared-IMDb migration.";
+        db.ImdbTitles.Add(lateImdbTitle);
+        db.Titles.Add(lateLinkedTitle);
+        await db.SaveChangesAsync();
+
         await db.Database.MigrateAsync();
         db.ChangeTracker.Clear();
 
         var imdbTitles = await db.ImdbTitles.AsNoTracking().OrderBy(title => title.ImdbId).ToListAsync();
-        Assert.Equal(new[] { "tt12345678", "tt87654321" }, imdbTitles.Select(title => title.ImdbId));
+        Assert.Equal(new[] { "tt12345678", "tt87654321", "tt88888888" }, imdbTitles.Select(title => title.ImdbId));
         var backfilled = imdbTitles.Single(title => title.ImdbId == "tt12345678");
         Assert.Equal("Latest metadata", backfilled.TitleText);
         Assert.Equal(8.4m, backfilled.ImdbRating);
@@ -404,14 +420,33 @@ public sealed class PersistenceTests
         Assert.Equal("Backfilled plot", backfilled.Plot);
         Assert.Equal("enriched", backfilled.MetadataStatus);
         Assert.Equal("pending", imdbTitles.Single(title => title.ImdbId == "tt87654321").MetadataStatus);
+        var lateBackfilled = imdbTitles.Single(title => title.ImdbId == "tt88888888");
+        Assert.Equal(6.7m, lateBackfilled.ImdbRating);
+        Assert.Equal(new[] { "Documentary" }, lateBackfilled.Genres);
+        Assert.Equal("Backfilled after the shared-IMDb migration.", lateBackfilled.Plot);
+        Assert.Equal("enriched", lateBackfilled.MetadataStatus);
 
         var migratedTitles = await db.Titles.AsNoTracking().OrderBy(title => title.Id).ToListAsync();
         Assert.Equal("tt12345678", migratedTitles[0].ImdbId);
+        Assert.Null(migratedTitles[0].ImdbRating);
+        Assert.Null(migratedTitles[0].ImdbVotes);
+        Assert.Empty(migratedTitles[0].Genres);
+        Assert.Null(migratedTitles[0].Plot);
         Assert.Null(migratedTitles[1].ImdbId);
         Assert.Null(migratedTitles[2].ImdbId);
         Assert.Equal(6.1m, migratedTitles[2].ImdbRating);
         Assert.Equal(new[] { "Local genre" }, migratedTitles[2].Genres);
         Assert.Equal("Keep this title-local metadata", migratedTitles[2].Plot);
+        Assert.Equal("tt88888888", migratedTitles[3].ImdbId);
+        Assert.Null(migratedTitles[3].ImdbRating);
+        Assert.Empty(migratedTitles[3].Genres);
+        Assert.Null(migratedTitles[3].Plot);
+
+        var duplicateMetadataTitle = CreateTitle("Duplicate metadata", "duplicate metadata", "tt87654321", now);
+        duplicateMetadataTitle.ImdbRating = 5.0m;
+        db.Titles.Add(duplicateMetadataTitle);
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        db.ChangeTracker.Clear();
 
         var ratings = await db.PersonalRatings.AsNoTracking().OrderBy(rating => rating.UserId).ToListAsync();
         Assert.Equal(2, ratings.Count);

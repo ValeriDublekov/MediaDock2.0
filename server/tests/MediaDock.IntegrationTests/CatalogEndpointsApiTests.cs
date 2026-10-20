@@ -45,11 +45,6 @@ public sealed class CatalogEndpointsApiTests
         var newerTitle = CreateTitle("The Matrix Reloaded", "the matrix reloaded", 2003, "movie", ["Action", "Sci-Fi"]);
         var seriesTitle = CreateTitle("Example Series", "example series", 2010, "series", ["Drama"]);
         var yearlessTitle = CreateTitle("Year Unknown", "year unknown", null, "movie", ["Drama"]);
-        olderTitle.ImdbRating = 1.2m;
-        newerTitle.ImdbRating = 1.3m;
-        newerTitle.Genres = ["Drama"];
-        newerTitle.Countries = ["Canada"];
-        seriesTitle.ImdbRating = 1.4m;
         db.ImdbTitles.AddRange(
             new ImdbTitle
             {
@@ -186,6 +181,7 @@ public sealed class CatalogEndpointsApiTests
         var seenAt = year is { } knownYear
             ? new DateTimeOffset(knownYear, 1, 1, 0, 0, 0, TimeSpan.Zero)
             : new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var imdbId = year is { } imdbYear ? $"tt{imdbYear}" : null;
         return new Title
         {
             TitleText = title,
@@ -194,11 +190,11 @@ public sealed class CatalogEndpointsApiTests
             MediaType = mediaType,
             SourceType = mediaType,
             ContentKind = "standard",
-            ImdbId = year is { } imdbYear ? $"tt{imdbYear}" : null,
-            ImdbRating = 8.0m,
-            ImdbVotes = 1000,
-            Genres = genres,
-            Countries = ["USA"],
+            ImdbId = imdbId,
+            ImdbRating = imdbId is null ? 8.0m : null,
+            ImdbVotes = imdbId is null ? 1000 : null,
+            Genres = imdbId is null ? genres : Array.Empty<string>(),
+            Countries = imdbId is null ? ["USA"] : Array.Empty<string>(),
             FirstSeenAt = seenAt,
             LastSeenAt = seenAt,
             UpdatedAt = seenAt

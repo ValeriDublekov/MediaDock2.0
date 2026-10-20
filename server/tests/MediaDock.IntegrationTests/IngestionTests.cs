@@ -499,6 +499,69 @@ public sealed class IngestionTests
     }
 
     [Fact]
+    [Trait("Category", "Ingestion")]
+    public async Task UpsertMovesLocalFallbackToSharedMetadataWhenImdbIdIsAdded()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_metadata_promotion_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+
+        var now = new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero);
+        var source = new Source
+        {
+            StableKey = "movies-metadata-promotion",
+            Name = "Movies",
+            FeedType = "movie",
+            Url = SuccessfulFeedUrl
+        };
+        var localTitle = new Title
+        {
+            TitleText = "Shared Film",
+            NormalizedTitle = "shared film",
+            Year = 2020,
+            MediaType = "movie",
+            ImdbRating = 6.4m,
+            Genres = ["Drama"],
+            Plot = "Local fallback plot.",
+            FirstSeenAt = now,
+            LastSeenAt = now,
+            UpdatedAt = now
+        };
+        db.Sources.Add(source);
+        db.Titles.Add(localTitle);
+        await db.SaveChangesAsync();
+
+        var feedItem = new IngestionFeedItem(
+            "Shared Film (2020)",
+            "metadata-promotion",
+            "https://feed.example/topic/metadata-promotion",
+            now);
+        var result = await new PostgresRssIngestionRepository(db).UpsertCatalogItemAsync(
+            new IngestionSource(source.Id, "Movies", "movie", source.Url),
+            feedItem,
+            SourceItemIdentity.From(feedItem.FeedEntryId, feedItem.TorrentUrl),
+            "metadata-promotion-fingerprint",
+            RutrackerTitleParser.Parse(feedItem.Title, "movie"),
+            CreateMetadata("Shared Film", 2020, "tt22222222"),
+            now);
+
+        Assert.False(result.TitleCreated);
+        Assert.Equal("tt22222222", localTitle.ImdbId);
+        Assert.Null(localTitle.ImdbRating);
+        Assert.Empty(localTitle.Genres);
+        Assert.Null(localTitle.Plot);
+        var sharedMetadata = await db.ImdbTitles.AsNoTracking().SingleAsync(title => title.ImdbId == "tt22222222");
+        Assert.Equal(6.4m, sharedMetadata.ImdbRating);
+        Assert.Equal(new[] { "Drama" }, sharedMetadata.Genres);
+        Assert.Equal("Local fallback plot.", sharedMetadata.Plot);
+    }
+
+    [Fact]
     public async Task ConcurrentUpsertsForOneImdbIdReuseTheCanonicalTitle()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_concurrency_test").Build();

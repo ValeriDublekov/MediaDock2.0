@@ -202,11 +202,12 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
                 ? null
                 : (await ImdbTitleMetadataMapper.EnsureAsync(
                     dbContext, [canonicalImdbId], observedAt, cancellationToken))[canonicalImdbId];
-            TitleMetadataMapper.Apply(title, metadata, observedAt);
             if (imdbTitle is not null)
             {
                 ImdbTitleMetadataMapper.Apply(imdbTitle, metadata, observedAt);
+                ImdbTitleMetadataMapper.MoveTitleFallbackMetadata(imdbTitle, title);
             }
+            TitleMetadataMapper.Apply(title, metadata, observedAt);
 
             var occurrence = await dbContext.Occurrences.FirstOrDefaultAsync(
                 entity => entity.SourceId == source.Id && entity.SourceItemKey == sourceItemKey,

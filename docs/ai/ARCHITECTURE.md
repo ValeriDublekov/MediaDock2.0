@@ -71,7 +71,7 @@ sequenceDiagram
     Api-->>Browser: Request status
 ```
 
-Optional sign-in is an API/browser/Google flow, not an authorization boundary. See [identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md) for its contracts and [security and operations](SECURITY_AND_OPERATIONS.md) for access and deployment requirements.
+Optional sign-in is an API/browser/Google flow, not an authorization boundary. See [identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md) for its contracts and [security](SECURITY.md) for access and deployment requirements.
 
 ## API-Hosted Ingestion Flow
 
@@ -102,5 +102,5 @@ flowchart TD
     healthy --> migrate["migrate service: tools profile"]
 ```
 
-Compose defines PostgreSQL, the API, and a one-shot migration service; the database healthcheck gates both application services. Normal API startup does not apply migrations, so use the [local runbook](../../README.md) for rollout order. The API serves the bundled React client in Production; build details are in the [server Dockerfile](../../server/Dockerfile). Health-route contracts and network policy are documented in [operations and jobs](API_OPERATIONS_AND_JOBS.md) and [security and operations](SECURITY_AND_OPERATIONS.md).
+Compose defines PostgreSQL, the API, and a one-shot migration service; the database healthcheck gates both application services. Normal API startup does not apply migrations, so use the [local runbook](../../README.md) for rollout order. The API serves the bundled React client in Production; build details are in the [server Dockerfile](../../server/Dockerfile). Health-route contracts and network policy are documented in [operations and jobs](API_OPERATIONS_AND_JOBS.md) and [security](SECURITY.md).
 

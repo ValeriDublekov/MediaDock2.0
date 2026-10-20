@@ -14,6 +14,9 @@ internal sealed class TitleConfiguration : IEntityTypeConfiguration<Title>
             table.HasCheckConstraint("ck_titles_source_type", "source_type IS NULL OR source_type IN ('movie', 'series')");
             table.HasCheckConstraint("ck_titles_content_kind", "content_kind IS NULL OR content_kind IN ('standard', 'documentary', 'short')");
             table.HasCheckConstraint(
+                "ck_titles_provider_metadata_without_imdb_id",
+                "imdb_id IS NULL OR (imdb_rating IS NULL AND imdb_votes IS NULL AND metascore IS NULL AND cardinality(genres) = 0 AND cardinality(countries) = 0 AND NULLIF(btrim(director), '') IS NULL AND NULLIF(btrim(plot), '') IS NULL AND NULLIF(btrim(poster_url), '') IS NULL AND NULLIF(btrim(runtime), '') IS NULL AND NULLIF(btrim(awards), '') IS NULL AND NULLIF(btrim(box_office), '') IS NULL)");
+            table.HasCheckConstraint(
                 "ck_titles_seen_range",
                 "(first_seen_at IS NULL AND last_seen_at IS NULL) OR (first_seen_at IS NOT NULL AND last_seen_at IS NOT NULL AND first_seen_at <= last_seen_at)");
         });

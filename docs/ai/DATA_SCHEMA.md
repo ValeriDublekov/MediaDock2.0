@@ -7,7 +7,7 @@ Compact map of the PostgreSQL persistence model in `server/`. This is an orienta
 | Table | Entity | Purpose |
 | --- | --- | --- |
 | `imdb_titles` | [`ImdbTitle`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/ImdbTitle.cs) | Canonical shared OMDb metadata and enrichment state for a normalized IMDb ID. |
-| `titles` | [`Title`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Title.cs) | Catalog titles and torrent-observation dates; holds metadata fallback when no IMDb ID is available. |
+| `titles` | [`Title`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Title.cs) | Catalog identity and torrent-observation dates; holds provider-detail fallback only when no IMDb ID is available. |
 | `sources` | [`Source`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Source.cs) | One RSS URL per configured source profile. |
 | `rss_item_states` | [`RssItemProcessingState`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/RssItemProcessingState.cs) | Fingerprint and disposition for each source/feed-item identity. |
 | `occurrences` | [`Occurrence`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Occurrence.cs) | RSS observations connecting a title to a source. |
@@ -34,6 +34,7 @@ Compact map of the PostgreSQL persistence model in `server/`. This is an orienta
 
 - Most entity tables use generated `bigint` IDs. Exceptions include `imdb_titles` keyed by normalized IMDb ID, `omdb_daily_usage` keyed by UTC date, owner-scoped composite keys for favorites and ratings, and the scheduler singleton key.
 - `imdb_titles` is the shared metadata owner when an IMDb ID is known. `titles`, Oscar films, and Golden Globes nominations may reference it; personal ratings require it and have no `titles` foreign key. `metadata_cache` is temporary resolver state, not canonical data.
+- `titles` provider-detail fields are allowed only when `imdb_id` is null. `ck_titles_provider_metadata_without_imdb_id` enforces this; title text, year, and media type remain catalog identity/display fields. `EnforceTitleMetadataOwnership` backfills missing shared values, preserves already populated canonical values, clears linked copies, and leaves IMDb-less fallback untouched.
 - `titles.imdb_id` is unique when present, but title/year/type fallback matching is deliberately non-unique. Matching must not merge records with conflicting non-null IMDb IDs. The additive [`AddSharedImdbTitles`](../../server/src/MediaDock.Infrastructure/Persistence/Migrations/20261016160138_AddSharedImdbTitles.cs) migration normalizes and consolidates existing references, preserves title-local metadata without an IMDb ID, and makes no provider requests; see [Data contracts](DATA_CONTRACTS.md) for rollout cautions.
 - Favorites and ratings are keyed by owner plus title/IMDb ID. Foreign keys are restrictive except job events, which cascade with their job. OIDC issuer/subject pairs are unique; partial unique indexes also enforce one pending registration per user and prevent duplicate scheduled or active jobs.
 - Database checks enforce supported type/status values, job lifecycle and ownership shape, rating bounds, user role/status combinations, and valid timestamp/count ranges. The settings row is constrained to `id = 1`; legacy Oscar-specific setting columns remain but are ignored.

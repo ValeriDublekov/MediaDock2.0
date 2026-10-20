@@ -133,13 +133,22 @@ public sealed class OscarDatasetImporterTests
             SourceType = "movie",
             ContentKind = "standard",
             ImdbId = "tt12300742",
-            ImdbRating = 8.4m,
-            ImdbVotes = 42000,
-            Director = "Existing OMDb director",
-            Plot = "Keep this OMDb plot.",
             FirstSeenAt = now.AddDays(-3),
             LastSeenAt = now.AddDays(-2),
             UpdatedAt = now.AddDays(-1)
+        });
+        db.Titles.Add(new Title
+        {
+            TitleText = "New Film",
+            NormalizedTitle = "new film",
+            Year = 2025,
+            MediaType = "movie",
+            SourceType = "movie",
+            ContentKind = "standard",
+            ImdbRating = 6.2m,
+            Genres = ["Drama"],
+            Plot = "Local fallback plot.",
+            UpdatedAt = now.AddDays(-2)
         });
         await db.SaveChangesAsync();
 
@@ -165,7 +174,7 @@ public sealed class OscarDatasetImporterTests
             Assert.Equal(1, firstImport.RowsSkippedByYear);
             Assert.Equal(1, firstImport.RowsSkippedByCategory);
             Assert.Equal(0, firstImport.RowsSkippedWithoutFilm);
-            Assert.Equal(1, firstImport.TitlesCreated);
+            Assert.Equal(0, firstImport.TitlesCreated);
             Assert.Equal(2, firstImport.OscarFilmsCreated);
             Assert.Equal(5, firstImport.NominationsCreated);
             Assert.Equal(0, firstImport.NominationsUpdated);
@@ -174,9 +183,11 @@ public sealed class OscarDatasetImporterTests
             Assert.Empty(await db.Occurrences.ToListAsync());
 
             var existingTitle = await db.Titles.SingleAsync(title => title.ImdbId == "tt12300742");
-            Assert.Equal(8.4m, existingTitle.ImdbRating);
-            Assert.Equal("Existing OMDb director", existingTitle.Director);
-            Assert.Equal("Keep this OMDb plot.", existingTitle.Plot);
+            Assert.Null(existingTitle.ImdbRating);
+            Assert.Null(existingTitle.ImdbVotes);
+            Assert.Empty(existingTitle.Genres);
+            Assert.Null(existingTitle.Director);
+            Assert.Null(existingTitle.Plot);
             var existingMetadata = await db.ImdbTitles.SingleAsync(title => title.ImdbId == "tt12300742");
             Assert.Equal(8.4m, existingMetadata.ImdbRating);
             Assert.Equal(42000, existingMetadata.ImdbVotes);
@@ -188,15 +199,21 @@ public sealed class OscarDatasetImporterTests
             Assert.Equal("New Film", placeholder.TitleText);
             Assert.Equal(2025, placeholder.Year);
             Assert.Null(placeholder.ImdbRating);
+            Assert.Empty(placeholder.Genres);
+            Assert.Null(placeholder.Plot);
             Assert.Null(placeholder.FirstSeenAt);
             Assert.Null(placeholder.LastSeenAt);
-            Assert.Equal("pending", (await db.ImdbTitles.SingleAsync(title => title.ImdbId == "tt9999999")).MetadataStatus);
+            var placeholderMetadata = await db.ImdbTitles.SingleAsync(title => title.ImdbId == "tt9999999");
+            Assert.Equal(6.2m, placeholderMetadata.ImdbRating);
+            Assert.Equal(new[] { "Drama" }, placeholderMetadata.Genres);
+            Assert.Equal("Local fallback plot.", placeholderMetadata.Plot);
+            Assert.Equal("enriched", placeholderMetadata.MetadataStatus);
 
             var importedFilm = await db.OscarFilms.SingleAsync(film => film.ImdbId == "tt9999999");
             importedFilm.EnrichmentStatus = "enriched";
             importedFilm.EnrichmentAttemptCount = 1;
-            placeholder.ImdbRating = 7.6m;
-            placeholder.Plot = "Added later by OMDb.";
+            placeholderMetadata.ImdbRating = 7.6m;
+            placeholderMetadata.Plot = "Added later by OMDb.";
             await db.SaveChangesAsync();
 
             var secondImport = await importer.ImportAsync(csvPath);
@@ -210,8 +227,11 @@ public sealed class OscarDatasetImporterTests
             Assert.Equal(5, await db.OscarNominations.CountAsync());
 
             var preservedTitle = await db.Titles.SingleAsync(title => title.ImdbId == "tt9999999");
-            Assert.Equal(7.6m, preservedTitle.ImdbRating);
-            Assert.Equal("Added later by OMDb.", preservedTitle.Plot);
+            Assert.Null(preservedTitle.ImdbRating);
+            Assert.Null(preservedTitle.Plot);
+            var preservedMetadata = await db.ImdbTitles.SingleAsync(title => title.ImdbId == "tt9999999");
+            Assert.Equal(7.6m, preservedMetadata.ImdbRating);
+            Assert.Equal("Added later by OMDb.", preservedMetadata.Plot);
             var preservedFilm = await db.OscarFilms.SingleAsync(film => film.ImdbId == "tt9999999");
             Assert.Equal("enriched", preservedFilm.EnrichmentStatus);
             Assert.Equal(1, preservedFilm.EnrichmentAttemptCount);

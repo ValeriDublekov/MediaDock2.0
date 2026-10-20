@@ -3,32 +3,30 @@
 Date: 2026-10-19
 Scope: Static review of EF entities/configurations, migrations, and selected persistence/read paths. This does not include live database row counts, production query plans, or a schema change.
 
-Disposition: Dated review, not routine task guidance. All four findings remain open as of 2026-10-19; no proposed source or schema changes have been implemented or validated by this review.
+Disposition: Dated review, not routine task guidance. Finding 1 has since been implemented in repository source and a forward migration; findings 2-4 remain open as of 2026-10-20. No live database row counts or production query plans were inspected, and the migration has not been deployed.
 
 | Finding | Status | Pending disposition |
 | --- | --- | --- |
-| 1. Overlapping `titles` and `imdb_titles` metadata | Open | Define field ownership and measure fallback/mismatch rows before choosing a migration. |
+| 1. Overlapping `titles` and `imdb_titles` metadata | Implemented in source; deployment pending | Apply `EnforceTitleMetadataOwnership` through the staged migration process. Canonical values win conflicts; no live row audit was performed. |
 | 2. Golden Globes reads expiring cache data | Open | Change the read path and add the expired/missing-cache integration case. |
 | 3. Oscar film identity lacks a database consistency rule | Open | Decide whether the IMDb ID is source or canonical identity, then document/enforce that invariant. |
 | 4. Search and array-filter indexes are unmeasured | Open | Collect representative production-like query plans before considering indexes. |
 
 ## Summary
 
-The schema is not broadly incoherent: shared IMDb metadata, owner-scoped ratings/favorites, source-specific award records, and most lifecycle invariants have clear ownership and database constraints. The main weakness is an incomplete transition from metadata stored on `titles` to the shared `imdb_titles` table. There is also a concrete read-path inconsistency in the Golden Globes catalog, which uses expiring cache data despite having a persistent canonical IMDb row.
+The schema is not broadly incoherent: shared IMDb metadata, owner-scoped ratings/favorites, source-specific award records, and most lifecycle invariants have clear ownership and database constraints. The incomplete transition from metadata stored on `titles` to `imdb_titles` is now addressed in source by a data-preserving ownership migration and a database check. There is also a concrete read-path inconsistency in the Golden Globes catalog, which uses expiring cache data despite having a persistent canonical IMDb row.
 
 ## Findings
 
 ### 1. `titles` and `imdb_titles` have overlapping metadata ownership
 
-`Title` and `ImdbTitle` both define `TitleText`, `Year`, `MediaType`, `ImdbRating`, `ImdbVotes`, `Metascore`, `Genres`, `Countries`, `Director`, `Plot`, `PosterUrl`, `Runtime`, `Awards`, and `BoxOffice`. The last eleven are provider metadata; the first three may also represent local catalog identity, so they should not be merged without confirming their semantics.
+`Title` and `ImdbTitle` both define `TitleText`, `Year`, `MediaType`, `ImdbRating`, `ImdbVotes`, `Metascore`, `Genres`, `Countries`, `Director`, `Plot`, `PosterUrl`, `Runtime`, `Awards`, and `BoxOffice`. The provider-detail fields belong to `imdb_titles` when an IMDb ID is known and remain on `titles` only as fallback when it is absent. `TitleText`, `Year`, and `MediaType` on `titles` remain catalog identity/display fields and are intentionally not removed or synchronized away.
 
-The shared-IMDb migration selects the latest ID-backed `titles` row and copies its metadata into `imdb_titles`, but leaves the original columns in `titles`. The current RSS upsert ensures and updates `imdb_titles` when an IMDb ID is known. `TitleMetadataMapper` only writes the provider-detail fields to `Title` when it has no IMDb ID. Catalog reads prefer `ImdbTitle` for those details when linked and fall back to `Title` when it is not. This means the duplicate columns have a real fallback purpose, but legacy ID-backed rows can retain stale copies and the schema does not express which copy is authoritative.
+`AddSharedImdbTitles` initially copied linked metadata but left the copies on `titles`. `EnforceTitleMetadataOwnership` now fills missing shared provider fields from linked titles, preserves already populated canonical values when copies differ, clears provider details from linked `titles`, and adds `ck_titles_provider_metadata_without_imdb_id`. RSS ingestion and Oscar import/enrichment move any remaining fallback details into missing shared fields before linking a title. IMDb-less fallback remains in place.
 
-**Risk:** unnecessary storage is the smaller cost; the larger one is parallel sources of truth, conditional read logic, and a future migration that could accidentally discard metadata for IMDb-less titles. `TitleText`, `Year`, and `MediaType` also appear on both entities while catalog display/filtering uses the `Title` values. They may intentionally describe the catalog record rather than the canonical IMDb record, but that distinction is not enforced by the schema.
+**Implementation caveat:** no live data audit was performed. When a legacy linked copy conflicts with a populated `imdb_titles` value, the canonical value wins. Validate the forward migration in staging before deployment.
 
-**Recommendation:** first define field ownership. Keep `imdb_titles` authoritative for shared provider metadata. Keep catalog identity and observation fields on `titles`. Measure (a) ID-linked rows whose duplicate provider fields differ and (b) IMDb-less rows that still need local metadata. If local fallback remains necessary, consider moving it to an optional one-to-one `title_metadata` table keyed by `title_id`; otherwise clear/backfill the legacy copies and remove the unused columns in a data-preserving migration. Do not drop the fields before the two counts and fallback behavior are verified.
-
-Relevant paths: [Title](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Title.cs), [ImdbTitle](../../server/src/MediaDock.Infrastructure/Persistence/Entities/ImdbTitle.cs), [TitleConfiguration](../../server/src/MediaDock.Infrastructure/Persistence/Configurations/CatalogConfigurations.cs), [ImdbTitleConfiguration](../../server/src/MediaDock.Infrastructure/Persistence/Configurations/ImdbTitleConfiguration.cs), [shared IMDb migration](../../server/src/MediaDock.Infrastructure/Persistence/Migrations/20261016160138_AddSharedImdbTitles.cs), [RSS upsert](../../server/src/MediaDock.Infrastructure/Ingestion/PostgresRssIngestionRepository.cs), [catalog reads](../../server/src/MediaDock.Api/Catalog/CatalogApiService.cs).
+Relevant paths: [Title](../../server/src/MediaDock.Infrastructure/Persistence/Entities/Title.cs), [ImdbTitle](../../server/src/MediaDock.Infrastructure/Persistence/Entities/ImdbTitle.cs), [TitleConfiguration](../../server/src/MediaDock.Infrastructure/Persistence/Configurations/CatalogConfigurations.cs), [ImdbTitleConfiguration](../../server/src/MediaDock.Infrastructure/Persistence/Configurations/ImdbTitleConfiguration.cs), [shared IMDb migration](../../server/src/MediaDock.Infrastructure/Persistence/Migrations/20261016160138_AddSharedImdbTitles.cs), [ownership migration](../../server/src/MediaDock.Infrastructure/Persistence/Migrations/20261020122556_EnforceTitleMetadataOwnership.cs), [title metadata mapper](../../server/src/MediaDock.Infrastructure/Metadata/TitleMetadataMapper.cs), [RSS upsert](../../server/src/MediaDock.Infrastructure/Ingestion/PostgresRssIngestionRepository.cs), [catalog reads](../../server/src/MediaDock.Api/Catalog/CatalogApiService.cs).
 
 ### 2. Golden Globes reads expiring cache instead of canonical metadata
 

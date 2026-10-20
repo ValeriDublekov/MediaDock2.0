@@ -18,8 +18,8 @@ Start here for work in this repository. Use the [local operations runbook](../..
 | Tests | [Testing](TESTING.md) for scoped commands, test categories, required dependencies, runner artifacts, file line inventory, and Markdown link validation. |
 | AI workflow | [Workflow efficiency plan](WORKFLOW_EFFICIENCY_PLAN.md) for linked multi-phase plans and focused verification; [documentation cleanup plan](DOCUMENTATION_CLEANUP_PLAN.md) for reducing duplicated reference content. |
 | Engineering follow-ups | [Technical follow-ups](TECHNICAL_FOLLOW_UPS.md) for pending database-model and source-refactoring decisions, with links to the dated assessments. |
-| Operations | [Server access](SERVER_ACCESS.md) for the local SSH profile and session workflow; [Security and operations](SECURITY_AND_OPERATIONS.md) for runtime boundaries; the [local runbook](../../README.md) for setup and maintenance. |
+| Operations | [Server access](SERVER_ACCESS.md) for the local SSH profile and session workflow; [Security](SECURITY.md) for trust boundaries, authorization, and secrets; [Operations](OPERATIONS.md) for migration safeguards; the [local runbook](../../README.md) for setup and maintenance. |
 
 ## Current Status
 
-Use the [local runbook](../../README.md) and [security and operations guide](SECURITY_AND_OPERATIONS.md) for operator procedures and deployment gates. Verify production state on the host; repository source and documentation do not prove what is deployed.
+Use the [local runbook](../../README.md) and [operations guide](OPERATIONS.md) for operator procedures and deployment gates; see the [security guide](SECURITY.md) for runtime boundaries. Verify production state on the host; repository source and documentation do not prove what is deployed.

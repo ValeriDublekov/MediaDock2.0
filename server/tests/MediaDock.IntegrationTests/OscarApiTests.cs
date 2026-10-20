@@ -67,8 +67,6 @@ public sealed class OscarApiTests
             CreateFilm("year-bounds-2021", "Year Bounds Example", 2021, "pending", now, null,
                 CreateNomination("year-bounds-sound", 93, "SOUND", "Sound", "Sound Team", false))
         };
-        films[0].Title.ImdbRating = 1.0m;
-        films[0].Title.PosterUrl = "https://example.test/local-oppenheimer.jpg";
         db.ImdbTitles.Add(new ImdbTitle
         {
             ImdbId = "tt15398776",
@@ -234,7 +232,7 @@ public sealed class OscarApiTests
                 SourceType = "movie",
                 ContentKind = "standard",
                 ImdbId = stableKey == "oppenheimer-2023" ? "tt15398776" : null,
-                ImdbRating = imdbRating,
+                ImdbRating = stableKey == "oppenheimer-2023" ? null : imdbRating,
                 UpdatedAt = now
             },
             Nominations = nominations

@@ -39,6 +39,10 @@ internal static class TitleMetadataMapper
             title.Awards = metadata.Awards;
             title.BoxOffice = metadata.BoxOffice;
         }
+        else
+        {
+            ClearProviderMetadata(title);
+        }
         if (updateLastSeenAt)
         {
             title.FirstSeenAt ??= updatedAt;
@@ -46,6 +50,21 @@ internal static class TitleMetadataMapper
         }
 
         title.UpdatedAt = updatedAt;
+    }
+
+    internal static void ClearProviderMetadata(Title title)
+    {
+        title.ImdbRating = null;
+        title.ImdbVotes = null;
+        title.Metascore = null;
+        title.Genres = Array.Empty<string>();
+        title.Countries = Array.Empty<string>();
+        title.Director = null;
+        title.Plot = null;
+        title.PosterUrl = null;
+        title.Runtime = null;
+        title.Awards = null;
+        title.BoxOffice = null;
     }
 
     public static string NormalizeTitle(string title) =>

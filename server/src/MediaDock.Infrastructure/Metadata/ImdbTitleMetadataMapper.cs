@@ -76,4 +76,47 @@ public static class ImdbTitleMetadataMapper
         title.LastEnrichmentError = null;
         title.UpdatedAt = updatedAt;
     }
+
+    public static void MoveTitleFallbackMetadata(ImdbTitle imdbTitle, Title title)
+    {
+        var titleImdbId = ImdbIdNormalizer.Normalize(title.ImdbId);
+        if (titleImdbId is not null && titleImdbId != imdbTitle.ImdbId)
+        {
+            throw new InvalidOperationException("Title fallback metadata identity conflicts with its canonical row.");
+        }
+
+        var hasMetadata = title.ImdbRating.HasValue
+            || title.ImdbVotes.HasValue
+            || title.Metascore.HasValue
+            || title.Genres.Length > 0
+            || title.Countries.Length > 0
+            || !string.IsNullOrWhiteSpace(title.Director)
+            || !string.IsNullOrWhiteSpace(title.Plot)
+            || !string.IsNullOrWhiteSpace(title.PosterUrl)
+            || !string.IsNullOrWhiteSpace(title.Runtime)
+            || !string.IsNullOrWhiteSpace(title.Awards)
+            || !string.IsNullOrWhiteSpace(title.BoxOffice);
+
+        imdbTitle.ImdbRating ??= title.ImdbRating;
+        imdbTitle.ImdbVotes ??= title.ImdbVotes;
+        imdbTitle.Metascore ??= title.Metascore;
+        if (imdbTitle.Genres.Length == 0 && title.Genres.Length > 0) imdbTitle.Genres = title.Genres;
+        if (imdbTitle.Countries.Length == 0 && title.Countries.Length > 0) imdbTitle.Countries = title.Countries;
+        if (string.IsNullOrWhiteSpace(imdbTitle.Director)) imdbTitle.Director = title.Director;
+        if (string.IsNullOrWhiteSpace(imdbTitle.Plot)) imdbTitle.Plot = title.Plot;
+        if (string.IsNullOrWhiteSpace(imdbTitle.PosterUrl)) imdbTitle.PosterUrl = title.PosterUrl;
+        if (string.IsNullOrWhiteSpace(imdbTitle.Runtime)) imdbTitle.Runtime = title.Runtime;
+        if (string.IsNullOrWhiteSpace(imdbTitle.Awards)) imdbTitle.Awards = title.Awards;
+        if (string.IsNullOrWhiteSpace(imdbTitle.BoxOffice)) imdbTitle.BoxOffice = title.BoxOffice;
+
+        if (hasMetadata)
+        {
+            imdbTitle.MetadataStatus = "enriched";
+            imdbTitle.NextEnrichmentAttemptAt = null;
+            imdbTitle.LastEnrichmentError = null;
+            if (title.UpdatedAt > imdbTitle.UpdatedAt) imdbTitle.UpdatedAt = title.UpdatedAt;
+        }
+
+        TitleMetadataMapper.ClearProviderMetadata(title);
+    }
 }

@@ -90,7 +90,7 @@ public sealed class OscarDatasetImporter(MediaDockDbContext dbContext)
                 })
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
-            await ImdbTitleMetadataMapper.EnsureAsync(
+            var imdbTitlesById = await ImdbTitleMetadataMapper.EnsureAsync(
                 dbContext, preparedRows.Select(row => row.Row.ImdbId), now, cancellationToken);
             var oscarFilms = await dbContext.OscarFilms
                 .Include(film => film.Title)
@@ -169,6 +169,12 @@ public sealed class OscarDatasetImporter(MediaDockDbContext dbContext)
                 else
                 {
                     FillMissingTitleFields(title, row, prepared.NormalizedTitle, now);
+                }
+
+                var imdbId = ImdbIdNormalizer.Normalize(row.ImdbId);
+                if (imdbId is not null)
+                {
+                    ImdbTitleMetadataMapper.MoveTitleFallbackMetadata(imdbTitlesById[imdbId], title);
                 }
 
                 if (oscarFilm is null)

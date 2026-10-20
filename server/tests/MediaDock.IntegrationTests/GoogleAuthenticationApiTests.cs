@@ -91,8 +91,6 @@ public sealed class GoogleAuthenticationApiTests
                     Year = 2025,
                     MediaType = "movie",
                     ImdbId = "tt12345678",
-                    ImdbRating = 1.0m,
-                    PosterUrl = "https://example.test/local-shared.jpg",
                     FirstSeenAt = now,
                     LastSeenAt = now,
                     UpdatedAt = now
