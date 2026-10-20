@@ -115,7 +115,7 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
             imdbRatingBounds);
     }
 
-    private async Task<(Dictionary<string, MetadataDetails?> MetadataByFilmId, ImdbRatingBounds? Bounds)> GetRatingMetadataAsync(
+    private async Task<(Dictionary<string, ImdbTitle?> MetadataByFilmId, ImdbRatingBounds? Bounds)> GetRatingMetadataAsync(
         CancellationToken cancellationToken)
     {
         var nominations = await dbContext.GoldenGlobeNominations
@@ -147,44 +147,17 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
         var eligibleFilms = films
             .Where(film => film.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched && film.ImdbId is not null)
             .ToArray();
-        var lookupTitles = eligibleFilms
-            .Where(film => !film.IsImdbIdManual)
-            .Select(film => NormalizeTitle(film.Title))
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-        var lookupIds = eligibleFilms
+        var imdbIds = eligibleFilms
             .Select(film => film.ImdbId!)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        var now = timeProvider.GetUtcNow();
-        var cacheRows = await dbContext.MetadataCache
+        var metadataById = await dbContext.ImdbTitles
             .AsNoTracking()
-            .Where(entry => entry.ExpiresAt > now
-                && ((entry.Status == "found" && entry.LookupIdentity != null && lookupIds.Contains(entry.LookupIdentity))
-                    || ((entry.Status == "found" || entry.Status == "confirmed_not_found") && lookupTitles.Contains(entry.LookupTitle))))
-            .Select(entry => new CachedGoldenGlobeMetadata(
-                entry.LookupTitle,
-                entry.LookupIdentity,
-                entry.SourceType,
-                entry.Status,
-                entry.PayloadJson,
-                entry.FetchedAt))
-            .ToListAsync(cancellationToken);
-        var metadataByTitle = cacheRows
-            .Where(entry => entry.Status is "found" or "confirmed_not_found" && lookupTitles.Contains(entry.LookupTitle))
-            .GroupBy(entry => (entry.LookupTitle, entry.SourceType))
-            .ToDictionary(
-                group => group.Key,
-                group => ReadCachedMetadata(group.OrderByDescending(entry => entry.FetchedAt).First()));
-        var metadataById = cacheRows
-            .Where(entry => entry.Status == "found" && entry.LookupIdentity is not null)
-            .GroupBy(entry => (LookupIdentity: entry.LookupIdentity!, entry.SourceType))
-            .ToDictionary(
-                group => group.Key,
-                group => ReadCachedMetadata(group.OrderByDescending(entry => entry.FetchedAt).First()));
+            .Where(title => imdbIds.Contains(title.ImdbId))
+            .ToDictionaryAsync(title => title.ImdbId, cancellationToken);
         var metadataByFilmId = films.ToDictionary(
             film => film.FilmId,
-            film => ResolveMetadata(film, metadataByTitle, metadataById));
+            film => ResolveMetadata(film, metadataById));
         var ratings = metadataByFilmId.Values
             .Where(metadata => metadata?.ImdbRating is not null)
             .Select(metadata => metadata!.ImdbRating!.Value)
@@ -201,45 +174,30 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
             .OrderBy(award => award)
             .ToArrayAsync(cancellationToken);
 
-    private static MetadataDetails? ResolveMetadata(
+    private static ImdbTitle? ResolveMetadata(
         GoldenGlobeRatingGroup film,
-        IReadOnlyDictionary<(string LookupTitle, string SourceType), MetadataDetails?> metadataByTitle,
-        IReadOnlyDictionary<(string LookupIdentity, string SourceType), MetadataDetails?> metadataById)
+        IReadOnlyDictionary<string, ImdbTitle> metadataById)
     {
         if (film.EnrichmentStatus != GoldenGlobeEnrichmentStatuses.Enriched || film.ImdbId is null)
             return null;
 
-        if (film.IsImdbIdManual)
-        {
-            return metadataById.TryGetValue((film.ImdbId, film.NomineeType), out var manualMetadata)
-                ? GetMatchingMetadata(film, manualMetadata)
-                : null;
-        }
+        if (!metadataById.TryGetValue(film.ImdbId, out var metadata))
+            return null;
 
-        var titleKey = (NormalizeTitle(film.Title), film.NomineeType);
-        var titleMetadata = metadataByTitle.TryGetValue(titleKey, out var cachedTitleMetadata)
-            ? GetMatchingMetadata(film, cachedTitleMetadata)
-            : null;
-        if (titleMetadata is not null)
-            return titleMetadata;
-
-        return metadataById.TryGetValue((film.ImdbId, film.NomineeType), out var idMetadata)
-            ? GetMatchingMetadata(film, idMetadata)
+        var sourceType = GetSourceType(metadata.MediaType);
+        return string.Equals(film.ImdbId, ImdbIdNormalizer.Normalize(metadata.ImdbId), StringComparison.Ordinal)
+            && (string.Equals(film.NomineeType, sourceType, StringComparison.Ordinal)
+                || (film.IsImdbIdManual && sourceType is "movie" or "series"))
+            ? metadata
             : null;
     }
 
-    private static MetadataDetails? GetMatchingMetadata(GoldenGlobeRatingGroup film, MetadataDetails? metadata) =>
-        metadata is { } candidate
-        && string.Equals(film.ImdbId, ImdbIdNormalizer.Normalize(candidate.ImdbId), StringComparison.Ordinal)
-        && (string.Equals(film.NomineeType, candidate.SourceType, StringComparison.Ordinal)
-            || (film.IsImdbIdManual && candidate.SourceType is ("movie" or "series")))
-            ? candidate
-            : null;
-
-    private static MetadataDetails? ReadCachedMetadata(CachedGoldenGlobeMetadata entry) =>
-        entry.Status == "found" && !string.IsNullOrWhiteSpace(entry.PayloadJson)
-            ? JsonSerializer.Deserialize<MetadataDetails>(entry.PayloadJson)
-            : null;
+    private static string? GetSourceType(string? mediaType) => mediaType?.Trim().ToLowerInvariant() switch
+    {
+        "movie" or "documentary" or "short" => "movie",
+        "series" => "series",
+        _ => null
+    };
 
     public async Task<GoldenGlobeImdbLinkResponse> SetImdbIdAsync(
         GoldenGlobeImdbLinkRequest request,
@@ -401,9 +359,6 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
         return GoldenGlobeEnrichmentStatuses.Pending;
     }
 
-    private static string NormalizeTitle(string title) =>
-        string.Join(' ', title.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
-
     private sealed record GoldenGlobeRatingGroup(
         string FilmId,
         string Title,
@@ -413,11 +368,4 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
         bool IsImdbIdManual,
         string EnrichmentStatus);
 
-    private sealed record CachedGoldenGlobeMetadata(
-        string LookupTitle,
-        string? LookupIdentity,
-        string SourceType,
-        string Status,
-        string? PayloadJson,
-        DateTimeOffset FetchedAt);
 }

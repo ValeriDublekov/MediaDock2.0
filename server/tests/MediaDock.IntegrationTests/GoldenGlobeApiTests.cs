@@ -39,11 +39,11 @@ public sealed class GoldenGlobeApiTests
                 "manual-type-mismatch", "Manual Type Mismatch", 2025, false, "tt76543210", bestPicture, "enriched", "series");
             manualTypeMismatch.IsImdbIdManual = true;
             db.ImdbTitles.AddRange(
-                new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = DateTimeOffset.UtcNow },
-                new ImdbTitle { ImdbId = "tt87654321", UpdatedAt = DateTimeOffset.UtcNow },
-                new ImdbTitle { ImdbId = "tt8749198", UpdatedAt = DateTimeOffset.UtcNow },
-                new ImdbTitle { ImdbId = "tt32345678", UpdatedAt = DateTimeOffset.UtcNow },
-                new ImdbTitle { ImdbId = "tt76543210", UpdatedAt = DateTimeOffset.UtcNow });
+                CreateImdbTitle("tt12345678", "movie", 8.0m, "https://example.test/a-film.jpg"),
+                CreateImdbTitle("tt87654321", "series", 7.4m, "https://example.test/a-film-series.jpg"),
+                CreateImdbTitle("tt8749198", "series", 8.1m, "https://example.test/daisy.jpg"),
+                CreateImdbTitle("tt32345678", "movie", null, null),
+                CreateImdbTitle("tt76543210", "movie", 6.7m, "https://example.test/manual-type-mismatch.jpg"));
             db.GoldenGlobeNominations.AddRange(
                 CreateNomination("a-picture", "A Film", 2025, true, "tt12345678", bestPicture, "enriched"),
                 CreateNomination("a-director", "A Film", 2025, false, "tt12345678", bestDirector, "enriched"),
@@ -239,6 +239,62 @@ public sealed class GoldenGlobeApiTests
     }
 
     [Fact]
+    public async Task CatalogReadsCanonicalMetadataWhenCacheIsExpiredOrMissing()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_canonical_metadata_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>().UseNpgsql(connectionString).Options;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            var award = new GoldenGlobeAward { Name = "Best Motion Picture" };
+            db.ImdbTitles.AddRange(
+                CreateImdbTitle("tt44556677", "movie", 8.2m, "https://example.test/canonical-film.jpg"),
+                CreateImdbTitle("tt44556678", "movie", 7.6m, "https://example.test/expired-film.jpg"));
+            db.GoldenGlobeNominations.AddRange(
+                CreateNomination("canonical-film", "Canonical Film", 2025, true, "tt44556677", award, "enriched"),
+                CreateNomination("expired-cache-film", "Expired Cache Film", 2024, true, "tt44556678", award, "enriched"));
+            var fetchedAt = DateTimeOffset.UtcNow.AddDays(-30);
+            db.MetadataCache.Add(new MetadataCacheEntry
+            {
+                CacheKey = "expired-golden-globe-film-cache",
+                LookupTitle = "expired cache film",
+                LookupYearSemantics = "title",
+                SourceType = "movie",
+                Status = "found",
+                PayloadJson = JsonSerializer.Serialize(new MetadataDetails(
+                    "Expired Cache Film", 2020, "tt44556678", "movie", "movie", "standard", null,
+                    1.1m, 10, null, [], [], null, null, "https://example.test/stale-film.jpg", null, null, null)),
+                FetchedAt = fetchedAt,
+                ExpiresAt = fetchedAt.AddDays(1)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using var factory = new GoldenGlobesApiFactory(connectionString);
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/api/golden-globes?pageSize=100");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await response.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
+        Assert.NotNull(page);
+        Assert.Equal(new ImdbRatingBounds(7.6m, 8.2m), page.ImdbRatingBounds);
+        Assert.Equal(2, page.Items.Count);
+        var canonicalFilm = page.Items.Single(film => film.Title == "Canonical Film");
+        Assert.Equal(8.2m, canonicalFilm.ImdbRating);
+        Assert.Equal("https://example.test/canonical-film.jpg", canonicalFilm.PosterUrl);
+        var expiredCacheFilm = page.Items.Single(film => film.Title == "Expired Cache Film");
+        Assert.Equal(7.6m, expiredCacheFilm.ImdbRating);
+        Assert.Equal("https://example.test/expired-film.jpg", expiredCacheFilm.PosterUrl);
+
+        using var filteredResponse = await client.GetAsync("/api/golden-globes?imdbRatingFrom=8.2&imdbRatingTo=8.2");
+        Assert.Equal(HttpStatusCode.OK, filteredResponse.StatusCode);
+        var filteredPage = await filteredResponse.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
+        Assert.NotNull(filteredPage);
+        Assert.Equal("Canonical Film", Assert.Single(filteredPage.Items).Title);
+    }
+
+    [Fact]
     public async Task ManualImdbLinkNormalizesQueuesIdempotentlyAndClearsByExactFilmGroup()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_manual_link_test").Build();
@@ -311,6 +367,16 @@ public sealed class GoldenGlobeApiTests
         Assert.Null((await verifyDb.GoldenGlobeNominations.SingleAsync(row => row.ImportKey == "manual-other-year")).ImdbId);
         Assert.Null((await verifyDb.GoldenGlobeNominations.SingleAsync(row => row.ImportKey == "manual-series")).ImdbId);
     }
+
+    private static ImdbTitle CreateImdbTitle(string imdbId, string mediaType, decimal? imdbRating, string? posterUrl) => new()
+    {
+        ImdbId = imdbId,
+        MediaType = mediaType,
+        ImdbRating = imdbRating,
+        PosterUrl = posterUrl,
+        MetadataStatus = "enriched",
+        UpdatedAt = DateTimeOffset.UtcNow
+    };
 
     private static GoldenGlobeNomination CreateNomination(
         string importKey,
