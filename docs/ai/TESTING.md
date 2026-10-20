@@ -38,6 +38,19 @@ python -B scripts/report_file_lines.py
 
 `--min-lines 300` shows files with at least 300 lines. Omitting the option lists every eligible text file.
 
+## Code Complexity Analysis
+
+Lizard reports per-function cyclomatic and cognitive complexity. Install the pinned development dependency into the project virtual environment, then use the helper to print only the highest-scoring functions:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+\.venv\Scripts\python.exe -B scripts\analyze_complexity.py --top 10
+\.venv\Scripts\python.exe -B scripts\analyze_complexity.py --top 10 server/tests
+\.venv\Scripts\python.exe -B scripts\analyze_complexity.py --top 5 server\src\MediaDock.Application\Metadata\MetadataResolver.cs
+```
+
+With no path, the helper analyzes `server/src` and `web/src`; a file or directory path narrows the scan. The `--top` default is 10. Build output and generated EF migration files are excluded. Treat high scores as review signals, not automatic refactoring requirements, and consider them together with function length, parameters, cohesion, and test coverage.
+
 ## Documentation Links
 
 After adding or moving Markdown links, run the local checker from the repository root:

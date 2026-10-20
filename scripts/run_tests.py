@@ -155,6 +155,7 @@ def build_command(name: str, filter_value: str | None, report_dir: Path, restore
             if name == "deploy"
             else (
                 "scripts.test_run_tests",
+                "scripts.test_analyze_complexity",
                 "scripts.test_report_file_lines",
                 "scripts.test_check_markdown_links",
             )
