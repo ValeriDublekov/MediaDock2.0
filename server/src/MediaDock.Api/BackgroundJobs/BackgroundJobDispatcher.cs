@@ -1,12 +1,7 @@
 using System.Data.Common;
 using System.Text.Json;
 using MediaDock.Application.Ingestion;
-using MediaDock.Application.GoldenGlobes;
-using MediaDock.Application.OscarAwards;
-using MediaDock.Application.PersonalRatings;
 using MediaDock.Infrastructure.Ingestion;
-using MediaDock.Infrastructure.OscarAwards;
-using MediaDock.Infrastructure.GoldenGlobes;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -174,88 +169,23 @@ internal sealed class BackgroundJobDispatcher(
     {
         try
         {
-            if (job.JobType == "oscar_import")
-            {
-                await ExecuteOscarImportAsync(services, dbContext, job, stoppingToken);
-                return;
-            }
-
-            if (job.JobType == "golden_globe_import")
-            {
-                await ExecuteGoldenGlobeImportAsync(services, dbContext, job, stoppingToken);
-                return;
-            }
-
-            if (job.JobType == "oscar_enrichment")
-            {
-                await ExecuteOscarEnrichmentAsync(services, dbContext, job, stoppingToken);
-                return;
-            }
-            if (job.JobType == "golden_globe_enrichment")
-            {
-                await ExecuteGoldenGlobeEnrichmentAsync(services, dbContext, job, stoppingToken);
-                return;
-            }
-            if (job.JobType == "imdb_title_enrichment")
-            {
-                await ExecuteImdbTitleEnrichmentAsync(services, dbContext, job, stoppingToken);
-                return;
-            }
-            if (job.JobType == "golden_globe_manual_refresh")
-            {
-                await ExecuteGoldenGlobeManualRefreshAsync(services, dbContext, job, stoppingToken);
-                return;
-            }
-
-            var failedRecheck = IsFailedRecheck(job.ResultSummary);
-            await LoadProviderSettingsAsync(services, dbContext, stoppingToken);
-            var ingestion = services.GetRequiredService<RssIngestionService>();
-            if (failedRecheck)
-            {
-                var recheck = await ingestion.RecheckFailedAsync(
-                    stoppingToken,
-                    (progress, token) => SaveIngestionProgressAsync(dbContext, job, progress, token));
-                var recheckStatus = recheck.Run.Summary.Status switch
-                {
-                    "failed" => "failed",
-                    "partial" => "partial",
-                    _ => "succeeded"
-                };
-                await CompleteJobAsync(
-                    dbContext,
-                    job,
-                    recheckStatus,
-                    new
-                    {
-                        scanRunId = recheck.Run.RunId,
-                        rss = recheck.Run.Summary,
-                        recheck = new
-                        {
-                            recheck.RetryableEntriesSelected,
-                            recheck.EntriesUnavailable
-                        }
-                    },
-                    null,
-                    CancellationToken.None);
-                return;
-            }
-
-            var result = await ingestion.RunAsync(
-                job.Trigger,
-                stoppingToken,
-                (progress, token) => SaveIngestionProgressAsync(dbContext, job, progress, token));
-
-            var overallStatus = result.Summary.Status switch
-            {
-                "failed" => "failed",
-                "partial" => "partial",
-                _ => "succeeded"
-            };
+            var handler = services.GetKeyedService<IBackgroundJobHandler>(job.JobType)
+                ?? services.GetRequiredKeyedService<IBackgroundJobHandler>("rss_scan");
+            var context = new BackgroundJobExecutionContext(
+                job,
+                cancellationToken => LoadProviderSettingsAsync(services, dbContext, cancellationToken),
+                (stage, message, cancellationToken) =>
+                    SetStageAsync(dbContext, job, stage, message, cancellationToken),
+                (stage, cancellationToken) =>
+                    UpdateStageAsync(dbContext, job, stage, cancellationToken),
+                (progress, cancellationToken) =>
+                    SaveIngestionProgressAsync(dbContext, job, progress, cancellationToken));
+            var result = await handler.ExecuteAsync(context, stoppingToken);
             await CompleteJobAsync(
                 dbContext,
                 job,
-                overallStatus,
-                new { scanRunId = result.RunId, rss = result.Summary },
+                result.Status,
+                result.Summary,
                 null,
                 CancellationToken.None);
         }
@@ -289,18 +219,6 @@ internal sealed class BackgroundJobDispatcher(
                 exception.GetType().FullName,
                 exception.InnerException?.Message);
         }
-    }
-
-    private static bool IsFailedRecheck(string? resultSummary)
-    {
-        if (resultSummary is null)
-        {
-            return false;
-        }
-
-        using var document = JsonDocument.Parse(resultSummary);
-        return document.RootElement.TryGetProperty("operation", out var operation)
-            && operation.GetString() == "failed_recheck";
     }
 
     private async Task MarkJobFailedWithFreshContextAsync(
@@ -362,120 +280,6 @@ internal sealed class BackgroundJobDispatcher(
         services.GetRequiredService<IngestionProviderSettings>().Configure(
             settings.OmdbApiKey,
             settings.OmdbDailyRequestLimit);
-    }
-
-    private async Task ExecuteOscarEnrichmentAsync(
-        IServiceProvider services,
-        MediaDockDbContext dbContext,
-        BackgroundJob job,
-        CancellationToken cancellationToken)
-    {
-        await LoadProviderSettingsAsync(services, dbContext, cancellationToken);
-        await SetStageAsync(dbContext, job, "oscar_enrichment", "Oscar enrichment started.", cancellationToken);
-        var enrichment = await services.GetRequiredService<OscarEnrichmentService>()
-            .RunAsync(job.Trigger, cancellationToken);
-        var status = enrichment.Status == OscarEnrichmentRunStatuses.Succeeded ? "succeeded" : "partial";
-        await CompleteJobAsync(
-            dbContext,
-            job,
-            status,
-            new { enrichment.RunId, enrichment.Status, enrichment.Summary },
-            null,
-            CancellationToken.None);
-    }
-
-    private async Task ExecuteGoldenGlobeEnrichmentAsync(IServiceProvider services, MediaDockDbContext dbContext, BackgroundJob job, CancellationToken cancellationToken)
-    {
-        await LoadProviderSettingsAsync(services, dbContext, cancellationToken);
-        await SetStageAsync(dbContext, job, "golden_globe_enrichment", "Golden Globes enrichment started.", cancellationToken);
-        var result = await services.GetRequiredService<GoldenGlobeEnrichmentService>().RunAsync(cancellationToken);
-        await CompleteJobAsync(dbContext, job, result.Status, result.Summary, null, CancellationToken.None);
-    }
-
-    private async Task ExecuteImdbTitleEnrichmentAsync(
-        IServiceProvider services,
-        MediaDockDbContext dbContext,
-        BackgroundJob job,
-        CancellationToken cancellationToken)
-    {
-        if (job.OwnerUserId is not long ownerUserId)
-        {
-            throw new InvalidDataException("The queued IMDb enrichment owner is unavailable.");
-        }
-
-        await LoadProviderSettingsAsync(services, dbContext, cancellationToken);
-        await SetStageAsync(
-            dbContext,
-            job,
-            "imdb_title_enrichment",
-            "IMDb metadata enrichment started.",
-            cancellationToken);
-        var result = await services.GetRequiredService<ImdbTitleEnrichmentService>()
-            .RunAsync(ownerUserId, cancellationToken);
-        await CompleteJobAsync(dbContext, job, result.Status, null, null, CancellationToken.None);
-    }
-
-    private async Task ExecuteGoldenGlobeManualRefreshAsync(
-        IServiceProvider services,
-        MediaDockDbContext dbContext,
-        BackgroundJob job,
-        CancellationToken cancellationToken)
-    {
-        if (job.ResultSummary is null) throw new InvalidDataException("The queued refresh payload is unavailable.");
-        using var payload = JsonDocument.Parse(job.ResultSummary);
-        var root = payload.RootElement;
-        var candidate = new GoldenGlobeManualRefreshCandidate(
-            root.GetProperty("title").GetString() ?? throw new InvalidDataException("The queued refresh title is unavailable."),
-            root.GetProperty("ceremonyYear").GetInt32(),
-            root.GetProperty("sourceType").GetString() ?? throw new InvalidDataException("The queued refresh type is unavailable."),
-            root.GetProperty("imdbId").GetString() ?? throw new InvalidDataException("The queued refresh IMDb ID is unavailable."),
-            root.GetProperty("linkVersion").GetInt32(),
-            root.GetProperty("attemptCount").GetInt32());
-        await LoadProviderSettingsAsync(services, dbContext, cancellationToken);
-        await SetStageAsync(dbContext, job, "golden_globe_manual_refresh", "Manual Golden Globes metadata refresh started.", cancellationToken);
-        var result = await services.GetRequiredService<GoldenGlobeEnrichmentService>()
-            .RefreshManualAsync(candidate, cancellationToken);
-        var status = !result.Applied || result.Status == GoldenGlobeEnrichmentStatuses.Enriched ? "succeeded" : "partial";
-        await CompleteJobAsync(dbContext, job, status, new
-        {
-            result.ImdbId,
-            outcome = result.Applied ? result.Status : "superseded",
-            errorCode = result.ErrorCode,
-            result.HttpAttempts,
-            result.CacheHit
-        }, null, CancellationToken.None);
-    }
-
-    private async Task ExecuteOscarImportAsync(
-        IServiceProvider services,
-        MediaDockDbContext dbContext,
-        BackgroundJob job,
-        CancellationToken cancellationToken)
-    {
-        if (job.InputBytes is null || job.ResultSummary is null)
-        {
-            throw new InvalidDataException("The queued import payload is unavailable.");
-        }
-
-        using var options = JsonDocument.Parse(job.ResultSummary);
-        var yearAfter = options.RootElement.GetProperty("yearAfter").GetInt32();
-        await SetStageAsync(dbContext, job, "oscar_import", "Oscar dataset import started.", cancellationToken);
-        var summary = await services.GetRequiredService<OscarDatasetImporter>()
-            .ImportAsync(job.InputBytes, yearAfter, cancellationToken);
-        await CompleteJobAsync(dbContext, job, "succeeded", summary, null, CancellationToken.None);
-    }
-
-    private async Task ExecuteGoldenGlobeImportAsync(IServiceProvider services, MediaDockDbContext dbContext, BackgroundJob job, CancellationToken cancellationToken)
-    {
-        if (job.InputBytes is null || job.ResultSummary is null) throw new InvalidDataException("The queued import payload is unavailable.");
-        using var options = JsonDocument.Parse(job.ResultSummary);
-        var yearAfter = options.RootElement.GetProperty("yearAfter").GetInt32();
-        await SetStageAsync(dbContext, job, "golden_globe_import", "Golden Globes dataset import started.", cancellationToken);
-        job.CurrentStage = "golden_globe_parsing";
-        job.ProgressUpdatedAt = timeProvider.GetUtcNow();
-        await dbContext.SaveChangesAsync(cancellationToken);
-        var summary = await services.GetRequiredService<GoldenGlobeDatasetImporter>().ImportAsync(job.InputBytes, yearAfter, cancellationToken);
-        await CompleteJobAsync(dbContext, job, "succeeded", summary, null, CancellationToken.None);
     }
 
     private async Task SaveIngestionProgressAsync(
@@ -550,6 +354,17 @@ internal sealed class BackgroundJobDispatcher(
             EventCode = "stage_started",
             Message = message
         });
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task UpdateStageAsync(
+        MediaDockDbContext dbContext,
+        BackgroundJob job,
+        string stage,
+        CancellationToken cancellationToken)
+    {
+        job.CurrentStage = stage;
+        job.ProgressUpdatedAt = timeProvider.GetUtcNow();
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 

@@ -35,6 +35,7 @@ public static class IngestionServiceCollectionExtensions
         services.AddScoped<IImdbTitleEnrichmentRepository, PostgresImdbTitleEnrichmentRepository>();
         services.AddScoped<IRssFeedTransport, RssFeedTransportAdapter>();
         services.AddScoped<MetadataResolver>();
+        services.AddScoped<GoldenGlobeMetadataResolver>();
         services.AddScoped<RssIngestionService>();
         services.AddScoped<OscarEnrichmentService>();
         services.AddScoped<ImdbTitleEnrichmentService>();

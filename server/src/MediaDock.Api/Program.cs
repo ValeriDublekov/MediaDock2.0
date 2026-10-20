@@ -2,6 +2,7 @@ using MediaDock.Api.Catalog;
 using MediaDock.Api.Awards;
 using MediaDock.Api.Authentication;
 using MediaDock.Api.BackgroundJobs;
+using MediaDock.Api.DependencyInjection;
 using MediaDock.Api.Favorites;
 using MediaDock.Api.Administration;
 using MediaDock.Api.Health;
@@ -13,61 +14,13 @@ using MediaDock.Api.PersonalRatings;
 using MediaDock.Api.Sources;
 using MediaDock.Api.Versioning;
 using MediaDock.Infrastructure.Persistence;
-using MediaDock.Infrastructure.Ingestion;
 using MediaDock.Infrastructure.Users;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
-using System.Net.Sockets;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
-builder.Services.AddValidation();
-builder.Services.AddProblemDetails();
-builder.Services.AddExceptionHandler<ApiExceptionHandler>();
-builder.Services.AddGoogleSignIn(builder.Configuration);
-builder.Services.AddAccessControl(builder.Configuration);
-builder.Services.AddDbContext<MediaDockDbContext>(options =>
-	options.UseNpgsql(builder.Configuration.GetConnectionString("MediaDock")
-		?? throw new InvalidOperationException("ConnectionStrings:MediaDock must be configured.")));
-builder.Services.AddScoped<InitialAdminBootstrapper>();
-builder.Services.AddScoped<UserAdministrationApiService>();
-builder.Services.AddIngestionInfrastructure();
-builder.Services.AddScoped<MediaDock.Infrastructure.GoldenGlobes.GoldenGlobeDatasetImporter>();
-builder.Services.AddScoped<BackgroundJobApiService>();
-builder.Services.AddScoped<BackgroundJobScheduler>();
-builder.Services.AddHostedService<BackgroundJobDispatcher>();
-builder.Services.AddScoped<ICatalogApiService, CatalogApiService>();
-builder.Services.AddScoped<IMovieAwardsApiService, MovieAwardsApiService>();
-builder.Services.AddScoped<FavoriteApiService>();
-builder.Services.AddScoped<PersonalRatingsApiService>();
-builder.Services.AddScoped<IOscarApiService, OscarApiService>();
-builder.Services.AddScoped<IGoldenGlobeApiService, GoldenGlobeApiService>();
-builder.Services.AddScoped<ISourceSettingsApiService, SourceSettingsApiService>();
-builder.Services.AddScoped<IOperationalHistoryApiService, OperationalHistoryApiService>();
-builder.Services.AddScoped<IReadinessService, ReadinessService>();
-builder.Services.AddHttpClient<DeploymentControlApiService>(client =>
-	client.BaseAddress = new Uri("http://mediadock-deploy-control"))
-	.ConfigurePrimaryHttpMessageHandler(serviceProvider => new SocketsHttpHandler
-	{
-		ConnectCallback = async (_, cancellationToken) =>
-		{
-			var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-			var socketPath = configuration["DeploymentControl:SocketPath"]
-				?? "/run/mediadock-next-deploy-control/control.sock";
-			var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
-			try
-			{
-				await socket.ConnectAsync(new UnixDomainSocketEndPoint(socketPath), cancellationToken);
-				return new NetworkStream(socket, ownsSocket: true);
-			}
-			catch
-			{
-				socket.Dispose();
-				throw;
-			}
-		}
-	});
+builder.Services.AddMediaDockApi(builder.Configuration);
 
 var app = builder.Build();
 var forwardedHeadersOptions = TrustedForwardedHeaders.CreateOptions(builder.Configuration);

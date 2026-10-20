@@ -406,10 +406,15 @@ public sealed class GoldenGlobeEnrichmentServiceTests
     private static GoldenGlobeEnrichmentService CreateService(
         FakeGoldenGlobeEnrichmentRepository repository,
         StubOmdbClient client,
-        DateTimeOffset now) => new(
+        DateTimeOffset now)
+    {
+        var metadataResolver = new MetadataResolver(client, new EmptyMetadataCacheStore());
+        return new(
             repository,
-            new MetadataResolver(client, new EmptyMetadataCacheStore()),
+            metadataResolver,
+            new GoldenGlobeMetadataResolver(client, metadataResolver),
             new FrozenTimeProvider(now));
+    }
 
     private static MetadataDetails CreateMetadata(string title, int? year, string imdbId, string? awards = null) => new(
         title,

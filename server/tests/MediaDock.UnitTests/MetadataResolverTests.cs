@@ -1,3 +1,4 @@
+using MediaDock.Application.GoldenGlobes;
 using MediaDock.Application.Metadata;
 
 namespace MediaDock.UnitTests;
@@ -134,7 +135,7 @@ public sealed class MetadataResolverTests
     {
         var now = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
         var client = new TooBigToFailSearchClient();
-        var resolver = new MetadataResolver(client, new InMemoryMetadataCacheStore());
+        var resolver = CreateGoldenGlobeResolver(client);
 
         var result = await resolver.ResolveGoldenGlobeAsync("Too Big To Fail", 2012, "series", now);
 
@@ -142,6 +143,194 @@ public sealed class MetadataResolverTests
         Assert.Equal("tt1742683", result.Metadata?.ImdbId);
         Assert.Equal("movie", result.Metadata?.SourceType);
         Assert.Null(client.SearchSourceType);
+    }
+
+    [Fact]
+    public async Task ResolveGoldenGlobeSearchResolvesTheHighestRankedCandidate()
+    {
+        var now = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
+        var client = new ScriptedGoldenGlobeClient
+        {
+            SearchResultFactory = (_, _) => new MetadataSearchResult(
+                MetadataLookupStatus.Found,
+                [
+                    new("A Quiet Stage", 2024, "tt1111111", "movie"),
+                    new("A Quiet Stag", 2024, "tt2222222", "movie")
+                ],
+                2,
+                1)
+        };
+        client.IdLookups["tt1111111"] = CreateGoldenGlobeLookup("A Quiet Stage", 2024, "tt1111111");
+        var resolver = CreateGoldenGlobeResolver(client);
+
+        var result = await resolver.ResolveGoldenGlobeAsync("A Quiet Stage", 2024, "movie", now);
+
+        Assert.Equal(MetadataLookupStatus.Found, result.Status);
+        Assert.Equal("tt1111111", result.Metadata?.ImdbId);
+        Assert.Equal([null, "tt1111111"], client.RequestedImdbIds);
+    }
+
+    [Fact]
+    public async Task ResolveGoldenGlobeSearchReportsAmbiguousTopCandidates()
+    {
+        var now = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
+        var client = new ScriptedGoldenGlobeClient
+        {
+            SearchResultFactory = (_, _) => new MetadataSearchResult(
+                MetadataLookupStatus.Found,
+                [
+                    new("A Quiet Stage", 2024, "tt1111111", "movie"),
+                    new("A Quiet Stage", 2024, "tt2222222", "movie")
+                ],
+                2,
+                1)
+        };
+        client.IdLookups["tt1111111"] = CreateGoldenGlobeLookup("A Quiet Stage", 2024, "tt1111111");
+        client.IdLookups["tt2222222"] = CreateGoldenGlobeLookup("A Quiet Stage", 2024, "tt2222222");
+        var resolver = CreateGoldenGlobeResolver(client);
+
+        var result = await resolver.ResolveGoldenGlobeAsync("A Quiet Stage", 2024, "movie", now);
+
+        Assert.Equal(MetadataLookupStatus.ProviderFailure, result.Status);
+        Assert.Equal("ambiguous_match", result.ErrorCode);
+        Assert.Equal([null, "tt1111111", "tt2222222"], client.RequestedImdbIds);
+    }
+
+    [Fact]
+    public async Task ResolveGoldenGlobeSearchRejectsIncompleteSearchResults()
+    {
+        var now = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
+        var client = new ScriptedGoldenGlobeClient
+        {
+            SearchResultFactory = (_, page) => new MetadataSearchResult(
+                MetadataLookupStatus.Found,
+                page == 1 ? [new("A Quiet Stage", 2024, "tt1111111", "movie")] : [],
+                51,
+                1)
+        };
+        var resolver = CreateGoldenGlobeResolver(client);
+
+        var result = await resolver.ResolveGoldenGlobeAsync("A Quiet Stage", 2024, "movie", now);
+
+        Assert.Equal(MetadataLookupStatus.ProviderFailure, result.Status);
+        Assert.Equal("no_confident_match", result.ErrorCode);
+        Assert.Equal([1, 2, 3, 4, 5], client.SearchPages);
+        Assert.Equal([null], client.RequestedImdbIds);
+    }
+
+    [Theory]
+    [InlineData(MetadataLookupStatus.RequestBudgetExhausted)]
+    [InlineData(MetadataLookupStatus.QuotaExceeded)]
+    public async Task ResolveGoldenGlobeSearchPreservesSearchBudgetOutcomes(MetadataLookupStatus status)
+    {
+        var now = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
+        var client = new ScriptedGoldenGlobeClient
+        {
+            SearchResultFactory = (_, _) => new MetadataSearchResult(
+                status,
+                [],
+                0,
+                3,
+                "budget_stopped")
+        };
+        var resolver = CreateGoldenGlobeResolver(client);
+
+        var result = await resolver.ResolveGoldenGlobeAsync("A Quiet Stage", 2024, "movie", now);
+
+        Assert.Equal(status, result.Status);
+        Assert.Equal("budget_stopped", result.ErrorCode);
+        Assert.Equal(4, result.HttpAttempts);
+        Assert.Single(client.SearchPages);
+    }
+
+    [Theory]
+    [InlineData(MetadataLookupStatus.RequestBudgetExhausted)]
+    [InlineData(MetadataLookupStatus.QuotaExceeded)]
+    public async Task ResolveGoldenGlobeCandidatePreservesBudgetOutcomes(MetadataLookupStatus status)
+    {
+        var now = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
+        var client = new ScriptedGoldenGlobeClient
+        {
+            SearchResultFactory = (_, _) => new MetadataSearchResult(
+                MetadataLookupStatus.Found,
+                [new("A Quiet Stage", 2024, "tt1111111", "movie")],
+                1,
+                2)
+        };
+        client.IdLookups["tt1111111"] = new MetadataLookupResult(status, HttpAttempts: 3, ErrorCode: "budget_stopped");
+        var resolver = CreateGoldenGlobeResolver(client);
+
+        var result = await resolver.ResolveGoldenGlobeAsync("A Quiet Stage", 2024, "movie", now);
+
+        Assert.Equal(status, result.Status);
+        Assert.Equal("budget_stopped", result.ErrorCode);
+        Assert.Equal(6, result.HttpAttempts);
+    }
+
+    private static MetadataLookupResult CreateGoldenGlobeLookup(string title, int year, string imdbId) => new(
+        MetadataLookupStatus.Found,
+        new MetadataDetails(
+            title,
+            year,
+            imdbId,
+            "movie",
+            "movie",
+            "standard",
+            null,
+            null,
+            null,
+            null,
+            [],
+            [],
+            null,
+            null,
+            null,
+            null,
+            "Nominated for 1 Golden Globe",
+            null),
+        1);
+
+    private static GoldenGlobeMetadataResolver CreateGoldenGlobeResolver(IOmdbClient client) =>
+        new(client, new MetadataResolver(client, new InMemoryMetadataCacheStore()));
+
+    private sealed class ScriptedGoldenGlobeClient : IOmdbClient
+    {
+        public MetadataLookupResult ExactLookup { get; init; } = new(
+            MetadataLookupStatus.ConfirmedNotFound,
+            HttpAttempts: 1,
+            ErrorCode: "not_found");
+
+        public Dictionary<string, MetadataLookupResult> IdLookups { get; } = new(StringComparer.Ordinal);
+        public List<string?> RequestedImdbIds { get; } = [];
+        public List<int> SearchPages { get; } = [];
+        public Func<string, int, MetadataSearchResult> SearchResultFactory { get; init; } =
+            static (_, _) => new(MetadataLookupStatus.ConfirmedNotFound, [], 0, 1, "not_found");
+
+        public Task<MetadataLookupResult> LookupAsync(
+            string title,
+            int? year,
+            string sourceType,
+            CancellationToken cancellationToken = default,
+            OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion,
+            string? imdbId = null)
+        {
+            RequestedImdbIds.Add(imdbId);
+            return Task.FromResult(imdbId is null
+                ? ExactLookup
+                : IdLookups.GetValueOrDefault(imdbId)
+                    ?? new MetadataLookupResult(MetadataLookupStatus.ProviderFailure, ErrorCode: "unexpected_lookup"));
+        }
+
+        public Task<MetadataSearchResult> SearchAsync(
+            string title,
+            string? sourceType,
+            int page,
+            CancellationToken cancellationToken = default,
+            OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
+        {
+            SearchPages.Add(page);
+            return Task.FromResult(SearchResultFactory(title, page));
+        }
     }
 
     private sealed class TooBigToFailSearchClient : IOmdbClient

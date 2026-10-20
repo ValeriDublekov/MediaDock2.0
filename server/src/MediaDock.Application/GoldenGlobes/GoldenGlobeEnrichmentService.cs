@@ -36,6 +36,7 @@ public interface IGoldenGlobeEnrichmentRepository
 public sealed class GoldenGlobeEnrichmentService(
     IGoldenGlobeEnrichmentRepository repository,
     MetadataResolver metadataResolver,
+    GoldenGlobeMetadataResolver goldenGlobeMetadataResolver,
     TimeProvider? timeProvider = null)
 {
     private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
@@ -48,7 +49,7 @@ public sealed class GoldenGlobeEnrichmentService(
         {
             cancellationToken.ThrowIfCancellationRequested();
             var attemptedAt = clock.GetUtcNow();
-            var resolution = await metadataResolver.ResolveGoldenGlobeAsync(
+            var resolution = await goldenGlobeMetadataResolver.ResolveGoldenGlobeAsync(
                 candidate.Title,
                 candidate.CeremonyYear,
                 candidate.SourceType,
