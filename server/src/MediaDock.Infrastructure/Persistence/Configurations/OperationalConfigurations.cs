@@ -13,6 +13,9 @@ internal sealed class ScanRunConfiguration : IEntityTypeConfiguration<ScanRun>
             table.HasCheckConstraint("ck_scan_runs_status", "status IN ('running', 'succeeded', 'partial', 'failed')");
             table.HasCheckConstraint("ck_scan_runs_trigger", "trigger IN ('schedule', 'manual', 'local')");
             table.HasCheckConstraint(
+                "ck_scan_runs_nonnegative_counters",
+                "feeds_processed >= 0 AND entries_seen >= 0 AND known_entries_skipped >= 0 AND titles_created >= 0 AND occurrences_created >= 0 AND cache_hits >= 0 AND omdb_requests >= 0 AND ignored_entries >= 0 AND error_count >= 0");
+            table.HasCheckConstraint(
                 "ck_scan_runs_finish_time",
                 "(status = 'running' AND finished_at IS NULL) OR (status <> 'running' AND finished_at IS NOT NULL)");
         });

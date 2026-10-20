@@ -12,7 +12,8 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
 {
     public async Task<IReadOnlyList<GoldenGlobeEnrichmentCandidate>> GetEligibleCandidatesAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
     {
-        var candidates = await db.GoldenGlobeNominations.AsNoTracking()
+        var candidates = await db.GoldenGlobeGroups.AsNoTracking()
+            .Where(x => x.Nominations.Any())
             .Where(x => x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Pending
                 || x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Problem
                 || x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.NotFound
@@ -21,19 +22,18 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
                 || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched
                     && (x.ImdbId == null || !Regex.IsMatch(x.ImdbId, "^tt[0-9]{7,10}$"))))
             .Where(x => !x.IsImdbIdManual)
-            .GroupBy(x => new { x.Title, x.Year, x.NomineeType })
             .Select(x => new
             {
-                x.Key.Title,
-                CeremonyYear = x.Key.Year,
-                x.Key.NomineeType,
-                AttemptCount = x.Max(y => y.EnrichmentAttemptCount)
+                x.Title,
+                CeremonyYear = x.Year,
+                x.NomineeType,
+                x.EnrichmentAttemptCount
             })
             .OrderByDescending(x => x.CeremonyYear).ThenBy(x => x.Title).ThenBy(x => x.NomineeType)
             .ToListAsync(cancellationToken);
 
         return candidates
-            .Select(x => new GoldenGlobeEnrichmentCandidate(x.Title, x.CeremonyYear, x.AttemptCount, x.NomineeType))
+            .Select(x => new GoldenGlobeEnrichmentCandidate(x.Title, x.CeremonyYear, x.EnrichmentAttemptCount, x.NomineeType))
             .ToArray();
     }
 
@@ -41,39 +41,60 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
     {
         EnsureEnrichedOutcomeHasValidImdbId(update);
         var imdbId = ImdbIdNormalizer.Normalize(update.ImdbId);
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var filmId = $"{ceremonyYear}:{sourceType}:{title}";
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock(hashtextextended({filmId}, 0))",
+            cancellationToken);
+
+        var sourceGroup = await db.GoldenGlobeGroups.SingleOrDefaultAsync(
+            x => x.Title == title && x.Year == ceremonyYear && x.NomineeType == sourceType,
+            cancellationToken);
+        if (sourceGroup is null || sourceGroup.IsImdbIdManual) return;
+
         IReadOnlyDictionary<string, ImdbTitle>? imdbTitles = null;
         if (imdbId is not null)
-        {
             imdbTitles = await ImdbTitleMetadataMapper.EnsureAsync(db, [imdbId], update.AttemptedAt, cancellationToken);
-        }
-        var rows = db.GoldenGlobeNominations
-            .Where(x => x.Title == title && x.Year == ceremonyYear && x.NomineeType == sourceType && !x.IsImdbIdManual);
+
+        var resolvedType = imdbId is null ? sourceType : update.ResolvedNomineeType ?? sourceType;
+        var targetGroup = resolvedType == sourceType
+            ? null
+            : await db.GoldenGlobeGroups.SingleOrDefaultAsync(
+                x => x.Title == title && x.Year == ceremonyYear && x.NomineeType == resolvedType,
+                cancellationToken);
         int affected;
-        if (imdbId is null)
+        if (targetGroup is null)
         {
-            affected = await rows.ExecuteUpdateAsync(setters => setters
-                .SetProperty(x => x.EnrichmentStatus, update.Status)
-                .SetProperty(x => x.EnrichmentAttemptCount, update.AttemptCount)
-                .SetProperty(x => x.LastEnrichmentAttemptAt, update.AttemptedAt)
-                .SetProperty(x => x.NextEnrichmentAttemptAt, update.NextAttemptAt)
-                .SetProperty(x => x.LastEnrichmentError, update.ErrorCode), cancellationToken);
+            affected = await ApplyOutcomeAsync(
+                db.GoldenGlobeGroups.Where(x => x.Id == sourceGroup.Id && !x.IsImdbIdManual),
+                imdbId,
+                update,
+                resolvedType,
+                cancellationToken);
         }
         else
         {
-            affected = await rows.ExecuteUpdateAsync(setters => setters
-                .SetProperty(x => x.EnrichmentStatus, update.Status)
-                .SetProperty(x => x.EnrichmentAttemptCount, update.AttemptCount)
-                .SetProperty(x => x.LastEnrichmentAttemptAt, update.AttemptedAt)
-                .SetProperty(x => x.NextEnrichmentAttemptAt, update.NextAttemptAt)
-                .SetProperty(x => x.LastEnrichmentError, update.ErrorCode)
-                .SetProperty(x => x.ImdbId, imdbId)
-                .SetProperty(x => x.NomineeType, update.ResolvedNomineeType ?? sourceType), cancellationToken);
+            var moved = await db.GoldenGlobeNominations
+                .Where(x => x.GroupId == sourceGroup.Id)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.GroupId, targetGroup.Id), cancellationToken);
+            affected = moved == 0
+                ? 0
+                : await ApplyOutcomeAsync(
+                    db.GoldenGlobeGroups.Where(x => x.Id == targetGroup.Id && !x.IsImdbIdManual),
+                    imdbId,
+                    update,
+                    resolvedType,
+                    cancellationToken);
+            if (moved > 0)
+                await db.GoldenGlobeGroups.Where(x => x.Id == sourceGroup.Id).ExecuteDeleteAsync(cancellationToken);
         }
+
         if (affected > 0 && update.Metadata is { } metadata && imdbTitles is not null && imdbId is not null)
         {
             ImdbTitleMetadataMapper.Apply(imdbTitles[imdbId], metadata, update.AttemptedAt);
             await db.SaveChangesAsync(cancellationToken);
         }
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task<bool> SaveManualOutcomeAsync(
@@ -83,7 +104,7 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
     {
         EnsureEnrichedOutcomeHasValidImdbId(update);
         var imdbTitles = await ImdbTitleMetadataMapper.EnsureAsync(db, [candidate.ImdbId], update.AttemptedAt, cancellationToken);
-        var affected = await db.GoldenGlobeNominations
+        var affected = await db.GoldenGlobeGroups
             .Where(x => x.Title == candidate.Title
                 && x.Year == candidate.CeremonyYear
                 && x.NomineeType == candidate.SourceType
@@ -103,6 +124,33 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
             await db.SaveChangesAsync(cancellationToken);
         }
         return affected > 0;
+    }
+
+    private static Task<int> ApplyOutcomeAsync(
+        IQueryable<GoldenGlobeGroup> groups,
+        string? imdbId,
+        GoldenGlobeEnrichmentUpdate update,
+        string resolvedType,
+        CancellationToken cancellationToken)
+    {
+        if (imdbId is null)
+        {
+            return groups.ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.EnrichmentStatus, update.Status)
+                .SetProperty(x => x.EnrichmentAttemptCount, update.AttemptCount)
+                .SetProperty(x => x.LastEnrichmentAttemptAt, update.AttemptedAt)
+                .SetProperty(x => x.NextEnrichmentAttemptAt, update.NextAttemptAt)
+                .SetProperty(x => x.LastEnrichmentError, update.ErrorCode), cancellationToken);
+        }
+
+        return groups.ExecuteUpdateAsync(setters => setters
+            .SetProperty(x => x.EnrichmentStatus, update.Status)
+            .SetProperty(x => x.EnrichmentAttemptCount, update.AttemptCount)
+            .SetProperty(x => x.LastEnrichmentAttemptAt, update.AttemptedAt)
+            .SetProperty(x => x.NextEnrichmentAttemptAt, update.NextAttemptAt)
+            .SetProperty(x => x.LastEnrichmentError, update.ErrorCode)
+            .SetProperty(x => x.ImdbId, imdbId)
+            .SetProperty(x => x.NomineeType, resolvedType), cancellationToken);
     }
 
     private static void EnsureEnrichedOutcomeHasValidImdbId(GoldenGlobeEnrichmentUpdate update)

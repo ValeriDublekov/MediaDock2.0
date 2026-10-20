@@ -23,11 +23,14 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
         await db.Database.MigrateAsync();
 
         var award = new GoldenGlobeAward { Name = "Best Picture" };
+        var movieGroup = CreateGroup("Grouped Film", 2025);
+        var seriesGroup = CreateGroup("Grouped Film", 2025, nomineeType: "series");
+        var otherYearGroup = CreateGroup("Grouped Film", 2024);
         db.GoldenGlobeNominations.AddRange(
-            CreateNomination("group-a", "Grouped Film", 2025, "pending", 0, null, award),
-            CreateNomination("group-b", "Grouped Film", 2025, "temporary_error", 1, null, award),
-            CreateNomination("group-series", "Grouped Film", 2025, "pending", 0, null, award, "series"),
-            CreateNomination("other-year", "Grouped Film", 2024, "pending", 0, null, award));
+            CreateNomination("group-a", movieGroup, award),
+            CreateNomination("group-b", movieGroup, award),
+            CreateNomination("group-series", seriesGroup, award),
+            CreateNomination("other-year", otherYearGroup, award));
         await db.SaveChangesAsync();
 
         var attemptedAt = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
@@ -43,21 +46,22 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
                     "https://example.test/grouped.jpg", "101 min", "1 win", "$10")));
 
         var updatedNominations = await db.GoldenGlobeNominations.AsNoTracking()
-            .Where(row => row.Title == "Grouped Film" && row.Year == 2025)
+            .Include(row => row.Group)
+            .Where(row => row.Group.Title == "Grouped Film" && row.Group.Year == 2025)
             .ToListAsync();
         Assert.Equal(3, updatedNominations.Count);
-        Assert.All(updatedNominations.Where(row => row.NomineeType == "movie"), row =>
+        Assert.All(updatedNominations.Where(row => row.Group.NomineeType == "movie"), row =>
         {
-            Assert.Equal("enriched", row.EnrichmentStatus);
-            Assert.Equal(2, row.EnrichmentAttemptCount);
-            Assert.Equal(attemptedAt, row.LastEnrichmentAttemptAt);
-            Assert.Equal("tt12345678", row.ImdbId);
+            Assert.Equal("enriched", row.Group.EnrichmentStatus);
+            Assert.Equal(2, row.Group.EnrichmentAttemptCount);
+            Assert.Equal(attemptedAt, row.Group.LastEnrichmentAttemptAt);
+            Assert.Equal("tt12345678", row.Group.ImdbId);
         });
-        var seriesNomination = updatedNominations.Single(row => row.NomineeType == "series");
-        Assert.Equal("pending", seriesNomination.EnrichmentStatus);
-        Assert.Equal(0, seriesNomination.EnrichmentAttemptCount);
+        var seriesNomination = updatedNominations.Single(row => row.Group.NomineeType == "series");
+        Assert.Equal("pending", seriesNomination.Group.EnrichmentStatus);
+        Assert.Equal(0, seriesNomination.Group.EnrichmentAttemptCount);
 
-        var otherYear = await db.GoldenGlobeNominations.AsNoTracking()
+        var otherYear = await db.GoldenGlobeGroups.AsNoTracking()
             .SingleAsync(row => row.Title == "Grouped Film" && row.Year == 2024);
         Assert.Equal("pending", otherYear.EnrichmentStatus);
         Assert.Equal(0, otherYear.EnrichmentAttemptCount);
@@ -99,10 +103,12 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
         await db.Database.MigrateAsync();
 
         var award = new GoldenGlobeAward { Name = "Television Motion Picture" };
+        var matchedGroup = CreateGroup("Too Big To Fail", 2012, "not_found", 1, nomineeType: "series");
+        var otherYearGroup = CreateGroup("Too Big To Fail", 2011, "not_found", 1, nomineeType: "series");
         db.GoldenGlobeNominations.AddRange(
-            CreateNomination("type-a", "Too Big To Fail", 2012, "not_found", 1, null, award, "series"),
-            CreateNomination("type-b", "Too Big To Fail", 2012, "problem", 2, null, award, "series"),
-            CreateNomination("other-year", "Too Big To Fail", 2011, "not_found", 1, null, award, "series"));
+            CreateNomination("type-a", matchedGroup, award),
+            CreateNomination("type-b", matchedGroup, award),
+            CreateNomination("other-year", otherYearGroup, award));
         await db.SaveChangesAsync();
 
         var attemptedAt = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
@@ -113,20 +119,64 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
             new GoldenGlobeEnrichmentUpdate("enriched", 3, attemptedAt, null, null, "tt1742683", "movie"));
 
         var nominations = await db.GoldenGlobeNominations.AsNoTracking()
-            .Where(row => row.Title == "Too Big To Fail")
-            .OrderBy(row => row.Year)
+            .Include(row => row.Group)
+            .Where(row => row.Group.Title == "Too Big To Fail")
+            .OrderBy(row => row.Group.Year)
             .ThenBy(row => row.ImportKey)
             .ToListAsync();
-        Assert.All(nominations.Where(row => row.Year == 2012), row =>
+        Assert.All(nominations.Where(row => row.Group.Year == 2012), row =>
         {
-            Assert.Equal("movie", row.NomineeType);
-            Assert.Equal("enriched", row.EnrichmentStatus);
-            Assert.Equal("tt1742683", row.ImdbId);
+            Assert.Equal("movie", row.Group.NomineeType);
+            Assert.Equal("enriched", row.Group.EnrichmentStatus);
+            Assert.Equal("tt1742683", row.Group.ImdbId);
         });
-        var otherYear = Assert.Single(nominations.Where(row => row.Year == 2011));
-        Assert.Equal("series", otherYear.NomineeType);
-        Assert.Equal("not_found", otherYear.EnrichmentStatus);
-        Assert.Null(otherYear.ImdbId);
+        var otherYear = Assert.Single(nominations.Where(row => row.Group.Year == 2011));
+        Assert.Equal("series", otherYear.Group.NomineeType);
+        Assert.Equal("not_found", otherYear.Group.EnrichmentStatus);
+        Assert.Null(otherYear.Group.ImdbId);
+    }
+
+    [Fact]
+    public async Task SaveOutcomeMergesIntoExistingManualTargetWithoutReplacingItsLink()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_manual_type_merge_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+
+        var award = new GoldenGlobeAward { Name = "Manual Type Merge Award" };
+        var sourceGroup = CreateGroup("Type Merge Film", 2012, "not_found", 1, nomineeType: "series");
+        var targetGroup = CreateGroup("Type Merge Film", 2012);
+        targetGroup.ImdbId = "tt12345678";
+        targetGroup.IsImdbIdManual = true;
+        targetGroup.ImdbIdVersion = 5;
+        db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = DateTimeOffset.UtcNow });
+        db.GoldenGlobeNominations.AddRange(
+            CreateNomination("type-merge-series", sourceGroup, award),
+            CreateNomination("type-merge-movie", targetGroup, award));
+        await db.SaveChangesAsync();
+
+        await new PostgresGoldenGlobeEnrichmentRepository(db).SaveOutcomeAsync(
+            "Type Merge Film",
+            2012,
+            "series",
+            new GoldenGlobeEnrichmentUpdate("enriched", 2, DateTimeOffset.UtcNow, null, null, "tt87654321", "movie"));
+
+        var groups = await db.GoldenGlobeGroups.AsNoTracking()
+            .Include(group => group.Nominations)
+            .Where(group => group.Title == "Type Merge Film" && group.Year == 2012)
+            .ToListAsync();
+        var mergedGroup = Assert.Single(groups);
+        Assert.Equal("movie", mergedGroup.NomineeType);
+        Assert.Equal("tt12345678", mergedGroup.ImdbId);
+        Assert.True(mergedGroup.IsImdbIdManual);
+        Assert.Equal(5, mergedGroup.ImdbIdVersion);
+        Assert.Equal("pending", mergedGroup.EnrichmentStatus);
+        Assert.Equal(2, mergedGroup.Nominations.Count);
     }
 
     [Fact]
@@ -143,27 +193,26 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
 
         var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
         var award = new GoldenGlobeAward { Name = "Best Motion Picture" };
-        var healthyEnriched = CreateNomination("healthy-enriched", "Healthy Enriched Film", 2027, "enriched", 4, null, award);
+        var healthyEnriched = CreateGroup("Healthy Enriched Film", 2027, "enriched", 4);
         healthyEnriched.ImdbId = "tt12345678";
-        var pinnedProblem = CreateNomination("pinned-problem", "Pinned Problem", 2026, "problem", 3, null, award);
+        var pinnedProblem = CreateGroup("Pinned Problem", 2026, "problem", 3);
         pinnedProblem.ImdbId = "tt87654321";
         pinnedProblem.IsImdbIdManual = true;
+        var dueTemporaryError = CreateGroup("A New Film", 2026, "temporary_error", 3, now);
         db.ImdbTitles.AddRange(
             new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = now },
             new ImdbTitle { ImdbId = "tt87654321", UpdatedAt = now });
         db.GoldenGlobeNominations.AddRange(
-            CreateNomination("new-a-pending", "A New Film", 2026, "pending", 1, now.AddHours(1), award),
-            CreateNomination("new-a-due", "A New Film", 2026, "temporary_error", 3, now, award),
-            CreateNomination("new-a-future", "A New Film", 2026, "temporary_error", 10, now.AddHours(1), award),
-            CreateNomination("new-a-series", "A New Film", 2026, "pending", 0, null, award, "series"),
-            CreateNomination("new-series", "A New Series", 2026, "pending", 0, null, award, "series"),
-            CreateNomination("new-z-pending", "Z New Film", 2026, "pending", 4, null, award),
-            CreateNomination("older-retry", "Older Film", 2025, "temporary_error", 2, null, award),
-            CreateNomination("old-not-found", "Old Not Found", 2026, "not_found", 5, null, award),
-            CreateNomination("old-problem", "Old Problem", 2026, "problem", 6, null, award),
-            pinnedProblem,
-            CreateNomination("broken-enriched", "Enriched Film", 2027, "enriched", 8, null, award),
-            healthyEnriched);
+            CreateNomination("new-a-due", dueTemporaryError, award),
+            CreateNomination("new-a-series", CreateGroup("A New Film", 2026, nomineeType: "series"), award),
+            CreateNomination("new-series", CreateGroup("A New Series", 2026, nomineeType: "series"), award),
+            CreateNomination("new-z-pending", CreateGroup("Z New Film", 2026, "pending", 4), award),
+            CreateNomination("older-retry", CreateGroup("Older Film", 2025, "temporary_error", 2), award),
+            CreateNomination("old-not-found", CreateGroup("Old Not Found", 2026, "not_found", 5), award),
+            CreateNomination("old-problem", CreateGroup("Old Problem", 2026, "problem", 6), award),
+            CreateNomination("pinned-problem", pinnedProblem, award),
+            CreateNomination("broken-enriched", CreateGroup("Enriched Film", 2027, "enriched", 8), award),
+            CreateNomination("healthy-enriched", healthyEnriched, award));
         await db.SaveChangesAsync();
 
         var candidates = await new PostgresGoldenGlobeEnrichmentRepository(db)
@@ -192,12 +241,12 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
         await using var db = new MediaDockDbContext(options);
         await db.Database.MigrateAsync();
         var award = new GoldenGlobeAward { Name = "Version Guard Award" };
-        var nomination = CreateNomination("versioned", "Versioned Film", 2025, "pending", 0, null, award);
-        nomination.ImdbId = "tt12345678";
-        nomination.IsImdbIdManual = true;
-        nomination.ImdbIdVersion = 3;
+        var group = CreateGroup("Versioned Film", 2025);
+        group.ImdbId = "tt12345678";
+        group.IsImdbIdManual = true;
+        group.ImdbIdVersion = 3;
         db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = DateTimeOffset.UtcNow });
-        db.GoldenGlobeNominations.Add(nomination);
+        db.GoldenGlobeNominations.Add(CreateNomination("versioned", group, award));
         await db.SaveChangesAsync();
 
         var repository = new PostgresGoldenGlobeEnrichmentRepository(db);
@@ -209,7 +258,7 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
             new GoldenGlobeEnrichmentUpdate("enriched", 1, attemptedAt, null, null, "tt87654321"));
 
         Assert.False(applied);
-        var stored = await db.GoldenGlobeNominations.AsNoTracking().SingleAsync();
+        var stored = await db.GoldenGlobeGroups.AsNoTracking().SingleAsync();
         Assert.Equal("tt12345678", stored.ImdbId);
         Assert.True(stored.IsImdbIdManual);
         Assert.Equal(3, stored.ImdbIdVersion);
@@ -226,27 +275,33 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
         var updatedCanonicalMetadata = await db.ImdbTitles.AsNoTracking().SingleAsync(row => row.ImdbId == "tt12345678");
         Assert.Equal(8.1m, updatedCanonicalMetadata.ImdbRating);
         Assert.Equal("https://example.test/versioned.jpg", updatedCanonicalMetadata.PosterUrl);
-        var enrichedNomination = await db.GoldenGlobeNominations.AsNoTracking().SingleAsync();
-        Assert.Equal("enriched", enrichedNomination.EnrichmentStatus);
+        var enrichedGroup = await db.GoldenGlobeGroups.AsNoTracking().SingleAsync();
+        Assert.Equal("enriched", enrichedGroup.EnrichmentStatus);
     }
 
     private static GoldenGlobeNomination CreateNomination(
         string importKey,
-        string title,
-        int year,
-        string status,
-        int attemptCount,
-        DateTimeOffset? nextAttemptAt,
-        GoldenGlobeAward award,
-        string nomineeType = "movie") => new()
+        GoldenGlobeGroup group,
+        GoldenGlobeAward award) => new()
     {
         ImportKey = importKey,
+        Group = group,
+        Award = award
+    };
+
+    private static GoldenGlobeGroup CreateGroup(
+        string title,
+        int year,
+        string status = "pending",
+        int attemptCount = 0,
+        DateTimeOffset? nextAttemptAt = null,
+        string nomineeType = "movie") => new()
+    {
         Title = title,
         Year = year,
         EnrichmentStatus = status,
         EnrichmentAttemptCount = attemptCount,
         NextEnrichmentAttemptAt = nextAttemptAt,
-        NomineeType = nomineeType,
-        Award = award
+        NomineeType = nomineeType
     };
 }

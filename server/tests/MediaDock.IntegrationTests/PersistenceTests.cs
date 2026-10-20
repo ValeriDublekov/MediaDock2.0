@@ -194,6 +194,72 @@ public sealed class PersistenceTests
 
     [Fact]
     [Trait("Category", "Persistence")]
+    public async Task GoldenGlobeGroupMigrationRejectsConflictingLinksAndStatesUntilReconciled()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_group_migration_preflight_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync("20261020140000_EnforceScanRunNonnegativeCounters");
+
+        db.ImdbTitles.AddRange(
+            new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = DateTimeOffset.UtcNow },
+            new ImdbTitle { ImdbId = "tt87654321", UpdatedAt = DateTimeOffset.UtcNow });
+        var award = new GoldenGlobeAward { Name = "Migration Preflight Award" };
+        db.GoldenGlobeAwards.Add(award);
+        await db.SaveChangesAsync();
+
+        async Task InsertLegacyNominationAsync(string importKey, string title, string? imdbId, string status)
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO golden_globe_nominations (
+                    import_key, year, winner, award_id, title, nominee_type, imdb_id,
+                    is_imdb_id_manual, imdb_id_version, enrichment_status, enrichment_attempt_count)
+                VALUES ({importKey}, 2025, false, {award.Id}, {title}, 'movie', {imdbId}, false, 0, {status}, 1)
+                """);
+        }
+
+        await InsertLegacyNominationAsync("link-conflict-a", "Linked Legacy Film", "tt12345678", "enriched");
+        await InsertLegacyNominationAsync("link-conflict-b", "Linked Legacy Film", "tt87654321", "enriched");
+        await InsertLegacyNominationAsync("state-conflict-a", "State Legacy Film", null, "pending");
+        await InsertLegacyNominationAsync("state-conflict-b", "State Legacy Film", null, "not_found");
+
+        var linkConflict = await Assert.ThrowsAsync<Npgsql.PostgresException>(() => db.Database.MigrateAsync());
+        Assert.Contains("Cannot normalize Golden Globes groups", linkConflict.Message);
+        Assert.DoesNotContain("20261020150000_NormalizeGoldenGlobeGroups", await db.Database.GetAppliedMigrationsAsync());
+
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE golden_globe_nominations SET imdb_id = {"tt12345678"} WHERE import_key = {"link-conflict-b"}");
+        var stateConflict = await Assert.ThrowsAsync<Npgsql.PostgresException>(() => db.Database.MigrateAsync());
+        Assert.Contains("conflicting IMDb links or enrichment states", stateConflict.Message);
+        Assert.DoesNotContain("20261020150000_NormalizeGoldenGlobeGroups", await db.Database.GetAppliedMigrationsAsync());
+
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE golden_globe_nominations SET enrichment_status = {"pending"} WHERE import_key = {"state-conflict-b"}");
+        await db.Database.MigrateAsync();
+        db.ChangeTracker.Clear();
+
+        var groups = await db.GoldenGlobeGroups.AsNoTracking()
+            .Include(group => group.Nominations)
+            .OrderBy(group => group.Title)
+            .ToListAsync();
+        Assert.Equal(2, groups.Count);
+        var linkedGroup = groups.Single(group => group.Title == "Linked Legacy Film");
+        Assert.Equal("tt12345678", linkedGroup.ImdbId);
+        Assert.Equal("enriched", linkedGroup.EnrichmentStatus);
+        Assert.Equal(2, linkedGroup.Nominations.Count);
+        var stateGroup = groups.Single(group => group.Title == "State Legacy Film");
+        Assert.Null(stateGroup.ImdbId);
+        Assert.Equal("pending", stateGroup.EnrichmentStatus);
+        Assert.Equal(2, stateGroup.Nominations.Count);
+    }
+
+    [Fact]
+    [Trait("Category", "Persistence")]
     public async Task MigrationCreatesSchemaAndOccurrenceIdentityIsUnique()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_test").Build();
@@ -221,6 +287,8 @@ public sealed class PersistenceTests
         Assert.Contains("20261016160138_AddSharedImdbTitles", appliedMigrations);
         Assert.Contains("20261020122556_EnforceTitleMetadataOwnership", appliedMigrations);
         Assert.Contains("20261020125713_EnforceOscarFilmTitleIdentity", appliedMigrations);
+        Assert.Contains("20261020140000_EnforceScanRunNonnegativeCounters", appliedMigrations);
+        Assert.Contains("20261020150000_NormalizeGoldenGlobeGroups", appliedMigrations);
 
         await db.Database.OpenConnectionAsync();
         await using (var command = db.Database.GetDbConnection().CreateCommand())
@@ -238,7 +306,7 @@ public sealed class PersistenceTests
                 {
                     "titles", "sources", "occurrences", "scan_runs", "parse_logs", "settings", "metadata_cache",
                     "oscar_films", "oscar_nominations", "oscar_enrichment_runs", "omdb_daily_usage",
-                    "golden_globe_awards", "golden_globe_nominations", "favorite_movies", "personal_ratings", "users",
+                    "golden_globe_awards", "golden_globe_groups", "golden_globe_nominations", "favorite_movies", "personal_ratings", "users",
                     "imdb_titles"
                 },
                 tableName => Assert.Contains(tableName, tables));
@@ -411,6 +479,14 @@ public sealed class PersistenceTests
             Status = "succeeded",
             Trigger = "manual"
         });
+        await AssertRejectedAsync(db, new ScanRun
+        {
+            StartedAt = now,
+            FinishedAt = now,
+            Status = "succeeded",
+            Trigger = "manual",
+            FeedsProcessed = -1
+        });
         await AssertRejectedAsync(db, new OscarEnrichmentRun
         {
             StartedAt = now,
@@ -493,17 +569,15 @@ public sealed class PersistenceTests
         });
         var award = new GoldenGlobeAward { Name = "Legacy award" };
         db.GoldenGlobeAwards.Add(award);
-        db.GoldenGlobeNominations.Add(new GoldenGlobeNomination
-        {
-            ImportKey = "legacy-imdb-nomination",
-            Year = 2025,
-            Award = award,
-            Title = "Legacy nominee",
-            NomineeType = "movie",
-            ImdbId = " TT87654321 ",
-            EnrichmentStatus = "pending"
-        });
         await db.SaveChangesAsync();
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO golden_globe_nominations (
+                import_key, year, winner, award_id, title, nominee_type, imdb_id,
+                is_imdb_id_manual, imdb_id_version, enrichment_status, enrichment_attempt_count)
+            VALUES ('legacy-imdb-nomination', 2025, false, {award.Id}, 'Legacy nominee', 'movie', ' TT87654321 ',
+                    false, 0, 'pending', 0)
+            """);
 
         await db.Database.MigrateAsync("20261016160138_AddSharedImdbTitles");
         var lateImdbTitle = new ImdbTitle
@@ -567,7 +641,12 @@ public sealed class PersistenceTests
         Assert.Equal(8, ratings.Single(rating => rating.UserId == firstUser.Id).Rating);
         Assert.Equal(6, ratings.Single(rating => rating.UserId == secondUser.Id).Rating);
         Assert.Equal("tt12345678", (await db.OscarFilms.AsNoTracking().SingleAsync()).ImdbId);
-        Assert.Equal("tt87654321", (await db.GoldenGlobeNominations.AsNoTracking().SingleAsync()).ImdbId);
+        var migratedGoldenGlobeGroup = await db.GoldenGlobeGroups.AsNoTracking()
+            .Include(group => group.Nominations)
+            .SingleAsync(group => group.Title == "Legacy nominee");
+        Assert.Equal("tt87654321", migratedGoldenGlobeGroup.ImdbId);
+        Assert.Equal("pending", migratedGoldenGlobeGroup.EnrichmentStatus);
+        Assert.Equal("legacy-imdb-nomination", Assert.Single(migratedGoldenGlobeGroup.Nominations).ImportKey);
 
         var noIdTitle = CreateTitle("Nullable IMDb", "nullable imdb", null, now);
         db.Titles.Add(noIdTitle);
@@ -585,11 +664,13 @@ public sealed class PersistenceTests
         db.GoldenGlobeNominations.Add(new GoldenGlobeNomination
         {
             ImportKey = "nullable-imdb-nomination",
-            Year = 2025,
             AwardId = award.Id,
-            Title = "Nullable nominee",
-            NomineeType = "movie",
-            EnrichmentStatus = "pending"
+            Group = new GoldenGlobeGroup
+            {
+                Title = "Nullable nominee",
+                Year = 2025,
+                NomineeType = "movie"
+            }
         });
         await db.SaveChangesAsync();
 

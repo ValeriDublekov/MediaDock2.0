@@ -1,6 +1,6 @@
 # Technical Follow-Ups
 
-These are unresolved candidates from the linked assessments, not approved delivery commitments. Make and scope each implementation decision separately; verify production data and query plans on the host where required.
+These are unresolved candidates, not approved delivery commitments. Revalidate source-level items against the current code; verify production data and query plans on the host where required.
 
 ## Database model
 
@@ -8,14 +8,14 @@ Assessment: [Database model review](DATABASE_MODEL_REVIEW.md), dated 2026-10-19.
 
 | Finding | Tracked next step | Status |
 | --- | --- | --- |
-| `titles` and `imdb_titles` overlap | Define field ownership; audit mismatched linked rows and IMDb-less fallback use before deciding on a data-preserving migration. | Open decision |
-| Golden Globes reads expiring cache data | Consider reading persistent rating/poster fields from `imdb_titles`; add coverage for expired or missing cache while preserving manual-link validation. | Open |
-| Oscar film identity is duplicated | Decide whether the stored IMDb ID is source or canonical identity before considering naming or database consistency changes. | Open decision |
+| `titles` and `imdb_titles` overlap | Apply `EnforceTitleMetadataOwnership` through the staged migration process; canonical values win conflicts and live data has not been audited. | Implemented in source; deployment pending |
+| Golden Globes reads expiring cache data | No further action; persistent rating/poster fields now come from `imdb_titles`, with expired- and missing-cache coverage. | Implemented in source and tests |
+| Oscar film identity is duplicated | Audit and resolve non-null source-ID mismatches in staging, then apply `EnforceOscarFilmTitleIdentity`; its preflight aborts on mismatches. | Implemented in source; deployment pending |
 | Search and array-filter indexes are unmeasured | Collect representative query plans; consider indexes only if measurements justify their read and write costs. | Measurement pending |
 
 ## Source refactoring
 
-Assessment: [Source refactoring review](SOURCE_REFACTORING_REVIEW_2026-10-19.md), dated 2026-10-19.
+Revalidate these candidates against the current source before scheduling work.
 
 | Priority | Candidate follow-up | Status |
 | --- | --- | --- |

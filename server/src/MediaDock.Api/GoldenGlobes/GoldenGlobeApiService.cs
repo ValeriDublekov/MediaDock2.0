@@ -29,23 +29,29 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
         if (query.ImdbRatingFrom is { } ratingFrom && query.ImdbRatingTo is { } ratingTo && ratingFrom > ratingTo)
             throw new ApiValidationException(new Dictionary<string, string[]> { [nameof(query.ImdbRatingTo)] = ["ImdbRatingTo must be greater than or equal to ImdbRatingFrom."] });
 
-        var yearBounds = await dbContext.GoldenGlobeNominations
+        var yearBounds = await dbContext.GoldenGlobeGroups
             .AsNoTracking()
+            .Where(group => group.Nominations.Any())
             .GroupBy(_ => 1)
-            .Select(group => new YearBounds(
-                group.Min(nomination => nomination.Year),
-                group.Max(nomination => nomination.Year)))
+            .Select(group => new YearBounds(group.Min(film => film.Year), group.Max(film => film.Year)))
             .FirstOrDefaultAsync(cancellationToken);
         var (metadataByFilmId, imdbRatingBounds) = await GetRatingMetadataAsync(cancellationToken);
 
-        IQueryable<GoldenGlobeNomination> nominations = dbContext.GoldenGlobeNominations.AsNoTracking().Include(x => x.Award);
+        IQueryable<GoldenGlobeNomination> nominations = dbContext.GoldenGlobeNominations
+            .AsNoTracking()
+            .Include(x => x.Award)
+            .Include(x => x.Group);
         if (!string.IsNullOrWhiteSpace(query.Search))
-            nominations = nominations.Where(x => EF.Functions.ILike(x.Title, $"%{query.Search.Trim()}%"));
-        if (query.YearFrom is { } yearFrom) nominations = nominations.Where(x => x.Year >= yearFrom);
-        if (query.YearTo is { } yearTo) nominations = nominations.Where(x => x.Year <= yearTo);
+            nominations = nominations.Where(x => EF.Functions.ILike(x.Group.Title, $"%{query.Search.Trim()}%"));
+        if (query.YearFrom is { } yearFrom) nominations = nominations.Where(x => x.Group.Year >= yearFrom);
+        if (query.YearTo is { } yearTo) nominations = nominations.Where(x => x.Group.Year <= yearTo);
         if (!string.IsNullOrWhiteSpace(query.Award))
             nominations = nominations.Where(x => EF.Functions.ILike(x.Award.Name, $"%{query.Award.Trim()}%"));
-        var rows = await nominations.OrderByDescending(x => x.Year).ThenBy(x => x.Title).ThenBy(x => x.Id).ToListAsync(cancellationToken);
+        var rows = await nominations
+            .OrderByDescending(x => x.Group.Year)
+            .ThenBy(x => x.Group.Title)
+            .ThenBy(x => x.Id)
+            .ToListAsync(cancellationToken);
         var categoryValues = query.Categories ?? Array.Empty<string>();
         var categoryFilterActive = query.CategoryFilter == true
             || query.Categories is { Length: > 0 };
@@ -67,25 +73,27 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
                     || (query.Result == "winner" && row.Winner)
                     || (query.Result == "nominee" && !row.Winner)
                     : true))
-            .Select(row => (row.Title, row.Year, row.NomineeType))
+            .Select(row => row.GroupId)
             .ToHashSet();
-        var groups = rows.GroupBy(x => new { x.Title, x.Year, x.NomineeType })
-            .Where(group => !categoryFilterActive || matchingGroups.Contains((group.Key.Title, group.Key.Year, group.Key.NomineeType)))
+        var groups = rows.GroupBy(x => x.GroupId)
+            .Where(group => !categoryFilterActive || matchingGroups.Contains(group.Key))
             .Select(group =>
             {
-                var imdbId = group.Select(x => ImdbIdNormalizer.Normalize(x.ImdbId))
-                    .FirstOrDefault(ImdbIdNormalizer.IsValid);
-                var hasUnhealthyEnrichedRow = group.Any(x =>
-                    x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched
-                    && !ImdbIdNormalizer.IsValid(x.ImdbId));
+                var film = group.First().Group;
+                var imdbId = ImdbIdNormalizer.Normalize(film.ImdbId);
+                if (!ImdbIdNormalizer.IsValid(imdbId)) imdbId = null;
+                var enrichmentStatus = film.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched && imdbId is null
+                    ? GoldenGlobeEnrichmentStatuses.Pending
+                    : film.EnrichmentStatus;
                 return new GoldenGlobeFilmResponse(
-                    $"{group.Key.Year}:{group.Key.NomineeType}:{group.Key.Title}", group.Key.Title, group.Key.Year, group.Key.NomineeType,
+                    $"{film.Year}:{film.NomineeType}:{film.Title}", film.Title, film.Year, film.NomineeType,
                     imdbId,
-                    group.Any(x => x.IsImdbIdManual),
+                    film.IsImdbIdManual,
                     null, null,
-                    GetEnrichmentStatus(group.Select(x => x.EnrichmentStatus), hasUnhealthyEnrichedRow),
-                    group.Select(x => x.LastEnrichmentError).FirstOrDefault(x => x != null),
-                    group.OrderBy(x => x.Award.Name).ThenBy(x => x.Id).Select(x => new GoldenGlobeNominationResponse(x.Id, x.Year, x.Award.Name, x.Winner)).ToArray());
+                    enrichmentStatus,
+                    film.LastEnrichmentError,
+                    group.OrderBy(x => x.Award.Name).ThenBy(x => x.Id)
+                        .Select(x => new GoldenGlobeNominationResponse(x.Id, film.Year, x.Award.Name, x.Winner)).ToArray());
             })
             .OrderByDescending(x => x.Year).ThenBy(x => x.Title, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.NomineeType, StringComparer.Ordinal).ToArray();
         var filteredGroups = string.IsNullOrWhiteSpace(query.EnrichmentStatus)
@@ -118,31 +126,36 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
     private async Task<(Dictionary<string, ImdbTitle?> MetadataByFilmId, ImdbRatingBounds? Bounds)> GetRatingMetadataAsync(
         CancellationToken cancellationToken)
     {
-        var nominations = await dbContext.GoldenGlobeNominations
+        var groups = await dbContext.GoldenGlobeGroups
             .AsNoTracking()
-            .Select(row => new
+            .Where(group => group.Nominations.Any())
+            .Select(group => new
             {
-                row.Title,
-                row.Year,
-                row.NomineeType,
-                row.ImdbId,
-                row.IsImdbIdManual,
-                row.EnrichmentStatus
+                group.Title,
+                group.Year,
+                group.NomineeType,
+                group.ImdbId,
+                group.IsImdbIdManual,
+                group.EnrichmentStatus
             })
             .ToListAsync(cancellationToken);
-        var films = nominations
-            .GroupBy(row => new { row.Title, row.Year, row.NomineeType })
-            .Select(group => new GoldenGlobeRatingGroup(
-                $"{group.Key.Year}:{group.Key.NomineeType}:{group.Key.Title}",
-                group.Key.Title,
-                group.Key.Year,
-                group.Key.NomineeType,
-                group.Select(row => ImdbIdNormalizer.Normalize(row.ImdbId)).FirstOrDefault(ImdbIdNormalizer.IsValid),
-                group.Any(row => row.IsImdbIdManual),
-                GetEnrichmentStatus(
-                    group.Select(row => row.EnrichmentStatus),
-                    group.Any(row => row.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched
-                        && !ImdbIdNormalizer.IsValid(row.ImdbId)))))
+        var films = groups
+            .Select(group =>
+            {
+                var imdbId = ImdbIdNormalizer.Normalize(group.ImdbId);
+                if (!ImdbIdNormalizer.IsValid(imdbId)) imdbId = null;
+                var enrichmentStatus = group.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched && imdbId is null
+                    ? GoldenGlobeEnrichmentStatuses.Pending
+                    : group.EnrichmentStatus;
+                return new GoldenGlobeRatingGroup(
+                    $"{group.Year}:{group.NomineeType}:{group.Title}",
+                    group.Title,
+                    group.Year,
+                    group.NomineeType,
+                    imdbId,
+                    group.IsImdbIdManual,
+                    enrichmentStatus);
+            })
             .ToArray();
         var eligibleFilms = films
             .Where(film => film.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched && film.ImdbId is not null)
@@ -212,10 +225,9 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"SELECT pg_advisory_xact_lock(hashtextextended({request.FilmId}, 0))",
             cancellationToken);
-        var rows = await dbContext.GoldenGlobeNominations
-            .Where(row => row.Title == title && row.Year == ceremonyYear && row.NomineeType == sourceType)
-            .ToListAsync(cancellationToken);
-        if (rows.Count == 0) throw new ApiNotFoundException("Golden Globes film group not found.");
+        var group = await dbContext.GoldenGlobeGroups
+            .SingleOrDefaultAsync(row => row.Title == title && row.Year == ceremonyYear && row.NomineeType == sourceType, cancellationToken);
+        if (group is null) throw new ApiNotFoundException("Golden Globes film group not found.");
         if (imdbId is not null)
         {
             await ImdbTitleMetadataMapper.EnsureAsync(
@@ -224,30 +236,23 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
 
         if (imdbId is null)
         {
-            var version = checked(rows.Max(row => row.ImdbIdVersion) + 1);
-            foreach (var row in rows)
-            {
-                row.ImdbId = null;
-                row.IsImdbIdManual = false;
-                row.ImdbIdVersion = version;
-                ResetEnrichment(row);
-            }
+            group.ImdbId = null;
+            group.IsImdbIdManual = false;
+            group.ImdbIdVersion = checked(group.ImdbIdVersion + 1);
+            ResetEnrichment(group);
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return new(null, null);
         }
 
-        var sameManualLink = rows.All(row => row.IsImdbIdManual && row.ImdbId == imdbId);
-        var linkVersion = sameManualLink ? rows.Max(row => row.ImdbIdVersion) : checked(rows.Max(row => row.ImdbIdVersion) + 1);
+        var sameManualLink = group.IsImdbIdManual && group.ImdbId == imdbId;
+        var linkVersion = sameManualLink ? group.ImdbIdVersion : checked(group.ImdbIdVersion + 1);
         if (!sameManualLink)
         {
-            foreach (var row in rows)
-            {
-                row.ImdbId = imdbId;
-                row.IsImdbIdManual = true;
-                row.ImdbIdVersion = linkVersion;
-                ResetEnrichment(row);
-            }
+            group.ImdbId = imdbId;
+            group.IsImdbIdManual = true;
+            group.ImdbIdVersion = linkVersion;
+            ResetEnrichment(group);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
@@ -259,7 +264,7 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
             sourceType,
             imdbId,
             linkVersion,
-            attemptCount = rows.Max(row => row.EnrichmentAttemptCount)
+            attemptCount = group.EnrichmentAttemptCount
         };
         var activeJobs = await dbContext.BackgroundJobs
             .Where(job => job.JobType == "golden_globe_manual_refresh" && (job.Status == "queued" || job.Status == "running"))
@@ -307,13 +312,13 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
         return (parts[2], year, parts[1]);
     }
 
-    private static void ResetEnrichment(GoldenGlobeNomination row)
+    private static void ResetEnrichment(GoldenGlobeGroup group)
     {
-        row.EnrichmentStatus = GoldenGlobeEnrichmentStatuses.Pending;
-        row.EnrichmentAttemptCount = 0;
-        row.LastEnrichmentAttemptAt = null;
-        row.NextEnrichmentAttemptAt = null;
-        row.LastEnrichmentError = null;
+        group.EnrichmentStatus = GoldenGlobeEnrichmentStatuses.Pending;
+        group.EnrichmentAttemptCount = 0;
+        group.LastEnrichmentAttemptAt = null;
+        group.NextEnrichmentAttemptAt = null;
+        group.LastEnrichmentError = null;
     }
 
     private static bool JobTargets(string? payload, string filmId, string imdbId, int version)
@@ -337,26 +342,6 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
     {
         var statusUrl = $"/api/background-jobs/{job.Id}";
         return new(job.Id, job.Status, statusUrl);
-    }
-
-    private static string GetEnrichmentStatus(IEnumerable<string> statuses, bool hasUnhealthyEnrichedRow)
-    {
-        if (hasUnhealthyEnrichedRow) return GoldenGlobeEnrichmentStatuses.Pending;
-
-        var distinct = statuses.ToHashSet(StringComparer.Ordinal);
-        foreach (var status in new[]
-        {
-            GoldenGlobeEnrichmentStatuses.Pending,
-            GoldenGlobeEnrichmentStatuses.TemporaryError,
-            GoldenGlobeEnrichmentStatuses.Problem,
-            GoldenGlobeEnrichmentStatuses.NotFound,
-            GoldenGlobeEnrichmentStatuses.Enriched
-        })
-        {
-            if (distinct.Contains(status)) return status;
-        }
-
-        return GoldenGlobeEnrichmentStatuses.Pending;
     }
 
     private sealed record GoldenGlobeRatingGroup(

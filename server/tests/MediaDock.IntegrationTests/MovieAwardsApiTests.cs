@@ -69,34 +69,46 @@ public sealed class MovieAwardsApiTests
             });
 
             var bestPicture = new GoldenGlobeAward { Name = "Best Motion Picture" };
+            var sharedGroup = new GoldenGlobeGroup
+            {
+                Title = "Shared Film",
+                Year = 2025,
+                NomineeType = "movie",
+                ImdbId = "tt1234567",
+                EnrichmentStatus = "enriched"
+            };
             db.GoldenGlobeNominations.AddRange(
                 new GoldenGlobeNomination
                 {
                     ImportKey = "shared-globe-nomination",
-                    Year = 2025,
                     Winner = false,
-                    Title = "Shared Film",
-                    NomineeType = "movie",
-                    ImdbId = "tt1234567",
+                    Group = sharedGroup,
                     Award = bestPicture
                 },
                 new GoldenGlobeNomination
                 {
                     ImportKey = "unrequested-globe-nomination",
-                    Year = 2025,
                     Winner = true,
-                    Title = "Other Film",
-                    NomineeType = "movie",
-                    ImdbId = "tt7654321",
+                    Group = new GoldenGlobeGroup
+                    {
+                        Title = "Other Film",
+                        Year = 2025,
+                        NomineeType = "movie",
+                        ImdbId = "tt7654321",
+                        EnrichmentStatus = "enriched"
+                    },
                     Award = bestPicture
                 },
                 new GoldenGlobeNomination
                 {
                     ImportKey = "unlinked-globe-nomination",
-                    Year = 2025,
                     Winner = true,
-                    Title = "Shared Film",
-                    NomineeType = "movie",
+                    Group = new GoldenGlobeGroup
+                    {
+                        Title = "Unlinked Film",
+                        Year = 2025,
+                        NomineeType = "movie"
+                    },
                     Award = bestPicture
                 });
             await db.SaveChangesAsync();

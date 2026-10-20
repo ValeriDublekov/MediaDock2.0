@@ -423,7 +423,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.ToTable("golden_globe_awards", (string)null);
                 });
 
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeNomination", b =>
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeGroup", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -431,10 +431,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnName("id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<long>("AwardId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("award_id");
 
                     b.Property<int>("EnrichmentAttemptCount")
                         .HasColumnType("integer")
@@ -457,12 +453,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("imdb_id_version");
 
-                    b.Property<string>("ImportKey")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("import_key");
-
                     b.Property<bool>("IsImdbIdManual")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -477,15 +467,15 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("last_enrichment_error");
 
-                    b.Property<DateTimeOffset?>("NextEnrichmentAttemptAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("next_enrichment_attempt_at");
-
                     b.Property<string>("NomineeType")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")
                         .HasColumnName("nominee_type");
+
+                    b.Property<DateTimeOffset?>("NextEnrichmentAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_enrichment_attempt_at");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -493,36 +483,69 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("title");
 
+                    b.Property<int>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.HasKey("Id")
+                        .HasName("pk_golden_globe_groups");
+
+                    b.HasIndex("ImdbId");
+
+                    b.HasIndex("Title", "Year", "NomineeType")
+                        .IsUnique()
+                        .HasDatabaseName("ux_golden_globe_groups_identity");
+
+                    b.ToTable("golden_globe_groups", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_golden_globe_groups_enrichment_attempt_count", "enrichment_attempt_count >= 0");
+
+                            t.HasCheckConstraint("ck_golden_globe_groups_enrichment_status", "enrichment_status IN ('pending', 'enriched', 'problem', 'not_found', 'temporary_error')");
+
+                            t.HasCheckConstraint("ck_golden_globe_groups_nominee_type", "nominee_type IN ('movie', 'series')");
+                        });
+                });
+
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeNomination", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AwardId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("award_id");
+
+                    b.Property<string>("ImportKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("import_key");
+
                     b.Property<bool>("Winner")
                         .HasColumnType("boolean")
                         .HasColumnName("winner");
 
-                    b.Property<int>("Year")
-                        .HasColumnType("integer")
-                        .HasColumnName("year");
+                    b.Property<long>("GroupId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("group_id");
 
                     b.HasKey("Id")
                         .HasName("pk_golden_globe_nominations");
 
                     b.HasIndex("AwardId");
 
-                    b.HasIndex("ImdbId");
-
                     b.HasIndex("ImportKey")
                         .IsUnique()
                         .HasDatabaseName("ux_golden_globe_nominations_import_key");
 
-                    b.HasIndex("Year", "AwardId")
-                        .HasDatabaseName("ix_golden_globe_nominations_year_award");
+                    b.HasIndex("GroupId", "AwardId")
+                        .HasDatabaseName("ix_golden_globe_nominations_group_award");
 
-                    b.ToTable("golden_globe_nominations", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_golden_globe_nominations_enrichment_attempt_count", "enrichment_attempt_count >= 0");
-
-                            t.HasCheckConstraint("ck_golden_globe_nominations_enrichment_status", "enrichment_status IN ('pending', 'enriched', 'problem', 'not_found', 'temporary_error')");
-
-                            t.HasCheckConstraint("ck_golden_globe_nominations_nominee_type", "nominee_type IN ('movie', 'series')");
-                        });
+                    b.ToTable("golden_globe_nominations", (string)null);
                 });
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.ImdbTitle", b =>
@@ -1441,6 +1464,8 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_scan_runs_finish_time", "(status = 'running' AND finished_at IS NULL) OR (status <> 'running' AND finished_at IS NOT NULL)");
 
+                            t.HasCheckConstraint("ck_scan_runs_nonnegative_counters", "feeds_processed >= 0 AND entries_seen >= 0 AND known_entries_skipped >= 0 AND titles_created >= 0 AND occurrences_created >= 0 AND cache_hits >= 0 AND omdb_requests >= 0 AND ignored_entries >= 0 AND error_count >= 0");
+
                             t.HasCheckConstraint("ck_scan_runs_status", "status IN ('running', 'succeeded', 'partial', 'failed')");
 
                             t.HasCheckConstraint("ck_scan_runs_trigger", "trigger IN ('schedule', 'manual', 'local')");
@@ -1784,13 +1809,25 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_golden_globe_nominations_awards_award_id");
 
+                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeGroup", "Group")
+                        .WithMany("Nominations")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_golden_globe_nominations_groups_group_id");
+
+                    b.Navigation("Award");
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeGroup", b =>
+                {
                     b.HasOne("MediaDock.Infrastructure.Persistence.Entities.ImdbTitle", "ImdbTitle")
                         .WithMany()
                         .HasForeignKey("ImdbId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_golden_globe_nominations_imdb_titles_imdb_id");
-
-                    b.Navigation("Award");
+                        .HasConstraintName("fk_golden_globe_groups_imdb_titles_imdb_id");
 
                     b.Navigation("ImdbTitle");
                 });
@@ -1925,6 +1962,11 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeAward", b =>
+                {
+                    b.Navigation("Nominations");
+                });
+
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeGroup", b =>
                 {
                     b.Navigation("Nominations");
                 });

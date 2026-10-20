@@ -1,9 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using MediaDock.Api.Common;
 using MediaDock.Api.GoldenGlobes;
 using MediaDock.Application.Metadata;
+using MediaDock.Infrastructure.GoldenGlobes;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.AspNetCore.Hosting;
@@ -35,8 +37,9 @@ public sealed class GoldenGlobeApiTests
             await db.Database.MigrateAsync();
             var bestPicture = new GoldenGlobeAward { Name = "Best Motion Picture" };
             var bestDirector = new GoldenGlobeAward { Name = "Best Director" };
-            var manualTypeMismatch = CreateNomination(
-                "manual-type-mismatch", "Manual Type Mismatch", 2025, false, "tt76543210", bestPicture, "enriched", "series");
+            var aFilmMovie = CreateGroup("A Film", 2025, imdbId: "tt12345678", enrichmentStatus: "enriched");
+            var aFilmSeries = CreateGroup("A Film", 2025, "series", "tt87654321", "enriched");
+            var manualTypeMismatch = CreateGroup("Manual Type Mismatch", 2025, "series", "tt76543210", "enriched");
             manualTypeMismatch.IsImdbIdManual = true;
             db.ImdbTitles.AddRange(
                 CreateImdbTitle("tt12345678", "movie", 8.0m, "https://example.test/a-film.jpg"),
@@ -45,16 +48,16 @@ public sealed class GoldenGlobeApiTests
                 CreateImdbTitle("tt32345678", "movie", null, null),
                 CreateImdbTitle("tt76543210", "movie", 6.7m, "https://example.test/manual-type-mismatch.jpg"));
             db.GoldenGlobeNominations.AddRange(
-                CreateNomination("a-picture", "A Film", 2025, true, "tt12345678", bestPicture, "enriched"),
-                CreateNomination("a-director", "A Film", 2025, false, "tt12345678", bestDirector, "enriched"),
-                CreateNomination("a-series", "A Film", 2025, false, "tt87654321", bestPicture, "enriched", "series"),
-                CreateNomination("a-older-year", "A Film", 2024, false, null, bestPicture),
-                CreateNomination("b-picture", "B Film", 2025, false, null, bestPicture, "not_found"),
-                CreateNomination("older-picture", "Older Film", 2024, true, null, bestPicture, "problem"),
-                CreateNomination("daisy-series", "Daisy Jones and the Six", 2024, false, "tt8749198", bestPicture, "enriched", "series"),
-                CreateNomination("no-art", "No Art Film", 2025, false, "tt32345678", bestPicture, "enriched"),
-                manualTypeMismatch,
-                CreateNomination("broken-enriched", "Broken Enriched Film", 2025, false, null, bestPicture, "enriched"));
+                CreateNomination("a-picture", true, aFilmMovie, bestPicture),
+                CreateNomination("a-director", false, aFilmMovie, bestDirector),
+                CreateNomination("a-series", false, aFilmSeries, bestPicture),
+                CreateNomination("a-older-year", false, CreateGroup("A Film", 2024), bestPicture),
+                CreateNomination("b-picture", false, CreateGroup("B Film", 2025, enrichmentStatus: "not_found"), bestPicture),
+                CreateNomination("older-picture", true, CreateGroup("Older Film", 2024, enrichmentStatus: "problem"), bestPicture),
+                CreateNomination("daisy-series", false, CreateGroup("Daisy Jones and the Six", 2024, "series", "tt8749198", "enriched"), bestPicture),
+                CreateNomination("no-art", false, CreateGroup("No Art Film", 2025, imdbId: "tt32345678", enrichmentStatus: "enriched"), bestPicture),
+                CreateNomination("manual-type-mismatch", false, manualTypeMismatch, bestPicture),
+                CreateNomination("broken-enriched", false, CreateGroup("Broken Enriched Film", 2025, enrichmentStatus: "enriched"), bestPicture));
             var fetchedAt = DateTimeOffset.UtcNow;
             db.MetadataCache.Add(new MetadataCacheEntry
             {
@@ -253,8 +256,8 @@ public sealed class GoldenGlobeApiTests
                 CreateImdbTitle("tt44556677", "movie", 8.2m, "https://example.test/canonical-film.jpg"),
                 CreateImdbTitle("tt44556678", "movie", 7.6m, "https://example.test/expired-film.jpg"));
             db.GoldenGlobeNominations.AddRange(
-                CreateNomination("canonical-film", "Canonical Film", 2025, true, "tt44556677", award, "enriched"),
-                CreateNomination("expired-cache-film", "Expired Cache Film", 2024, true, "tt44556678", award, "enriched"));
+                CreateNomination("canonical-film", true, CreateGroup("Canonical Film", 2025, imdbId: "tt44556677", enrichmentStatus: "enriched"), award),
+                CreateNomination("expired-cache-film", true, CreateGroup("Expired Cache Film", 2024, imdbId: "tt44556678", enrichmentStatus: "enriched"), award));
             var fetchedAt = DateTimeOffset.UtcNow.AddDays(-30);
             db.MetadataCache.Add(new MetadataCacheEntry
             {
@@ -295,6 +298,52 @@ public sealed class GoldenGlobeApiTests
     }
 
     [Fact]
+    public async Task CatalogReturnsSharedEnrichmentAfterImporterAddsAnotherNomination()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_new_nomination_api_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>().UseNpgsql(connectionString).Options;
+        const string initialCsv = """
+            nominee_type,year,winner,award,title
+            film,2025,true,Best Motion Picture,Shared API Film
+            """;
+        const string updatedCsv = """
+            nominee_type,year,winner,award,title
+            film,2025,true,Best Motion Picture,Shared API Film
+            film,2025,false,Best Director,Shared API Film
+            """;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            var importer = new GoldenGlobeDatasetImporter(db);
+            await importer.ImportAsync(Encoding.UTF8.GetBytes(initialCsv));
+            var group = await db.GoldenGlobeGroups.SingleAsync(row => row.Title == "Shared API Film");
+            group.ImdbId = "tt22334455";
+            group.EnrichmentStatus = "enriched";
+            group.EnrichmentAttemptCount = 2;
+            db.ImdbTitles.Add(CreateImdbTitle("tt22334455", "movie", 8.6m, "https://example.test/shared-api-film.jpg"));
+            await db.SaveChangesAsync();
+
+            var import = await importer.ImportAsync(Encoding.UTF8.GetBytes(updatedCsv));
+            Assert.Equal(1, import.NominationsCreated);
+        }
+
+        using var factory = new GoldenGlobesApiFactory(connectionString);
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/api/golden-globes?pageSize=100");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await response.Content.ReadFromJsonAsync<PageResponse<GoldenGlobeFilmResponse>>();
+        Assert.NotNull(page);
+        var film = Assert.Single(page.Items, item => item.Title == "Shared API Film");
+        Assert.Equal("tt22334455", film.ImdbId);
+        Assert.Equal("enriched", film.EnrichmentStatus);
+        Assert.Equal(8.6m, film.ImdbRating);
+        Assert.Equal("https://example.test/shared-api-film.jpg", film.PosterUrl);
+        Assert.Equal(new[] { "Best Director", "Best Motion Picture" }, film.Nominations.Select(row => row.Award));
+    }
+
+    [Fact]
     public async Task ManualImdbLinkNormalizesQueuesIdempotentlyAndClearsByExactFilmGroup()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_manual_link_test").Build();
@@ -304,14 +353,17 @@ public sealed class GoldenGlobeApiTests
         await using (var db = new MediaDockDbContext(options))
         {
             await db.Database.MigrateAsync();
+            var group = CreateGroup("A: Film", 2025);
+            group.EnrichmentStatus = "temporary_error";
+            group.EnrichmentAttemptCount = 2;
             db.GoldenGlobeNominations.AddRange(
-                CreateNomination("manual-pending", "A: Film", 2025, false, null, new GoldenGlobeAward { Name = "Manual Award 1" }),
-                CreateNomination("manual-enriched", "A: Film", 2025, false, null, new GoldenGlobeAward { Name = "Manual Award 2" }, "enriched"),
-                CreateNomination("manual-problem", "A: Film", 2025, false, null, new GoldenGlobeAward { Name = "Manual Award 3" }, "problem"),
-                CreateNomination("manual-not-found", "A: Film", 2025, false, null, new GoldenGlobeAward { Name = "Manual Award 4" }, "not_found"),
-                CreateNomination("manual-temporary", "A: Film", 2025, false, null, new GoldenGlobeAward { Name = "Manual Award 5" }, "temporary_error"),
-                CreateNomination("manual-other-year", "A: Film", 2024, false, null, new GoldenGlobeAward { Name = "Manual Other Year" }),
-                CreateNomination("manual-series", "A: Film", 2025, false, null, new GoldenGlobeAward { Name = "Manual Series" }, nomineeType: "series"));
+                CreateNomination("manual-pending", false, group, new GoldenGlobeAward { Name = "Manual Award 1" }),
+                CreateNomination("manual-enriched", false, group, new GoldenGlobeAward { Name = "Manual Award 2" }),
+                CreateNomination("manual-problem", false, group, new GoldenGlobeAward { Name = "Manual Award 3" }),
+                CreateNomination("manual-not-found", false, group, new GoldenGlobeAward { Name = "Manual Award 4" }),
+                CreateNomination("manual-temporary", false, group, new GoldenGlobeAward { Name = "Manual Award 5" }),
+                CreateNomination("manual-other-year", false, CreateGroup("A: Film", 2024), new GoldenGlobeAward { Name = "Manual Other Year" }),
+                CreateNomination("manual-series", false, CreateGroup("A: Film", 2025, "series"), new GoldenGlobeAward { Name = "Manual Series" }));
             await db.SaveChangesAsync();
         }
 
@@ -335,15 +387,15 @@ public sealed class GoldenGlobeApiTests
 
         await using (var db = new MediaDockDbContext(options))
         {
-            var targetRows = await db.GoldenGlobeNominations.Where(row => row.Title == "A: Film" && row.Year == 2025 && row.NomineeType == "movie").ToListAsync();
+            var targetRows = await db.GoldenGlobeNominations
+                .Where(row => row.Group.Title == "A: Film" && row.Group.Year == 2025 && row.Group.NomineeType == "movie")
+                .ToListAsync();
             Assert.Equal(5, targetRows.Count);
-            Assert.All(targetRows, row =>
-            {
-                Assert.Equal("tt12345678", row.ImdbId);
-                Assert.True(row.IsImdbIdManual);
-                Assert.Equal(1, row.ImdbIdVersion);
-                Assert.Equal("pending", row.EnrichmentStatus);
-            });
+            var linkedGroup = await db.GoldenGlobeGroups.SingleAsync(row => row.Title == "A: Film" && row.Year == 2025 && row.NomineeType == "movie");
+            Assert.Equal("tt12345678", linkedGroup.ImdbId);
+            Assert.True(linkedGroup.IsImdbIdManual);
+            Assert.Equal(1, linkedGroup.ImdbIdVersion);
+            Assert.Equal("pending", linkedGroup.EnrichmentStatus);
             Assert.Equal(1, await db.BackgroundJobs.CountAsync(job => job.JobType == "golden_globe_manual_refresh"));
             Assert.Contains("tt12345678", (await db.BackgroundJobs.SingleAsync(job => job.Id == first.RefreshJob.Id)).ResultSummary!);
             Assert.Equal("pending", (await db.ImdbTitles.SingleAsync(title => title.ImdbId == "tt12345678")).MetadataStatus);
@@ -357,15 +409,12 @@ public sealed class GoldenGlobeApiTests
         }
 
         await using var verifyDb = new MediaDockDbContext(options);
-        var clearedRows = await verifyDb.GoldenGlobeNominations.Where(row => row.Title == "A: Film" && row.Year == 2025 && row.NomineeType == "movie").ToListAsync();
-        Assert.All(clearedRows, row =>
-        {
-            Assert.Null(row.ImdbId);
-            Assert.False(row.IsImdbIdManual);
-            Assert.Equal(2, row.ImdbIdVersion);
-        });
-        Assert.Null((await verifyDb.GoldenGlobeNominations.SingleAsync(row => row.ImportKey == "manual-other-year")).ImdbId);
-        Assert.Null((await verifyDb.GoldenGlobeNominations.SingleAsync(row => row.ImportKey == "manual-series")).ImdbId);
+        var clearedGroup = await verifyDb.GoldenGlobeGroups.SingleAsync(row => row.Title == "A: Film" && row.Year == 2025 && row.NomineeType == "movie");
+        Assert.Null(clearedGroup.ImdbId);
+        Assert.False(clearedGroup.IsImdbIdManual);
+        Assert.Equal(2, clearedGroup.ImdbIdVersion);
+        Assert.Null((await verifyDb.GoldenGlobeGroups.SingleAsync(row => row.Title == "A: Film" && row.Year == 2024)).ImdbId);
+        Assert.Null((await verifyDb.GoldenGlobeGroups.SingleAsync(row => row.Title == "A: Film" && row.NomineeType == "series")).ImdbId);
     }
 
     private static ImdbTitle CreateImdbTitle(string imdbId, string mediaType, decimal? imdbRating, string? posterUrl) => new()
@@ -378,23 +427,29 @@ public sealed class GoldenGlobeApiTests
         UpdatedAt = DateTimeOffset.UtcNow
     };
 
-    private static GoldenGlobeNomination CreateNomination(
-        string importKey,
+    private static GoldenGlobeGroup CreateGroup(
         string title,
         int year,
-        bool winner,
-        string? imdbId,
-        GoldenGlobeAward award,
-        string enrichmentStatus = "pending",
-        string nomineeType = "movie") => new()
+        string nomineeType = "movie",
+        string? imdbId = null,
+        string enrichmentStatus = "pending") => new()
     {
-        ImportKey = importKey,
         Title = title,
         Year = year,
-        Winner = winner,
-        ImdbId = imdbId,
-        EnrichmentStatus = enrichmentStatus,
         NomineeType = nomineeType,
+        ImdbId = imdbId,
+        EnrichmentStatus = enrichmentStatus
+    };
+
+    private static GoldenGlobeNomination CreateNomination(
+        string importKey,
+        bool winner,
+        GoldenGlobeGroup group,
+        GoldenGlobeAward award) => new()
+    {
+        ImportKey = importKey,
+        Winner = winner,
+        Group = group,
         Award = award
     };
 

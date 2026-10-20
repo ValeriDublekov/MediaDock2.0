@@ -55,19 +55,20 @@ internal sealed class MovieAwardsApiService(MediaDockDbContext dbContext) : IMov
         var goldenGlobes = await dbContext.GoldenGlobeNominations
             .AsNoTracking()
             .Include(nomination => nomination.Award)
-            .Where(nomination => nomination.ImdbId != null && imdbIds.Contains(nomination.ImdbId))
+            .Include(nomination => nomination.Group)
+            .Where(nomination => nomination.Group.ImdbId != null && imdbIds.Contains(nomination.Group.ImdbId))
             .ToListAsync(cancellationToken);
 
         awards.AddRange(goldenGlobes.Select(nomination => new MovieAwardRecognitionResponse(
             nomination.Id,
-            nomination.ImdbId!,
+            nomination.Group.ImdbId!,
             "golden_globes",
             null,
-            nomination.Year,
+            nomination.Group.Year,
             null,
             nomination.Award.Name,
             null,
-            nomination.Title,
+            nomination.Group.Title,
             null,
             nomination.Winner)));
 

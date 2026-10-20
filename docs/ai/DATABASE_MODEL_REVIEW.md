@@ -51,7 +51,7 @@ Relevant paths: [catalog query](../../server/src/MediaDock.Api/Catalog/CatalogAp
 ## Deliberate Denormalization To Preserve
 
 - `Occurrence` stores feed-item/source snapshots while `Title` stores aggregate first/last observation times. These have different scopes and support history/catalog ordering.
-- `OscarFilm` and `GoldenGlobeNomination` retain award-source title/year/category facts. `OscarFilm.ImdbId` also preserves the imported source ID, subject to the non-null match with its linked title. Golden Globes are a separate award catalog and are not required to have an RSS-catalog `Title` row.
+- `OscarFilm` retains award-source title/year/category facts and its imported IMDb source ID, subject to the non-null match with its linked title. `GoldenGlobeGroup` owns one `(title, year, nominee_type)` identity and its shared IMDb/enrichment state, while `GoldenGlobeNomination` retains award, winner, and import facts. Golden Globes are a separate award catalog and are not required to have an RSS-catalog `Title` row.
 - `MetadataCacheEntry.PayloadJson` duplicates provider payload temporarily by design; it should not replace `imdb_titles` as long-lived read authority.
 - `BackgroundJob` is a job-type union table with type-specific nullable columns, but its type, owner, lifecycle, and upload constraints are explicitly checked. Splitting it is not justified by this review alone.
 - `PersonalRating` and `FavoriteMovie` use owner-scoped compound keys, and IMDb references consistently target `imdb_titles`; these are sound ownership choices.

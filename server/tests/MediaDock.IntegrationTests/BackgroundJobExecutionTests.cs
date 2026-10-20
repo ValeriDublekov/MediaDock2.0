@@ -251,8 +251,11 @@ public sealed class BackgroundJobExecutionTests
         Assert.Equal("golden-globes.csv", completed.InputFileName);
 
         await using var verificationDb = new MediaDockDbContext(options);
-        var nomination = await verificationDb.GoldenGlobeNominations.Include(row => row.Award).SingleAsync();
-        Assert.Equal("Queued Golden Globe Film", nomination.Title);
+        var nomination = await verificationDb.GoldenGlobeNominations
+            .Include(row => row.Award)
+            .Include(row => row.Group)
+            .SingleAsync();
+        Assert.Equal("Queued Golden Globe Film", nomination.Group.Title);
         Assert.Equal("Best Picture", nomination.Award.Name);
         var storedJob = await verificationDb.BackgroundJobs.SingleAsync(job => job.Id == accepted.Id);
         Assert.Null(storedJob.InputBytes);
@@ -421,9 +424,12 @@ public sealed class BackgroundJobExecutionTests
             db.GoldenGlobeNominations.Add(new Infrastructure.Persistence.Entities.GoldenGlobeNomination
             {
                 ImportKey = "manual-refresh-film",
-                Title = "Manual Refresh Film",
-                Year = 2025,
-                NomineeType = "movie",
+                Group = new Infrastructure.Persistence.Entities.GoldenGlobeGroup
+                {
+                    Title = "Manual Refresh Film",
+                    Year = 2025,
+                    NomineeType = "movie"
+                },
                 Award = new Infrastructure.Persistence.Entities.GoldenGlobeAward { Name = "Manual Refresh Award" }
             });
             await db.SaveChangesAsync();
@@ -455,10 +461,10 @@ public sealed class BackgroundJobExecutionTests
         Assert.DoesNotContain("&t=", handler.RequestUris[0].Query);
 
         await using var verificationDb = new MediaDockDbContext(options);
-        var nomination = await verificationDb.GoldenGlobeNominations.SingleAsync();
-        Assert.Equal("tt12345678", nomination.ImdbId);
-        Assert.True(nomination.IsImdbIdManual);
-        Assert.Equal("enriched", nomination.EnrichmentStatus);
+        var group = await verificationDb.GoldenGlobeGroups.SingleAsync();
+        Assert.Equal("tt12345678", group.ImdbId);
+        Assert.True(group.IsImdbIdManual);
+        Assert.Equal("enriched", group.EnrichmentStatus);
         var cached = await verificationDb.MetadataCache.SingleAsync();
         Assert.Equal("tt12345678", cached.LookupIdentity);
         Assert.Equal("movie", cached.SourceType);

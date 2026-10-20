@@ -16,29 +16,26 @@ internal sealed class GoldenGlobeAwardConfiguration : IEntityTypeConfiguration<G
     }
 }
 
-internal sealed class GoldenGlobeNominationConfiguration : IEntityTypeConfiguration<GoldenGlobeNomination>
+internal sealed class GoldenGlobeGroupConfiguration : IEntityTypeConfiguration<GoldenGlobeGroup>
 {
-    public void Configure(EntityTypeBuilder<GoldenGlobeNomination> builder)
+    public void Configure(EntityTypeBuilder<GoldenGlobeGroup> builder)
     {
-        builder.ToTable("golden_globe_nominations", table =>
+        builder.ToTable("golden_globe_groups", table =>
         {
             table.HasCheckConstraint(
-                "ck_golden_globe_nominations_enrichment_status",
+                "ck_golden_globe_groups_enrichment_status",
                 "enrichment_status IN ('pending', 'enriched', 'problem', 'not_found', 'temporary_error')");
             table.HasCheckConstraint(
-                "ck_golden_globe_nominations_enrichment_attempt_count",
+                "ck_golden_globe_groups_enrichment_attempt_count",
                 "enrichment_attempt_count >= 0");
             table.HasCheckConstraint(
-                "ck_golden_globe_nominations_nominee_type",
+                "ck_golden_globe_groups_nominee_type",
                 "nominee_type IN ('movie', 'series')");
         });
-        builder.HasKey(x => x.Id).HasName("pk_golden_globe_nominations");
+        builder.HasKey(x => x.Id).HasName("pk_golden_globe_groups");
         builder.Property(x => x.Id).UseIdentityByDefaultColumn().HasColumnName("id");
-        builder.Property(x => x.ImportKey).HasColumnName("import_key").HasMaxLength(64).IsRequired();
-        builder.Property(x => x.Year).HasColumnName("year");
-        builder.Property(x => x.Winner).HasColumnName("winner");
-        builder.Property(x => x.AwardId).HasColumnName("award_id");
         builder.Property(x => x.Title).HasColumnName("title").HasMaxLength(1000).IsRequired();
+        builder.Property(x => x.Year).HasColumnName("year");
         builder.Property(x => x.NomineeType).HasColumnName("nominee_type").HasMaxLength(16).IsRequired();
         builder.Property(x => x.ImdbId).HasColumnName("imdb_id").HasMaxLength(32);
         builder.Property(x => x.IsImdbIdManual).HasColumnName("is_imdb_id_manual").HasDefaultValue(false).IsRequired();
@@ -48,13 +45,32 @@ internal sealed class GoldenGlobeNominationConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.LastEnrichmentAttemptAt).HasColumnName("last_enrichment_attempt_at");
         builder.Property(x => x.NextEnrichmentAttemptAt).HasColumnName("next_enrichment_attempt_at");
         builder.Property(x => x.LastEnrichmentError).HasColumnName("last_enrichment_error");
-        builder.HasIndex(x => x.ImportKey).IsUnique().HasDatabaseName("ux_golden_globe_nominations_import_key");
-        builder.HasIndex(x => new { x.Year, x.AwardId }).HasDatabaseName("ix_golden_globe_nominations_year_award");
-        builder.HasOne(x => x.Award).WithMany(x => x.Nominations).HasForeignKey(x => x.AwardId)
-            .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_golden_globe_nominations_awards_award_id");
+        builder.HasIndex(x => new { x.Title, x.Year, x.NomineeType })
+            .IsUnique()
+            .HasDatabaseName("ux_golden_globe_groups_identity");
         builder.HasOne(x => x.ImdbTitle).WithMany().HasForeignKey(x => x.ImdbId)
             .HasPrincipalKey(imdbTitle => imdbTitle.ImdbId)
             .OnDelete(DeleteBehavior.Restrict)
-            .HasConstraintName("fk_golden_globe_nominations_imdb_titles_imdb_id");
+            .HasConstraintName("fk_golden_globe_groups_imdb_titles_imdb_id");
+    }
+}
+
+internal sealed class GoldenGlobeNominationConfiguration : IEntityTypeConfiguration<GoldenGlobeNomination>
+{
+    public void Configure(EntityTypeBuilder<GoldenGlobeNomination> builder)
+    {
+        builder.ToTable("golden_globe_nominations");
+        builder.HasKey(x => x.Id).HasName("pk_golden_globe_nominations");
+        builder.Property(x => x.Id).UseIdentityByDefaultColumn().HasColumnName("id");
+        builder.Property(x => x.ImportKey).HasColumnName("import_key").HasMaxLength(64).IsRequired();
+        builder.Property(x => x.Winner).HasColumnName("winner");
+        builder.Property(x => x.AwardId).HasColumnName("award_id");
+        builder.Property(x => x.GroupId).HasColumnName("group_id");
+        builder.HasIndex(x => x.ImportKey).IsUnique().HasDatabaseName("ux_golden_globe_nominations_import_key");
+        builder.HasIndex(x => new { x.GroupId, x.AwardId }).HasDatabaseName("ix_golden_globe_nominations_group_award");
+        builder.HasOne(x => x.Award).WithMany(x => x.Nominations).HasForeignKey(x => x.AwardId)
+            .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_golden_globe_nominations_awards_award_id");
+        builder.HasOne(x => x.Group).WithMany(x => x.Nominations).HasForeignKey(x => x.GroupId)
+            .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_golden_globe_nominations_groups_group_id");
     }
 }

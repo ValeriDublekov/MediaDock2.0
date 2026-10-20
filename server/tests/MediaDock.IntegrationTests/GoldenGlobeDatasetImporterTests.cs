@@ -45,23 +45,27 @@ public sealed class GoldenGlobeDatasetImporterTests
         Assert.Equal(2, firstImport.AwardsCreated);
         Assert.Equal(3, firstImport.NominationsCreated);
 
-        var preservedNomination = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "A Film, Extended");
-        preservedNomination.EnrichmentStatus = "enriched";
-        preservedNomination.EnrichmentAttemptCount = 1;
-        preservedNomination.ImdbId = "tt12345678";
-        preservedNomination.IsImdbIdManual = true;
-        preservedNomination.ImdbIdVersion = 2;
-        var legacySeriesNomination = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "Series Title");
-        legacySeriesNomination.NomineeType = "movie";
-        legacySeriesNomination.EnrichmentStatus = "not_found";
-        legacySeriesNomination.EnrichmentAttemptCount = 1;
-        legacySeriesNomination.ImdbId = "tt00000001";
-        legacySeriesNomination.IsImdbIdManual = true;
-        legacySeriesNomination.ImdbIdVersion = 2;
-        var autoTypeCorrection = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "Auto Type Correction");
-        autoTypeCorrection.NomineeType = "movie";
-        autoTypeCorrection.EnrichmentStatus = "enriched";
-        autoTypeCorrection.ImdbId = "tt12345679";
+        var preservedNomination = await db.GoldenGlobeNominations.Include(row => row.Group)
+            .SingleAsync(row => row.Group.Title == "A Film, Extended");
+        var preservedGroup = preservedNomination.Group;
+        preservedGroup.EnrichmentStatus = "enriched";
+        preservedGroup.EnrichmentAttemptCount = 1;
+        preservedGroup.ImdbId = "tt12345678";
+        preservedGroup.IsImdbIdManual = true;
+        preservedGroup.ImdbIdVersion = 2;
+        var legacySeriesNomination = await db.GoldenGlobeNominations.Include(row => row.Group)
+            .SingleAsync(row => row.Group.Title == "Series Title");
+        legacySeriesNomination.Group.NomineeType = "movie";
+        legacySeriesNomination.Group.EnrichmentStatus = "not_found";
+        legacySeriesNomination.Group.EnrichmentAttemptCount = 1;
+        legacySeriesNomination.Group.ImdbId = "tt00000001";
+        legacySeriesNomination.Group.IsImdbIdManual = true;
+        legacySeriesNomination.Group.ImdbIdVersion = 2;
+        var autoTypeCorrection = await db.GoldenGlobeNominations.Include(row => row.Group)
+            .SingleAsync(row => row.Group.Title == "Auto Type Correction");
+        autoTypeCorrection.Group.NomineeType = "movie";
+        autoTypeCorrection.Group.EnrichmentStatus = "enriched";
+        autoTypeCorrection.Group.ImdbId = "tt12345679";
         db.ImdbTitles.AddRange(
             new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = DateTimeOffset.UtcNow },
             new ImdbTitle { ImdbId = "tt00000001", UpdatedAt = DateTimeOffset.UtcNow },
@@ -76,22 +80,137 @@ public sealed class GoldenGlobeDatasetImporterTests
         Assert.Equal(0, tsvImport.AwardsCreated);
         Assert.Equal(1, tsvImport.NominationsCreated);
         Assert.Equal(4, await db.GoldenGlobeNominations.CountAsync());
-        var preservedAfterReimport = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "A Film, Extended");
+        var preservedAfterReimport = await db.GoldenGlobeGroups.SingleAsync(row => row.Title == "A Film, Extended");
         Assert.Equal("enriched", preservedAfterReimport.EnrichmentStatus);
         Assert.Equal("tt12345678", preservedAfterReimport.ImdbId);
         Assert.True(preservedAfterReimport.IsImdbIdManual);
         Assert.Equal(2, preservedAfterReimport.ImdbIdVersion);
-        var reclassifiedSeries = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "Series Title");
+        var reclassifiedSeries = await db.GoldenGlobeGroups.SingleAsync(row => row.Title == "Series Title");
         Assert.Equal("series", reclassifiedSeries.NomineeType);
         Assert.Equal("pending", reclassifiedSeries.EnrichmentStatus);
         Assert.Equal(0, reclassifiedSeries.EnrichmentAttemptCount);
         Assert.Null(reclassifiedSeries.ImdbId);
         Assert.False(reclassifiedSeries.IsImdbIdManual);
         Assert.Equal(3, reclassifiedSeries.ImdbIdVersion);
-        var autoTypeCorrected = await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "Auto Type Correction");
+        var autoTypeCorrected = await db.GoldenGlobeGroups.SingleAsync(row => row.Title == "Auto Type Correction");
         Assert.Equal("movie", autoTypeCorrected.NomineeType);
         Assert.Equal("enriched", autoTypeCorrected.EnrichmentStatus);
         Assert.Equal("tt12345679", autoTypeCorrected.ImdbId);
-        Assert.True((await db.GoldenGlobeNominations.SingleAsync(row => row.Title == "TSV Film")).Winner);
+        Assert.True((await db.GoldenGlobeNominations.Include(row => row.Group).SingleAsync(row => row.Group.Title == "TSV Film")).Winner);
+    }
+
+    [Fact]
+    public async Task ImportAddsNominationToEnrichedGroupWithoutResettingSharedState()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_import_enriched_group_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+
+        const string initialCsv = """
+            nominee_type,year,winner,award,title
+            film,2025,true,Best Motion Picture,Shared Group Film
+            """;
+        const string updatedCsv = """
+            nominee_type,year,winner,award,title
+            film,2025,true,Best Motion Picture,Shared Group Film
+            film,2025,false,Best Director,Shared Group Film
+            """;
+        var importer = new GoldenGlobeDatasetImporter(db);
+        await importer.ImportAsync(Encoding.UTF8.GetBytes(initialCsv));
+
+        var group = await db.GoldenGlobeGroups.SingleAsync(row => row.Title == "Shared Group Film");
+        group.ImdbId = "tt12345678";
+        group.IsImdbIdManual = true;
+        group.ImdbIdVersion = 4;
+        group.EnrichmentStatus = "enriched";
+        group.EnrichmentAttemptCount = 3;
+        group.LastEnrichmentError = null;
+        var updatedAt = new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero);
+        db.ImdbTitles.Add(new ImdbTitle
+        {
+            ImdbId = "tt12345678",
+            TitleText = "Shared Group Film (canonical)",
+            ImdbRating = 8.3m,
+            PosterUrl = "https://example.test/shared-group.jpg",
+            MetadataStatus = "enriched",
+            UpdatedAt = updatedAt
+        });
+        await db.SaveChangesAsync();
+
+        var import = await importer.ImportAsync(Encoding.UTF8.GetBytes(updatedCsv));
+
+        Assert.Equal(1, import.NominationsCreated);
+        var nominations = await db.GoldenGlobeNominations.AsNoTracking()
+            .Include(row => row.Group)
+            .Include(row => row.Award)
+            .Where(row => row.Group.Title == "Shared Group Film")
+            .ToListAsync();
+        Assert.Equal(2, nominations.Count);
+        Assert.Equal(1, nominations.Select(row => row.GroupId).Distinct().Count());
+
+        var storedGroup = await db.GoldenGlobeGroups.AsNoTracking().SingleAsync(row => row.Title == "Shared Group Film");
+        Assert.Equal("tt12345678", storedGroup.ImdbId);
+        Assert.True(storedGroup.IsImdbIdManual);
+        Assert.Equal(4, storedGroup.ImdbIdVersion);
+        Assert.Equal("enriched", storedGroup.EnrichmentStatus);
+        Assert.Equal(3, storedGroup.EnrichmentAttemptCount);
+        var metadata = await db.ImdbTitles.AsNoTracking().SingleAsync(row => row.ImdbId == "tt12345678");
+        Assert.Equal("Shared Group Film (canonical)", metadata.TitleText);
+        Assert.Equal(8.3m, metadata.ImdbRating);
+        Assert.Equal("https://example.test/shared-group.jpg", metadata.PosterUrl);
+    }
+
+    [Fact]
+    public async Task TypeCorrectionReusesExistingTargetGroupAndPreservesItsManualLink()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_import_type_merge_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+
+        const string initialCsv = """
+            nominee_type,year,winner,award,title
+            film,2025,true,Best Motion Picture,Type Shared Film
+            series,2025,false,Best Television Series,Type Shared Film
+            """;
+        const string correctedCsv = """
+            nominee_type,year,winner,award,title
+            series,2025,true,Best Motion Picture,Type Shared Film
+            series,2025,false,Best Television Series,Type Shared Film
+            """;
+        var importer = new GoldenGlobeDatasetImporter(db);
+        await importer.ImportAsync(Encoding.UTF8.GetBytes(initialCsv));
+
+        var targetGroup = await db.GoldenGlobeGroups.SingleAsync(row => row.Title == "Type Shared Film" && row.NomineeType == "series");
+        targetGroup.ImdbId = "tt22334455";
+        targetGroup.IsImdbIdManual = true;
+        targetGroup.ImdbIdVersion = 7;
+        targetGroup.EnrichmentStatus = "enriched";
+        db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt22334455", UpdatedAt = DateTimeOffset.UtcNow });
+        await db.SaveChangesAsync();
+
+        var import = await importer.ImportAsync(Encoding.UTF8.GetBytes(correctedCsv));
+
+        Assert.Equal(0, import.NominationsCreated);
+        var groups = await db.GoldenGlobeGroups.AsNoTracking()
+            .Include(group => group.Nominations)
+            .Where(group => group.Title == "Type Shared Film" && group.Year == 2025)
+            .ToListAsync();
+        var mergedGroup = Assert.Single(groups);
+        Assert.Equal("series", mergedGroup.NomineeType);
+        Assert.Equal("tt22334455", mergedGroup.ImdbId);
+        Assert.True(mergedGroup.IsImdbIdManual);
+        Assert.Equal(7, mergedGroup.ImdbIdVersion);
+        Assert.Equal("enriched", mergedGroup.EnrichmentStatus);
+        Assert.Equal(2, mergedGroup.Nominations.Count);
     }
 }
