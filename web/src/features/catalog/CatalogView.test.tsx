@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, applyCatalogTitleImdbCandidate, getCatalog, getMovieAwards, getTitle, getTitleOccurrences, searchCatalogTitleImdbCandidates } from '../../api/client'
+import { ApiError, applyCatalogTitleImdbCandidate, getCatalog, getMovieAwards, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
 import type { CatalogTitle, ImdbCandidateSearch, MovieAwardRecognition, PageResponse, TitleDetails } from '../../api/types'
 import { CatalogView } from './CatalogView'
 
@@ -12,6 +12,7 @@ vi.mock('../../api/client', () => ({
   getTitleOscars: vi.fn().mockResolvedValue([]),
   getMovieAwards: vi.fn().mockResolvedValue([]),
   searchCatalogTitleImdbCandidates: vi.fn(),
+  lookupCatalogTitleImdbCandidate: vi.fn(),
   applyCatalogTitleImdbCandidate: vi.fn(),
 }))
 
@@ -104,21 +105,45 @@ describe('CatalogView', () => {
     }
     catalogRequest.mockResolvedValue(page([title]))
     vi.mocked(getTitle).mockResolvedValue(details)
-    vi.mocked(getTitleOccurrences).mockResolvedValue({ items: [], page: 1, pageSize: 5, totalCount: 0, totalPages: 0 })
+    vi.mocked(getTitleOccurrences).mockResolvedValue({
+      items: [{
+        id: 1, titleId: title.id, sourceId: 1, sourceName: 'Movies', sourceItemKey: 'entry:1', feedEntryId: 'entry:1',
+        torrentUrl: 'https://example.test/torrent/1', rawTitle: 'Quiet River (2004) 1080p', sourceFeedName: 'Movies',
+        feedType: 'movie', sourcePublishedAt: null, observedAt: null, quality: null, ripType: null,
+        firstSeenAt: '2026-09-28T12:00:00Z', lastSeenAt: '2026-09-28T12:00:00Z',
+      }],
+      page: 1, pageSize: 5, totalCount: 1, totalPages: 1,
+    })
     vi.mocked(searchCatalogTitleImdbCandidates).mockResolvedValue(candidates)
+    vi.mocked(lookupCatalogTitleImdbCandidate).mockResolvedValue(candidates)
     vi.mocked(applyCatalogTitleImdbCandidate).mockResolvedValue({ torrentTitleId: title.id, imdbId: 'tt87654321' })
 
     render(<CatalogView />)
     fireEvent.click(await screen.findByRole('button', { name: 'View Quiet River details' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Find IMDb match' }))
 
-    expect(await screen.findByRole('heading', { name: 'Choose a match' })).toBeTruthy()
-    const imdbLink = screen.getByRole('link', { name: 'IMDb' })
+    expect(await screen.findByRole('heading', { name: 'Change IMDb match' })).toBeTruthy()
+    expect(screen.getByText('Quiet River (2004) 1080p')).toBeTruthy()
+    expect((screen.getByLabelText('Title to search') as HTMLInputElement).value).toBe('Quiet River')
+    expect(searchCatalogTitleImdbCandidates).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Title to search'), { target: { value: 'Quiet River director cut' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+    const imdbLink = await screen.findByRole('link', { name: 'IMDb' })
     expect(imdbLink.getAttribute('href')).toBe('https://www.imdb.com/title/tt87654321/')
+    expect(searchCatalogTitleImdbCandidates).toHaveBeenCalledWith(title.id, 'Quiet River director cut', 1)
     fireEvent.click(screen.getByRole('button', { name: 'Use match' }))
 
     await waitFor(() => expect(applyCatalogTitleImdbCandidate).toHaveBeenCalledWith(title.id, 'tt87654321'))
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+    fireEvent.click(await screen.findByRole('button', { name: 'View Quiet River details' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Find IMDb match' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'IMDb ID' }))
+    fireEvent.change(screen.getByLabelText('IMDb ID'), { target: { value: 'tt87654321' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Load IMDb info' }))
+
+    expect(await screen.findByRole('link', { name: 'IMDb' })).toBeTruthy()
+    expect(lookupCatalogTitleImdbCandidate).toHaveBeenCalledWith(title.id, 'tt87654321')
   })
 
   it('opens the title directly on IMDb from the catalog card', async () => {

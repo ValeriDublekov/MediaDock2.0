@@ -11,7 +11,7 @@ interface TitleDetailsDialogProps {
   titleId: number
   initialSection?: 'details' | 'torrents'
   onClose: () => void
-  onFindImdbMatch?: (titleId: number, title: string) => void
+  onFindImdbMatch?: (titleId: number, title: string, rawTitle: string) => void
 }
 
 export function TitleDetailsDialog({ titleId, initialSection = 'details', onClose, onFindImdbMatch }: TitleDetailsDialogProps) {
@@ -92,7 +92,7 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
                 <div><dt>First seen</dt><dd>{formatDate(title.firstSeenAt)}</dd></div>
               </dl>
               {onFindImdbMatch && <div className="imdb-match-trigger">
-                <button className="button button-secondary" onClick={() => onFindImdbMatch(title.id, title.title)} type="button">
+                <button className="button button-secondary" onClick={() => onFindImdbMatch(title.id, title.title, occurrences?.items[0]?.rawTitle ?? title.title)} type="button">
                   {title.imdbId ? 'Change IMDb match' : 'Find IMDb match'}
                 </button>
               </div>}

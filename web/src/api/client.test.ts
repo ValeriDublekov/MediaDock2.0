@@ -27,6 +27,8 @@ import {
   getPersonalRatings,
   getPersonalRatingsEnrichmentJob,
   getProviderSettings,
+  lookupCatalogTitleImdbCandidate,
+  lookupParseLogImdbCandidate,
   enqueuePersonalRatingsEnrichment,
   importPersonalRatings,
   requestJson,
@@ -69,17 +71,23 @@ describe('typed API client', () => {
     }
     const stub = fetchStub(response(200, searchResponse))
 
-    await searchCatalogTitleImdbCandidates(7, 2, stub.fetcher)
+    await searchCatalogTitleImdbCandidates(7, 'Quiet River', 2, stub.fetcher)
+    await lookupCatalogTitleImdbCandidate(7, 'tt12345678', stub.fetcher)
     await applyCatalogTitleImdbCandidate(7, 'tt12345678', stub.fetcher)
-    await searchParseLogImdbCandidates(42, 1, stub.fetcher)
+    await searchParseLogImdbCandidates(42, 'Quiet River', 1, stub.fetcher)
+    await lookupParseLogImdbCandidate(42, 'tt12345678', stub.fetcher)
     await applyParseLogImdbCandidate(42, 'tt12345678', stub.fetcher)
 
     expect(String(stub.calls[0]?.input)).toBe('/api/titles/7/imdb-candidates?page=2')
     expect(stub.calls[0]?.init?.method).toBe('POST')
-    expect(String(stub.calls[1]?.input)).toBe('/api/titles/7/imdb-match')
+    expect(JSON.parse(String(stub.calls[0]?.init?.body))).toEqual({ title: 'Quiet River' })
+    expect(String(stub.calls[1]?.input)).toBe('/api/titles/7/imdb-candidate')
     expect(JSON.parse(String(stub.calls[1]?.init?.body))).toEqual({ imdbId: 'tt12345678' })
-    expect(String(stub.calls[2]?.input)).toBe('/api/parse-logs/42/imdb-candidates?page=1')
-    expect(String(stub.calls[3]?.input)).toBe('/api/parse-logs/42/imdb-match')
+    expect(String(stub.calls[2]?.input)).toBe('/api/titles/7/imdb-match')
+    expect(String(stub.calls[3]?.input)).toBe('/api/parse-logs/42/imdb-candidates?page=1')
+    expect(JSON.parse(String(stub.calls[3]?.init?.body))).toEqual({ title: 'Quiet River' })
+    expect(String(stub.calls[4]?.input)).toBe('/api/parse-logs/42/imdb-candidate')
+    expect(String(stub.calls[5]?.input)).toBe('/api/parse-logs/42/imdb-match')
   })
 
   it('uses IMDb IDs for favorite create and marker requests', async () => {

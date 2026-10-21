@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import {
   applyCatalogTitleImdbCandidate,
   applyParseLogImdbCandidate,
+  lookupCatalogTitleImdbCandidate,
+  lookupParseLogImdbCandidate,
   searchCatalogTitleImdbCandidates,
   searchParseLogImdbCandidates,
 } from '../api/client'
@@ -10,8 +12,8 @@ import { LoadingState } from './Feedback'
 import { formatWords } from '../shared/format'
 
 export type ImdbCandidateTarget =
-  | { source: 'catalog'; id: number; title: string }
-  | { source: 'parse-log'; id: number; title: string }
+  | { source: 'catalog'; id: number; title: string; rawTitle: string }
+  | { source: 'parse-log'; id: number; title: string; rawTitle: string }
 
 export function ImdbCandidatePicker({
   target,
@@ -22,43 +24,82 @@ export function ImdbCandidatePicker({
   onClose: () => void
   onApplied: () => void
 }) {
+  const [mode, setMode] = useState<'title' | 'imdb-id'>('title')
+  const [titleQuery, setTitleQuery] = useState(target.title)
+  const [searchedTitle, setSearchedTitle] = useState<string | null>(null)
+  const [imdbIdQuery, setImdbIdQuery] = useState('')
   const [searchResult, setSearchResult] = useState<ImdbCandidateSearch | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
   const [applyError, setApplyError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [applyingImdbId, setApplyingImdbId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
-  const [attempt, setAttempt] = useState(0)
 
-  useEffect(() => {
-    let current = true
-    const request = target.source === 'catalog'
-      ? searchCatalogTitleImdbCandidates(target.id, page)
-      : searchParseLogImdbCandidates(target.id, page)
+  function setLookupResult(result: ImdbCandidateSearch) {
+    setSearchResult(result)
+    if (result.status !== 'found' && result.status !== 'not_found') {
+      setSearchError(result.errorCode
+        ? `OMDb lookup failed: ${formatWords(result.errorCode)}.`
+        : `OMDb lookup failed: ${formatWords(result.status)}.`)
+    }
+  }
 
-    request
-      .then((result) => {
-        if (!current) return
-        setSearchResult(result)
-        if (result.status !== 'found' && result.status !== 'not_found') {
-          setSearchError(result.errorCode
-            ? `OMDb search failed: ${formatWords(result.errorCode)}.`
-            : `OMDb search failed: ${formatWords(result.status)}.`)
-        }
-      })
-      .catch((requestError: unknown) => {
-        if (current) setSearchError(requestError instanceof Error ? requestError.message : 'Could not search IMDb records.')
-      })
-      .finally(() => { if (current) setLoading(false) })
-    return () => { current = false }
-  }, [target.id, target.source, page, attempt])
-
-  function changePage(nextPage: number) {
+  async function searchByTitle(title: string, nextPage = 1) {
+    const normalizedTitle = title.trim()
+    if (!normalizedTitle) {
+      setSearchError('Enter a title to search IMDb.')
+      setSearchResult(null)
+      return
+    }
     setLoading(true)
     setSearchError(null)
     setSearchResult(null)
     setApplyError(null)
     setPage(nextPage)
+    setSearchedTitle(normalizedTitle)
+    try {
+      const result = target.source === 'catalog'
+        ? await searchCatalogTitleImdbCandidates(target.id, normalizedTitle, nextPage)
+        : await searchParseLogImdbCandidates(target.id, normalizedTitle, nextPage)
+      setLookupResult(result)
+    } catch (requestError) {
+      setSearchError(requestError instanceof Error ? requestError.message : 'Could not search IMDb records.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function loadByImdbId(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const normalizedImdbId = imdbIdQuery.trim()
+    if (!normalizedImdbId) {
+      setSearchError('Enter an IMDb ID to load its information.')
+      setSearchResult(null)
+      return
+    }
+    setLoading(true)
+    setSearchError(null)
+    setSearchResult(null)
+    setApplyError(null)
+    setPage(1)
+    try {
+      const result = target.source === 'catalog'
+        ? await lookupCatalogTitleImdbCandidate(target.id, normalizedImdbId)
+        : await lookupParseLogImdbCandidate(target.id, normalizedImdbId)
+      setLookupResult(result)
+    } catch (requestError) {
+      setSearchError(requestError instanceof Error ? requestError.message : 'Could not load the IMDb record.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function changeMode(nextMode: 'title' | 'imdb-id') {
+    setMode(nextMode)
+    setSearchResult(null)
+    setSearchError(null)
+    setApplyError(null)
+    setPage(1)
   }
 
   async function applyCandidate(candidate: ImdbCandidate) {
@@ -87,23 +128,41 @@ export function ImdbCandidatePicker({
         <header className="detail-header">
           <div>
             <p className="eyebrow">IMDb MATCH</p>
-            <h2 id="imdb-candidate-heading">Choose a match</h2>
-            <div className="detail-meta">{target.title}</div>
+            <h2 id="imdb-candidate-heading">Change IMDb match</h2>
           </div>
           <button aria-label="Reject IMDb candidates" className="button button-secondary" onClick={onClose} type="button">Reject</button>
         </header>
 
         <div className="detail-body">
-          {loading && <LoadingState label="Searching OMDb" />}
+          <div className="imdb-match-raw">
+            <strong>RAW TORRENT TEXT</strong>
+            <p>{target.rawTitle}</p>
+          </div>
+          <div aria-label="IMDb match method" className="imdb-match-tabs" role="tablist">
+            <button aria-selected={mode === 'title'} className={mode === 'title' ? 'is-active' : ''} disabled={loading} onClick={() => changeMode('title')} role="tab" type="button">Search by title</button>
+            <button aria-selected={mode === 'imdb-id'} className={mode === 'imdb-id' ? 'is-active' : ''} disabled={loading} onClick={() => changeMode('imdb-id')} role="tab" type="button">IMDb ID</button>
+          </div>
+          {mode === 'title' ? (
+            <form className="imdb-match-form" onSubmit={(event) => { event.preventDefault(); void searchByTitle(titleQuery) }}>
+              <label className="field" htmlFor="imdb-title-query">
+                <span>Title to search</span>
+                <input id="imdb-title-query" onChange={(event) => setTitleQuery(event.target.value)} value={titleQuery} />
+              </label>
+              <button className="button" disabled={loading} type="submit">Search</button>
+            </form>
+          ) : (
+            <form className="imdb-match-form" onSubmit={(event) => { void loadByImdbId(event) }}>
+              <label className="field" htmlFor="imdb-id-query">
+                <span>IMDb ID</span>
+                <input autoComplete="off" id="imdb-id-query" onChange={(event) => setImdbIdQuery(event.target.value)} placeholder="tt1234567" value={imdbIdQuery} />
+              </label>
+              <button className="button" disabled={loading} type="submit">Load IMDb info</button>
+            </form>
+          )}
+          {loading && <LoadingState label={mode === 'title' ? 'Searching OMDb' : 'Loading IMDb information'} />}
           {!loading && searchError && (
             <div className="imdb-candidate-error" role="alert">
               <span>{searchError}</span>
-              <button className="text-button" onClick={() => {
-                setLoading(true)
-                setSearchError(null)
-                setSearchResult(null)
-                setAttempt((current) => current + 1)
-              }} type="button">Search again</button>
             </div>
           )}
           {!loading && !searchError && searchResult && searchResult.candidates.length === 0 && (
@@ -133,10 +192,10 @@ export function ImdbCandidatePicker({
                   </li>
                 ))}
               </ol>
-              {searchResult.totalResults > 10 && <div aria-label="IMDb candidate pages" className="imdb-candidate-pagination">
-                <button aria-label="Previous candidate page" className="button button-secondary" disabled={page <= 1} onClick={() => changePage(page - 1)} type="button">Previous</button>
+              {mode === 'title' && searchResult.totalResults > 10 && <div aria-label="IMDb candidate pages" className="imdb-candidate-pagination">
+                <button aria-label="Previous candidate page" className="button button-secondary" disabled={loading || page <= 1} onClick={() => { if (searchedTitle) void searchByTitle(searchedTitle, page - 1) }} type="button">Previous</button>
                 <span>Page {page} of {Math.min(100, Math.ceil(searchResult.totalResults / 10))}</span>
-                <button aria-label="Next candidate page" className="button button-secondary" disabled={page >= Math.min(100, Math.ceil(searchResult.totalResults / 10))} onClick={() => changePage(page + 1)} type="button">Next</button>
+                <button aria-label="Next candidate page" className="button button-secondary" disabled={loading || page >= Math.min(100, Math.ceil(searchResult.totalResults / 10))} onClick={() => { if (searchedTitle) void searchByTitle(searchedTitle, page + 1) }} type="button">Next</button>
               </div>}
             </>
           )}

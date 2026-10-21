@@ -308,9 +308,9 @@ export function CatalogView() {
       {selectedTitleId !== null && <TitleDetailsDialog
         initialSection={detailsSection}
         onClose={() => setSelectedTitleId(null)}
-        onFindImdbMatch={(id, title) => {
+        onFindImdbMatch={(id, title, rawTitle) => {
           setSelectedTitleId(null)
-          setImdbMatchTarget({ source: 'catalog', id, title })
+          setImdbMatchTarget({ source: 'catalog', id, title, rawTitle })
         }}
         titleId={selectedTitleId}
       />}

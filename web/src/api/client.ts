@@ -185,8 +185,18 @@ export function getTitle(id: number, fetcher?: typeof fetch) {
   return requestJson<TitleDetails>(`/titles/${id}`, {}, fetcher)
 }
 
-export function searchCatalogTitleImdbCandidates(id: number, page = 1, fetcher?: typeof fetch) {
-  return requestJson<ImdbCandidateSearch>(withQuery(`/titles/${id}/imdb-candidates`, { page }), { method: 'POST' }, fetcher)
+export function searchCatalogTitleImdbCandidates(id: number, title: string, page = 1, fetcher?: typeof fetch) {
+  return requestJson<ImdbCandidateSearch>(withQuery(`/titles/${id}/imdb-candidates`, { page }), {
+    method: 'POST',
+    body: JSON.stringify({ title }),
+  }, fetcher)
+}
+
+export function lookupCatalogTitleImdbCandidate(id: number, imdbId: string, fetcher?: typeof fetch) {
+  return requestJson<ImdbCandidateSearch>(`/titles/${id}/imdb-candidate`, {
+    method: 'POST',
+    body: JSON.stringify({ imdbId }),
+  }, fetcher)
 }
 
 export function applyCatalogTitleImdbCandidate(id: number, imdbId: string, fetcher?: typeof fetch) {
@@ -329,8 +339,18 @@ export function getParseLogs(query: ParseLogQuery, fetcher?: typeof fetch) {
   return requestJson<PageResponse<ParseLog>>(withQuery('/parse-logs', query), {}, fetcher)
 }
 
-export function searchParseLogImdbCandidates(id: number, page = 1, fetcher?: typeof fetch) {
-  return requestJson<ImdbCandidateSearch>(withQuery(`/parse-logs/${id}/imdb-candidates`, { page }), { method: 'POST' }, fetcher)
+export function searchParseLogImdbCandidates(id: number, title: string, page = 1, fetcher?: typeof fetch) {
+  return requestJson<ImdbCandidateSearch>(withQuery(`/parse-logs/${id}/imdb-candidates`, { page }), {
+    method: 'POST',
+    body: JSON.stringify({ title }),
+  }, fetcher)
+}
+
+export function lookupParseLogImdbCandidate(id: number, imdbId: string, fetcher?: typeof fetch) {
+  return requestJson<ImdbCandidateSearch>(`/parse-logs/${id}/imdb-candidate`, {
+    method: 'POST',
+    body: JSON.stringify({ imdbId }),
+  }, fetcher)
 }
 
 export function applyParseLogImdbCandidate(id: number, imdbId: string, fetcher?: typeof fetch) {

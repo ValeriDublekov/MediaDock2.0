@@ -180,6 +180,17 @@ button:disabled { cursor: not-allowed; }
 .detail-dialog { width: min(760px, 100%); max-height: min(88vh, 900px); overflow: auto; border: 1px solid #bdcec1; background: #f8faf7; box-shadow: 0 18px 60px rgba(7, 25, 19, 0.28); }
 .imdb-candidate-dialog { width: min(620px, 100%); }
 .imdb-match-trigger { border-block: 1px solid #d8e1d9; padding: 12px 0; }
+.imdb-match-raw { display: grid; gap: 6px; border-left: 2px solid #a55239; padding: 2px 0 2px 12px; }
+.imdb-match-raw strong { color: #758179; font-size: 9px; font-weight: 800; }
+.imdb-match-raw p { margin: 0; color: #30463a; font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.imdb-match-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid #d5dfd6; }
+.imdb-match-tabs button { min-height: 38px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #758179; font: inherit; font-size: 12px; cursor: pointer; }
+.imdb-match-tabs button.is-active { border-bottom-color: #a55239; color: #30463a; font-weight: 700; }
+.imdb-match-tabs button:disabled { cursor: default; opacity: 0.65; }
+.imdb-match-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; }
+.imdb-match-form .field { display: grid; gap: 6px; color: #4e6256; font-size: 11px; }
+.imdb-match-form input { width: 100%; min-width: 0; min-height: 40px; border: 1px solid #bdcec1; border-radius: 2px; background: #fff; padding: 8px 10px; color: #263b31; font: inherit; }
+.imdb-match-form .button { min-height: 40px; white-space: nowrap; }
 .imdb-candidate-count, .imdb-candidate-empty { margin: 0; color: #596560; font-size: 12px; }
 .imdb-candidate-list { display: grid; gap: 0; margin: 0; border-top: 1px solid #d4ded5; padding: 0; list-style: none; }
 .imdb-candidate-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; border-bottom: 1px solid #d4ded5; padding: 12px 2px; }
@@ -511,6 +522,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offs
 @media (max-width: 560px) {
   .imdb-candidate-list li { grid-template-columns: minmax(0, 1fr); gap: 9px; }
   .imdb-candidate-actions { justify-content: space-between; }
+  .imdb-match-form { grid-template-columns: minmax(0, 1fr); }
 }
 .ingestion-upload input[type="file"] { width: 100%; min-height: 36px; color: #40574a; font-size: 11px; }
 .ingestion-upload .form-error { grid-column: 1 / -1; }

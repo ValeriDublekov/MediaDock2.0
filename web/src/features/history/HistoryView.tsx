@@ -108,6 +108,7 @@ export function HistoryView({ scanRunId = null, onClearScanRun }: {
               source: 'parse-log',
               id: entry.id,
               title: entry.parsedTitle ?? entry.rawTitle,
+              rawTitle: entry.rawTitle,
             })}
           />}
           <Pagination onPageChange={setPage} page={activeResult} />

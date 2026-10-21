@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { applyParseLogImdbCandidate, getParseLogs, getScanRuns, searchParseLogImdbCandidates } from '../../api/client'
 import type { ImdbCandidateSearch, PageResponse, ParseLog, ScanRun } from '../../api/types'
@@ -8,6 +8,7 @@ vi.mock('../../api/client', () => ({
   getParseLogs: vi.fn(),
   getScanRuns: vi.fn(),
   searchParseLogImdbCandidates: vi.fn(),
+  lookupParseLogImdbCandidate: vi.fn(),
   applyParseLogImdbCandidate: vi.fn(),
 }))
 
@@ -103,10 +104,13 @@ describe('HistoryView parse diagnosis', () => {
     render(<HistoryView scanRunId={99} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Retry IMDb match for Example Film' }))
 
+    expect(screen.getAllByText('Example Film (2024)').length).toBeGreaterThan(0)
+    expect(searchParseLogImdbCandidates).not.toHaveBeenCalled()
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Search' }))
     expect(await screen.findByRole('link', { name: 'IMDb' })).toBeTruthy()
     expect(screen.getByText('Page 1 of 2')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Next candidate page' }))
-    await waitFor(() => expect(searchParseLogImdbCandidates).toHaveBeenLastCalledWith(42, 2))
+    await waitFor(() => expect(searchParseLogImdbCandidates).toHaveBeenLastCalledWith(42, 'Example Film', 2))
     expect(await screen.findByText('Page 2 of 2')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Use match' }))
 

@@ -94,7 +94,9 @@ public sealed class TorrentTitleMatchApiTests
         await db.SaveChangesAsync();
         var parseLogId = db.ParseLogs.Single().Id;
 
-        using var catalogSearch = await host.Client.PostAsync($"/api/titles/{title.Id}/imdb-candidates", null);
+        using var catalogSearch = await host.Client.PostAsJsonAsync(
+            $"/api/titles/{title.Id}/imdb-candidates",
+            new ImdbCandidateSearchRequest("Quiet River (Director's Cut)"));
         Assert.Equal(HttpStatusCode.OK, catalogSearch.StatusCode);
         var catalogCandidates = await catalogSearch.Content.ReadFromJsonAsync<ImdbCandidateSearchResponse>();
         Assert.NotNull(catalogCandidates);
@@ -102,15 +104,24 @@ public sealed class TorrentTitleMatchApiTests
         Assert.Equal(2004, catalogCandidates.Candidates[0].Year);
         Assert.Equal(imdbId, catalogCandidates.Candidates[0].ImdbId);
         Assert.Equal(1, omdbClient.SearchCalls);
+        Assert.Equal("Quiet River (Director's Cut)", omdbClient.LastSearchTitle);
         Assert.Equal(1, omdbClient.LastSearchPage);
         Assert.Equal("test-omdb-key", omdbClientFactory.LastApiKey);
         Assert.Equal(40, omdbClientFactory.LastDailyRequestLimit);
 
         using var nextCatalogPage = await host.Client.PostAsync(
             $"/api/titles/{title.Id}/imdb-candidates?page=2",
-            null);
+            JsonContent.Create(new ImdbCandidateSearchRequest("Quiet River (Director's Cut)")));
         Assert.Equal(HttpStatusCode.OK, nextCatalogPage.StatusCode);
         Assert.Equal(2, omdbClient.LastSearchPage);
+
+        using var catalogIdLookup = await host.Client.PostAsJsonAsync(
+            $"/api/titles/{title.Id}/imdb-candidate",
+            new LookupImdbCandidateRequest(imdbId));
+        Assert.Equal(HttpStatusCode.OK, catalogIdLookup.StatusCode);
+        var directCandidate = await catalogIdLookup.Content.ReadFromJsonAsync<ImdbCandidateSearchResponse>();
+        Assert.NotNull(directCandidate);
+        Assert.Equal(imdbId, Assert.Single(directCandidate.Candidates).ImdbId);
 
         using var catalogApply = await host.Client.PostAsJsonAsync(
             $"/api/titles/{title.Id}/imdb-match",
@@ -121,12 +132,19 @@ public sealed class TorrentTitleMatchApiTests
         Assert.Equal("Quiet River", await db.ImdbTitles.Where(item => item.ImdbId == imdbId)
             .Select(item => item.TitleText).SingleAsync());
 
-        using var logSearch = await host.Client.PostAsync($"/api/parse-logs/{parseLogId}/imdb-candidates", null);
+        using var logSearch = await host.Client.PostAsJsonAsync(
+            $"/api/parse-logs/{parseLogId}/imdb-candidates",
+            new ImdbCandidateSearchRequest("Quiet River alternate spelling"));
         Assert.Equal(HttpStatusCode.OK, logSearch.StatusCode);
         var logCandidates = await logSearch.Content.ReadFromJsonAsync<ImdbCandidateSearchResponse>();
         Assert.NotNull(logCandidates);
         Assert.Equal(imdbId, Assert.Single(logCandidates.Candidates).ImdbId);
         Assert.Equal(3, omdbClient.SearchCalls);
+
+        using var logIdLookup = await host.Client.PostAsJsonAsync(
+            $"/api/parse-logs/{parseLogId}/imdb-candidate",
+            new LookupImdbCandidateRequest(imdbId));
+        Assert.Equal(HttpStatusCode.OK, logIdLookup.StatusCode);
 
         using var logApply = await host.Client.PostAsJsonAsync(
             $"/api/parse-logs/{parseLogId}/imdb-match",
@@ -150,6 +168,7 @@ public sealed class TorrentTitleMatchApiTests
     {
         public int SearchCalls { get; private set; }
         public int LastSearchPage { get; private set; }
+        public string? LastSearchTitle { get; private set; }
 
         public Task<MetadataLookupResult> LookupAsync(
             string title,
@@ -174,6 +193,7 @@ public sealed class TorrentTitleMatchApiTests
             OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
         {
             SearchCalls++;
+            LastSearchTitle = title;
             LastSearchPage = page;
             return Task.FromResult(new MetadataSearchResult(
                 MetadataLookupStatus.Found,

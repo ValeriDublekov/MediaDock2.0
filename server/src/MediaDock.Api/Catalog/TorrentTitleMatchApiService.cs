@@ -13,11 +13,26 @@ namespace MediaDock.Api.Catalog;
 
 internal interface ITorrentTitleMatchApiService
 {
-    Task<ImdbCandidateSearchResponse> SearchCatalogTitleAsync(long titleId, int page, CancellationToken cancellationToken);
+    Task<ImdbCandidateSearchResponse> SearchCatalogTitleAsync(
+        long titleId,
+        string title,
+        int page,
+        CancellationToken cancellationToken);
+
+    Task<ImdbCandidateSearchResponse> LookupCatalogTitleImdbCandidateAsync(
+        long titleId,
+        string imdbId,
+        CancellationToken cancellationToken);
 
     Task<ImdbCandidateSearchResponse> SearchParseLogImdbCandidatesAsync(
         long parseLogId,
+        string title,
         int page,
+        CancellationToken cancellationToken);
+
+    Task<ImdbCandidateSearchResponse> LookupParseLogImdbCandidateAsync(
+        long parseLogId,
+        string imdbId,
         CancellationToken cancellationToken);
 
     Task<AppliedImdbCandidateResponse> ApplyCatalogTitleMatchAsync(
@@ -40,20 +55,36 @@ internal sealed class TorrentTitleMatchApiService(
 {
     public async Task<ImdbCandidateSearchResponse> SearchCatalogTitleAsync(
         long titleId,
+        string title,
         int page,
         CancellationToken cancellationToken)
     {
-        var title = await dbContext.TorrentMovies.AsNoTracking()
+        var catalogTitle = await dbContext.TorrentMovies.AsNoTracking()
             .Where(movie => movie.Id == titleId)
-            .Select(movie => new { movie.TitleText, movie.SourceType })
+            .Select(movie => new { movie.SourceType })
             .SingleOrDefaultAsync(cancellationToken)
             ?? throw new ApiNotFoundException("Catalog title not found.");
 
-        return await SearchAsync(title.TitleText, title.SourceType, page, cancellationToken);
+        return await SearchAsync(title, catalogTitle.SourceType, page, cancellationToken);
+    }
+
+    public async Task<ImdbCandidateSearchResponse> LookupCatalogTitleImdbCandidateAsync(
+        long titleId,
+        string imdbId,
+        CancellationToken cancellationToken)
+    {
+        var catalogTitle = await dbContext.TorrentMovies.AsNoTracking()
+            .Where(movie => movie.Id == titleId)
+            .Select(movie => new { movie.SourceType })
+            .SingleOrDefaultAsync(cancellationToken)
+            ?? throw new ApiNotFoundException("Catalog title not found.");
+
+        return await LookupImdbCandidateAsync(catalogTitle.SourceType, imdbId, cancellationToken);
     }
 
     public async Task<ImdbCandidateSearchResponse> SearchParseLogImdbCandidatesAsync(
         long parseLogId,
+        string title,
         int page,
         CancellationToken cancellationToken)
     {
@@ -61,15 +92,19 @@ internal sealed class TorrentTitleMatchApiService(
             .SingleOrDefaultAsync(value => value.Id == parseLogId, cancellationToken)
             ?? throw new ApiNotFoundException("Parse-log entry not found.");
         var feedType = log.FeedType;
-        var title = !string.IsNullOrWhiteSpace(log.ParsedTitle)
-            ? log.ParsedTitle.Trim()
-            : RutrackerTitleParser.Parse(log.RawTitle, feedType).Title;
-        if (string.IsNullOrWhiteSpace(title))
-        {
-            throw ValidationError(nameof(log.RawTitle), "The parse-log entry does not contain a usable film title.");
-        }
-
         return await SearchAsync(title, SourceTypeForFeed(feedType), page, cancellationToken);
+    }
+
+    public async Task<ImdbCandidateSearchResponse> LookupParseLogImdbCandidateAsync(
+        long parseLogId,
+        string imdbId,
+        CancellationToken cancellationToken)
+    {
+        var log = await dbContext.ParseLogs.AsNoTracking()
+            .SingleOrDefaultAsync(value => value.Id == parseLogId, cancellationToken)
+            ?? throw new ApiNotFoundException("Parse-log entry not found.");
+
+        return await LookupImdbCandidateAsync(SourceTypeForFeed(log.FeedType), imdbId, cancellationToken);
     }
 
     public async Task<AppliedImdbCandidateResponse> ApplyCatalogTitleMatchAsync(
@@ -248,6 +283,12 @@ internal sealed class TorrentTitleMatchApiService(
         int page,
         CancellationToken cancellationToken)
     {
+        title = title.Trim();
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            throw ValidationError(nameof(title), "A title is required for IMDb search.");
+        }
+
         var omdbClient = await CreateOmdbClientAsync(cancellationToken);
         var result = await omdbClient.SearchAsync(
             title,
@@ -267,6 +308,21 @@ internal sealed class TorrentTitleMatchApiService(
             candidates,
             result.TotalResults,
             result.ErrorCode);
+    }
+
+    private async Task<ImdbCandidateSearchResponse> LookupImdbCandidateAsync(
+        string? expectedSourceType,
+        string imdbId,
+        CancellationToken cancellationToken)
+    {
+        var normalizedImdbId = NormalizeImdbId(imdbId);
+        var metadata = await ResolveMetadataAsync(normalizedImdbId, cancellationToken);
+        ValidateSourceType(expectedSourceType, metadata.SourceType);
+        return new ImdbCandidateSearchResponse(
+            "found",
+            [new ImdbCandidateResponse(metadata.Title, metadata.Year, normalizedImdbId, metadata.SourceType)],
+            1,
+            null);
     }
 
     private async Task<MetadataDetails> ResolveMetadataAsync(string imdbId, CancellationToken cancellationToken)
