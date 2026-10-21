@@ -134,7 +134,6 @@ describe('App routes', () => {
     ['/catalog', 'Torents catalog'],
     ['/oscar', 'Oscar catalog'],
     ['/golden-globes', 'Golden Globes catalog'],
-    ['/favorites', 'Favorites'],
   ])('opens %s directly', async (path, heading) => {
     renderAt(path)
 
@@ -143,13 +142,20 @@ describe('App routes', () => {
     expect(screen.getByTestId('location').textContent).toBe(path)
   })
 
+  it('blocks anonymous visitors from opening favorites directly', async () => {
+    renderAt('/favorites')
+
+    expect(await screen.findByRole('heading', { name: 'Favorites unavailable' })).toBeTruthy()
+    expect(screen.queryByText('Favorites route content')).toBeNull()
+  })
+
   it('shows shared library navigation without personal or admin links to anonymous visitors', async () => {
     renderAt('/catalog')
 
     expect(await screen.findByRole('navigation', { name: 'Library navigation' })).toBeTruthy()
     expect(screen.getByRole('link', { name: /Torents catalog/ })).toBeTruthy()
-    expect(screen.getByRole('link', { name: /Favorites/ })).toBeTruthy()
-    expect(screen.queryByRole('navigation', { name: 'Account navigation' })).toBeNull()
+    expect(screen.queryByRole('link', { name: /Favorites/ })).toBeNull()
+    expect(screen.queryByRole('navigation', { name: 'Personal navigation' })).toBeNull()
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
   })
 
@@ -159,7 +165,8 @@ describe('App routes', () => {
     renderAt('/account/personal-ratings')
 
     expect(await screen.findByText('Ratings route content')).toBeTruthy()
-    expect(screen.getByRole('navigation', { name: 'Account navigation' }).textContent).toContain('Personal IMDb ratings')
+    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Personal IMDb ratings')
+    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Favorites')
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Users' })).toBeNull()
   })
@@ -171,7 +178,7 @@ describe('App routes', () => {
 
     expect(await screen.findByText('Users route content')).toBeTruthy()
     expect(screen.getByRole('navigation', { name: 'Library navigation' })).toBeTruthy()
-    expect(screen.getByRole('navigation', { name: 'Account navigation' }).textContent).toContain('Personal IMDb ratings')
+    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Personal IMDb ratings')
     const administrationNavigation = screen.getByRole('navigation', { name: 'Administration navigation' })
     expect(administrationNavigation.textContent).toContain('Users')
     expect(administrationNavigation.textContent).not.toContain('Personal IMDb ratings')
@@ -218,7 +225,7 @@ describe('App routes', () => {
 
     expect(await screen.findByRole('navigation', { name: 'Administration section navigation' })).toBeTruthy()
     expect(screen.queryByText('Previous account import result')).toBeNull()
-    expect(screen.getByRole('navigation', { name: 'Account navigation' }).textContent).toContain('Personal IMDb ratings')
+    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Personal IMDb ratings')
   })
 
   it('hides the open-mode warning only when the server confirms enforcement', async () => {
@@ -230,12 +237,12 @@ describe('App routes', () => {
     expect(screen.queryByRole('note')).toBeNull()
   })
 
-  it('redirects the configuration root to torrent settings', async () => {
+  it('redirects the configuration root to system settings', async () => {
     authMock.session = activeAdminSession
     renderAt('/configuration')
 
-    expect(await screen.findByRole('heading', { name: 'Torrent settings' })).toBeTruthy()
-    expect(screen.getByTestId('location').textContent).toBe('/configuration/torrent')
+    expect(await screen.findByRole('heading', { name: 'System' })).toBeTruthy()
+    expect(screen.getByTestId('location').textContent).toBe('/configuration/system')
   })
 
   it('shows configuration subnavigation and opens its pages', () => {
@@ -243,7 +250,8 @@ describe('App routes', () => {
     renderAt('/catalog')
 
     fireEvent.click(screen.getByRole('link', { name: /Administration/ }))
-    expect(screen.getByTestId('location').textContent).toBe('/configuration/torrent')
+    expect(screen.getByTestId('location').textContent).toBe('/configuration/system')
+    expect(screen.getByText('System route content')).toBeTruthy()
     const administrationLink = screen.getByRole('link', { name: /Administration/ })
     const administrationNavigation = screen.getByRole('navigation', { name: 'Administration navigation' })
     const historyLink = screen.getByRole('link', { name: 'Scan history' })
@@ -264,6 +272,7 @@ describe('App routes', () => {
     expect(screen.getByTestId('location').textContent).toBe('/golden-globes')
 
     fireEvent.click(screen.getByRole('link', { name: /Administration/ }))
+    fireEvent.click(screen.getByRole('link', { name: 'Torrent settings' }))
     fireEvent.click(screen.getByRole('button', { name: 'Open scan 42' }))
     expect(screen.getByTestId('location').textContent).toBe('/history?scanRunId=42')
     expect(screen.getByText('History scan: 42')).toBeTruthy()

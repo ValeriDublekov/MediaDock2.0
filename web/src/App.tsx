@@ -53,8 +53,8 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
     description: 'Movies saved from the catalog and Oscar awards.',
   },
   account: {
-    eyebrow: 'ACCOUNT',
-    title: 'My account',
+    eyebrow: 'PERSONAL',
+    title: 'Personal',
     description: 'Manage personal data for the signed-in account.',
   },
   administration: {
@@ -200,7 +200,7 @@ function AppContent() {
 
         <div className="sidebar-label sidebar-label-first">LIBRARY</div>
         <nav className="primary-nav" aria-label="Library navigation">
-          {sections.map((item) => (
+          {sections.filter((item) => item.id !== 'favorites').map((item) => (
             <NavLink
               aria-current={section === item.id ? 'page' : undefined}
               className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
@@ -216,8 +216,15 @@ function AppContent() {
 
         {isActiveAccount && (
           <div className="account-nav-group">
-            <div className="sidebar-label">ACCOUNT</div>
-            <nav aria-label="Account navigation" className="configuration-nav">
+            <div className="sidebar-label">PERSONAL</div>
+            <nav aria-label="Personal navigation" className="configuration-nav">
+              <NavLink
+                className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
+                end
+                to="/favorites"
+              >
+                Favorites
+              </NavLink>
               <NavLink
                 className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
                 end
@@ -237,7 +244,7 @@ function AppContent() {
                 aria-current={section === 'administration' ? 'page' : undefined}
                 className={`nav-item${section === 'administration' ? ' is-active' : ''}`}
                 end
-                to="/configuration/torrent"
+                to="/configuration/system"
               >
                 <span className="nav-number">05</span>
                 <span>Administration</span>
@@ -305,7 +312,9 @@ function AppContent() {
             <Route path="/catalog" element={<CatalogView />} />
             <Route path="/oscar" element={<OscarCatalogView />} />
             <Route path="/golden-globes" element={<GoldenGlobeCatalogView />} />
-            <Route path="/favorites" element={<FavoritesView />} />
+            <Route path="/favorites" element={isActiveAccount
+              ? <FavoritesView />
+              : <RouteAccessRequired message="Sign in with an active linked account to view favorites." title="Favorites unavailable" />} />
             <Route path="/configuration/personal-ratings" element={<Navigate replace to="/account/personal-ratings" />} />
             <Route path="/account" element={<Navigate replace to="/account/personal-ratings" />} />
             <Route path="/account/personal-ratings" element={(
@@ -313,7 +322,7 @@ function AppContent() {
                 <PersonalRatingsView key={accountKey ?? 'no-active-account'} />
               </ActiveAccountArea>
             )} />
-            <Route path="/configuration" element={<AdminArea isAdmin={isAdmin}><Navigate replace to="/configuration/torrent" /></AdminArea>} />
+            <Route path="/configuration" element={<AdminArea isAdmin={isAdmin}><Navigate replace to="/configuration/system" /></AdminArea>} />
             <Route path="/configuration/torrent" element={(
               <AdminArea isAdmin={isAdmin}>
                 <SourceSettingsView onOpenHistory={(scanRunId) => navigate(scanRunId ? `/history?scanRunId=${scanRunId}` : '/history')} />
