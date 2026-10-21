@@ -1594,8 +1594,13 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_torrent_releases");
 
-                    b.HasAlternateKey("SourceId", "SourceItemKey")
-                        .HasName("ak_torrent_releases_source_id_source_item_key");
+                    b.HasIndex("TorrentUrl")
+                        .IsUnique()
+                        .HasDatabaseName("ux_torrent_releases_torrent_url");
+
+                    b.HasIndex("SourceId", "SourceItemKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_torrent_releases_source_id_source_item_key");
 
                     b.HasIndex("TorrentMovieId", "LastSeenAt")
                         .HasDatabaseName("ix_torrent_releases_torrent_movie_id_last_seen_at");

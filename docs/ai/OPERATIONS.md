@@ -10,4 +10,6 @@ The per-user ownership migration is data-sensitive. Its effects for zero, one, o
 
 The source-owned identity cleanup is also destructive: `RemoveLegacyTitleIdentity` drops the transitional catalog, award, and favorite tables after reporting remaining fallback metadata and legacy favorite counts. Validate a fresh backup and the expected staging counts, then obtain separate operator approval before applying it. Its `Down` recreates schema only and cannot restore deleted rows; recovery requires the pre-migration backup.
 
+`DeduplicateTorrentUrls` is destructive: it canonicalizes Rutracker topic URLs, keeps only the most recently observed release per URL, removes item states for discarded releases, and deletes catalog rows left without releases. It retains parse logs and source configuration. Validate a fresh backup and staging counts, then obtain separate operator approval before applying it outside disposable databases. Its `Down` cannot restore deleted rows; recovery requires the pre-migration backup.
+
 For job routes and lifecycle contracts, see [operations and jobs](API_OPERATIONS_AND_JOBS.md); scheduler and persistence behavior is in [architecture](ARCHITECTURE.md) and [data behavior](DATA_BEHAVIOR.md).

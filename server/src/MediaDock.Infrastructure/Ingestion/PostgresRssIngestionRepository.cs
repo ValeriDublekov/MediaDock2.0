@@ -146,14 +146,22 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         DateTimeOffset observedAt,
         CancellationToken cancellationToken = default)
     {
+        feedItem = feedItem with { TorrentUrl = TorrentUrlIdentity.Normalize(feedItem.TorrentUrl!) };
         try
         {
             return await UpsertCatalogItemOnceAsync(
                 source, feedItem, sourceItemKey, itemFingerprint, parsed, metadata, observedAt, cancellationToken);
         }
-        catch (DbUpdateException exception) when (IsImdbIdentityUniqueViolation(exception))
+        catch (DbUpdateException exception) when (
+            IsImdbIdentityUniqueViolation(exception) || IsTorrentUrlUniqueViolation(exception))
         {
             dbContext.ChangeTracker.Clear();
+            if (IsTorrentUrlUniqueViolation(exception) && await TryRefreshKnownTorrentByUrlAsync(
+                source, feedItem, sourceItemKey, itemFingerprint, observedAt, cancellationToken))
+            {
+                return new IngestionUpsertResult(false, false);
+            }
+
             return await UpsertCatalogItemOnceAsync(
                 source, feedItem, sourceItemKey, itemFingerprint, parsed, metadata, observedAt, cancellationToken);
         }
@@ -337,6 +345,98 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         return true;
     }
 
+    public async Task<bool> TryRefreshKnownTorrentByUrlAsync(
+        IngestionSource source,
+        IngestionFeedItem feedItem,
+        string sourceItemKey,
+        string itemFingerprint,
+        DateTimeOffset observedAt,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(feedItem.TorrentUrl))
+        {
+            return false;
+        }
+
+        var torrentUrl = TorrentUrlIdentity.Normalize(feedItem.TorrentUrl);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var release = await dbContext.TorrentReleases
+                .Include(entity => entity.TorrentMovie)
+                .SingleOrDefaultAsync(entity => entity.TorrentUrl == torrentUrl, cancellationToken);
+            if (release is null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+                return false;
+            }
+
+            if (release.SourceId != source.Id || release.SourceItemKey != sourceItemKey)
+            {
+                var previousItemState = await dbContext.RssItemStates.SingleOrDefaultAsync(
+                    entity => entity.SourceId == release.SourceId && entity.SourceItemKey == release.SourceItemKey,
+                    cancellationToken);
+                if (previousItemState is not null)
+                {
+                    dbContext.RssItemStates.Remove(previousItemState);
+                }
+            }
+
+            long? supersededMovieId = null;
+            var sourceItemRelease = await dbContext.TorrentReleases.SingleOrDefaultAsync(
+                entity => entity.SourceId == source.Id && entity.SourceItemKey == sourceItemKey,
+                cancellationToken);
+            if (sourceItemRelease is not null && sourceItemRelease.Id != release.Id)
+            {
+                supersededMovieId = sourceItemRelease.TorrentMovieId;
+                dbContext.TorrentReleases.Remove(sourceItemRelease);
+                await dbContext.SaveChangesAsync(cancellationToken);
+            }
+
+            release.SourceId = source.Id;
+            release.SourceItemKey = sourceItemKey;
+            release.FeedEntryId = feedItem.FeedEntryId;
+            release.TorrentUrl = torrentUrl;
+            release.RawTitle = feedItem.Title ?? string.Empty;
+            release.SourceFeedName = source.Name;
+            release.FeedType = source.FeedType;
+            release.SourcePublishedAt = feedItem.PublishedAt;
+            release.ObservedAt = observedAt;
+            release.LastSeenAt = observedAt;
+            release.TorrentMovie.LastSeenAt = observedAt;
+
+            var itemState = await GetOrCreateItemStateAsync(source.Id, sourceItemKey, cancellationToken);
+            itemState.Fingerprint = itemFingerprint;
+            itemState.Disposition = "resolved";
+            itemState.UpdatedAt = observedAt;
+            itemState.ExpiresAt = null;
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            if (supersededMovieId is long movieId &&
+                movieId != release.TorrentMovieId &&
+                !await dbContext.TorrentReleases.AnyAsync(entity => entity.TorrentMovieId == movieId, cancellationToken))
+            {
+                var orphanedMovie = await dbContext.TorrentMovies.SingleOrDefaultAsync(
+                    entity => entity.Id == movieId,
+                    cancellationToken);
+                if (orphanedMovie is not null)
+                {
+                    dbContext.TorrentMovies.Remove(orphanedMovie);
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+            }
+
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            dbContext.ChangeTracker.Clear();
+            throw;
+        }
+    }
+
     public async Task MarkTerminalItemAsync(
         long sourceId,
         string sourceItemKey,
@@ -479,6 +579,13 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         {
             SqlState: PostgresErrorCodes.UniqueViolation,
             ConstraintName: "ux_torrent_movies_imdb_id"
+        };
+
+    private static bool IsTorrentUrlUniqueViolation(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "ux_torrent_releases_torrent_url"
         };
 
 }

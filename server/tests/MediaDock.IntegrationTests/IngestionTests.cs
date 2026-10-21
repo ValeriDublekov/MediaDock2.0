@@ -11,6 +11,8 @@ using MediaDock.Infrastructure.Persistence.Entities;
 using MediaDock.Infrastructure.Rss;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace MediaDock.IntegrationTests;
 
@@ -333,7 +335,7 @@ public sealed class IngestionTests
         Assert.Equal("succeeded", repeated.Summary.Status);
         Assert.Equal(0, repeated.Summary.TitlesCreated);
         Assert.Equal(0, repeated.Summary.OccurrencesCreated);
-        Assert.Equal(2, repeated.Summary.KnownEntriesSkipped);
+        Assert.Equal(1, repeated.Summary.KnownEntriesSkipped);
         Assert.Equal(0, repeated.Summary.CacheHits);
         Assert.Equal(0, repeated.Summary.OmdbRequests);
         Assert.Equal(3, handler.OmdbRequestCount);
@@ -551,6 +553,270 @@ public sealed class IngestionTests
         var preservedRelease = await db.TorrentReleases.SingleAsync(row => row.SourceItemKey == firstKey);
         Assert.Equal("1080p", preservedRelease.Quality);
         Assert.Equal("WEB-DL", preservedRelease.RipType);
+    }
+
+    [Fact]
+    [Trait("Category", "Ingestion")]
+    public async Task TorrentUrlMigrationKeepsNewestReleaseAndRetainsParseHistory()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_torrent_url_migration_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString()).Options;
+        await using var db = new MediaDockDbContext(options);
+        var migrator = db.GetService<IMigrator>();
+        await migrator.MigrateAsync("20261021111712_RemoveLegacyTitleIdentity");
+
+        var olderSeen = new DateTimeOffset(2026, 10, 19, 12, 0, 0, TimeSpan.Zero);
+        var newerSeen = olderSeen.AddDays(1);
+        var olderSource = new Source
+        {
+            StableKey = "torrent-url-old-profile",
+            Name = "Complete seasons",
+            FeedType = RssFeedTypes.CompleteSeason,
+            Url = "https://feed.rutracker.cc/complete.atom"
+        };
+        var newerSource = new Source
+        {
+            StableKey = "torrent-url-new-profile",
+            Name = "Ongoing episodes",
+            FeedType = RssFeedTypes.OngoingSeries,
+            Url = "https://feed.rutracker.cc/ongoing.atom"
+        };
+        var olderMovie = new TorrentMovie
+        {
+            TitleText = "Old catalog record",
+            NormalizedTitle = "old catalog record",
+            MediaType = "series",
+            SourceType = "series",
+            ContentKind = "standard",
+            FirstSeenAt = olderSeen,
+            LastSeenAt = olderSeen,
+            UpdatedAt = olderSeen
+        };
+        var newerMovie = new TorrentMovie
+        {
+            TitleText = "Latest catalog record",
+            NormalizedTitle = "latest catalog record",
+            MediaType = "series",
+            SourceType = "series",
+            ContentKind = "standard",
+            FirstSeenAt = newerSeen,
+            LastSeenAt = newerSeen,
+            UpdatedAt = newerSeen
+        };
+        db.Sources.AddRange(olderSource, newerSource);
+        db.TorrentMovies.AddRange(olderMovie, newerMovie);
+        await db.SaveChangesAsync();
+
+        var olderRelease = new TorrentRelease
+        {
+            TorrentMovieId = olderMovie.Id,
+            SourceId = olderSource.Id,
+            SourceItemKey = "entry:older",
+            FeedEntryId = "older",
+            TorrentUrl = "http://www.rutracker.org/forum/viewtopic.php?start=20&t=0006916519",
+            RawTitle = "Older snapshot",
+            SourceFeedName = olderSource.Name,
+            FeedType = olderSource.FeedType,
+            FirstSeenAt = olderSeen.AddDays(-2),
+            LastSeenAt = olderSeen
+        };
+        var newerRelease = new TorrentRelease
+        {
+            TorrentMovieId = newerMovie.Id,
+            SourceId = newerSource.Id,
+            SourceItemKey = "entry:newer",
+            FeedEntryId = "newer",
+            TorrentUrl = "https://rutracker.cc/forum/viewtopic.php?t=6916519&view=next",
+            RawTitle = "Latest snapshot",
+            SourceFeedName = newerSource.Name,
+            FeedType = newerSource.FeedType,
+            FirstSeenAt = newerSeen.AddDays(-2),
+            LastSeenAt = newerSeen
+        };
+        db.TorrentReleases.AddRange(olderRelease, newerRelease);
+        db.RssItemStates.AddRange(
+            new RssItemProcessingState
+            {
+                SourceId = olderSource.Id,
+                SourceItemKey = olderRelease.SourceItemKey,
+                Fingerprint = "older-fingerprint",
+                Disposition = "resolved",
+                UpdatedAt = olderSeen
+            },
+            new RssItemProcessingState
+            {
+                SourceId = newerSource.Id,
+                SourceItemKey = newerRelease.SourceItemKey,
+                Fingerprint = "newer-fingerprint",
+                Disposition = "resolved",
+                UpdatedAt = newerSeen
+            });
+        db.ParseLogs.AddRange(
+            new ParseLog
+            {
+                SourceId = olderSource.Id,
+                SourceItemKey = olderRelease.SourceItemKey,
+                RawTitle = olderRelease.RawTitle,
+                FeedName = olderSource.Name,
+                ParsedSuccessfully = true,
+                OmdbStatus = "found",
+                ProcessedAt = olderSeen,
+                RetryState = "resolved",
+                AttemptCount = 0,
+                FeedType = olderSource.FeedType,
+                TorrentUrl = olderRelease.TorrentUrl
+            },
+            new ParseLog
+            {
+                SourceId = newerSource.Id,
+                SourceItemKey = newerRelease.SourceItemKey,
+                RawTitle = newerRelease.RawTitle,
+                FeedName = newerSource.Name,
+                ParsedSuccessfully = true,
+                OmdbStatus = "found",
+                ProcessedAt = newerSeen,
+                RetryState = "resolved",
+                AttemptCount = 0,
+                FeedType = newerSource.FeedType,
+                TorrentUrl = newerRelease.TorrentUrl
+            });
+        await db.SaveChangesAsync();
+
+        await migrator.MigrateAsync();
+        db.ChangeTracker.Clear();
+
+        var keptRelease = await db.TorrentReleases.SingleAsync();
+        Assert.Equal(newerRelease.Id, keptRelease.Id);
+        Assert.Equal("https://rutracker.org/forum/viewtopic.php?t=6916519", keptRelease.TorrentUrl);
+        Assert.Equal("Latest snapshot", keptRelease.RawTitle);
+        Assert.Equal(newerMovie.Id, keptRelease.TorrentMovieId);
+        Assert.Equal("Latest catalog record", (await db.TorrentMovies.SingleAsync()).TitleText);
+        Assert.Equal(newerSource.Id, (await db.RssItemStates.SingleAsync()).SourceId);
+        Assert.Equal(2, await db.ParseLogs.CountAsync());
+        Assert.Equal(2, await db.Sources.CountAsync());
+    }
+
+    [Fact]
+    [Trait("Category", "Ingestion")]
+    public async Task KnownTorrentUrlRefreshesAcrossFeedProfilesWithoutMetadataLookup()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_known_url_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString()).Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+
+        var observedAt = new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero);
+        var existingSource = new Source
+        {
+            StableKey = "known-url-old-profile",
+            Name = "Complete seasons",
+            FeedType = RssFeedTypes.CompleteSeason,
+            Url = "https://feed.rutracker.cc/complete.atom",
+            IsEnabled = false
+        };
+        var currentSource = new Source
+        {
+            StableKey = "known-url-current-profile",
+            Name = "Ongoing episodes",
+            FeedType = RssFeedTypes.OngoingSeries,
+            Url = "https://feed.rutracker.cc/ongoing.atom"
+        };
+        var movie = new TorrentMovie
+        {
+            TitleText = "East of Eden",
+            NormalizedTitle = "east of eden",
+            Year = 1981,
+            MediaType = "series",
+            SourceType = "series",
+            ContentKind = "standard",
+            FirstSeenAt = observedAt.AddDays(-10),
+            LastSeenAt = observedAt.AddDays(-2),
+            UpdatedAt = observedAt.AddDays(-2)
+        };
+        db.Sources.AddRange(existingSource, currentSource);
+        db.TorrentMovies.Add(movie);
+        await db.SaveChangesAsync();
+        db.TorrentReleases.Add(new TorrentRelease
+        {
+            TorrentMovieId = movie.Id,
+            SourceId = existingSource.Id,
+            SourceItemKey = "entry:old-guid",
+            FeedEntryId = "old-guid",
+            TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=6916519",
+            RawTitle = "Old feed title",
+            SourceFeedName = existingSource.Name,
+            FeedType = existingSource.FeedType,
+            FirstSeenAt = observedAt.AddDays(-10),
+            LastSeenAt = observedAt.AddDays(-2)
+        });
+        db.RssItemStates.Add(new RssItemProcessingState
+        {
+            SourceId = existingSource.Id,
+            SourceItemKey = "entry:old-guid",
+            Fingerprint = "old-fingerprint",
+            Disposition = "resolved",
+            UpdatedAt = observedAt.AddDays(-2)
+        });
+        await db.SaveChangesAsync();
+        var existingReleaseId = await db.TorrentReleases.Select(release => release.Id).SingleAsync();
+
+        const string feed = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <rss version="2.0"><channel>
+              <item><title>East of Eden Season 1 Episodes 1-7 [2026]</title><link>https://www.rutracker.org/forum/viewtopic.php?start=20&amp;t=6916519</link><guid>current-guid</guid></item>
+            </channel></rss>
+            """;
+        var omdb = new CountingOmdbClient();
+        var service = new RssIngestionService(
+            new PostgresRssIngestionRepository(db),
+            new StaticFeedTransport(feed),
+            new MetadataResolver(omdb, new PostgresMetadataCacheStore(db)));
+
+        var result = await service.RunAsync();
+
+        Assert.True(result.Summary.ErrorCount == 0, string.Join("; ", result.Summary.ErrorSummary));
+        Assert.Equal("succeeded", result.Summary.Status);
+        Assert.Equal(0, result.Summary.OmdbRequests);
+        Assert.Equal(0, omdb.RequestCount);
+        var release = await db.TorrentReleases.SingleAsync();
+        Assert.Equal(existingReleaseId, release.Id);
+        Assert.Equal(currentSource.Id, release.SourceId);
+        Assert.Equal("entry:current-guid", release.SourceItemKey);
+        Assert.Equal("current-guid", release.FeedEntryId);
+        Assert.Equal("https://rutracker.org/forum/viewtopic.php?t=6916519", release.TorrentUrl);
+        Assert.Equal("East of Eden Season 1 Episodes 1-7 [2026]", release.RawTitle);
+        Assert.True(release.LastSeenAt > observedAt.AddDays(-2));
+        Assert.Equal(1981, (await db.TorrentMovies.SingleAsync()).Year);
+        Assert.Equal(currentSource.Id, (await db.RssItemStates.SingleAsync()).SourceId);
+        Assert.Equal("entry:current-guid", (await db.RssItemStates.SingleAsync()).SourceItemKey);
+        var log = await db.ParseLogs.SingleAsync();
+        Assert.False(log.ParsedSuccessfully);
+        Assert.Equal("known_torrent_url", log.Decision);
+        Assert.Equal("resolved", log.RetryState);
+
+        var duplicateItem = new IngestionFeedItem(
+            "Different metadata for the same topic",
+            "duplicate-guid",
+            "https://rutracker.cc/forum/viewtopic.php?start=20&t=6916519",
+            observedAt.AddMinutes(1));
+        var duplicateUpsert = await new PostgresRssIngestionRepository(db).UpsertCatalogItemAsync(
+            new IngestionSource(
+                existingSource.Id, existingSource.Name, existingSource.FeedType, existingSource.Url),
+            duplicateItem,
+            SourceItemIdentity.From(duplicateItem.FeedEntryId, duplicateItem.TorrentUrl),
+            "duplicate-fingerprint",
+            RutrackerTitleParser.Parse(duplicateItem.Title, existingSource.FeedType),
+            CreateMetadata("Different metadata", 2026, "tt55555555"),
+            observedAt.AddMinutes(1));
+
+        Assert.False(duplicateUpsert.TitleCreated);
+        Assert.False(duplicateUpsert.OccurrenceCreated);
+        Assert.Single(await db.TorrentReleases.ToListAsync());
+        Assert.Equal(1981, (await db.TorrentMovies.SingleAsync()).Year);
     }
 
     [Fact]
@@ -814,6 +1080,34 @@ public sealed class IngestionTests
                 pair => Uri.UnescapeDataString(pair[0]),
                 pair => pair.Length > 1 ? Uri.UnescapeDataString(pair[1]) : string.Empty,
                 StringComparer.Ordinal);
+    }
+
+    private sealed class StaticFeedTransport(string feed) : IRssFeedTransport
+    {
+        public Task<byte[]> FetchAsync(string url, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(Encoding.UTF8.GetBytes(feed));
+        }
+    }
+
+    private sealed class CountingOmdbClient : IOmdbClient
+    {
+        public int RequestCount { get; private set; }
+
+        public Task<MetadataLookupResult> LookupAsync(
+            string title,
+            int? year,
+            string sourceType,
+            CancellationToken cancellationToken = default,
+            OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion,
+            string? imdbId = null)
+        {
+            RequestCount++;
+            return Task.FromResult(new MetadataLookupResult(
+                MetadataLookupStatus.ProviderFailure,
+                ErrorCode: "unexpected_lookup"));
+        }
     }
 
     private sealed class PublicDnsResolver : IRssDnsResolver

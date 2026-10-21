@@ -4,7 +4,7 @@ Cross-component transaction boundaries, retry/recovery, data preservation, and p
 
 ## RSS Ingestion
 
-Each RSS source item is persisted as a `torrent_movies` identity and a distinct `torrent_releases` row. A scan is not one transaction: run creation, parse-log writes, item upserts, and the final summary are separate operations. A failed scan can therefore leave earlier item changes committed. See [`PostgresRssIngestionRepository`](../../server/src/MediaDock.Infrastructure/Ingestion/PostgresRssIngestionRepository.cs) and [`RssIngestionService`](../../server/src/MediaDock.Application/Ingestion/RssIngestionService.cs).
+Each normalized torrent URL maps to one `torrent_releases` row globally. Rutracker topic URLs normalize to their topic ID; a known URL refreshes that row before title parsing or metadata lookup, including when observed through another RSS profile. The row retains the latest feed/profile details and points to its existing `torrent_movies` identity. The deduplication migration keeps the row with the greatest `LastSeenAt` (then greatest ID), removes item state for discarded rows, and deletes catalog rows left without releases. Parse logs and configured sources are retained. A scan is not one transaction: run creation, parse-log writes, item upserts, and the final summary are separate operations. A failed scan can therefore leave earlier item changes committed. See [`PostgresRssIngestionRepository`](../../server/src/MediaDock.Infrastructure/Ingestion/PostgresRssIngestionRepository.cs) and [`RssIngestionService`](../../server/src/MediaDock.Application/Ingestion/RssIngestionService.cs).
 
 ## Imports And Ownership
 

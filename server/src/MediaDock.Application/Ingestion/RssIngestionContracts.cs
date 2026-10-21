@@ -166,6 +166,14 @@ public interface IRssIngestionRepository
         DateTimeOffset observedAt,
         CancellationToken cancellationToken = default);
 
+    Task<bool> TryRefreshKnownTorrentByUrlAsync(
+        IngestionSource source,
+        IngestionFeedItem feedItem,
+        string sourceItemKey,
+        string itemFingerprint,
+        DateTimeOffset observedAt,
+        CancellationToken cancellationToken = default);
+
     Task MarkTerminalItemAsync(
         long sourceId,
         string sourceItemKey,
@@ -195,10 +203,45 @@ public static class SourceItemIdentity
 
         if (!string.IsNullOrWhiteSpace(torrentUrl))
         {
-            return $"url:{torrentUrl.Trim()}";
+            return $"url:{TorrentUrlIdentity.Normalize(torrentUrl)}";
         }
 
         throw new ArgumentException("A feed entry ID or torrent URL is required.", nameof(feedEntryId));
+    }
+}
+
+public static class TorrentUrlIdentity
+{
+    private static readonly HashSet<string> RutrackerHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "rutracker.org",
+        "www.rutracker.org",
+        "rutracker.cc",
+        "www.rutracker.cc"
+    };
+
+    public static string Normalize(string torrentUrl)
+    {
+        var value = torrentUrl.Trim();
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
+            !RutrackerHosts.Contains(uri.Host) ||
+            !uri.AbsolutePath.Equals("/forum/viewtopic.php", StringComparison.OrdinalIgnoreCase))
+        {
+            return value;
+        }
+
+        var topicId = uri.Query.TrimStart('?')
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Select(parameter => parameter.Split('=', 2))
+            .Where(parts => parts.Length == 2 && parts[0].Equals("t", StringComparison.OrdinalIgnoreCase))
+            .Select(parts => Uri.UnescapeDataString(parts[1]))
+            .FirstOrDefault(value => value.Length > 0 &&
+                value.All(character => character is >= '0' and <= '9') &&
+                value.Any(character => character != '0'));
+
+        return topicId is null
+            ? value
+            : $"https://rutracker.org/forum/viewtopic.php?t={topicId.TrimStart('0')}";
     }
 }
 

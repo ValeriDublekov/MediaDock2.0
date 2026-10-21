@@ -74,9 +74,30 @@ internal sealed class RssEntryProcessor
             return null;
         }
 
-        var itemFingerprint = CreateItemFingerprint(source, entry, settings);
+        var normalizedEntry = entry with { TorrentUrl = TorrentUrlIdentity.Normalize(entry.TorrentUrl!) };
+        var itemFingerprint = CreateItemFingerprint(source, normalizedEntry, settings);
+        if (await _repository.TryRefreshKnownTorrentByUrlAsync(
+            source, normalizedEntry, sourceItemKey, itemFingerprint, observedAt, cancellationToken))
+        {
+            context.AddLog(CreateLog(
+                source,
+                normalizedEntry,
+                sourceItemKey,
+                rawTitle,
+                null,
+                "not_requested",
+                false,
+                null,
+                null,
+                "known_torrent_url",
+                observedAt,
+                "resolved",
+                0));
+            return null;
+        }
+
         if (skipProcessedItem && await _repository.TrySkipProcessedItemAsync(
-            source, entry, sourceItemKey, itemFingerprint, observedAt, cancellationToken))
+            source, normalizedEntry, sourceItemKey, itemFingerprint, observedAt, cancellationToken))
         {
             context.KnownEntriesSkipped++;
             return null;
@@ -90,14 +111,14 @@ internal sealed class RssEntryProcessor
         catch (Exception exception)
         {
             RecordEntryFailure(
-                source, entry, sourceItemKey, rawTitle, null,
+                source, normalizedEntry, sourceItemKey, rawTitle, null,
                 $"parse_error:{exception.GetType().Name}", context, observedAt);
             return null;
         }
 
         if (string.IsNullOrWhiteSpace(parsed.Title) || parsed.Title.Length > 160)
         {
-            RecordEntryFailure(source, entry, sourceItemKey, rawTitle, parsed, "empty_title", context, observedAt);
+            RecordEntryFailure(source, normalizedEntry, sourceItemKey, rawTitle, parsed, "empty_title", context, observedAt);
             return null;
         }
 
@@ -109,7 +130,7 @@ internal sealed class RssEntryProcessor
             .ToArray();
 
         return new PreparedEntry(
-            source, entry, sourceItemKey, itemFingerprint, rawTitle, parsed, observedAt, lookupTitles);
+            source, normalizedEntry, sourceItemKey, itemFingerprint, rawTitle, parsed, observedAt, lookupTitles);
     }
 
     private async Task<MetadataLookup?> ResolveMetadataAsync(

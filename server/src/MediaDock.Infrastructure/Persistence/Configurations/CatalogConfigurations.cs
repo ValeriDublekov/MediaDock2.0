@@ -73,8 +73,9 @@ internal sealed class TorrentReleaseConfiguration : IEntityTypeConfiguration<Tor
         builder.ToTable("torrent_releases", table =>
             table.HasCheckConstraint("ck_torrent_releases_seen_range", "first_seen_at <= last_seen_at"));
         builder.HasKey(entity => entity.Id).HasName("pk_torrent_releases");
-        builder.HasAlternateKey(entity => new { entity.SourceId, entity.SourceItemKey })
-            .HasName("ak_torrent_releases_source_id_source_item_key");
+        builder.HasIndex(entity => new { entity.SourceId, entity.SourceItemKey })
+            .IsUnique()
+            .HasDatabaseName("ux_torrent_releases_source_id_source_item_key");
         builder.Property(entity => entity.Id).UseIdentityByDefaultColumn().HasColumnName("id");
         builder.Property(entity => entity.TorrentMovieId).HasColumnName("torrent_movie_id");
         builder.Property(entity => entity.SourceId).HasColumnName("source_id");
@@ -102,6 +103,9 @@ internal sealed class TorrentReleaseConfiguration : IEntityTypeConfiguration<Tor
             .HasConstraintName("fk_torrent_releases_sources_source_id");
         builder.HasIndex(entity => new { entity.TorrentMovieId, entity.LastSeenAt })
             .HasDatabaseName("ix_torrent_releases_torrent_movie_id_last_seen_at");
+        builder.HasIndex(entity => entity.TorrentUrl)
+            .IsUnique()
+            .HasDatabaseName("ux_torrent_releases_torrent_url");
     }
 }
 

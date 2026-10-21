@@ -215,7 +215,7 @@ public sealed class CatalogEndpointsApiTests
         TorrentMovieId = torrentMovieId,
         SourceId = sourceId,
         SourceItemKey = sourceItemKey,
-        TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=1",
+        TorrentUrl = $"https://feed.example/release/{Uri.EscapeDataString(sourceItemKey)}",
         RawTitle = rawTitle,
         SourceFeedName = sourceFeedName,
         FeedType = feedType,
