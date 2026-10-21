@@ -55,6 +55,38 @@ public sealed class CatalogOperationsApiTests
                 IgnoreReason = "malformed_entry",
                 ProcessedAt = firstSeen.AddMinutes(1),
                 RetryState = "terminal"
+            },
+            new ParseLog
+            {
+                SourceId = source.Id,
+                SourceItemKey = "matchable-entry",
+                RawTitle = "Example Film (2024)",
+                FeedName = "Movies",
+                ParsedSuccessfully = true,
+                ParsedTitle = "Example Film",
+                ParsedYear = 2024,
+                LookupTitles = ["Example Film"],
+                OmdbStatus = "confirmed_not_found",
+                Ignored = false,
+                ProcessedAt = firstSeen.AddMinutes(2),
+                RetryState = "terminal",
+                FeedType = source.FeedType,
+                EventKind = "ingestion",
+                TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=100"
+            },
+            new ParseLog
+            {
+                SourceId = source.Id,
+                RawTitle = string.Empty,
+                FeedName = "Movies",
+                ParsedSuccessfully = false,
+                OmdbStatus = "feed_error",
+                Ignored = false,
+                IgnoreReason = "feed_error",
+                ProcessedAt = firstSeen.AddMinutes(3),
+                RetryState = "retryable",
+                FeedType = source.FeedType,
+                EventKind = "feed"
             });
         db.ScanRuns.Add(new ScanRun
         {
@@ -73,10 +105,17 @@ public sealed class CatalogOperationsApiTests
         Assert.Equal(1, logs.TotalCount);
         Assert.True(Assert.Single(logs.Items).Ignored);
 
-        using var resolvedLogsResponse = await client.GetAsync("/api/parse-logs?page=1&pageSize=1&ignored=false");
+        using var resolvedLogsResponse = await client.GetAsync(
+            "/api/parse-logs?page=1&pageSize=1&ignored=false&search=The%20Matrix");
         var resolvedLogs = await resolvedLogsResponse.Content.ReadFromJsonAsync<PageResponse<ParseLogResponse>>();
         Assert.NotNull(resolvedLogs);
         Assert.Equal(new[] { "The Matrix" }, Assert.Single(resolvedLogs.Items).LookupTitles);
+
+        using var allLogsResponse = await client.GetAsync("/api/parse-logs?page=1&pageSize=10");
+        var allLogs = await allLogsResponse.Content.ReadFromJsonAsync<PageResponse<ParseLogResponse>>();
+        Assert.NotNull(allLogs);
+        Assert.True(allLogs.Items.Single(log => log.SourceItemKey == "matchable-entry").CanRetryMatch);
+        Assert.False(allLogs.Items.Single(log => log.EventKind == "feed").CanRetryMatch);
 
         using var runsResponse = await client.GetAsync("/api/scan-runs?page=1&pageSize=10&status=succeeded");
         var runs = await runsResponse.Content.ReadFromJsonAsync<PageResponse<ScanRunResponse>>();

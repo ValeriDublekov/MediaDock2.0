@@ -36,6 +36,7 @@ function createLog(overrides: Partial<ParseLog>): ParseLog {
     sourcePublishedAt: null,
     observedAt: '2026-10-07T12:00:00Z',
     eventKind: 'ingestion',
+    canRetryMatch: false,
     ...overrides,
   }
 }
@@ -87,7 +88,7 @@ describe('HistoryView parse diagnosis', () => {
   })
 
   it('lets an administrator apply a searched IMDb candidate from an unresolved parse log', async () => {
-    const entry = createLog({ id: 42, retryState: 'retryable', omdbStatus: 'not_requested' })
+    const entry = createLog({ id: 42, retryState: 'retryable', omdbStatus: 'not_requested', canRetryMatch: true })
     const candidates: ImdbCandidateSearch = {
       status: 'found',
       candidates: [{ title: 'Example Film', year: 2025, imdbId: 'tt87654321', sourceType: 'movie' }],
@@ -111,5 +112,24 @@ describe('HistoryView parse diagnosis', () => {
 
     await waitFor(() => expect(applyParseLogImdbCandidate).toHaveBeenCalledWith(42, 'tt87654321'))
     await waitFor(() => expect(getParseLogs).toHaveBeenCalledTimes(2))
+  })
+
+  it('does not offer retry matching for feed-level errors without a torrent URL', async () => {
+    vi.mocked(getParseLogs).mockResolvedValue(createPage([createLog({
+      id: 43,
+      rawTitle: '',
+      parsedSuccessfully: false,
+      parsedTitle: null,
+      retryState: 'retryable',
+      ignoreReason: 'feed_error',
+      eventKind: 'feed',
+      canRetryMatch: false,
+    })]))
+    vi.mocked(getScanRuns).mockResolvedValue(createPage<ScanRun>([]))
+
+    render(<HistoryView scanRunId={100} />)
+
+    expect(await screen.findByText('RSS feed error')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Retry IMDb match/ })).toBeNull()
   })
 })

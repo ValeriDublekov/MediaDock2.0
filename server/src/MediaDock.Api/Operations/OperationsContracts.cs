@@ -69,7 +69,10 @@ public sealed record ParseLogResponse(
     string? FeedType,
     DateTimeOffset? SourcePublishedAt,
     DateTimeOffset? ObservedAt,
-    string? EventKind);
+    string? EventKind)
+{
+    public bool CanRetryMatch { get; init; }
+}
 
 /// <summary>One ingestion scan summary returned from history.</summary>
 public sealed record ScanRunResponse(

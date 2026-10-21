@@ -298,6 +298,7 @@ export interface ParseLog {
   sourcePublishedAt: string | null
   observedAt: string | null
   eventKind: string | null
+  canRetryMatch: boolean
 }
 
 export interface ScanRun {

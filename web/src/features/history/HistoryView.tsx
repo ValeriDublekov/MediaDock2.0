@@ -163,7 +163,7 @@ function ParseLogTable({ items, onRetry }: { items: ParseLog[]; onRetry: (entry:
             </td>
             <td>{formatWords(entry.retryState)}<span className="subtle-line">{entry.attemptCount} attempts</span></td>
             <td>{formatDate(entry.processedAt)}</td>
-            <td>{entry.retryState !== 'resolved' && <button
+            <td>{entry.canRetryMatch && <button
               aria-label={`Retry IMDb match for ${entry.parsedTitle ?? entry.rawTitle}`}
               className="button button-secondary"
               onClick={() => onRetry(entry)}

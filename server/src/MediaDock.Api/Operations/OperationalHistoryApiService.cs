@@ -59,37 +59,51 @@ internal sealed class OperationalHistoryApiService(MediaDockDbContext dbContext)
         }
 
         var totalCount = await logs.CountAsync(cancellationToken);
-        var items = await logs
+        var rows = await logs
             .OrderByDescending(log => log.ProcessedAt)
             .ThenByDescending(log => log.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(log => new ParseLogResponse(
-                log.Id,
-                log.ScanRunId,
-                log.SourceId,
-                log.Source == null ? null : log.Source.Name,
-                log.SourceItemKey,
-                log.RawTitle,
-                log.FeedName,
-                log.ParsedSuccessfully,
-                log.ParsedTitle,
-                log.ParsedYear,
-                log.LookupTitles,
-                log.OmdbStatus,
-                log.Ignored,
-                log.IgnoreReason,
-                log.ErrorMessage,
-                log.Decision,
-                log.ProcessedAt,
-                log.RetryState,
-                log.AttemptCount,
-                log.LastAttemptAt,
-                log.FeedType,
-                log.SourcePublishedAt,
-                log.ObservedAt,
-                log.EventKind))
+            .Select(log => new
+            {
+                Response = new ParseLogResponse(
+                    log.Id,
+                    log.ScanRunId,
+                    log.SourceId,
+                    log.Source == null ? null : log.Source.Name,
+                    log.SourceItemKey,
+                    log.RawTitle,
+                    log.FeedName,
+                    log.ParsedSuccessfully,
+                    log.ParsedTitle,
+                    log.ParsedYear,
+                    log.LookupTitles,
+                    log.OmdbStatus,
+                    log.Ignored,
+                    log.IgnoreReason,
+                    log.ErrorMessage,
+                    log.Decision,
+                    log.ProcessedAt,
+                    log.RetryState,
+                    log.AttemptCount,
+                    log.LastAttemptAt,
+                    log.FeedType,
+                    log.SourcePublishedAt,
+                    log.ObservedAt,
+                    log.EventKind),
+                log.TorrentUrl,
+                HasSource = log.Source != null,
+                SourceFeedType = log.Source == null ? null : log.Source.FeedType
+            })
             .ToListAsync(cancellationToken);
+        var items = rows.Select(row => row.Response with
+        {
+            CanRetryMatch = CanRetryMatch(
+                row.Response,
+                row.HasSource,
+                row.TorrentUrl,
+                row.SourceFeedType)
+        }).ToList();
 
         return CreatePage(items, page, pageSize, totalCount);
     }
@@ -140,4 +154,20 @@ internal sealed class OperationalHistoryApiService(MediaDockDbContext dbContext)
 
     private static PageResponse<T> CreatePage<T>(IReadOnlyList<T> items, int page, int pageSize, int totalCount) =>
         new(items, page, pageSize, totalCount, totalCount == 0 ? 0 : (totalCount + pageSize - 1) / pageSize);
+
+    private static bool CanRetryMatch(
+        ParseLogResponse response,
+        bool hasSource,
+        string? torrentUrl,
+        string? sourceFeedType)
+    {
+        var feedType = response.FeedType ?? sourceFeedType;
+        return response.RetryState != "resolved"
+            && hasSource
+            && feedType is "movie" or "series_complete" or "series_ongoing"
+            && IsHttpUrl(torrentUrl);
+    }
+
+    private static bool IsHttpUrl(string? value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri) && (uri.Scheme is "http" or "https");
 }
