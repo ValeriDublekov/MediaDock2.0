@@ -36,6 +36,7 @@ export interface CatalogTitle {
   countries: string[]
   lastSeenAt: string | null
   occurrenceCount: number
+  metadataStatus: string | null
 }
 
 export interface TitleDetails extends CatalogTitle {
@@ -78,6 +79,7 @@ export interface OscarFilm {
   filmYear: number
   imdbId: string | null
   enrichmentStatus: OscarEnrichmentStatus
+  metadataStatus: string | null
   enrichmentAttemptCount: number
   lastEnrichmentAttemptAt: string | null
   nextEnrichmentAttemptAt: string | null
@@ -130,6 +132,7 @@ export interface GoldenGlobeFilm {
   imdbRating: number | null
   posterUrl: string | null
   enrichmentStatus: OscarEnrichmentStatus
+  metadataStatus: string | null
   enrichmentError: string | null
   nominations: GoldenGlobeNomination[]
 }
@@ -362,10 +365,12 @@ export interface ScanRunQuery {
 }
 
 export interface FavoriteMovie {
-  titleId: number
+  imdbId: string
+  torrentMovieId: number | null
   title: string
   year: number | null
   mediaType: MediaType
+  metadataStatus: string | null
   imdbRating: number | null
   posterUrl: string | null
   toWatch: boolean

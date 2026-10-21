@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   ApiError,
+  addFavorite,
   enqueueFailedEntryRecheck,
   enqueueGoldenGlobeEnrichment,
   enqueueGoldenGlobeImport,
@@ -30,6 +31,7 @@ import {
   requestRegistration,
   runDeploymentAction,
   updateProviderSettings,
+  updateFavorite,
 } from './client'
 import type { CatalogTitle, GoldenGlobeFilm, OscarFilm, PageResponse, PersonalRating, ProviderSettings, ProviderSettingsInput } from './types'
 
@@ -54,6 +56,17 @@ function fetchStub(result: Response | Error) {
 }
 
 describe('typed API client', () => {
+  it('uses IMDb IDs for favorite create and marker requests', async () => {
+    const stub = fetchStub(response(200, {}))
+
+    await addFavorite('tt12345678', 'oscar', stub.fetcher)
+    await updateFavorite('tt12345678', { toDownload: true }, stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/favorites')
+    expect(JSON.parse(String(stub.calls[0]?.init?.body))).toEqual({ imdbId: 'tt12345678', from: 'oscar' })
+    expect(String(stub.calls[1]?.input)).toBe('/api/favorites/tt12345678')
+  })
+
   it('serializes IMDb IDs for the bounded combined-awards lookup', async () => {
     const stub = fetchStub(response(200, []))
 

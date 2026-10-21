@@ -15,14 +15,14 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
     {
         var page = query.Page ?? 1;
         var pageSize = query.PageSize ?? 25;
-        IQueryable<FavoriteMovie> favorites = dbContext.FavoriteMovies.AsNoTracking()
+        IQueryable<ImdbFavoriteMovie> favorites = dbContext.ImdbFavoriteMovies.AsNoTracking()
             .Where(favorite => favorite.UserId == userId);
         if (query.Status == "to_watch") favorites = favorites.Where(favorite => favorite.ToWatch);
         if (query.Status == "to_download") favorites = favorites.Where(favorite => favorite.ToDownload);
 
         var totalCount = await favorites.CountAsync(cancellationToken);
         var items = await Project(favorites.OrderByDescending(favorite => favorite.UpdatedAt)
-                .ThenByDescending(favorite => favorite.TitleId).Skip((page - 1) * pageSize).Take(pageSize))
+            .ThenByDescending(favorite => favorite.ImdbId).Skip((page - 1) * pageSize).Take(pageSize))
             .ToListAsync(cancellationToken);
         return new PageResponse<FavoriteMovieResponse>(items, page, pageSize, totalCount,
             totalCount == 0 ? 0 : (totalCount + pageSize - 1) / pageSize);
@@ -33,75 +33,78 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
         CreateFavoriteRequest request,
         CancellationToken cancellationToken)
     {
-        var fromOscar = request.From == "oscar";
-        var fromCatalog = request.From == "catalog";
+                var imdbId = request.ImdbId.Trim().ToLowerInvariant();
+                var fromOscar = request.From == "oscar";
+                var fromCatalog = request.From == "catalog";
         var now = DateTimeOffset.UtcNow;
         var changed = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-            INSERT INTO legacy_favorite_movies (user_id, title_id, to_watch, to_download, added_from_oscar, added_from_catalog, created_at, updated_at)
-            SELECT {userId}, id, {fromOscar}, {fromCatalog}, {fromOscar}, {fromCatalog}, {now}, {now}
-            FROM titles WHERE id = {request.TitleId} AND media_type = 'movie'
-              AND (({fromOscar} AND EXISTS (SELECT 1 FROM oscar_films WHERE title_id = titles.id))
-                OR ({fromCatalog} AND EXISTS (SELECT 1 FROM occurrences WHERE title_id = titles.id)))
-            ON CONFLICT (user_id, title_id) DO UPDATE SET
-              to_watch = legacy_favorite_movies.to_watch OR (EXCLUDED.added_from_oscar AND NOT legacy_favorite_movies.added_from_oscar),
-              to_download = legacy_favorite_movies.to_download OR (EXCLUDED.added_from_catalog AND NOT legacy_favorite_movies.added_from_catalog),
-              added_from_oscar = legacy_favorite_movies.added_from_oscar OR EXCLUDED.added_from_oscar,
-              added_from_catalog = legacy_favorite_movies.added_from_catalog OR EXCLUDED.added_from_catalog,
+                        INSERT INTO favorite_movies (user_id, imdb_id, to_watch, to_download, added_from_oscar, added_from_catalog, created_at, updated_at)
+                        SELECT {userId}, imdb_id, {fromOscar}, {fromCatalog}, {fromOscar}, {fromCatalog}, {now}, {now}
+                        FROM imdb_titles WHERE imdb_id = {imdbId} AND metadata_status = 'enriched' AND media_type = 'movie'
+                        ON CONFLICT (user_id, imdb_id) DO UPDATE SET
+                            to_watch = favorite_movies.to_watch OR (EXCLUDED.added_from_oscar AND NOT favorite_movies.added_from_oscar),
+                            to_download = favorite_movies.to_download OR (EXCLUDED.added_from_catalog AND NOT favorite_movies.added_from_catalog),
+                            added_from_oscar = favorite_movies.added_from_oscar OR EXCLUDED.added_from_oscar,
+                            added_from_catalog = favorite_movies.added_from_catalog OR EXCLUDED.added_from_catalog,
               updated_at = EXCLUDED.updated_at
             """, cancellationToken);
-        if (changed == 0) throw new ApiNotFoundException("Movie or catalog source not found.");
-        return await GetOneAsync(userId, request.TitleId, cancellationToken);
+                if (changed == 0) throw new ApiNotFoundException("Enriched IMDb movie not found.");
+                return await GetOneAsync(userId, imdbId, cancellationToken);
     }
 
     public async Task<FavoriteMovieResponse> UpdateAsync(
         long userId,
-        long titleId,
+                string imdbId,
         UpdateFavoriteRequest request,
         CancellationToken cancellationToken)
     {
         if (request.ToWatch is null && request.ToDownload is null)
             throw new ApiValidationException(new Dictionary<string, string[]> { ["body"] = ["Provide at least one marker."] });
 
-        var favorites = dbContext.FavoriteMovies
-            .Where(favorite => favorite.UserId == userId && favorite.TitleId == titleId);
-        if (request.ToDownload == true && !await dbContext.Occurrences.AnyAsync(item => item.TitleId == titleId, cancellationToken))
-        {
-            if (!await favorites.AnyAsync(cancellationToken)) throw new ApiNotFoundException("Favorite not found.");
-            throw new ApiValidationException(new Dictionary<string, string[]> { [nameof(request.ToDownload)] = ["A torrent occurrence is required."] });
-        }
+        imdbId = imdbId.Trim().ToLowerInvariant();
+        var favorites = dbContext.ImdbFavoriteMovies
+            .Where(favorite => favorite.UserId == userId && favorite.ImdbId == imdbId);
 
         var updated = await favorites.ExecuteUpdateAsync(setters => setters
             .SetProperty(favorite => favorite.ToWatch, favorite => request.ToWatch ?? favorite.ToWatch)
             .SetProperty(favorite => favorite.ToDownload, favorite => request.ToDownload ?? favorite.ToDownload)
             .SetProperty(favorite => favorite.UpdatedAt, DateTimeOffset.UtcNow), cancellationToken);
         if (updated == 0) throw new ApiNotFoundException("Favorite not found.");
-        return await GetOneAsync(userId, titleId, cancellationToken);
+        return await GetOneAsync(userId, imdbId, cancellationToken);
     }
 
-    public Task<int> DeleteAsync(long userId, long titleId, CancellationToken cancellationToken) =>
-        dbContext.FavoriteMovies
-            .Where(favorite => favorite.UserId == userId && favorite.TitleId == titleId)
+    public Task<int> DeleteAsync(long userId, string imdbId, CancellationToken cancellationToken) =>
+        dbContext.ImdbFavoriteMovies
+            .Where(favorite => favorite.UserId == userId && favorite.ImdbId == imdbId.Trim().ToLowerInvariant())
             .ExecuteDeleteAsync(cancellationToken);
 
     private async Task<FavoriteMovieResponse> GetOneAsync(
         long userId,
-        long titleId,
+        string imdbId,
         CancellationToken cancellationToken) =>
-        await Project(dbContext.FavoriteMovies.AsNoTracking()
-                .Where(favorite => favorite.UserId == userId && favorite.TitleId == titleId))
+        await Project(dbContext.ImdbFavoriteMovies.AsNoTracking()
+                .Where(favorite => favorite.UserId == userId && favorite.ImdbId == imdbId))
             .FirstOrDefaultAsync(cancellationToken) ?? throw new ApiNotFoundException("Favorite not found.");
 
-    private IQueryable<FavoriteMovieResponse> Project(IQueryable<FavoriteMovie> favorites) =>
+    private IQueryable<FavoriteMovieResponse> Project(IQueryable<ImdbFavoriteMovie> favorites) =>
         favorites.Select(favorite => new FavoriteMovieResponse(
-            favorite.TitleId, favorite.Title.TitleText, favorite.Title.Year, favorite.Title.MediaType,
-            favorite.Title.ImdbTitle == null ? favorite.Title.ImdbRating : favorite.Title.ImdbTitle.ImdbRating,
-            favorite.Title.ImdbTitle == null ? favorite.Title.PosterUrl : favorite.Title.ImdbTitle.PosterUrl,
+            favorite.ImdbId,
+            dbContext.TorrentMovies.Where(movie => movie.ImdbId == favorite.ImdbId)
+                .Select(movie => (long?)movie.Id).FirstOrDefault(),
+            favorite.ImdbTitle.TitleText ?? favorite.ImdbId,
+            favorite.ImdbTitle.Year,
+            favorite.ImdbTitle.MediaType ?? "movie",
+            favorite.ImdbTitle.MetadataStatus,
+            favorite.ImdbTitle.ImdbRating,
+            favorite.ImdbTitle.PosterUrl,
             favorite.ToWatch, favorite.ToDownload,
             favorite.AddedFromOscar, favorite.AddedFromCatalog, favorite.CreatedAt, favorite.UpdatedAt,
-            dbContext.OscarFilms.Count(film => film.TitleId == favorite.TitleId),
-            dbContext.OscarNominations.Count(nomination => nomination.OscarFilm.TitleId == favorite.TitleId),
-            dbContext.OscarNominations.Count(nomination => nomination.OscarFilm.TitleId == favorite.TitleId && nomination.IsWinner),
-            dbContext.Occurrences.Count(occurrence => occurrence.TitleId == favorite.TitleId),
-            dbContext.Occurrences.Where(occurrence => occurrence.TitleId == favorite.TitleId)
-                .Max(occurrence => (DateTimeOffset?)occurrence.LastSeenAt)));
+            dbContext.OscarMovies.Count(film => film.ImdbId == favorite.ImdbId),
+            dbContext.OscarNominations.Count(nomination => nomination.OscarMovie != null
+                && nomination.OscarMovie.ImdbId == favorite.ImdbId),
+            dbContext.OscarNominations.Count(nomination => nomination.OscarMovie != null
+                && nomination.OscarMovie.ImdbId == favorite.ImdbId && nomination.IsWinner),
+            dbContext.TorrentReleases.Count(release => release.TorrentMovie.ImdbId == favorite.ImdbId),
+            dbContext.TorrentReleases.Where(release => release.TorrentMovie.ImdbId == favorite.ImdbId)
+                .Max(release => (DateTimeOffset?)release.LastSeenAt)));
 }

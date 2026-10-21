@@ -52,28 +52,30 @@ export function FavoritesView() {
     {!available && <EmptyState title="Sign in to view favorites" message="An active linked account is required." />}
     {available && loading && <LoadingState label="Loading favorites" />}
     {available && !loading && error && <ErrorState message={error} onRetry={() => { setLoading(true); setError(null); setAttempt((value) => value + 1) }} />}
-    {available && !loading && !error && result?.items.length === 0 && <EmptyState title="No favorites here" message="Add a movie from the catalog or Oscar catalog." />}
+    {available && !loading && !error && result?.items.length === 0 && <EmptyState title="No favorites here" message="Add a movie from a supported catalog." />}
     {available && !loading && !error && result && result.items.length > 0 && <>
       {viewMode === 'posters' ? <div className="poster-grid">
-        {result.items.map((item) => <article className="movie-tile" key={item.titleId}>
-          <button aria-label={`View ${item.title} details`} className="poster-action" onClick={() => setSelected(item.titleId)} type="button">
+        {result.items.map((item) => <article className="movie-tile" key={item.imdbId}>
+          {item.torrentMovieId !== null ? <button aria-label={`View ${item.title} details`} className="poster-action" onClick={() => setSelected(item.torrentMovieId)} type="button">
             <Poster src={item.posterUrl} title={item.title} />
-          </button>
+          </button> : <Poster src={item.posterUrl} title={item.title} />}
           <div className="movie-tile-info">
-            <button className="tile-title" onClick={() => setSelected(item.titleId)} type="button">{item.title}</button>
+            {item.torrentMovieId !== null
+              ? <button className="tile-title" onClick={() => setSelected(item.torrentMovieId)} type="button">{item.title}</button>
+              : <strong className="tile-title">{item.title}</strong>}
             <div className="tile-meta">{item.year ?? 'Year unknown'} <span aria-hidden="true">·</span> <span>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog'].filter(Boolean).join(' / ')}</span></div>
             <div className="tile-genres">{item.winCount > 0 ? `${item.winCount} Oscar ${item.winCount === 1 ? 'win' : 'wins'}` : `${item.nominationCount} nominations`}</div>
             <div className="tile-footer"><span className="tile-rating">{item.imdbRating === null ? 'Not rated' : `IMDb ${item.imdbRating.toFixed(1)}`}</span></div>
-            <FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} titleId={item.titleId} />
+            <FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} />
           </div>
         </article>)}
       </div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>MOVIE</th><th>ORIGIN</th><th>OSCAR</th><th>TORRENTS</th><th>STATUS</th></tr></thead>
-        <tbody>{result.items.map((item) => <tr key={item.titleId}>
-          <td><button className="title-link" onClick={() => setSelected(item.titleId)} type="button">{item.title}</button><span className="subtle-line">{item.year ?? 'Year unknown'}</span></td>
+        <tbody>{result.items.map((item) => <tr key={item.imdbId}>
+          <td>{item.torrentMovieId !== null ? <button className="title-link" onClick={() => setSelected(item.torrentMovieId)} type="button">{item.title}</button> : item.title}<span className="subtle-line">{item.year ?? 'Year unknown'}</span></td>
           <td>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog'].filter(Boolean).join(' / ')}</td>
           <td>{item.nominationCount} nominations, {item.winCount} wins</td>
           <td>{item.occurrenceCount ? `${item.occurrenceCount} sources` : 'No source available'}</td>
-          <td><FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} titleId={item.titleId} /></td>
+          <td><FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} /></td>
         </tr>)}</tbody>
       </table></div>}
       <Pagination onPageChange={(next) => { setPage(next); setLoading(true) }} page={result} />

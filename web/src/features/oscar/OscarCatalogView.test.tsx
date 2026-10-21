@@ -73,6 +73,7 @@ const film: OscarFilm = {
   filmYear: 2017,
   imdbId: 'tt5580390',
   enrichmentStatus: 'enriched',
+  metadataStatus: 'enriched',
   enrichmentAttemptCount: 1,
   lastEnrichmentAttemptAt: '2026-09-28T12:00:00Z',
   nextEnrichmentAttemptAt: null,
@@ -299,7 +300,7 @@ describe('OscarCatalogView', () => {
 
   it('adds from Oscar, preserves a disabled marker, and keeps state after a failed save', async () => {
     const favorite: FavoriteMovie = {
-      titleId: film.titleId, title: film.title, year: film.filmYear, mediaType: 'movie',
+      imdbId: film.imdbId!, torrentMovieId: null, title: film.title, year: film.filmYear, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: film.imdbRating, posterUrl: null, toWatch: true, toDownload: false,
       addedFromOscar: true, addedFromCatalog: false, createdAt: '2026-09-30T00:00:00Z',
       updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 2,
@@ -312,10 +313,10 @@ describe('OscarCatalogView', () => {
     render(<FavoriteProvider accountKey="test-account"><OscarCatalogView /></FavoriteProvider>)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add to favorites' }))
-    await waitFor(() => expect(addRequest).toHaveBeenCalledWith(film.titleId, 'oscar'))
+    await waitFor(() => expect(addRequest).toHaveBeenCalledWith(film.imdbId, 'oscar'))
     const watch = await screen.findByRole('checkbox', { name: 'To watch' }) as HTMLInputElement
     expect(watch.checked).toBe(true)
-    expect((screen.getByRole('checkbox', { name: 'To download' }) as HTMLInputElement).disabled).toBe(true)
+    expect((screen.getByRole('checkbox', { name: 'To download' }) as HTMLInputElement).disabled).toBe(false)
     fireEvent.click(watch)
     expect(await screen.findByText('Save failed')).toBeTruthy()
     expect(watch.checked).toBe(true)
@@ -323,7 +324,7 @@ describe('OscarCatalogView', () => {
 
   it('records Oscar origin on an existing catalog favorite without clearing download', async () => {
     const existing: FavoriteMovie = {
-      titleId: film.titleId, title: film.title, year: film.filmYear, mediaType: 'movie',
+      imdbId: film.imdbId!, torrentMovieId: null, title: film.title, year: film.filmYear, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: film.imdbRating, posterUrl: null, toWatch: false, toDownload: true,
       addedFromOscar: false, addedFromCatalog: true, createdAt: '2026-09-30T00:00:00Z',
       updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 2,
@@ -335,7 +336,7 @@ describe('OscarCatalogView', () => {
     render(<FavoriteProvider accountKey="test-account"><OscarCatalogView /></FavoriteProvider>)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add from Oscar' }))
-    await waitFor(() => expect(addRequest).toHaveBeenCalledWith(film.titleId, 'oscar'))
+    await waitFor(() => expect(addRequest).toHaveBeenCalledWith(film.imdbId, 'oscar'))
     expect((screen.getByRole('checkbox', { name: 'To download' }) as HTMLInputElement).checked).toBe(true)
     expect((screen.getByRole('checkbox', { name: 'To watch' }) as HTMLInputElement).checked).toBe(true)
   })

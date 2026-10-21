@@ -38,7 +38,8 @@ public sealed record GoldenGlobeFilmResponse(
     string? PosterUrl,
     string? EnrichmentStatus,
     string? EnrichmentError,
-    IReadOnlyList<GoldenGlobeNominationResponse> Nominations);
+    IReadOnlyList<GoldenGlobeNominationResponse> Nominations,
+    string? MetadataStatus);
 
 public sealed record GoldenGlobeNominationResponse(
     long Id,

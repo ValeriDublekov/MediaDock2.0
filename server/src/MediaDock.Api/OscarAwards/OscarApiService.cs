@@ -234,7 +234,8 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
                     nomination.NomineeIds,
                     nomination.Detail,
                     nomination.IsWinner))
-                .ToArray());
+                .ToArray(),
+            imdbTitle?.MetadataStatus);
     }
 
     private static PageResponse<T> CreatePage<T>(

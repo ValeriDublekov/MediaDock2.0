@@ -167,16 +167,16 @@ export function getPersonalRatings(
   return requestJson<PageResponse<PersonalRating>>(withQuery('/personal-ratings', query), {}, fetcher)
 }
 
-export function addFavorite(titleId: number, from: 'oscar' | 'catalog', fetcher?: typeof fetch) {
-  return requestJson<FavoriteMovie>('/favorites', { method: 'POST', body: JSON.stringify({ titleId, from }) }, fetcher)
+export function addFavorite(imdbId: string, from: 'oscar' | 'catalog', fetcher?: typeof fetch) {
+  return requestJson<FavoriteMovie>('/favorites', { method: 'POST', body: JSON.stringify({ imdbId, from }) }, fetcher)
 }
 
-export function updateFavorite(titleId: number, input: { toWatch?: boolean; toDownload?: boolean }, fetcher?: typeof fetch) {
-  return requestJson<FavoriteMovie>(`/favorites/${titleId}`, { method: 'PATCH', body: JSON.stringify(input) }, fetcher)
+export function updateFavorite(imdbId: string, input: { toWatch?: boolean; toDownload?: boolean }, fetcher?: typeof fetch) {
+  return requestJson<FavoriteMovie>(`/favorites/${encodeURIComponent(imdbId)}`, { method: 'PATCH', body: JSON.stringify(input) }, fetcher)
 }
 
-export function removeFavorite(titleId: number, fetcher?: typeof fetch) {
-  return requestJson<void>(`/favorites/${titleId}`, { method: 'DELETE' }, fetcher)
+export function removeFavorite(imdbId: string, fetcher?: typeof fetch) {
+  return requestJson<void>(`/favorites/${encodeURIComponent(imdbId)}`, { method: 'DELETE' }, fetcher)
 }
 
 export function getTitle(id: number, fetcher?: typeof fetch) {

@@ -1,10 +1,11 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { getBackgroundJob, getGoldenGlobeCategories, getGoldenGlobeFilms, getMovieAwards, setGoldenGlobeImdbId } from '../../api/client'
-import type { GoldenGlobeFilm, MovieAwardRecognition, PageResponse } from '../../api/types'
+import { addFavorite, getBackgroundJob, getFavorites, getGoldenGlobeCategories, getGoldenGlobeFilms, getMovieAwards, setGoldenGlobeImdbId } from '../../api/client'
+import type { FavoriteMovie, GoldenGlobeFilm, MovieAwardRecognition, PageResponse } from '../../api/types'
+import { FavoriteProvider } from '../favorites/FavoriteContext'
 import { GoldenGlobeCatalogView } from './GoldenGlobeCatalogView'
 
-vi.mock('../../api/client', () => ({ getBackgroundJob: vi.fn(), getGoldenGlobeCategories: vi.fn(), getGoldenGlobeFilms: vi.fn(), getMovieAwards: vi.fn().mockResolvedValue([]), setGoldenGlobeImdbId: vi.fn() }))
+vi.mock('../../api/client', () => ({ getBackgroundJob: vi.fn(), getFavorites: vi.fn(), addFavorite: vi.fn(), updateFavorite: vi.fn(), removeFavorite: vi.fn(), getGoldenGlobeCategories: vi.fn(), getGoldenGlobeFilms: vi.fn(), getMovieAwards: vi.fn().mockResolvedValue([]), setGoldenGlobeImdbId: vi.fn() }))
 
 const film: GoldenGlobeFilm = {
   filmId: '2025:movie:A Film',
@@ -16,6 +17,7 @@ const film: GoldenGlobeFilm = {
   imdbRating: null,
   posterUrl: 'https://example.test/a-film.jpg',
   enrichmentStatus: 'pending',
+  metadataStatus: null,
   enrichmentError: null,
   nominations: [{ id: 1, year: 2025, award: 'Best Picture', isWinner: true }],
 }
@@ -34,6 +36,8 @@ describe('GoldenGlobeCatalogView', () => {
   beforeEach(() => {
     vi.mocked(getGoldenGlobeFilms).mockReset().mockResolvedValue(page)
     vi.mocked(getGoldenGlobeCategories).mockReset().mockResolvedValue(['Best Director', 'Best Picture'])
+    vi.mocked(getFavorites).mockReset().mockResolvedValue({ items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0 })
+    vi.mocked(addFavorite).mockReset()
     vi.mocked(getMovieAwards).mockReset().mockResolvedValue([])
     vi.mocked(getBackgroundJob).mockReset()
     vi.mocked(setGoldenGlobeImdbId).mockReset()
@@ -258,5 +262,26 @@ describe('GoldenGlobeCatalogView', () => {
 
     expect(await screen.findByText('OMDb did not find a matching title.')).toBeTruthy()
     expect(await screen.findByText('The OMDb request timed out.')).toBeTruthy()
+  })
+
+  it('adds enriched Golden Globes movies to shared favorites by IMDb ID', async () => {
+    const enrichedFilm = { ...film, imdbId: 'tt12345678', enrichmentStatus: 'enriched' as const, metadataStatus: 'enriched' }
+    const favorite: FavoriteMovie = {
+      imdbId: 'tt12345678', torrentMovieId: null, title: 'A Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
+      imdbRating: null, posterUrl: null, toWatch: false, toDownload: true,
+      addedFromOscar: false, addedFromCatalog: true, createdAt: '2026-09-30T00:00:00Z',
+      updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
+      winCount: 0, occurrenceCount: 0, lastSeenAt: null,
+    }
+    vi.mocked(getGoldenGlobeFilms).mockResolvedValue({ ...page, items: [enrichedFilm] })
+    vi.mocked(addFavorite).mockResolvedValue(favorite)
+    render(<FavoriteProvider accountKey="test-account"><GoldenGlobeCatalogView /></FavoriteProvider>)
+
+    const addButton = await screen.findByRole('button', { name: 'Add to favorites' }) as HTMLButtonElement
+    await waitFor(() => expect(addButton.disabled).toBe(false))
+    fireEvent.click(addButton)
+
+    await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt12345678', 'catalog'))
+    expect(await screen.findByRole('checkbox', { name: 'To download' })).toBeTruthy()
   })
 })

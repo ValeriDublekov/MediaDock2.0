@@ -11,6 +11,7 @@ import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl
 import { formatWords } from '../../shared/format'
 import { combineMovieAwards, getGoldenGlobeRecognitions, movieAwardsRequestKey } from '../../shared/movieAwards'
 import { useMovieAwards } from '../../shared/useMovieAwards'
+import { FavoriteControls } from '../favorites/FavoriteControls'
 import { GoldenGlobeFilmDetailsDialog } from './GoldenGlobeFilmDetailsDialog'
 
 interface Filters { search: string; yearFrom: string; yearTo: string; imdbRatingFrom: string; imdbRatingTo: string; categories: string[] | null; result: string; enrichmentStatus: string }
@@ -193,6 +194,7 @@ export function GoldenGlobeCatalogView() {
       >
         <span className="state-pill is-muted">{formatWords(film.nomineeType)}</span>
         <EnrichmentStatus film={film} />
+        <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} />
       </MoviePosterCard>)}</div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>FILM</th><th>IMDB</th><th>AWARDS</th><th>RESULT</th><th>OMDb status</th></tr></thead><tbody>{result.items.map((film) => { const wins = film.nominations.filter((nomination) => nomination.isWinner).length; const awards = combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId); return <tr key={film.filmId}><td><MovieTableTitle onOpen={() => setSelectedFilm(film)} openLabel={`View ${film.title} Golden Globes details`} posterLabel="GLO" posterUrl={film.posterUrl} subtitle={`Ceremony year ${film.year} - ${formatWords(film.nomineeType)}`} title={film.title} /></td><td><MovieImdbLink imdbId={film.imdbId} rating={film.imdbRating} title={film.title} /></td><td><MovieAwardsSummary awards={awards} compact /></td><td><span className={`state-pill ${wins > 0 ? 'is-winner' : 'is-muted'}`}>{wins > 0 ? 'Winner' : 'Nominee'}</span></td><td><EnrichmentStatus film={film} /></td></tr> })}</tbody></table></div>}
       <Pagination onPageChange={(nextPage) => { setLoading(true); setError(null); setPage(nextPage) }} page={result} />
     </>}

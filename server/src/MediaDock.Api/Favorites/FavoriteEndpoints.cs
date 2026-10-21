@@ -40,8 +40,8 @@ internal static class FavoriteEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest).ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        app.MapPatch("/api/favorites/{titleId:long}", async Task<Ok<FavoriteMovieResponse>> (
-            long titleId,
+        app.MapPatch("/api/favorites/{imdbId}", async Task<Ok<FavoriteMovieResponse>> (
+            string imdbId,
             UpdateFavoriteRequest request,
             ClaimsPrincipal principal,
             CurrentUserContext currentUserContext,
@@ -49,22 +49,22 @@ internal static class FavoriteEndpoints
             CancellationToken cancellationToken) =>
         {
             var currentUser = await ResolveCurrentUserAsync(principal, currentUserContext, cancellationToken);
-            return TypedResults.Ok(await service.UpdateAsync(currentUser.Id, titleId, request, cancellationToken));
+            return TypedResults.Ok(await service.UpdateAsync(currentUser.Id, imdbId, request, cancellationToken));
         })
             .WithName("UpdateFavorite").WithSummary("Update favorite movie markers.")
             .RequireAuthorization(AccessPolicies.OwnerScopedFavorites)
             .ProducesProblem(StatusCodes.Status400BadRequest).ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        app.MapDelete("/api/favorites/{titleId:long}", async Task<NoContent> (
-            long titleId,
+        app.MapDelete("/api/favorites/{imdbId}", async Task<NoContent> (
+            string imdbId,
             ClaimsPrincipal principal,
             CurrentUserContext currentUserContext,
             FavoriteApiService service,
             CancellationToken cancellationToken) =>
         {
             var currentUser = await ResolveCurrentUserAsync(principal, currentUserContext, cancellationToken);
-            await service.DeleteAsync(currentUser.Id, titleId, cancellationToken);
+            await service.DeleteAsync(currentUser.Id, imdbId, cancellationToken);
             return TypedResults.NoContent();
         }).WithName("DeleteFavorite").WithSummary("Remove a movie from favorites.")
             .RequireAuthorization(AccessPolicies.OwnerScopedFavorites)

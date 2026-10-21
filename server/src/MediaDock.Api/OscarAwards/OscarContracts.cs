@@ -65,7 +65,8 @@ public sealed record OscarFilmResponse(
     string? Runtime,
     string? Awards,
     string? BoxOffice,
-    IReadOnlyList<OscarNominationResponse> Nominations);
+    IReadOnlyList<OscarNominationResponse> Nominations,
+    string? MetadataStatus);
 
 public sealed record OscarNominationResponse(
     long Id,

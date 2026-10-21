@@ -3,6 +3,7 @@ import { getBackgroundJob, setGoldenGlobeImdbId } from '../../api/client'
 import type { BackgroundJobStatus, GoldenGlobeFilm, MovieAwardRecognition } from '../../api/types'
 import { MovieAwardsList, MovieDetailsIntro } from '../../components/MoviePresentation'
 import { formatWords } from '../../shared/format'
+import { FavoriteControls } from '../favorites/FavoriteControls'
 
 interface GoldenGlobeFilmDetailsDialogProps {
   film: GoldenGlobeFilm
@@ -81,6 +82,7 @@ export function GoldenGlobeFilmDetailsDialog({ film, awards, onClose, onUpdated 
         imdbRating: null,
         posterUrl: null,
         enrichmentStatus: 'pending',
+        metadataStatus: result.imdbId ? 'pending' : null,
         enrichmentError: null,
       })
       setImdbId(result.imdbId ?? '')
@@ -123,6 +125,7 @@ export function GoldenGlobeFilmDetailsDialog({ film, awards, onClose, onUpdated 
           <div><dt>IMDb rating</dt><dd>{currentFilm.imdbRating?.toFixed(1) ?? 'Not rated'}</dd></div>
           <div><dt>OMDb status</dt><dd>{formatWords(currentFilm.enrichmentStatus)}</dd></div>
         </dl>
+        <FavoriteControls from="catalog" imdbId={currentFilm.imdbId} metadataStatus={currentFilm.metadataStatus} mediaType={currentFilm.nomineeType} occurrenceCount={0} />
         <form className="golden-globe-imdb-link" onSubmit={(event) => { void saveImdbId(event) }}>
           <div className="field">
             <label htmlFor="golden-globe-imdb-id">IMDb ID</label>

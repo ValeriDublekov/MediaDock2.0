@@ -18,8 +18,8 @@ public sealed record FavoriteQuery
 /// <summary>Adds a movie from a verified catalog.</summary>
 public sealed record CreateFavoriteRequest
 {
-    [Range(1L, long.MaxValue)]
-    public long TitleId { get; init; }
+    [Required, RegularExpression("^[Tt][Tt][0-9]{7,10}$")]
+    public string ImdbId { get; init; } = string.Empty;
 
     [Required, RegularExpression("^(oscar|catalog)$")]
     public string? From { get; init; }
@@ -34,10 +34,12 @@ public sealed record UpdateFavoriteRequest
 
 /// <summary>A movie and its current favorite, Oscar and torrent summaries.</summary>
 public sealed record FavoriteMovieResponse(
-    long TitleId,
+    string ImdbId,
+    long? TorrentMovieId,
     string Title,
     int? Year,
     string MediaType,
+    string? MetadataStatus,
     decimal? ImdbRating,
     string? PosterUrl,
     bool ToWatch,

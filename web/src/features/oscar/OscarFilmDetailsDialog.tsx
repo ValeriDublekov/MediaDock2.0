@@ -87,7 +87,7 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
                 <div><dt>Box office</dt><dd>{film.boxOffice ?? 'Not listed'}</dd></div>
                 {film.lastEnrichmentError && <div><dt>Last error</dt><dd>{film.lastEnrichmentError}</dd></div>}
               </dl>
-              <FavoriteControls from="oscar" mediaType={film.mediaType} occurrenceCount={occurrenceCount} titleId={film.titleId} />
+              <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={occurrenceCount} />
 
               <MovieAwardsList awards={awards} />
             </>

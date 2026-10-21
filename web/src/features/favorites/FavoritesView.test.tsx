@@ -1,12 +1,18 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { getFavorites } from '../../api/client'
+import { addFavorite, getFavorites, updateFavorite } from '../../api/client'
 import type { FavoriteMovie, PageResponse } from '../../api/types'
+import { FavoriteControls } from './FavoriteControls'
 import { FavoriteProvider } from './FavoriteContext'
 import { FavoritesView } from './FavoritesView'
 
-vi.mock('../../api/client', () => ({ getFavorites: vi.fn() }))
-afterEach(() => { cleanup(); vi.mocked(getFavorites).mockReset() })
+vi.mock('../../api/client', () => ({ getFavorites: vi.fn(), addFavorite: vi.fn(), updateFavorite: vi.fn(), removeFavorite: vi.fn() }))
+afterEach(() => {
+  cleanup()
+  vi.mocked(getFavorites).mockReset()
+  vi.mocked(addFavorite).mockReset()
+  vi.mocked(updateFavorite).mockReset()
+})
 
 it('does not report zero movies when the API fails', async () => {
   vi.mocked(getFavorites).mockRejectedValue(new Error('Service unavailable'))
@@ -18,7 +24,7 @@ it('does not report zero movies when the API fails', async () => {
 
 it('filters one canonical movie independently by watch and download status', async () => {
   const movie: FavoriteMovie = {
-    titleId: 42, title: 'Shared Movie', year: 2025, mediaType: 'movie',
+    imdbId: 'tt12345678', torrentMovieId: 42, title: 'Shared Movie', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: null, posterUrl: null, toWatch: true, toDownload: true,
     addedFromOscar: true, addedFromCatalog: true, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 2,
@@ -51,13 +57,13 @@ it('does not load favorites without an active account', async () => {
 
 it('reloads and clears favorites when the account changes', async () => {
   const firstMovie: FavoriteMovie = {
-    titleId: 1, title: 'First Account Film', year: 2025, mediaType: 'movie',
+    imdbId: 'tt12345678', torrentMovieId: 1, title: 'First Account Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: null, posterUrl: null, toWatch: true, toDownload: false,
     addedFromOscar: false, addedFromCatalog: true, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
     winCount: 0, occurrenceCount: 1, lastSeenAt: '2026-09-30T00:00:00Z',
   }
-  const secondMovie: FavoriteMovie = { ...firstMovie, titleId: 2, title: 'Second Account Film' }
+  const secondMovie: FavoriteMovie = { ...firstMovie, imdbId: 'tt87654321', torrentMovieId: 2, title: 'Second Account Film' }
   let currentMovie = firstMovie
   vi.mocked(getFavorites).mockImplementation(async (query) => ({
     items: [currentMovie], page: query.page, pageSize: query.pageSize, totalCount: 1, totalPages: 1,
@@ -73,4 +79,38 @@ it('reloads and clears favorites when the account changes', async () => {
 
   expect(await screen.findByRole('button', { name: 'Second Account Film' })).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'First Account Film' })).toBeNull()
+})
+
+it('shares state by IMDb ID, blocks ineligible adds, and allows download before a torrent exists', async () => {
+  const favorite: FavoriteMovie = {
+    imdbId: 'tt12345678', torrentMovieId: null, title: 'Shared Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
+    imdbRating: 8.2, posterUrl: null, toWatch: true, toDownload: false,
+    addedFromOscar: true, addedFromCatalog: false, createdAt: '2026-09-30T00:00:00Z',
+    updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 0,
+    winCount: 0, occurrenceCount: 0, lastSeenAt: null,
+  }
+  vi.mocked(getFavorites).mockResolvedValue({ items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0 })
+  vi.mocked(addFavorite).mockResolvedValue(favorite)
+  vi.mocked(updateFavorite).mockResolvedValue({ ...favorite, toDownload: true })
+  render(<FavoriteProvider accountKey="test-account">
+    <>
+      <FavoriteControls from="catalog" imdbId={null} metadataStatus={null} mediaType="movie" occurrenceCount={0} />
+      <FavoriteControls from="catalog" imdbId="tt12345678" metadataStatus="pending" mediaType="movie" occurrenceCount={0} />
+      <FavoriteControls from="oscar" imdbId="tt12345678" metadataStatus="enriched" mediaType="movie" occurrenceCount={0} />
+      <FavoriteControls from="catalog" imdbId="tt12345678" metadataStatus="enriched" mediaType="movie" occurrenceCount={0} />
+    </>
+  </FavoriteProvider>)
+
+  const addButtons = await screen.findAllByRole('button', { name: 'Add to favorites' })
+  expect(addButtons).toHaveLength(2)
+  const firstAddButton = addButtons[0] as HTMLButtonElement
+  await waitFor(() => expect(firstAddButton.disabled).toBe(false))
+  fireEvent.click(firstAddButton)
+  await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt12345678', 'oscar'))
+  expect(await screen.findByRole('button', { name: 'Add from catalog' })).toBeTruthy()
+
+  const download = screen.getAllByRole('checkbox', { name: 'To download' })[0] as HTMLInputElement
+  expect(download.disabled).toBe(false)
+  fireEvent.click(download)
+  await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith('tt12345678', { toDownload: true }))
 })

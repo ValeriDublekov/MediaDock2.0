@@ -72,7 +72,8 @@ public sealed record CatalogTitleResponse(
     IReadOnlyList<string> Genres,
     IReadOnlyList<string> Countries,
     DateTimeOffset? LastSeenAt,
-    int OccurrenceCount);
+    int OccurrenceCount,
+    string? MetadataStatus);
 
 /// <summary>Full metadata for one catalog title.</summary>
 public sealed record TitleDetailsResponse(
@@ -100,7 +101,8 @@ public sealed record TitleDetailsResponse(
     DateTimeOffset? FirstSeenAt,
     DateTimeOffset? LastSeenAt,
     DateTimeOffset UpdatedAt,
-    int OccurrenceCount);
+    int OccurrenceCount,
+    string? MetadataStatus);
 
 /// <summary>One observed feed occurrence of a catalog title.</summary>
 public sealed record OccurrenceResponse(

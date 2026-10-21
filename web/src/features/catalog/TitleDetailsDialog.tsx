@@ -90,7 +90,7 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
                 <div><dt>Countries</dt><dd>{title.countries.join(', ') || 'Not tagged'}</dd></div>
                 <div><dt>First seen</dt><dd>{formatDate(title.firstSeenAt)}</dd></div>
               </dl>
-              <FavoriteControls from={oscars.length ? 'oscar' : 'catalog'} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} titleId={titleId} />
+              <FavoriteControls from={oscars.length ? 'oscar' : 'catalog'} imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} />
               {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
               <MovieAwardsList awards={awards} />
               <section ref={torrentSectionRef}>

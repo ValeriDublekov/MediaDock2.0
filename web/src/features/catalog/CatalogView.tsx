@@ -82,7 +82,7 @@ function CatalogRow({ title, onSelect, awards }: { title: CatalogTitle; onSelect
       <td><MovieAwardsSummary awards={awards} compact /></td>
       <td>{title.genres.slice(0, 2).join(', ') || 'Not tagged'}</td>
       <td>{formatDate(title.lastSeenAt)}</td>
-      <td><FavoriteControls from="catalog" mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} titleId={title.id} /></td>
+      <td><FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} /></td>
     </tr>
   )
 }
@@ -276,7 +276,7 @@ export function CatalogView() {
                 </button>
               </>}
               awards={combineMovieAwards([], pageAwards, title.imdbId)}
-              footer={<FavoriteControls from="catalog" mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} titleId={title.id} />}
+              footer={<FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} />}
               genres={title.genres}
               imdbId={title.imdbId}
               imdbRating={title.imdbRating}

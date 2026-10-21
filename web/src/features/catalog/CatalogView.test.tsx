@@ -39,6 +39,7 @@ const title: CatalogTitle = {
   countries: ['Canada'],
   lastSeenAt: '2026-09-28T12:00:00Z',
   occurrenceCount: 3,
+  metadataStatus: 'enriched',
 }
 
 describe('CatalogView', () => {

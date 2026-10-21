@@ -39,8 +39,8 @@ public sealed class GoogleAuthenticationApiTests
             .Options;
         long firstUserId;
         long secondUserId;
-        long firstTitleId;
-        long secondTitleId;
+        const string firstImdbId = "tt12345678";
+        const string secondImdbId = "tt87654321";
         await using (var db = new MediaDockDbContext(options))
         {
             await db.Database.MigrateAsync();
@@ -73,76 +73,45 @@ public sealed class GoogleAuthenticationApiTests
             var deactivatedUser = CreateUser("disabled@example.com", "favorites-disabled", "deactivated");
             var adminUser = CreateUser("admin@example.com", "favorites-admin", role: "admin");
             db.Users.AddRange(firstUser, secondUser, deactivatedUser, adminUser);
-
-            var source = new Source
-            {
-                StableKey = "favorites-test-source",
-                Name = "Movies",
-                FeedType = "movie",
-                Url = "https://example.com/movies"
-            };
-            var titles = new[]
-            {
-                new Title
+            db.ImdbTitles.AddRange(
+                new ImdbTitle
                 {
+                    ImdbId = firstImdbId,
                     TitleText = "Shared Film",
-                    NormalizedTitle = "shared film",
                     Year = 2025,
                     MediaType = "movie",
-                    ImdbId = "tt12345678",
-                    FirstSeenAt = now,
-                    LastSeenAt = now,
+                    ImdbRating = 9.1m,
+                    PosterUrl = "https://example.test/canonical-shared.jpg",
+                    MetadataStatus = "enriched",
                     UpdatedAt = now
                 },
-                new Title
+                new ImdbTitle
                 {
+                    ImdbId = secondImdbId,
                     TitleText = "Second User Film",
-                    NormalizedTitle = "second user film",
                     Year = 2024,
                     MediaType = "movie",
                     ImdbRating = 6.3m,
-                    PosterUrl = "https://example.test/local-second.jpg",
-                    FirstSeenAt = now,
-                    LastSeenAt = now,
+                    PosterUrl = "https://example.test/canonical-second.jpg",
+                    MetadataStatus = "enriched",
                     UpdatedAt = now
-                }
-            };
-            db.ImdbTitles.Add(new ImdbTitle
+                },
+                new ImdbTitle { ImdbId = "tt11223344", MediaType = "movie", MetadataStatus = "pending", UpdatedAt = now },
+                new ImdbTitle { ImdbId = "tt11223345", MediaType = "movie", MetadataStatus = "not_found", UpdatedAt = now },
+                new ImdbTitle { ImdbId = "tt11223346", MediaType = "movie", MetadataStatus = "temporary_error", UpdatedAt = now });
+            db.OscarMovies.Add(new OscarMovie
             {
-                ImdbId = "tt12345678",
-                ImdbRating = 9.1m,
-                PosterUrl = "https://example.test/canonical-shared.jpg",
-                UpdatedAt = now
-            });
-            db.Sources.Add(source);
-            db.Titles.AddRange(titles);
-            db.Occurrences.AddRange(titles.Select((title, index) => new Occurrence
-            {
-                Title = title,
-                Source = source,
-                SourceItemKey = $"entry:favorites-{index}",
-                TorrentUrl = $"https://example.com/torrents/{index}",
-                RawTitle = title.TitleText,
-                SourceFeedName = source.Name,
-                FeedType = "movie",
-                FirstSeenAt = now,
-                LastSeenAt = now
-            }));
-            db.OscarFilms.Add(new OscarFilm
-            {
-                Title = titles[0],
                 StableKey = "favorites-shared-film",
-                FilmTitle = titles[0].TitleText,
-                NormalizedTitle = titles[0].NormalizedTitle,
-                FilmYear = titles[0].Year!.Value,
+                FilmTitle = "Shared Film",
+                NormalizedTitle = "shared film",
+                FilmYear = 2025,
+                ImdbId = firstImdbId,
                 ImportedAt = now,
                 UpdatedAt = now
             });
             await db.SaveChangesAsync();
             firstUserId = firstUser.Id;
             secondUserId = secondUser.Id;
-            firstTitleId = titles[0].Id;
-            secondTitleId = titles[1].Id;
         }
 
         using var anonymousFactory = new ApiFactory(connectionString);
@@ -175,25 +144,36 @@ public sealed class GoogleAuthenticationApiTests
             CreatePrincipal(email: "admin@example.com", subject: "favorites-admin"));
         using var adminClient = adminFactory.CreateClient();
 
-        using var missingSourceResponse = await firstClient.PostAsJsonAsync(
+        using var missingImdbResponse = await firstClient.PostAsJsonAsync(
             "/api/favorites",
-            new { titleId = secondTitleId, from = "oscar" });
-        Assert.Equal(HttpStatusCode.NotFound, missingSourceResponse.StatusCode);
+            new { imdbId = "tt99999999", from = "oscar" });
+        Assert.Equal(HttpStatusCode.NotFound, missingImdbResponse.StatusCode);
+        foreach (var blockedImdbId in new[] { "tt11223344", "tt11223345", "tt11223346" })
+        {
+            using var blockedResponse = await firstClient.PostAsJsonAsync(
+                "/api/favorites",
+                new { imdbId = blockedImdbId, from = "catalog" });
+            Assert.Equal(HttpStatusCode.NotFound, blockedResponse.StatusCode);
+        }
 
         using var firstAddResponse = await firstClient.PostAsJsonAsync(
             $"/api/favorites?userId={secondUserId}",
-            new { titleId = firstTitleId, from = "catalog", userId = secondUserId });
+            new { imdbId = firstImdbId, from = "catalog", userId = secondUserId });
         Assert.Equal(HttpStatusCode.OK, firstAddResponse.StatusCode);
         var firstAdded = await firstAddResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
         Assert.NotNull(firstAdded);
+        Assert.Equal(firstImdbId, firstAdded.ImdbId);
+        Assert.Null(firstAdded.TorrentMovieId);
         Assert.False(firstAdded.AddedFromOscar);
         Assert.True(firstAdded.AddedFromCatalog);
         Assert.Equal(9.1m, firstAdded.ImdbRating);
         Assert.Equal("https://example.test/canonical-shared.jpg", firstAdded.PosterUrl);
+        Assert.Equal(1, firstAdded.OscarFilmCount);
+        Assert.Equal(0, firstAdded.OccurrenceCount);
 
         using var firstOscarAddResponse = await firstClient.PostAsJsonAsync(
             "/api/favorites",
-            new { titleId = firstTitleId, from = "oscar" });
+            new { imdbId = firstImdbId, from = "oscar" });
         Assert.Equal(HttpStatusCode.OK, firstOscarAddResponse.StatusCode);
         var firstOscarAdded = await firstOscarAddResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
         Assert.NotNull(firstOscarAdded);
@@ -204,11 +184,11 @@ public sealed class GoogleAuthenticationApiTests
 
         using var secondAddResponse = await secondClient.PostAsJsonAsync(
             "/api/favorites",
-            new { titleId = firstTitleId, from = "catalog" });
+            new { imdbId = firstImdbId, from = "catalog" });
         Assert.Equal(HttpStatusCode.OK, secondAddResponse.StatusCode);
         using var secondOnlyAddResponse = await secondClient.PostAsJsonAsync(
             "/api/favorites",
-            new { titleId = secondTitleId, from = "catalog" });
+            new { imdbId = secondImdbId, from = "catalog" });
         Assert.Equal(HttpStatusCode.OK, secondOnlyAddResponse.StatusCode);
 
         using var adminListResponse = await adminClient.GetAsync($"/api/favorites?userId={secondUserId}");
@@ -217,7 +197,7 @@ public sealed class GoogleAuthenticationApiTests
         Assert.Equal(0, adminList?.TotalCount);
 
         using var updateResponse = await firstClient.PatchAsJsonAsync(
-            $"/api/favorites/{firstTitleId}",
+            $"/api/favorites/{firstImdbId}",
             new { toWatch = true, toDownload = false });
         Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
         var updated = await updateResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
@@ -227,7 +207,7 @@ public sealed class GoogleAuthenticationApiTests
 
         using var repeatAddResponse = await firstClient.PostAsJsonAsync(
             "/api/favorites",
-            new { titleId = firstTitleId, from = "catalog" });
+            new { imdbId = firstImdbId, from = "catalog" });
         var repeatAdded = await repeatAddResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
         Assert.Equal(HttpStatusCode.OK, repeatAddResponse.StatusCode);
         Assert.NotNull(repeatAdded);
@@ -243,7 +223,7 @@ public sealed class GoogleAuthenticationApiTests
         Assert.NotNull(firstPage);
         Assert.Equal(1, firstPage.TotalCount);
         Assert.Equal(1, firstPage.TotalPages);
-        Assert.Equal(firstTitleId, Assert.Single(firstPage.Items).TitleId);
+        Assert.Equal(firstImdbId, Assert.Single(firstPage.Items).ImdbId);
         Assert.True(firstPage.Items[0].ToWatch);
         Assert.False(firstPage.Items[0].ToDownload);
 
@@ -257,15 +237,15 @@ public sealed class GoogleAuthenticationApiTests
         Assert.NotNull(secondPageTwo);
         Assert.Equal(2, secondPageOne.TotalCount);
         Assert.Equal(2, secondPageOne.TotalPages);
-        Assert.Equal(2, new[] { Assert.Single(secondPageOne.Items).TitleId, Assert.Single(secondPageTwo.Items).TitleId }.Distinct().Count());
+        Assert.Equal(2, new[] { Assert.Single(secondPageOne.Items).ImdbId, Assert.Single(secondPageTwo.Items).ImdbId }.Distinct().Count());
         var secondUserSharedFavorite = new[] { secondPageOne.Items[0], secondPageTwo.Items[0] }
-            .Single(favorite => favorite.TitleId == firstTitleId);
+            .Single(favorite => favorite.ImdbId == firstImdbId);
         Assert.False(secondUserSharedFavorite.ToWatch);
         Assert.True(secondUserSharedFavorite.ToDownload);
         var localMetadataFavorite = new[] { secondPageOne.Items[0], secondPageTwo.Items[0] }
-            .Single(favorite => favorite.TitleId == secondTitleId);
+            .Single(favorite => favorite.ImdbId == secondImdbId);
         Assert.Equal(6.3m, localMetadataFavorite.ImdbRating);
-        Assert.Equal("https://example.test/local-second.jpg", localMetadataFavorite.PosterUrl);
+        Assert.Equal("https://example.test/canonical-second.jpg", localMetadataFavorite.PosterUrl);
 
         using var firstWatchFilterResponse = await firstClient.GetAsync("/api/favorites?status=to_watch");
         using var secondWatchFilterResponse = await secondClient.GetAsync("/api/favorites?status=to_watch");
@@ -282,21 +262,30 @@ public sealed class GoogleAuthenticationApiTests
         Assert.Equal(2, secondDownloadFilter?.TotalCount);
 
         using var crossUserUpdateResponse = await firstClient.PatchAsJsonAsync(
-            $"/api/favorites/{secondTitleId}",
+            $"/api/favorites/{secondImdbId}",
             new { toWatch = true });
         Assert.Equal(HttpStatusCode.NotFound, crossUserUpdateResponse.StatusCode);
-        using var firstDeleteResponse = await firstClient.DeleteAsync($"/api/favorites/{firstTitleId}");
+        using var noOccurrenceDownloadResponse = await firstClient.PatchAsJsonAsync(
+            $"/api/favorites/{firstImdbId}",
+            new { toDownload = true });
+        Assert.Equal(HttpStatusCode.OK, noOccurrenceDownloadResponse.StatusCode);
+        var noOccurrenceDownload = await noOccurrenceDownloadResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.NotNull(noOccurrenceDownload);
+        Assert.True(noOccurrenceDownload.ToDownload);
+        Assert.Equal(0, noOccurrenceDownload.OccurrenceCount);
+
+        using var firstDeleteResponse = await firstClient.DeleteAsync($"/api/favorites/{firstImdbId}");
         Assert.Equal(HttpStatusCode.NoContent, firstDeleteResponse.StatusCode);
 
         await using var verifyDb = new MediaDockDbContext(options);
-        var favorites = await verifyDb.FavoriteMovies.AsNoTracking()
+        var favorites = await verifyDb.ImdbFavoriteMovies.AsNoTracking()
             .OrderBy(favorite => favorite.UserId)
-            .ThenBy(favorite => favorite.TitleId)
+            .ThenBy(favorite => favorite.ImdbId)
             .ToListAsync();
         Assert.Equal(2, favorites.Count);
         Assert.All(favorites, favorite => Assert.Equal(secondUserId, favorite.UserId));
-        Assert.Contains(favorites, favorite => favorite.TitleId == firstTitleId);
-        Assert.Contains(favorites, favorite => favorite.TitleId == secondTitleId);
+        Assert.Contains(favorites, favorite => favorite.ImdbId == firstImdbId);
+        Assert.Contains(favorites, favorite => favorite.ImdbId == secondImdbId);
         Assert.DoesNotContain(favorites, favorite => favorite.UserId == firstUserId);
     }
 

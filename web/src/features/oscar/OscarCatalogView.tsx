@@ -108,7 +108,7 @@ function OscarRow({ film, onSelect, awards }: { film: OscarFilm; onSelect: (id: 
           {film.enrichmentAttemptCount} {film.enrichmentAttemptCount === 1 ? 'attempt' : 'attempts'}
         </span>
       </td>
-      <td><FavoriteControls from="oscar" mediaType={film.mediaType} occurrenceCount={0} titleId={film.titleId} /></td>
+      <td><FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} /></td>
     </tr>
   )
 }
@@ -321,7 +321,7 @@ export function OscarCatalogView() {
             {result.items.map((film) => {
               return <MoviePosterCard
                 awards={combineMovieAwards(getOscarRecognitions(film), pageAwards, film.imdbId)}
-                footer={<FavoriteControls from="oscar" mediaType={film.mediaType} occurrenceCount={0} titleId={film.titleId} />}
+                footer={<FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} />}
                 genres={film.genres}
                 imdbId={film.imdbId}
                 imdbRating={film.imdbRating}
