@@ -505,14 +505,14 @@ public sealed class PersonalRatingsApiTests
             .ToListAsync();
         Assert.Equal(4, ratings.Count);
         Assert.DoesNotContain(ratings, rating => rating.ImdbId == "tt9999999");
-        Assert.Equal(8, Assert.Single(ratings.Where(rating =>
-            rating.UserId == firstUserId && rating.ImdbId == "tt1234567")).Rating);
-        Assert.Equal(6, Assert.Single(ratings.Where(rating =>
-            rating.UserId == firstUserId && rating.ImdbId == "tt7654321")).Rating);
-        Assert.Equal(9, Assert.Single(ratings.Where(rating =>
-            rating.UserId == secondUserId && rating.ImdbId == "tt1234567")).Rating);
-        Assert.Equal(10, Assert.Single(ratings.Where(rating =>
-            rating.UserId == adminUserId && rating.ImdbId == "tt1234567")).Rating);
+        Assert.Equal(8, Assert.Single(ratings, rating =>
+            rating.UserId == firstUserId && rating.ImdbId == "tt1234567").Rating);
+        Assert.Equal(6, Assert.Single(ratings, rating =>
+            rating.UserId == firstUserId && rating.ImdbId == "tt7654321").Rating);
+        Assert.Equal(9, Assert.Single(ratings, rating =>
+            rating.UserId == secondUserId && rating.ImdbId == "tt1234567").Rating);
+        Assert.Equal(10, Assert.Single(ratings, rating =>
+            rating.UserId == adminUserId && rating.ImdbId == "tt1234567").Rating);
         var imdbTitles = await verifyDb.ImdbTitles.AsNoTracking().ToListAsync();
         Assert.Equal(2, imdbTitles.Count);
         Assert.All(imdbTitles, title => Assert.Equal("pending", title.MetadataStatus));

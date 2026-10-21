@@ -518,6 +518,68 @@ public sealed class PersistenceTests
 
     [Fact]
     [Trait("Category", "Persistence")]
+    public async Task SourceOwnedNominationMigrationRefusesRollbackWhenLegacyLinksAreNull()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_source_owned_nomination_rollback_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+
+        var now = new DateTimeOffset(2026, 10, 21, 12, 0, 0, TimeSpan.Zero);
+        var oscarMovie = new OscarMovie
+        {
+            StableKey = "rollback-oscar-film",
+            FilmTitle = "Rollback Oscar Film",
+            NormalizedTitle = "rollback oscar film",
+            FilmYear = 2025,
+            ImportedAt = now,
+            UpdatedAt = now
+        };
+        var goldenGlobeTitle = new GoldenGlobeTitle
+        {
+            Title = "Rollback Golden Globe Film",
+            Year = 2025,
+            NomineeType = "movie"
+        };
+        var award = new GoldenGlobeAward { Name = "Rollback Award" };
+        db.OscarNominations.Add(new OscarNomination
+        {
+            ImportKey = "rollback-oscar-nomination",
+            Ceremony = 2025,
+            Class = "film",
+            CanonicalCategory = "best_picture",
+            Category = "Best Picture",
+            Name = "Rollback Oscar Film",
+            Nominees = "Rollback Oscar Film",
+            NomineeIds = string.Empty,
+            Detail = string.Empty,
+            OscarMovie = oscarMovie,
+            ImportedAt = now,
+            UpdatedAt = now
+        });
+        db.GoldenGlobeNominations.Add(new GoldenGlobeNomination
+        {
+            ImportKey = "rollback-golden-globe-nomination",
+            Award = award,
+            GoldenGlobeTitle = goldenGlobeTitle
+        });
+        await db.SaveChangesAsync();
+
+        var rollbackError = await Assert.ThrowsAsync<Npgsql.PostgresException>(
+            () => db.Database.MigrateAsync("20261021061711_SourceOwnedMovieIdentity"));
+
+        Assert.Contains("Cannot restore required legacy nomination links", rollbackError.Message);
+        Assert.Contains(
+            "20261021080502_AllowSourceOwnedNominationLinks",
+            await db.Database.GetAppliedMigrationsAsync());
+    }
+
+    [Fact]
+    [Trait("Category", "Persistence")]
     public async Task MigrationCreatesSchemaAndOccurrenceIdentityIsUnique()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_test").Build();
@@ -548,6 +610,7 @@ public sealed class PersistenceTests
         Assert.Contains("20261020140000_EnforceScanRunNonnegativeCounters", appliedMigrations);
         Assert.Contains("20261020150000_NormalizeGoldenGlobeGroups", appliedMigrations);
         Assert.Contains("20261021061711_SourceOwnedMovieIdentity", appliedMigrations);
+        Assert.Contains("20261021080502_AllowSourceOwnedNominationLinks", appliedMigrations);
 
         await db.Database.OpenConnectionAsync();
         await using (var command = db.Database.GetDbConnection().CreateCommand())

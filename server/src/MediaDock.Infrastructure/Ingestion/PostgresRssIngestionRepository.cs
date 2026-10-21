@@ -172,67 +172,62 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         try
         {
-                var normalizedTitle = TitleMetadataMapper.NormalizeTitle(metadata.Title);
-                var imdbId = ImdbIdNormalizer.Normalize(metadata.ImdbId);
-            Title? title = null;
-                if (imdbId is not null)
-            {
-                title = await dbContext.Titles.FirstOrDefaultAsync(
+            var imdbId = ImdbIdNormalizer.Normalize(metadata.ImdbId);
+            var release = await dbContext.TorrentReleases
+                .Include(entity => entity.TorrentMovie)
+                .SingleOrDefaultAsync(
+                    entity => entity.SourceId == source.Id && entity.SourceItemKey == sourceItemKey,
+                    cancellationToken);
+            var movie = imdbId is null
+                ? release?.TorrentMovie
+                : await dbContext.TorrentMovies.SingleOrDefaultAsync(
                     entity => entity.ImdbId == imdbId,
                     cancellationToken);
-            }
-
-            title ??= await dbContext.Titles
-                .Where(entity => entity.NormalizedTitle == normalizedTitle
-                    && entity.Year == metadata.Year
-                    && entity.MediaType == metadata.MediaType
-                    && (imdbId == null || entity.ImdbId == null || entity.ImdbId == imdbId))
-                .OrderBy(entity => entity.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            var titleCreated = title is null;
-            if (title is null)
+            if (movie is null && release?.TorrentMovie is { } existingMovie
+                && ImdbIdNormalizer.IsCompatible(existingMovie.ImdbId, imdbId))
             {
-                title = new Title { FirstSeenAt = observedAt };
-                dbContext.Titles.Add(title);
+                movie = existingMovie;
             }
 
-            var canonicalImdbId = imdbId ?? ImdbIdNormalizer.Normalize(title.ImdbId);
+            var movieCreated = movie is null;
+            if (movie is null)
+            {
+                movie = new TorrentMovie();
+                dbContext.TorrentMovies.Add(movie);
+            }
+
+            var canonicalImdbId = imdbId ?? ImdbIdNormalizer.Normalize(movie.ImdbId);
             var imdbTitle = canonicalImdbId is null
                 ? null
                 : (await ImdbTitleMetadataMapper.EnsureAsync(
                     dbContext, [canonicalImdbId], observedAt, cancellationToken))[canonicalImdbId];
             if (imdbTitle is not null)
             {
-                ImdbTitleMetadataMapper.Apply(imdbTitle, metadata, observedAt);
-                ImdbTitleMetadataMapper.MoveTitleFallbackMetadata(imdbTitle, title);
+                ImdbTitleMetadataMapper.Apply(imdbTitle, metadata with { ImdbId = canonicalImdbId }, observedAt);
             }
-            TitleMetadataMapper.Apply(title, metadata, observedAt);
 
-            var occurrence = await dbContext.Occurrences.FirstOrDefaultAsync(
-                entity => entity.SourceId == source.Id && entity.SourceItemKey == sourceItemKey,
-                cancellationToken);
-            var occurrenceCreated = occurrence is null;
-            if (occurrence is null)
+            ApplyMovieSourceData(movie, metadata, canonicalImdbId, observedAt);
+            var releaseCreated = release is null;
+            if (release is null)
             {
-                occurrence = new Occurrence
+                release = new TorrentRelease
                 {
                     SourceId = source.Id,
                     SourceItemKey = sourceItemKey,
                     FirstSeenAt = observedAt
                 };
-                dbContext.Occurrences.Add(occurrence);
+                dbContext.TorrentReleases.Add(release);
             }
 
-            occurrence.Title = title;
-            occurrence.FeedEntryId = feedItem.FeedEntryId;
-            occurrence.TorrentUrl = feedItem.TorrentUrl!;
-            occurrence.RawTitle = feedItem.Title!;
-            occurrence.SourceFeedName = source.Name;
-            occurrence.FeedType = source.FeedType;
-            occurrence.SourcePublishedAt = feedItem.PublishedAt;
-            occurrence.ObservedAt = observedAt;
-            occurrence.LastSeenAt = observedAt;
+            release.TorrentMovie = movie;
+            release.FeedEntryId = feedItem.FeedEntryId;
+            release.TorrentUrl = feedItem.TorrentUrl!;
+            release.RawTitle = feedItem.Title!;
+            release.SourceFeedName = source.Name;
+            release.FeedType = source.FeedType;
+            release.SourcePublishedAt = feedItem.PublishedAt;
+            release.ObservedAt = observedAt;
+            release.LastSeenAt = observedAt;
 
             var itemState = await GetOrCreateItemStateAsync(source.Id, sourceItemKey, cancellationToken);
             itemState.Fingerprint = itemFingerprint;
@@ -242,7 +237,7 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
 
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return new IngestionUpsertResult(titleCreated, occurrenceCreated);
+            return new IngestionUpsertResult(movieCreated, releaseCreated);
         }
         catch
         {
@@ -266,12 +261,12 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
             cancellationToken);
         if (state is null)
         {
-            var occurrence = await dbContext.Occurrences
-                .Include(value => value.Title)
+            var release = await dbContext.TorrentReleases
+                .Include(value => value.TorrentMovie)
                 .SingleOrDefaultAsync(
                     value => value.SourceId == sourceId && value.SourceItemKey == sourceItemKey,
                     cancellationToken);
-            if (occurrence is not null && IsSameLegacyOccurrence(occurrence, source, feedItem))
+            if (release is not null && IsSameRelease(release, source, feedItem))
             {
                 state = new RssItemProcessingState
                 {
@@ -283,7 +278,7 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
                     ExpiresAt = observedAt.AddDays(2)
                 };
                 dbContext.RssItemStates.Add(state);
-                UpdateSeenAt(occurrence, observedAt);
+                UpdateSeenAt(release, observedAt);
                 await dbContext.SaveChangesAsync(cancellationToken);
                 return true;
             }
@@ -322,19 +317,19 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
 
         if (state.Disposition == "resolved")
         {
-            var occurrence = await dbContext.Occurrences
-                .Include(value => value.Title)
+            var release = await dbContext.TorrentReleases
+                .Include(value => value.TorrentMovie)
                 .SingleOrDefaultAsync(
                     value => value.SourceId == sourceId && value.SourceItemKey == sourceItemKey,
                     cancellationToken);
-            if (occurrence is null)
+            if (release is null)
             {
                 dbContext.RssItemStates.Remove(state);
                 await dbContext.SaveChangesAsync(cancellationToken);
                 return false;
             }
 
-            UpdateSeenAt(occurrence, observedAt);
+            UpdateSeenAt(release, observedAt);
         }
 
         state.UpdatedAt = observedAt;
@@ -437,27 +432,53 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         return state;
     }
 
-    private static bool IsSameLegacyOccurrence(
-        Occurrence occurrence,
+    private static bool IsSameRelease(
+        TorrentRelease release,
         IngestionSource source,
         IngestionFeedItem feedItem) =>
-        occurrence.RawTitle == feedItem.Title &&
-        occurrence.TorrentUrl == feedItem.TorrentUrl &&
-        occurrence.SourcePublishedAt == feedItem.PublishedAt &&
-        occurrence.FeedType == source.FeedType;
+        release.RawTitle == feedItem.Title &&
+        release.TorrentUrl == feedItem.TorrentUrl &&
+        release.SourcePublishedAt == feedItem.PublishedAt &&
+        release.FeedType == source.FeedType;
 
-    private static void UpdateSeenAt(Occurrence occurrence, DateTimeOffset observedAt)
+    private static void UpdateSeenAt(TorrentRelease release, DateTimeOffset observedAt)
     {
-        occurrence.LastSeenAt = observedAt;
-        occurrence.ObservedAt = observedAt;
-        occurrence.Title.LastSeenAt = observedAt;
+        release.LastSeenAt = observedAt;
+        release.ObservedAt = observedAt;
+        release.TorrentMovie.LastSeenAt = observedAt;
+    }
+
+    private static void ApplyMovieSourceData(
+        TorrentMovie movie,
+        MetadataDetails metadata,
+        string? imdbId,
+        DateTimeOffset observedAt)
+    {
+        if (!ImdbIdNormalizer.IsCompatible(movie.ImdbId, imdbId))
+        {
+            throw new InvalidOperationException("Torrent movie IMDb identity conflicts with its existing identity.");
+        }
+
+        movie.TitleText = metadata.Title;
+        movie.NormalizedTitle = TitleMetadataMapper.NormalizeTitle(metadata.Title);
+        movie.Year = metadata.Year;
+        movie.MediaType = metadata.MediaType;
+        movie.SourceType = metadata.SourceType;
+        movie.ContentKind = metadata.ContentKind;
+        movie.BroadcastRangeStartYear = metadata.BroadcastRange?.StartYear;
+        movie.BroadcastRangeEndYear = metadata.BroadcastRange?.EndYear;
+        movie.BroadcastRangeRaw = metadata.BroadcastRange?.Raw;
+        movie.ImdbId = imdbId ?? ImdbIdNormalizer.Normalize(movie.ImdbId);
+        movie.FirstSeenAt ??= observedAt;
+        movie.LastSeenAt = observedAt;
+        movie.UpdatedAt = observedAt;
     }
 
     private static bool IsImdbIdentityUniqueViolation(DbUpdateException exception) =>
         exception.InnerException is PostgresException
         {
             SqlState: PostgresErrorCodes.UniqueViolation,
-            ConstraintName: "ux_titles_imdb_id"
+            ConstraintName: "ux_torrent_movies_imdb_id"
         };
 
 }

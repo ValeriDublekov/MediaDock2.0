@@ -6,10 +6,10 @@ public sealed class GoldenGlobeNomination
     public string ImportKey { get; set; } = string.Empty;
     public bool Winner { get; set; }
     public long AwardId { get; set; }
-    public long GroupId { get; set; }
+    public long? GroupId { get; set; }
     public long? GoldenGlobeTitleId { get; set; }
 
     public GoldenGlobeAward Award { get; set; } = null!;
-    public GoldenGlobeGroup Group { get; set; } = null!;
+    public GoldenGlobeGroup? Group { get; set; }
     public GoldenGlobeTitle? GoldenGlobeTitle { get; set; }
 }

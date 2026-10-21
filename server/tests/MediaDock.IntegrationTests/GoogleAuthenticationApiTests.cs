@@ -17,7 +17,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -605,8 +604,8 @@ public sealed class GoogleAuthenticationApiTests
         using var response = await client.GetAsync("/api/auth/session");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        var warning = Assert.Single(loggerProvider.Messages.Where(message =>
-            message.Contains("ReasonCode missing_or_ambiguous_email_verification", StringComparison.Ordinal)));
+        var warning = Assert.Single(loggerProvider.Messages, message =>
+            message.Contains("ReasonCode missing_or_ambiguous_email_verification", StringComparison.Ordinal));
         Assert.Contains($"EmailVerificationClaimCount {claimCount}", warning, StringComparison.Ordinal);
         Assert.Contains($"EmailVerificationClaimState {expectedClaimState}", warning, StringComparison.Ordinal);
         Assert.Contains("TraceId", warning, StringComparison.Ordinal);

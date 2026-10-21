@@ -318,7 +318,7 @@ public sealed class GoldenGlobeApiTests
             await db.Database.MigrateAsync();
             var importer = new GoldenGlobeDatasetImporter(db);
             await importer.ImportAsync(Encoding.UTF8.GetBytes(initialCsv));
-            var group = await db.GoldenGlobeGroups.SingleAsync(row => row.Title == "Shared API Film");
+            var group = await db.GoldenGlobeTitles.SingleAsync(row => row.Title == "Shared API Film");
             group.ImdbId = "tt22334455";
             group.EnrichmentStatus = "enriched";
             group.EnrichmentAttemptCount = 2;
@@ -388,10 +388,12 @@ public sealed class GoldenGlobeApiTests
         await using (var db = new MediaDockDbContext(options))
         {
             var targetRows = await db.GoldenGlobeNominations
-                .Where(row => row.Group.Title == "A: Film" && row.Group.Year == 2025 && row.Group.NomineeType == "movie")
+                .Where(row => row.GoldenGlobeTitle!.Title == "A: Film"
+                    && row.GoldenGlobeTitle.Year == 2025
+                    && row.GoldenGlobeTitle.NomineeType == "movie")
                 .ToListAsync();
             Assert.Equal(5, targetRows.Count);
-            var linkedGroup = await db.GoldenGlobeGroups.SingleAsync(row => row.Title == "A: Film" && row.Year == 2025 && row.NomineeType == "movie");
+            var linkedGroup = await db.GoldenGlobeTitles.SingleAsync(row => row.Title == "A: Film" && row.Year == 2025 && row.NomineeType == "movie");
             Assert.Equal("tt12345678", linkedGroup.ImdbId);
             Assert.True(linkedGroup.IsImdbIdManual);
             Assert.Equal(1, linkedGroup.ImdbIdVersion);
@@ -409,12 +411,12 @@ public sealed class GoldenGlobeApiTests
         }
 
         await using var verifyDb = new MediaDockDbContext(options);
-        var clearedGroup = await verifyDb.GoldenGlobeGroups.SingleAsync(row => row.Title == "A: Film" && row.Year == 2025 && row.NomineeType == "movie");
+        var clearedGroup = await verifyDb.GoldenGlobeTitles.SingleAsync(row => row.Title == "A: Film" && row.Year == 2025 && row.NomineeType == "movie");
         Assert.Null(clearedGroup.ImdbId);
         Assert.False(clearedGroup.IsImdbIdManual);
         Assert.Equal(2, clearedGroup.ImdbIdVersion);
-        Assert.Null((await verifyDb.GoldenGlobeGroups.SingleAsync(row => row.Title == "A: Film" && row.Year == 2024)).ImdbId);
-        Assert.Null((await verifyDb.GoldenGlobeGroups.SingleAsync(row => row.Title == "A: Film" && row.NomineeType == "series")).ImdbId);
+        Assert.Null((await verifyDb.GoldenGlobeTitles.SingleAsync(row => row.Title == "A: Film" && row.Year == 2024)).ImdbId);
+        Assert.Null((await verifyDb.GoldenGlobeTitles.SingleAsync(row => row.Title == "A: Film" && row.NomineeType == "series")).ImdbId);
     }
 
     private static ImdbTitle CreateImdbTitle(string imdbId, string mediaType, decimal? imdbRating, string? posterUrl) => new()
@@ -427,7 +429,7 @@ public sealed class GoldenGlobeApiTests
         UpdatedAt = DateTimeOffset.UtcNow
     };
 
-    private static GoldenGlobeGroup CreateGroup(
+    private static GoldenGlobeTitle CreateGroup(
         string title,
         int year,
         string nomineeType = "movie",
@@ -444,12 +446,12 @@ public sealed class GoldenGlobeApiTests
     private static GoldenGlobeNomination CreateNomination(
         string importKey,
         bool winner,
-        GoldenGlobeGroup group,
+        GoldenGlobeTitle group,
         GoldenGlobeAward award) => new()
     {
         ImportKey = importKey,
         Winner = winner,
-        Group = group,
+        GoldenGlobeTitle = group,
         Award = award
     };
 

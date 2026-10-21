@@ -43,120 +43,117 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
             });
         }
 
-        var yearBounds = await dbContext.Titles
+        var yearBounds = await dbContext.TorrentMovies
             .AsNoTracking()
-            .Where(title => title.Occurrences.Any() && title.Year.HasValue)
+            .Where(movie => movie.Releases.Any() && movie.Year.HasValue)
             .GroupBy(_ => 1)
             .Select(group => new YearBounds(
-                group.Min(title => title.Year!.Value),
-                group.Max(title => title.Year!.Value)))
+                group.Min(movie => movie.Year!.Value),
+                group.Max(movie => movie.Year!.Value)))
             .FirstOrDefaultAsync(cancellationToken);
-        var imdbRatingBounds = await dbContext.Titles
+        var imdbRatingBounds = await dbContext.TorrentMovies
             .AsNoTracking()
-            .Where(title => title.Occurrences.Any()
-                && (title.ImdbTitle == null ? title.ImdbRating.HasValue : title.ImdbTitle.ImdbRating.HasValue))
+            .Where(movie => movie.Releases.Any()
+                && movie.ImdbTitle != null
+                && movie.ImdbTitle.ImdbRating.HasValue)
             .GroupBy(_ => 1)
             .Select(group => new ImdbRatingBounds(
-                group.Min(title => (title.ImdbTitle == null ? title.ImdbRating : title.ImdbTitle.ImdbRating)!.Value),
-                group.Max(title => (title.ImdbTitle == null ? title.ImdbRating : title.ImdbTitle.ImdbRating)!.Value)))
+                group.Min(movie => movie.ImdbTitle!.ImdbRating!.Value),
+                group.Max(movie => movie.ImdbTitle!.ImdbRating!.Value)))
             .FirstOrDefaultAsync(cancellationToken);
 
-        IQueryable<Title> titles = dbContext.Titles
+        IQueryable<TorrentMovie> movies = dbContext.TorrentMovies
             .AsNoTracking()
-            .Where(title => title.Occurrences.Any());
+            .Where(movie => movie.Releases.Any());
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var pattern = $"%{query.Search.Trim()}%";
-            titles = titles.Where(title => EF.Functions.ILike(title.TitleText, pattern)
-                || EF.Functions.ILike(title.NormalizedTitle, pattern)
-                || (title.ImdbTitle != null && title.ImdbTitle.TitleText != null
-                    && EF.Functions.ILike(title.ImdbTitle.TitleText, pattern)));
+            movies = movies.Where(movie => EF.Functions.ILike(movie.TitleText, pattern)
+                || EF.Functions.ILike(movie.NormalizedTitle, pattern)
+                || (movie.ImdbTitle != null && movie.ImdbTitle.TitleText != null
+                    && EF.Functions.ILike(movie.ImdbTitle.TitleText, pattern)));
         }
 
         if (query.MediaType is not null)
         {
-            titles = titles.Where(title => title.MediaType == query.MediaType);
+            movies = movies.Where(movie => movie.MediaType == query.MediaType);
         }
 
         if (query.SourceType is not null)
         {
-            titles = titles.Where(title => title.SourceType == query.SourceType);
+            movies = movies.Where(movie => movie.SourceType == query.SourceType);
         }
 
         if (query.FeedTypes is not null)
         {
             var feedTypes = query.FeedTypes.Split(',');
-            titles = titles.Where(title => title.Occurrences.Any(occurrence =>
-                occurrence.FeedType != null && feedTypes.Contains(occurrence.FeedType)));
+            movies = movies.Where(movie => movie.Releases.Any(release =>
+                release.FeedType != null && feedTypes.Contains(release.FeedType)));
         }
 
         if (query.ContentKind is not null)
         {
-            titles = titles.Where(title => title.ContentKind == query.ContentKind);
+            movies = movies.Where(movie => movie.ContentKind == query.ContentKind);
         }
 
         if (query.YearFrom is { } minimumYear)
         {
-            titles = titles.Where(title => title.Year >= minimumYear);
+            movies = movies.Where(movie => movie.Year >= minimumYear);
         }
 
         if (query.YearTo is { } maximumYear)
         {
-            titles = titles.Where(title => title.Year <= maximumYear);
+            movies = movies.Where(movie => movie.Year <= maximumYear);
         }
 
         if (query.ImdbRatingFrom is { } minimumRating)
         {
-            titles = titles.Where(title => (title.ImdbTitle == null ? title.ImdbRating : title.ImdbTitle.ImdbRating) >= minimumRating);
+            movies = movies.Where(movie => movie.ImdbTitle != null && movie.ImdbTitle.ImdbRating >= minimumRating);
         }
 
         if (query.ImdbRatingTo is { } maximumRating)
         {
-            titles = titles.Where(title => (title.ImdbTitle == null ? title.ImdbRating : title.ImdbTitle.ImdbRating) <= maximumRating);
+            movies = movies.Where(movie => movie.ImdbTitle != null && movie.ImdbTitle.ImdbRating <= maximumRating);
         }
 
         if (!string.IsNullOrWhiteSpace(query.Genre))
         {
             var genre = query.Genre.Trim();
-            titles = titles.Where(title => title.ImdbTitle == null
-                ? title.Genres.Contains(genre)
-                : title.ImdbTitle.Genres.Contains(genre));
+            movies = movies.Where(movie => movie.ImdbTitle != null && movie.ImdbTitle.Genres.Contains(genre));
         }
 
         if (!string.IsNullOrWhiteSpace(query.Country))
         {
             var country = query.Country.Trim();
-            titles = titles.Where(title => title.ImdbTitle == null
-                ? title.Countries.Contains(country)
-                : title.ImdbTitle.Countries.Contains(country));
+            movies = movies.Where(movie => movie.ImdbTitle != null && movie.ImdbTitle.Countries.Contains(country));
         }
 
         if (query.SourceId is { } sourceId)
         {
-            titles = titles.Where(title => title.Occurrences.Any(occurrence => occurrence.SourceId == sourceId));
+            movies = movies.Where(movie => movie.Releases.Any(release => release.SourceId == sourceId));
         }
 
-        var totalCount = await titles.CountAsync(cancellationToken);
-        var items = await titles
-            .OrderByDescending(title => title.LastSeenAt)
-            .ThenByDescending(title => title.Id)
+        var totalCount = await movies.CountAsync(cancellationToken);
+        var items = await movies
+            .OrderByDescending(movie => movie.LastSeenAt)
+            .ThenByDescending(movie => movie.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(title => new CatalogTitleResponse(
-                title.Id,
-                title.TitleText,
-                title.Year,
-                title.MediaType,
-                title.SourceType,
-                title.ContentKind,
-                title.ImdbId,
-                title.ImdbTitle == null ? title.ImdbRating : title.ImdbTitle.ImdbRating,
-                title.ImdbTitle == null ? title.PosterUrl : title.ImdbTitle.PosterUrl,
-                title.ImdbTitle == null ? title.Genres : title.ImdbTitle.Genres,
-                title.ImdbTitle == null ? title.Countries : title.ImdbTitle.Countries,
-                title.LastSeenAt,
-                title.Occurrences.Count))
+            .Select(movie => new CatalogTitleResponse(
+                movie.Id,
+                movie.TitleText,
+                movie.Year,
+                movie.MediaType,
+                movie.SourceType,
+                movie.ContentKind,
+                movie.ImdbId,
+                movie.ImdbTitle == null ? null : movie.ImdbTitle.ImdbRating,
+                movie.ImdbTitle == null ? null : movie.ImdbTitle.PosterUrl,
+                movie.ImdbTitle == null ? Array.Empty<string>() : movie.ImdbTitle.Genres,
+                movie.ImdbTitle == null ? Array.Empty<string>() : movie.ImdbTitle.Countries,
+                movie.LastSeenAt,
+                movie.Releases.Count))
             .ToListAsync(cancellationToken);
 
         return CreatePage(items, page, pageSize, totalCount, yearBounds, imdbRatingBounds);
@@ -164,7 +161,7 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
 
     public async Task<TitleDetailsResponse> GetTitleAsync(long id, CancellationToken cancellationToken)
     {
-        var title = await dbContext.Titles
+        var title = await dbContext.TorrentMovies
             .AsNoTracking()
             .Where(entity => entity.Id == id)
             .Select(entity => new TitleDetailsResponse(
@@ -178,21 +175,21 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
                 entity.BroadcastRangeEndYear,
                 entity.BroadcastRangeRaw,
                 entity.ImdbId,
-                entity.ImdbTitle == null ? entity.ImdbRating : entity.ImdbTitle.ImdbRating,
-                entity.ImdbTitle == null ? entity.ImdbVotes : entity.ImdbTitle.ImdbVotes,
-                entity.ImdbTitle == null ? entity.Metascore : entity.ImdbTitle.Metascore,
-                entity.ImdbTitle == null ? entity.Genres : entity.ImdbTitle.Genres,
-                entity.ImdbTitle == null ? entity.Countries : entity.ImdbTitle.Countries,
-                entity.ImdbTitle == null ? entity.Director : entity.ImdbTitle.Director,
-                entity.ImdbTitle == null ? entity.Plot : entity.ImdbTitle.Plot,
-                entity.ImdbTitle == null ? entity.PosterUrl : entity.ImdbTitle.PosterUrl,
-                entity.ImdbTitle == null ? entity.Runtime : entity.ImdbTitle.Runtime,
-                entity.ImdbTitle == null ? entity.Awards : entity.ImdbTitle.Awards,
-                entity.ImdbTitle == null ? entity.BoxOffice : entity.ImdbTitle.BoxOffice,
+            entity.ImdbTitle == null ? null : entity.ImdbTitle.ImdbRating,
+            entity.ImdbTitle == null ? null : entity.ImdbTitle.ImdbVotes,
+            entity.ImdbTitle == null ? null : entity.ImdbTitle.Metascore,
+            entity.ImdbTitle == null ? Array.Empty<string>() : entity.ImdbTitle.Genres,
+            entity.ImdbTitle == null ? Array.Empty<string>() : entity.ImdbTitle.Countries,
+            entity.ImdbTitle == null ? null : entity.ImdbTitle.Director,
+            entity.ImdbTitle == null ? null : entity.ImdbTitle.Plot,
+            entity.ImdbTitle == null ? null : entity.ImdbTitle.PosterUrl,
+            entity.ImdbTitle == null ? null : entity.ImdbTitle.Runtime,
+            entity.ImdbTitle == null ? null : entity.ImdbTitle.Awards,
+            entity.ImdbTitle == null ? null : entity.ImdbTitle.BoxOffice,
                 entity.FirstSeenAt,
                 entity.LastSeenAt,
                 entity.UpdatedAt,
-                entity.Occurrences.Count))
+                entity.Releases.Count))
             .FirstOrDefaultAsync(cancellationToken);
 
         return title ?? throw new ApiNotFoundException("Title not found.");
@@ -205,15 +202,15 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
     {
         var page = query.Page ?? 1;
         var pageSize = query.PageSize ?? 25;
-        var titleExists = await dbContext.Titles.AnyAsync(title => title.Id == titleId, cancellationToken);
+        var titleExists = await dbContext.TorrentMovies.AnyAsync(title => title.Id == titleId, cancellationToken);
         if (!titleExists)
         {
             throw new ApiNotFoundException("Title not found.");
         }
 
-        var occurrences = dbContext.Occurrences
+        var occurrences = dbContext.TorrentReleases
             .AsNoTracking()
-            .Where(occurrence => occurrence.TitleId == titleId);
+            .Where(occurrence => occurrence.TorrentMovieId == titleId);
         var totalCount = await occurrences.CountAsync(cancellationToken);
         var items = await occurrences
             .OrderByDescending(occurrence => occurrence.LastSeenAt)
@@ -222,7 +219,7 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
             .Take(pageSize)
             .Select(occurrence => new OccurrenceResponse(
                 occurrence.Id,
-                occurrence.TitleId,
+                occurrence.TorrentMovieId,
                 occurrence.SourceId,
                 occurrence.Source.Name,
                 occurrence.SourceItemKey,

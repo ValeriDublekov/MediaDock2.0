@@ -52,35 +52,38 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
         var keys = rows.Select(Key).Distinct().ToArray();
         var existing = await db.GoldenGlobeNominations
             .Where(x => keys.Contains(x.ImportKey))
-            .Include(x => x.Group)
+            .Include(x => x.GoldenGlobeTitle)
             .ToDictionaryAsync(x => x.ImportKey, StringComparer.Ordinal, cancellationToken);
         var groupTitles = rows.Select(x => x.Title).Distinct(StringComparer.Ordinal).ToArray();
         var groupYears = rows.Select(x => x.Year).Distinct().ToArray();
         var groupTypes = rows.Select(x => x.NomineeType).Distinct(StringComparer.Ordinal).ToArray();
-        var groups = await db.GoldenGlobeGroups
+        var groups = await db.GoldenGlobeTitles
             .Where(x => groupTitles.Contains(x.Title) && groupYears.Contains(x.Year) && groupTypes.Contains(x.NomineeType))
             .ToDictionaryAsync(x => (x.Title, x.Year, x.NomineeType), cancellationToken);
         foreach (var nomination in existing.Values)
-            groups.TryAdd((nomination.Group.Title, nomination.Group.Year, nomination.Group.NomineeType), nomination.Group);
+        {
+            if (nomination.GoldenGlobeTitle is { } title)
+                groups.TryAdd((title.Title, title.Year, title.NomineeType), title);
+        }
 
-        GoldenGlobeGroup GetGroup(GoldenGlobeRow row, int initialVersion = 0)
+        GoldenGlobeTitle GetGroup(GoldenGlobeRow row, int initialVersion = 0)
         {
             var identity = (row.Title, row.Year, row.NomineeType);
             if (groups.TryGetValue(identity, out var group)) return group;
-            group = new GoldenGlobeGroup
+            group = new GoldenGlobeTitle
             {
                 Title = row.Title,
                 Year = row.Year,
                 NomineeType = row.NomineeType,
                 ImdbIdVersion = initialVersion
             };
-            db.GoldenGlobeGroups.Add(group);
+            db.GoldenGlobeTitles.Add(group);
             groups.Add(identity, group);
             return group;
         }
 
         var seenKeys = new HashSet<string>(existing.Keys, StringComparer.Ordinal);
-        var displacedGroups = new HashSet<GoldenGlobeGroup>();
+        var displacedGroups = new HashSet<GoldenGlobeTitle>();
         var awardsCreated = 0; var nominationsCreated = 0;
         foreach (var row in rows)
         {
@@ -89,15 +92,15 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
             if (!seenKeys.Add(key))
             {
                 if (existing.TryGetValue(key, out var existingNomination)
-                    && existingNomination.Group.NomineeType != row.NomineeType)
+                    && existingNomination.GoldenGlobeTitle is { } currentGroup
+                    && currentGroup.NomineeType != row.NomineeType)
                 {
-                    var currentGroup = existingNomination.Group;
                     var hasVerifiedAutomaticLink = !currentGroup.IsImdbIdManual
                         && currentGroup.EnrichmentStatus == "enriched"
                         && ImdbIdNormalizer.IsValid(currentGroup.ImdbId);
                     if (!hasVerifiedAutomaticLink)
                     {
-                        existingNomination.Group = GetGroup(row, checked(currentGroup.ImdbIdVersion + 1));
+                        existingNomination.GoldenGlobeTitle = GetGroup(row, checked(currentGroup.ImdbIdVersion + 1));
                         displacedGroups.Add(currentGroup);
                     }
                 }
@@ -110,7 +113,7 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
                 ImportKey = key,
                 Winner = row.Winner,
                 Award = award,
-                Group = GetGroup(row)
+                GoldenGlobeTitle = GetGroup(row)
             });
             nominationsCreated++;
         }
@@ -130,8 +133,8 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
         await db.SaveChangesAsync(cancellationToken);
         foreach (var group in displacedGroups)
         {
-            if (!await db.GoldenGlobeNominations.AnyAsync(x => x.GroupId == group.Id, cancellationToken))
-                db.GoldenGlobeGroups.Remove(group);
+            if (!await db.GoldenGlobeNominations.AnyAsync(x => x.GoldenGlobeTitleId == group.Id, cancellationToken))
+                db.GoldenGlobeTitles.Remove(group);
         }
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);

@@ -46,22 +46,22 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
                     "https://example.test/grouped.jpg", "101 min", "1 win", "$10")));
 
         var updatedNominations = await db.GoldenGlobeNominations.AsNoTracking()
-            .Include(row => row.Group)
-            .Where(row => row.Group.Title == "Grouped Film" && row.Group.Year == 2025)
+            .Include(row => row.GoldenGlobeTitle)
+            .Where(row => row.GoldenGlobeTitle!.Title == "Grouped Film" && row.GoldenGlobeTitle.Year == 2025)
             .ToListAsync();
         Assert.Equal(3, updatedNominations.Count);
-        Assert.All(updatedNominations.Where(row => row.Group.NomineeType == "movie"), row =>
+        Assert.All(updatedNominations.Where(row => row.GoldenGlobeTitle!.NomineeType == "movie"), row =>
         {
-            Assert.Equal("enriched", row.Group.EnrichmentStatus);
-            Assert.Equal(2, row.Group.EnrichmentAttemptCount);
-            Assert.Equal(attemptedAt, row.Group.LastEnrichmentAttemptAt);
-            Assert.Equal("tt12345678", row.Group.ImdbId);
+            Assert.Equal("enriched", row.GoldenGlobeTitle!.EnrichmentStatus);
+            Assert.Equal(2, row.GoldenGlobeTitle.EnrichmentAttemptCount);
+            Assert.Equal(attemptedAt, row.GoldenGlobeTitle.LastEnrichmentAttemptAt);
+            Assert.Equal("tt12345678", row.GoldenGlobeTitle.ImdbId);
         });
-        var seriesNomination = updatedNominations.Single(row => row.Group.NomineeType == "series");
-        Assert.Equal("pending", seriesNomination.Group.EnrichmentStatus);
-        Assert.Equal(0, seriesNomination.Group.EnrichmentAttemptCount);
+        var seriesNomination = updatedNominations.Single(row => row.GoldenGlobeTitle!.NomineeType == "series");
+        Assert.Equal("pending", seriesNomination.GoldenGlobeTitle!.EnrichmentStatus);
+        Assert.Equal(0, seriesNomination.GoldenGlobeTitle.EnrichmentAttemptCount);
 
-        var otherYear = await db.GoldenGlobeGroups.AsNoTracking()
+        var otherYear = await db.GoldenGlobeTitles.AsNoTracking()
             .SingleAsync(row => row.Title == "Grouped Film" && row.Year == 2024);
         Assert.Equal("pending", otherYear.EnrichmentStatus);
         Assert.Equal(0, otherYear.EnrichmentAttemptCount);
@@ -119,21 +119,21 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
             new GoldenGlobeEnrichmentUpdate("enriched", 3, attemptedAt, null, null, "tt1742683", "movie"));
 
         var nominations = await db.GoldenGlobeNominations.AsNoTracking()
-            .Include(row => row.Group)
-            .Where(row => row.Group.Title == "Too Big To Fail")
-            .OrderBy(row => row.Group.Year)
+            .Include(row => row.GoldenGlobeTitle)
+            .Where(row => row.GoldenGlobeTitle!.Title == "Too Big To Fail")
+            .OrderBy(row => row.GoldenGlobeTitle!.Year)
             .ThenBy(row => row.ImportKey)
             .ToListAsync();
-        Assert.All(nominations.Where(row => row.Group.Year == 2012), row =>
+        Assert.All(nominations.Where(row => row.GoldenGlobeTitle!.Year == 2012), row =>
         {
-            Assert.Equal("movie", row.Group.NomineeType);
-            Assert.Equal("enriched", row.Group.EnrichmentStatus);
-            Assert.Equal("tt1742683", row.Group.ImdbId);
+            Assert.Equal("movie", row.GoldenGlobeTitle!.NomineeType);
+            Assert.Equal("enriched", row.GoldenGlobeTitle.EnrichmentStatus);
+            Assert.Equal("tt1742683", row.GoldenGlobeTitle.ImdbId);
         });
-        var otherYear = Assert.Single(nominations.Where(row => row.Group.Year == 2011));
-        Assert.Equal("series", otherYear.Group.NomineeType);
-        Assert.Equal("not_found", otherYear.Group.EnrichmentStatus);
-        Assert.Null(otherYear.Group.ImdbId);
+        var otherYear = Assert.Single(nominations, row => row.GoldenGlobeTitle!.Year == 2011);
+        Assert.Equal("series", otherYear.GoldenGlobeTitle!.NomineeType);
+        Assert.Equal("not_found", otherYear.GoldenGlobeTitle.EnrichmentStatus);
+        Assert.Null(otherYear.GoldenGlobeTitle.ImdbId);
     }
 
     [Fact]
@@ -166,7 +166,7 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
             "series",
             new GoldenGlobeEnrichmentUpdate("enriched", 2, DateTimeOffset.UtcNow, null, null, "tt87654321", "movie"));
 
-        var groups = await db.GoldenGlobeGroups.AsNoTracking()
+        var groups = await db.GoldenGlobeTitles.AsNoTracking()
             .Include(group => group.Nominations)
             .Where(group => group.Title == "Type Merge Film" && group.Year == 2012)
             .ToListAsync();
@@ -258,7 +258,7 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
             new GoldenGlobeEnrichmentUpdate("enriched", 1, attemptedAt, null, null, "tt87654321"));
 
         Assert.False(applied);
-        var stored = await db.GoldenGlobeGroups.AsNoTracking().SingleAsync();
+        var stored = await db.GoldenGlobeTitles.AsNoTracking().SingleAsync();
         Assert.Equal("tt12345678", stored.ImdbId);
         Assert.True(stored.IsImdbIdManual);
         Assert.Equal(3, stored.ImdbIdVersion);
@@ -275,21 +275,21 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
         var updatedCanonicalMetadata = await db.ImdbTitles.AsNoTracking().SingleAsync(row => row.ImdbId == "tt12345678");
         Assert.Equal(8.1m, updatedCanonicalMetadata.ImdbRating);
         Assert.Equal("https://example.test/versioned.jpg", updatedCanonicalMetadata.PosterUrl);
-        var enrichedGroup = await db.GoldenGlobeGroups.AsNoTracking().SingleAsync();
+        var enrichedGroup = await db.GoldenGlobeTitles.AsNoTracking().SingleAsync();
         Assert.Equal("enriched", enrichedGroup.EnrichmentStatus);
     }
 
     private static GoldenGlobeNomination CreateNomination(
         string importKey,
-        GoldenGlobeGroup group,
+        GoldenGlobeTitle group,
         GoldenGlobeAward award) => new()
     {
         ImportKey = importKey,
-        Group = group,
+        GoldenGlobeTitle = group,
         Award = award
     };
 
-    private static GoldenGlobeGroup CreateGroup(
+    private static GoldenGlobeTitle CreateGroup(
         string title,
         int year,
         string status = "pending",

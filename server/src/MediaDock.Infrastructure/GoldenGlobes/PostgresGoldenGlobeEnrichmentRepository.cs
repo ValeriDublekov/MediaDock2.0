@@ -12,7 +12,7 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
 {
     public async Task<IReadOnlyList<GoldenGlobeEnrichmentCandidate>> GetEligibleCandidatesAsync(DateTimeOffset now, CancellationToken cancellationToken = default)
     {
-        var candidates = await db.GoldenGlobeGroups.AsNoTracking()
+        var candidates = await db.GoldenGlobeTitles.AsNoTracking()
             .Where(x => x.Nominations.Any())
             .Where(x => x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Pending
                 || x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Problem
@@ -47,7 +47,7 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
             $"SELECT pg_advisory_xact_lock(hashtextextended({filmId}, 0))",
             cancellationToken);
 
-        var sourceGroup = await db.GoldenGlobeGroups.SingleOrDefaultAsync(
+        var sourceGroup = await db.GoldenGlobeTitles.SingleOrDefaultAsync(
             x => x.Title == title && x.Year == ceremonyYear && x.NomineeType == sourceType,
             cancellationToken);
         if (sourceGroup is null || sourceGroup.IsImdbIdManual) return;
@@ -59,14 +59,14 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
         var resolvedType = imdbId is null ? sourceType : update.ResolvedNomineeType ?? sourceType;
         var targetGroup = resolvedType == sourceType
             ? null
-            : await db.GoldenGlobeGroups.SingleOrDefaultAsync(
+            : await db.GoldenGlobeTitles.SingleOrDefaultAsync(
                 x => x.Title == title && x.Year == ceremonyYear && x.NomineeType == resolvedType,
                 cancellationToken);
         int affected;
         if (targetGroup is null)
         {
             affected = await ApplyOutcomeAsync(
-                db.GoldenGlobeGroups.Where(x => x.Id == sourceGroup.Id && !x.IsImdbIdManual),
+                db.GoldenGlobeTitles.Where(x => x.Id == sourceGroup.Id && !x.IsImdbIdManual),
                 imdbId,
                 update,
                 resolvedType,
@@ -75,18 +75,18 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
         else
         {
             var moved = await db.GoldenGlobeNominations
-                .Where(x => x.GroupId == sourceGroup.Id)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.GroupId, targetGroup.Id), cancellationToken);
+                .Where(x => x.GoldenGlobeTitleId == sourceGroup.Id)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(x => x.GoldenGlobeTitleId, targetGroup.Id), cancellationToken);
             affected = moved == 0
                 ? 0
                 : await ApplyOutcomeAsync(
-                    db.GoldenGlobeGroups.Where(x => x.Id == targetGroup.Id && !x.IsImdbIdManual),
+                    db.GoldenGlobeTitles.Where(x => x.Id == targetGroup.Id && !x.IsImdbIdManual),
                     imdbId,
                     update,
                     resolvedType,
                     cancellationToken);
             if (moved > 0)
-                await db.GoldenGlobeGroups.Where(x => x.Id == sourceGroup.Id).ExecuteDeleteAsync(cancellationToken);
+                await db.GoldenGlobeTitles.Where(x => x.Id == sourceGroup.Id).ExecuteDeleteAsync(cancellationToken);
         }
 
         if (affected > 0 && update.Metadata is { } metadata && imdbTitles is not null && imdbId is not null)
@@ -104,7 +104,7 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
     {
         EnsureEnrichedOutcomeHasValidImdbId(update);
         var imdbTitles = await ImdbTitleMetadataMapper.EnsureAsync(db, [candidate.ImdbId], update.AttemptedAt, cancellationToken);
-        var affected = await db.GoldenGlobeGroups
+        var affected = await db.GoldenGlobeTitles
             .Where(x => x.Title == candidate.Title
                 && x.Year == candidate.CeremonyYear
                 && x.NomineeType == candidate.SourceType
@@ -127,7 +127,7 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
     }
 
     private static Task<int> ApplyOutcomeAsync(
-        IQueryable<GoldenGlobeGroup> groups,
+        IQueryable<GoldenGlobeTitle> groups,
         string? imdbId,
         GoldenGlobeEnrichmentUpdate update,
         string resolvedType,

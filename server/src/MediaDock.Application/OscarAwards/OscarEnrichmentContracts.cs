@@ -15,7 +15,6 @@ public sealed record OscarEnrichmentCandidate(
     string FilmTitle,
     int FilmYear,
     string? ImdbId,
-    string? TitleImdbId,
     int AttemptCount);
 
 public sealed record OscarEnrichmentUpdate(

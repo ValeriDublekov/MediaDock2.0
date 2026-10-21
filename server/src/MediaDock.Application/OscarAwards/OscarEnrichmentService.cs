@@ -68,7 +68,7 @@ public sealed class OscarEnrichmentService
                     attemptedAt,
                     cancellationToken,
                     OmdbRequestPurpose.OscarEnrichment,
-                    candidate.ImdbId ?? candidate.TitleImdbId);
+                    candidate.ImdbId);
                 httpAttempts += resolution.HttpAttempts;
                 await SaveProgressAsync(cancellationToken);
                 if (resolution.Status == MetadataLookupStatus.RequestBudgetExhausted)
@@ -165,9 +165,7 @@ public sealed class OscarEnrichmentService
         if (resolution.Status == MetadataLookupStatus.Found && resolution.Metadata is not null)
         {
             var metadataImdbId = ImdbIdNormalizer.Normalize(resolution.Metadata.ImdbId);
-            if (!ImdbIdNormalizer.IsCompatible(candidate.ImdbId, candidate.TitleImdbId)
-                || !ImdbIdNormalizer.IsCompatible(candidate.ImdbId, metadataImdbId)
-                || !ImdbIdNormalizer.IsCompatible(candidate.TitleImdbId, metadataImdbId))
+            if (!ImdbIdNormalizer.IsCompatible(candidate.ImdbId, metadataImdbId))
             {
                 return new OscarEnrichmentUpdate(
                     OscarEnrichmentStatuses.TemporaryError,

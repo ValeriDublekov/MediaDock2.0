@@ -16,7 +16,6 @@ Start here for work in this repository. Use the [local operations runbook](../..
 | Background ingestion | [Architecture](ARCHITECTURE.md) for the API-hosted queue, dispatcher, and scheduler; [operations and jobs API](API_OPERATIONS_AND_JOBS.md) for job routes. Verify production rollout on the host; repository source and documentation do not prove what is deployed. |
 | Personal IMDb ratings | [Identity and personal data API](API_IDENTITY_AND_PERSONAL_DATA.md) for routes and DTOs; [Data contracts](DATA_CONTRACTS.md) for ownership and migration cautions; [Data schema](DATA_SCHEMA.md) for keys and foreign keys; [Data behavior](DATA_BEHAVIOR.md) for import and enrichment persistence. |
 | Tests | [Testing](TESTING.md) for scoped commands, test categories, required dependencies, runner artifacts, file line inventory, and Markdown link validation. |
-| AI workflow | [Workflow efficiency plan](WORKFLOW_EFFICIENCY_PLAN.md) for linked multi-phase plans and focused verification; [documentation cleanup plan](DOCUMENTATION_CLEANUP_PLAN.md) for reducing duplicated reference content. |
 | Engineering follow-ups | [Technical follow-ups](TECHNICAL_FOLLOW_UPS.md) for pending database-model and source-refactoring decisions, with links to the dated assessments. |
 | Operations | [Server access](SERVER_ACCESS.md) for the local SSH profile and session workflow; [Security](SECURITY.md) for trust boundaries, authorization, and secrets; [Operations](OPERATIONS.md) for migration safeguards; the [local runbook](../../README.md) for setup and maintenance. |
 

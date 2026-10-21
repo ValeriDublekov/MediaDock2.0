@@ -1554,7 +1554,9 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnName("genres")
                         .HasDefaultValueSql("ARRAY[]::text[]");
 
+#pragma warning disable CS8669
                     b.Property<string?>("ImdbId")
+#pragma warning restore CS8669
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("imdb_id");

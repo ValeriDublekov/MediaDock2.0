@@ -35,10 +35,11 @@ public sealed class OscarDatasetImporterTests
             var summary = await new OscarDatasetImporter(db).ImportAsync(tsvPath);
 
             Assert.Equal(1, summary.RowsRead);
-            Assert.Equal(1, summary.OscarFilmsCreated);
+            Assert.Equal(1, summary.OscarMoviesCreated);
             Assert.Equal(1, summary.NominationsCreated);
-            var nomination = await db.OscarNominations.SingleAsync();
-            Assert.Equal("Tab Film", nomination.OscarFilm.Title.TitleText);
+            var nomination = await db.OscarNominations.Include(row => row.OscarMovie).SingleAsync();
+            Assert.Equal("Tab Film", nomination.OscarMovie!.FilmTitle);
+            Assert.Null(nomination.OscarFilmId);
             Assert.True(nomination.IsWinner);
         }
         finally
@@ -74,23 +75,23 @@ public sealed class OscarDatasetImporterTests
             var importer = new OscarDatasetImporter(db);
             await File.WriteAllTextAsync(csvPath, initialCsv);
             var initialImport = await importer.ImportAsync(csvPath);
-            var originalFilmId = (await db.OscarFilms.SingleAsync()).Id;
+            var originalFilmId = (await db.OscarMovies.SingleAsync()).Id;
 
             await File.WriteAllTextAsync(csvPath, updatedCsv);
             var updatedImport = await importer.ImportAsync(csvPath);
 
-            Assert.Equal(1, initialImport.OscarFilmsCreated);
-            Assert.Equal(0, updatedImport.OscarFilmsCreated);
+            Assert.Equal(1, initialImport.OscarMoviesCreated);
+            Assert.Equal(0, updatedImport.OscarMoviesCreated);
             Assert.Equal(0, updatedImport.NominationsCreated);
             Assert.Equal(0, updatedImport.NominationsUpdated);
-            Assert.Equal(1, await db.OscarFilms.CountAsync());
+            Assert.Equal(1, await db.OscarMovies.CountAsync());
             Assert.Equal(1, await db.OscarNominations.CountAsync());
 
-            var film = await db.OscarFilms.Include(item => item.Title).SingleAsync();
+            var film = await db.OscarMovies.SingleAsync();
             Assert.Equal(originalFilmId, film.Id);
             Assert.Equal("tt12345678", film.ImdbId);
-            Assert.Equal("tt12345678", film.Title.ImdbId);
-            Assert.Equal(film.Id, (await db.OscarNominations.SingleAsync()).OscarFilmId);
+            Assert.Equal(film.Id, (await db.OscarNominations.SingleAsync()).OscarMovieId);
+            Assert.Empty(await db.Titles.ToListAsync());
         }
         finally
         {
@@ -99,7 +100,7 @@ public sealed class OscarDatasetImporterTests
     }
 
     [Fact]
-    public async Task ImportIsCategoryScopedIdempotentAndPreservesOmdbMetadata()
+    public async Task ImportIsIdempotentAndKeepsProviderMetadataInImdbTitles()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_oscar_import_test").Build();
         await postgres.StartAsync();
@@ -174,11 +175,10 @@ public sealed class OscarDatasetImporterTests
             Assert.Equal(1, firstImport.RowsSkippedByYear);
             Assert.Equal(1, firstImport.RowsSkippedByCategory);
             Assert.Equal(0, firstImport.RowsSkippedWithoutFilm);
-            Assert.Equal(0, firstImport.TitlesCreated);
-            Assert.Equal(2, firstImport.OscarFilmsCreated);
+            Assert.Equal(2, firstImport.OscarMoviesCreated);
             Assert.Equal(5, firstImport.NominationsCreated);
             Assert.Equal(0, firstImport.NominationsUpdated);
-            Assert.Equal(2, await db.OscarFilms.CountAsync());
+            Assert.Equal(2, await db.OscarMovies.CountAsync());
             Assert.Equal(5, await db.OscarNominations.CountAsync());
             Assert.Empty(await db.Occurrences.ToListAsync());
 
@@ -195,21 +195,14 @@ public sealed class OscarDatasetImporterTests
             Assert.Equal("Keep this OMDb plot.", existingMetadata.Plot);
             Assert.Equal("enriched", existingMetadata.MetadataStatus);
 
-            var placeholder = await db.Titles.SingleAsync(title => title.ImdbId == "tt9999999");
-            Assert.Equal("New Film", placeholder.TitleText);
-            Assert.Equal(2025, placeholder.Year);
-            Assert.Null(placeholder.ImdbRating);
-            Assert.Empty(placeholder.Genres);
-            Assert.Null(placeholder.Plot);
-            Assert.Null(placeholder.FirstSeenAt);
-            Assert.Null(placeholder.LastSeenAt);
+            Assert.DoesNotContain(await db.Titles.ToListAsync(), title => title.ImdbId == "tt9999999");
             var placeholderMetadata = await db.ImdbTitles.SingleAsync(title => title.ImdbId == "tt9999999");
-            Assert.Equal(6.2m, placeholderMetadata.ImdbRating);
-            Assert.Equal(new[] { "Drama" }, placeholderMetadata.Genres);
-            Assert.Equal("Local fallback plot.", placeholderMetadata.Plot);
-            Assert.Equal("enriched", placeholderMetadata.MetadataStatus);
+            Assert.Null(placeholderMetadata.ImdbRating);
+            Assert.Empty(placeholderMetadata.Genres);
+            Assert.Null(placeholderMetadata.Plot);
+            Assert.Equal("pending", placeholderMetadata.MetadataStatus);
 
-            var importedFilm = await db.OscarFilms.SingleAsync(film => film.ImdbId == "tt9999999");
+            var importedFilm = await db.OscarMovies.SingleAsync(film => film.ImdbId == "tt9999999");
             importedFilm.EnrichmentStatus = "enriched";
             importedFilm.EnrichmentAttemptCount = 1;
             placeholderMetadata.ImdbRating = 7.6m;
@@ -218,21 +211,22 @@ public sealed class OscarDatasetImporterTests
 
             var secondImport = await importer.ImportAsync(csvPath);
 
-            Assert.Equal(0, secondImport.TitlesCreated);
-            Assert.Equal(0, secondImport.OscarFilmsCreated);
+            Assert.Equal(0, secondImport.OscarMoviesCreated);
             Assert.Equal(0, secondImport.NominationsCreated);
             Assert.Equal(0, secondImport.NominationsUpdated);
             Assert.Equal(2, await db.Titles.CountAsync());
-            Assert.Equal(2, await db.OscarFilms.CountAsync());
+            Assert.Equal(2, await db.OscarMovies.CountAsync());
             Assert.Equal(5, await db.OscarNominations.CountAsync());
 
-            var preservedTitle = await db.Titles.SingleAsync(title => title.ImdbId == "tt9999999");
-            Assert.Null(preservedTitle.ImdbRating);
-            Assert.Null(preservedTitle.Plot);
+            var preservedTitle = await db.Titles.SingleAsync(title => title.TitleText == "New Film");
+            Assert.Null(preservedTitle.ImdbId);
+            Assert.Equal(6.2m, preservedTitle.ImdbRating);
+            Assert.Equal(new[] { "Drama" }, preservedTitle.Genres);
+            Assert.Equal("Local fallback plot.", preservedTitle.Plot);
             var preservedMetadata = await db.ImdbTitles.SingleAsync(title => title.ImdbId == "tt9999999");
             Assert.Equal(7.6m, preservedMetadata.ImdbRating);
             Assert.Equal("Added later by OMDb.", preservedMetadata.Plot);
-            var preservedFilm = await db.OscarFilms.SingleAsync(film => film.ImdbId == "tt9999999");
+            var preservedFilm = await db.OscarMovies.SingleAsync(film => film.ImdbId == "tt9999999");
             Assert.Equal("enriched", preservedFilm.EnrichmentStatus);
             Assert.Equal(1, preservedFilm.EnrichmentAttemptCount);
         }
@@ -255,17 +249,18 @@ public sealed class OscarDatasetImporterTests
         await db.Database.MigrateAsync();
 
         var now = new DateTimeOffset(2026, 9, 30, 0, 0, 0, TimeSpan.Zero);
-        var existingTitle = new Title
+        var existingMovie = new OscarMovie
         {
-            TitleText = "Shared Film",
+            StableKey = "imdb:tt11111111",
+            FilmTitle = "Shared Film",
             NormalizedTitle = "shared film",
-            Year = 2025,
-            MediaType = "movie",
+            FilmYear = 2025,
             ImdbId = "tt11111111",
+            ImportedAt = now,
             UpdatedAt = now
         };
         db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt11111111", UpdatedAt = now });
-        db.Titles.Add(existingTitle);
+        db.OscarMovies.Add(existingMovie);
         await db.SaveChangesAsync();
 
         const string csv = """
@@ -279,12 +274,12 @@ public sealed class OscarDatasetImporterTests
             await File.WriteAllTextAsync(csvPath, csv);
             var summary = await new OscarDatasetImporter(db).ImportAsync(csvPath);
 
-            Assert.Equal(1, summary.TitlesCreated);
-            Assert.Equal(2, await db.Titles.CountAsync());
-            var importedFilm = await db.OscarFilms.Include(film => film.Title).SingleAsync();
+            Assert.Equal(1, summary.OscarMoviesCreated);
+            Assert.Equal(2, await db.OscarMovies.CountAsync());
+            var importedFilm = await db.OscarMovies.SingleAsync(film => film.ImdbId == "tt22222222");
             Assert.Equal("tt22222222", importedFilm.ImdbId);
-            Assert.NotEqual(existingTitle.Id, importedFilm.TitleId);
-            Assert.Equal("tt11111111", (await db.Titles.SingleAsync(title => title.Id == existingTitle.Id)).ImdbId);
+            Assert.NotEqual(existingMovie.Id, importedFilm.Id);
+            Assert.Equal("tt11111111", (await db.OscarMovies.SingleAsync(title => title.Id == existingMovie.Id)).ImdbId);
         }
         finally
         {

@@ -10,7 +10,7 @@ public sealed class OscarEnrichmentServiceTests
     {
         var now = new DateTimeOffset(2026, 9, 29, 12, 0, 0, TimeSpan.Zero);
         var candidates = Enumerable.Range(1, 101)
-            .Select(index => new OscarEnrichmentCandidate(index, $"Film {index}", 2025, null, null, 0))
+            .Select(index => new OscarEnrichmentCandidate(index, $"Film {index}", 2025, null, 0))
             .ToArray();
         var repository = new FakeOscarEnrichmentRepository(candidates);
         var result = new MetadataLookupResult(MetadataLookupStatus.Found, CreateMetadata(), HttpAttempts: 1);
@@ -31,9 +31,9 @@ public sealed class OscarEnrichmentServiceTests
         var now = new DateTimeOffset(2026, 9, 29, 12, 0, 0, TimeSpan.Zero);
         var repository = new FakeOscarEnrichmentRepository(
         [
-            new OscarEnrichmentCandidate(1, "Newest Film", 2025, null, null, 0),
-            new OscarEnrichmentCandidate(2, "Older Film", 2024, null, null, 2),
-            new OscarEnrichmentCandidate(3, "Unmatched Film", 2023, null, null, 0)
+            new OscarEnrichmentCandidate(1, "Newest Film", 2025, null, 0),
+            new OscarEnrichmentCandidate(2, "Older Film", 2024, null, 2),
+            new OscarEnrichmentCandidate(3, "Unmatched Film", 2023, null, 0)
         ]);
         var client = new StubOmdbClient(
         [
@@ -76,8 +76,8 @@ public sealed class OscarEnrichmentServiceTests
         var now = new DateTimeOffset(2026, 9, 29, 23, 30, 0, TimeSpan.FromHours(3));
         var repository = new FakeOscarEnrichmentRepository(
         [
-            new OscarEnrichmentCandidate(1, "Newest Film", 2025, null, null, 0),
-            new OscarEnrichmentCandidate(2, "Next Film", 2024, null, null, 0)
+            new OscarEnrichmentCandidate(1, "Newest Film", 2025, null, 0),
+            new OscarEnrichmentCandidate(2, "Next Film", 2024, null, 0)
         ]);
         var client = new StubOmdbClient(
         [
@@ -111,8 +111,8 @@ public sealed class OscarEnrichmentServiceTests
         var now = new DateTimeOffset(2026, 9, 29, 12, 0, 0, TimeSpan.Zero);
         var repository = new FakeOscarEnrichmentRepository(
         [
-            new OscarEnrichmentCandidate(1, "Newest Film", 2025, null, null, 0),
-            new OscarEnrichmentCandidate(2, "Next Film", 2024, null, null, 0)
+            new OscarEnrichmentCandidate(1, "Newest Film", 2025, null, 0),
+            new OscarEnrichmentCandidate(2, "Next Film", 2024, null, 0)
         ]);
         var client = new StubOmdbClient(
         [
@@ -145,7 +145,7 @@ public sealed class OscarEnrichmentServiceTests
         var now = new DateTimeOffset(2026, 9, 29, 12, 0, 0, TimeSpan.Zero);
         var repository = new FakeOscarEnrichmentRepository(
         [
-            new OscarEnrichmentCandidate(1, "Newest Film", 2025, "tt11111111", "tt11111111", 0)
+            new OscarEnrichmentCandidate(1, "Newest Film", 2025, "tt11111111", 0)
         ]);
         var client = new StubOmdbClient(
         [

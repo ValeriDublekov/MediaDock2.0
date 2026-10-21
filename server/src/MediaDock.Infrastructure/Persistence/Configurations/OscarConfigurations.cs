@@ -125,6 +125,7 @@ internal sealed class OscarNominationConfiguration : IEntityTypeConfiguration<Os
         builder.HasOne(entity => entity.OscarFilm)
             .WithMany(film => film.Nominations)
             .HasForeignKey(entity => entity.OscarFilmId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("fk_oscar_nominations_films_oscar_film_id");
         builder.HasOne(entity => entity.OscarMovie)

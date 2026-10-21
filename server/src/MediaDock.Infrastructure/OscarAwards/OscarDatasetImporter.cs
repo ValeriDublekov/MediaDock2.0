@@ -14,8 +14,7 @@ public sealed record OscarImportSummary(
     int RowsSkippedByYear,
     int RowsSkippedByCategory,
     int RowsSkippedWithoutFilm,
-    int TitlesCreated,
-    int OscarFilmsCreated,
+    int OscarMoviesCreated,
     int NominationsCreated,
     int NominationsUpdated);
 
@@ -54,7 +53,7 @@ public sealed class OscarDatasetImporter(MediaDockDbContext dbContext)
     {
         if (dataset.Rows.Count == 0)
         {
-            return CreateSummary(dataset, 0, 0, 0, 0);
+            return CreateSummary(dataset, 0, 0, 0);
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -90,110 +89,63 @@ public sealed class OscarDatasetImporter(MediaDockDbContext dbContext)
                 })
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
-            var imdbTitlesById = await ImdbTitleMetadataMapper.EnsureAsync(
+            await ImdbTitleMetadataMapper.EnsureAsync(
                 dbContext, preparedRows.Select(row => row.Row.ImdbId), now, cancellationToken);
-            var oscarFilms = await dbContext.OscarFilms
-                .Include(film => film.Title)
+            var oscarMovies = await dbContext.OscarMovies
                 .Where(film => filmKeys.Contains(film.StableKey))
                 .ToListAsync(cancellationToken);
-            var filmsByStableKey = oscarFilms.ToDictionary(film => film.StableKey, StringComparer.Ordinal);
+            var moviesByStableKey = oscarMovies.ToDictionary(movie => movie.StableKey, StringComparer.Ordinal);
             var nominations = await dbContext.OscarNominations
                 .Where(nomination => nominationKeys.Contains(nomination.ImportKey))
+                .Include(nomination => nomination.OscarMovie)
                 .ToListAsync(cancellationToken);
             var nominationsByImportKey = nominations.ToDictionary(
                 nomination => nomination.ImportKey,
                 StringComparer.Ordinal);
 
-            var titlesByImdbId = new Dictionary<string, Title>(StringComparer.OrdinalIgnoreCase);
-            var titlesByIdentity = new Dictionary<string, List<Title>>(StringComparer.Ordinal);
-            foreach (var film in oscarFilms)
+            foreach (var movie in oscarMovies)
             {
-                film.ImdbId = ImdbIdNormalizer.Normalize(film.ImdbId);
-                AddTitle(film.Title, titlesByImdbId, titlesByIdentity);
+                movie.ImdbId = ImdbIdNormalizer.Normalize(movie.ImdbId);
             }
 
-            var imdbIds = preparedRows
-                .Where(row => row.Row.ImdbId is not null)
-                .Select(row => row.Row.ImdbId!)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-            var normalizedTitles = preparedRows
-                .Select(row => row.NormalizedTitle)
-                .Distinct(StringComparer.Ordinal)
-                .ToArray();
-            var filmYears = preparedRows.Select(row => row.Row.FilmYear).Distinct().ToArray();
-            var existingTitles = await dbContext.Titles
-                .Where(title => (title.ImdbId != null && imdbIds.Contains(title.ImdbId))
-                    || (title.MediaType == "movie"
-                        && title.Year.HasValue
-                        && filmYears.Contains(title.Year.Value)
-                        && normalizedTitles.Contains(title.NormalizedTitle)))
-                .OrderBy(title => title.Id)
-                .ToListAsync(cancellationToken);
-            foreach (var title in existingTitles)
-            {
-                AddTitle(title, titlesByImdbId, titlesByIdentity);
-            }
-
-            var titlesCreated = 0;
-            var oscarFilmsCreated = 0;
+            var oscarMoviesCreated = 0;
             var nominationsCreated = 0;
             var nominationsUpdated = 0;
             foreach (var prepared in preparedRows)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var row = prepared.Row;
-                filmsByStableKey.TryGetValue(prepared.FilmStableKey, out var oscarFilm);
-                if (oscarFilm is null)
+                moviesByStableKey.TryGetValue(prepared.FilmStableKey, out var oscarMovie);
+                if (oscarMovie is null)
                 {
                     var titleStableKey = CreateTitleFilmStableKey(prepared.NormalizedTitle, row.FilmYear);
-                    if (filmsByStableKey.TryGetValue(titleStableKey, out var titleKeyedFilm)
-                        && ImdbIdNormalizer.IsCompatible(titleKeyedFilm.ImdbId, row.ImdbId))
+                    if (moviesByStableKey.TryGetValue(titleStableKey, out var titleKeyedMovie)
+                        && ImdbIdNormalizer.IsCompatible(titleKeyedMovie.ImdbId, row.ImdbId))
                     {
-                        oscarFilm = titleKeyedFilm;
+                        oscarMovie = titleKeyedMovie;
                     }
                 }
 
-                var title = FindTitle(row, prepared.NormalizedTitle, titlesByImdbId, titlesByIdentity)
-                    ?? (oscarFilm is not null
-                        && ImdbIdNormalizer.IsCompatible(oscarFilm.Title.ImdbId, row.ImdbId)
-                            ? oscarFilm.Title
-                            : null);
-                if (title is null)
+                if (oscarMovie is null)
                 {
-                    title = CreatePlaceholderTitle(row, prepared.NormalizedTitle, now);
-                    dbContext.Titles.Add(title);
-                    AddTitle(title, titlesByImdbId, titlesByIdentity);
-                    titlesCreated++;
-                }
-                else
-                {
-                    FillMissingTitleFields(title, row, prepared.NormalizedTitle, now);
-                }
-
-                var imdbId = ImdbIdNormalizer.Normalize(row.ImdbId);
-                if (imdbId is not null)
-                {
-                    ImdbTitleMetadataMapper.MoveTitleFallbackMetadata(imdbTitlesById[imdbId], title);
-                }
-
-                if (oscarFilm is null)
-                {
-                    oscarFilm = new OscarFilm
+                    oscarMovie = new OscarMovie
                     {
                         StableKey = prepared.FilmStableKey,
+                        FilmTitle = row.FilmTitle,
+                        NormalizedTitle = prepared.NormalizedTitle,
+                        FilmYear = row.FilmYear,
+                        ImdbId = ImdbIdNormalizer.Normalize(row.ImdbId),
                         EnrichmentStatus = "pending",
                         ImportedAt = now,
-                        UpdatedAt = now,
-                        Title = title
+                        UpdatedAt = now
                     };
-                    dbContext.OscarFilms.Add(oscarFilm);
-                    filmsByStableKey.Add(prepared.FilmStableKey, oscarFilm);
-                    oscarFilmsCreated++;
+                    dbContext.OscarMovies.Add(oscarMovie);
+                    moviesByStableKey.Add(prepared.FilmStableKey, oscarMovie);
+                    oscarMoviesCreated++;
                 }
 
-                ApplyFilmSourceData(oscarFilm, row, prepared.NormalizedTitle, title, now);
-                var nominationImportKey = CreateNominationImportKey(row, oscarFilm.StableKey);
+                ApplyMovieSourceData(oscarMovie, row, prepared.NormalizedTitle, now);
+                var nominationImportKey = CreateNominationImportKey(row, oscarMovie.StableKey);
                 if (!nominationsByImportKey.TryGetValue(nominationImportKey, out var nomination))
                 {
                     nomination = new OscarNomination
@@ -204,10 +156,10 @@ public sealed class OscarDatasetImporter(MediaDockDbContext dbContext)
                     };
                     dbContext.OscarNominations.Add(nomination);
                     nominationsByImportKey.Add(nominationImportKey, nomination);
-                    ApplyNominationSourceData(nomination, row, oscarFilm, now);
+                    ApplyNominationSourceData(nomination, row, oscarMovie, now);
                     nominationsCreated++;
                 }
-                else if (ApplyNominationSourceData(nomination, row, oscarFilm, now))
+                else if (ApplyNominationSourceData(nomination, row, oscarMovie, now))
                 {
                     nominationsUpdated++;
                 }
@@ -215,7 +167,7 @@ public sealed class OscarDatasetImporter(MediaDockDbContext dbContext)
 
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return CreateSummary(dataset, titlesCreated, oscarFilmsCreated, nominationsCreated, nominationsUpdated);
+            return CreateSummary(dataset, oscarMoviesCreated, nominationsCreated, nominationsUpdated);
         }
         catch
         {
@@ -227,8 +179,7 @@ public sealed class OscarDatasetImporter(MediaDockDbContext dbContext)
 
     private static OscarImportSummary CreateSummary(
         OscarCsvReadResult dataset,
-        int titlesCreated,
-        int oscarFilmsCreated,
+        int oscarMoviesCreated,
         int nominationsCreated,
         int nominationsUpdated) =>
         new(
@@ -236,162 +187,39 @@ public sealed class OscarDatasetImporter(MediaDockDbContext dbContext)
             dataset.RowsSkippedByYear,
             dataset.RowsSkippedByCategory,
             dataset.RowsSkippedWithoutFilm,
-            titlesCreated,
-            oscarFilmsCreated,
+            oscarMoviesCreated,
             nominationsCreated,
             nominationsUpdated);
 
-    private static void AddTitle(
-        Title title,
-        IDictionary<string, Title> titlesByImdbId,
-        IDictionary<string, List<Title>> titlesByIdentity)
-    {
-        var imdbId = ImdbIdNormalizer.Normalize(title.ImdbId);
-        if (imdbId is not null)
-        {
-            title.ImdbId = imdbId;
-            titlesByImdbId.TryAdd(imdbId, title);
-        }
-
-        if (title.MediaType == "movie" && title.Year is { } year)
-        {
-            var identity = CreateTitleIdentity(title.NormalizedTitle, year);
-            if (!titlesByIdentity.TryGetValue(identity, out var candidates))
-            {
-                candidates = [];
-                titlesByIdentity.Add(identity, candidates);
-            }
-
-            if (!candidates.Contains(title))
-            {
-                candidates.Add(title);
-            }
-        }
-    }
-
-    private static Title? FindTitle(
-        OscarDatasetRow row,
-        string normalizedTitle,
-        IReadOnlyDictionary<string, Title> titlesByImdbId,
-        IReadOnlyDictionary<string, List<Title>> titlesByIdentity)
-    {
-        if (row.ImdbId is not null && titlesByImdbId.TryGetValue(row.ImdbId, out var byImdbId))
-        {
-            return byImdbId;
-        }
-
-        return titlesByIdentity.TryGetValue(CreateTitleIdentity(normalizedTitle, row.FilmYear), out var candidates)
-            ? candidates.FirstOrDefault(title => ImdbIdNormalizer.IsCompatible(title.ImdbId, row.ImdbId))
-            : null;
-    }
-
-    private static Title CreatePlaceholderTitle(
-        OscarDatasetRow row,
-        string normalizedTitle,
-        DateTimeOffset now) =>
-        new()
-        {
-            TitleText = row.FilmTitle,
-            NormalizedTitle = normalizedTitle,
-            Year = row.FilmYear,
-            MediaType = "movie",
-            SourceType = "movie",
-            ContentKind = "standard",
-            ImdbId = row.ImdbId,
-            UpdatedAt = now
-        };
-
-    private static void FillMissingTitleFields(
-        Title title,
+    private static void ApplyMovieSourceData(
+        OscarMovie movie,
         OscarDatasetRow row,
         string normalizedTitle,
         DateTimeOffset now)
     {
-        var changed = false;
-        if (string.IsNullOrWhiteSpace(title.TitleText))
-        {
-            title.TitleText = row.FilmTitle;
-            changed = true;
-        }
-
-        if (string.IsNullOrWhiteSpace(title.NormalizedTitle))
-        {
-            title.NormalizedTitle = normalizedTitle;
-            changed = true;
-        }
-
-        if (title.Year is null)
-        {
-            title.Year = row.FilmYear;
-            changed = true;
-        }
-
-        if (string.IsNullOrWhiteSpace(title.MediaType))
-        {
-            title.MediaType = "movie";
-            changed = true;
-        }
-
-        if (title.SourceType is null)
-        {
-            title.SourceType = "movie";
-            changed = true;
-        }
-
-        if (title.ContentKind is null)
-        {
-            title.ContentKind = "standard";
-            changed = true;
-        }
-
-        var imdbId = ImdbIdNormalizer.Normalize(row.ImdbId);
-        if (title.ImdbId is null && imdbId is not null)
-        {
-            title.ImdbId = imdbId;
-            changed = true;
-        }
-
-        if (changed)
-        {
-            title.UpdatedAt = now;
-        }
-    }
-
-    private static void ApplyFilmSourceData(
-        OscarFilm film,
-        OscarDatasetRow row,
-        string normalizedTitle,
-        Title title,
-        DateTimeOffset now)
-    {
-        var filmImdbId = ImdbIdNormalizer.Normalize(film.ImdbId);
-        var titleImdbId = ImdbIdNormalizer.Normalize(title.ImdbId);
+        var movieImdbId = ImdbIdNormalizer.Normalize(movie.ImdbId);
         var incomingImdbId = ImdbIdNormalizer.Normalize(row.ImdbId);
-        if (!ImdbIdNormalizer.IsCompatible(filmImdbId, titleImdbId)
-            || !ImdbIdNormalizer.IsCompatible(filmImdbId, incomingImdbId)
-            || !ImdbIdNormalizer.IsCompatible(titleImdbId, incomingImdbId))
+        if (!ImdbIdNormalizer.IsCompatible(movieImdbId, incomingImdbId))
         {
-            throw new InvalidOperationException("Oscar film IMDb identity conflicts with its linked title.");
+            throw new InvalidOperationException("Oscar movie IMDb identity conflicts with its imported source ID.");
         }
 
-        film.FilmTitle = row.FilmTitle;
-        film.NormalizedTitle = normalizedTitle;
-        film.FilmYear = row.FilmYear;
-        film.ImdbId = incomingImdbId ?? filmImdbId;
-        film.Title = title;
-        film.TitleId = title.Id;
-        if (film.ImportedAt == default)
+        movie.FilmTitle = row.FilmTitle;
+        movie.NormalizedTitle = normalizedTitle;
+        movie.FilmYear = row.FilmYear;
+        movie.ImdbId = incomingImdbId ?? movieImdbId;
+        if (movie.ImportedAt == default)
         {
-            film.ImportedAt = now;
+            movie.ImportedAt = now;
         }
 
-        film.UpdatedAt = now;
+        movie.UpdatedAt = now;
     }
 
     private static bool ApplyNominationSourceData(
         OscarNomination nomination,
         OscarDatasetRow row,
-        OscarFilm film,
+        OscarMovie movie,
         DateTimeOffset now)
     {
         var changed = false;
@@ -404,10 +232,13 @@ public sealed class OscarDatasetImporter(MediaDockDbContext dbContext)
         changed |= SetIfDifferent(nomination.NomineeIds, row.NomineeIds, value => nomination.NomineeIds = value);
         changed |= SetIfDifferent(nomination.Detail, row.Detail, value => nomination.Detail = value);
         changed |= SetIfDifferent(nomination.IsWinner, row.IsWinner, value => nomination.IsWinner = value);
-        changed |= SetIfDifferent(nomination.OscarFilmId, film.Id, value => nomination.OscarFilmId = value);
-        if (nomination.OscarFilm != film)
+        if (movie.Id != 0)
         {
-            nomination.OscarFilm = film;
+            changed |= SetIfDifferent(nomination.OscarMovieId, movie.Id, value => nomination.OscarMovieId = value);
+        }
+        if (nomination.OscarMovie != movie)
+        {
+            nomination.OscarMovie = movie;
             changed = true;
         }
 
@@ -468,7 +299,7 @@ public sealed class OscarDatasetImporter(MediaDockDbContext dbContext)
         exception.InnerException is PostgresException
         {
             SqlState: PostgresErrorCodes.UniqueViolation,
-            ConstraintName: "ux_titles_imdb_id"
+            ConstraintName: "ux_oscar_movies_stable_key"
         };
 
     private sealed record PreparedOscarRow(OscarDatasetRow Row, string NormalizedTitle, string FilmStableKey)

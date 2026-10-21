@@ -6,15 +6,16 @@ internal static class PostgreSqlTestContainerBuilder
 {
     public static PostgreSqlBuilder Create(string database)
     {
-        return new PostgreSqlBuilder()
-            .WithImage("postgres:17-alpine")
+        return new PostgreSqlBuilder("postgres:17-alpine")
             .WithDatabase(database)
             .WithUsername("mediadock")
             .WithPassword("mediadock_test")
             .WithPortBinding(5432, true)
             .WithCreateParameterModifier(parameters =>
             {
-                parameters.HostConfig.PortBindings.Values.Single().Single().HostIP = "127.0.0.1";
+                var hostConfig = parameters.HostConfig
+                    ?? throw new InvalidOperationException("PostgreSQL container host configuration was not created.");
+                hostConfig.PortBindings.Values.Single().Single().HostIP = "127.0.0.1";
             });
     }
 }

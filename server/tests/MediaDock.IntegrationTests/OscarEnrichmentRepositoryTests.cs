@@ -136,7 +136,7 @@ public sealed class OscarEnrichmentRepositoryTests
             CreateFilm("film-not-found", "Not Found", 2028, "not_found", now),
             CreateFilm("film-enriched", "Enriched", 2029, "enriched", now)
         };
-        db.OscarFilms.AddRange(films);
+        db.OscarMovies.AddRange(films);
         await db.SaveChangesAsync();
 
         var candidates = await new PostgresOscarEnrichmentRepository(db)
@@ -198,10 +198,8 @@ public sealed class OscarEnrichmentRepositoryTests
         await db.Database.MigrateAsync();
 
         var importedAt = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
-        var lastSeenAt = importedAt.AddHours(1);
         var film = CreateFilm("film-metadata", "CSV Film", 2025, "pending", importedAt);
-        film.Title.LastSeenAt = lastSeenAt;
-        db.OscarFilms.Add(film);
+        db.OscarMovies.Add(film);
         await db.SaveChangesAsync();
 
         var attemptedAt = importedAt.AddDays(2);
@@ -229,21 +227,16 @@ public sealed class OscarEnrichmentRepositoryTests
             film.Id,
             new OscarEnrichmentUpdate("enriched", 1, attemptedAt, null, null, metadata));
 
-        var savedFilm = await db.OscarFilms.AsNoTracking()
-            .Include(candidate => candidate.Title)
-            .SingleAsync(candidate => candidate.Id == film.Id);
+        var savedFilm = await db.OscarMovies.AsNoTracking().SingleAsync(candidate => candidate.Id == film.Id);
         Assert.Equal("enriched", savedFilm.EnrichmentStatus);
         Assert.Equal(1, savedFilm.EnrichmentAttemptCount);
         Assert.Equal(attemptedAt, savedFilm.LastEnrichmentAttemptAt);
         Assert.Equal("tt12345678", savedFilm.ImdbId);
-        Assert.Equal("OMDb Film", savedFilm.Title.TitleText);
-        Assert.Null(savedFilm.Title.ImdbRating);
-        Assert.Equal(lastSeenAt, savedFilm.Title.LastSeenAt);
-        Assert.Equal(attemptedAt, savedFilm.Title.UpdatedAt);
         var sharedMetadata = await db.ImdbTitles.AsNoTracking().SingleAsync(title => title.ImdbId == "tt12345678");
         Assert.Equal("enriched", sharedMetadata.MetadataStatus);
         Assert.Equal(8.2m, sharedMetadata.ImdbRating);
         Assert.Equal("Director", sharedMetadata.Director);
+        Assert.Empty(await db.Titles.ToListAsync());
         Assert.Empty(await db.Occurrences.ToListAsync());
     }
 
@@ -262,9 +255,8 @@ public sealed class OscarEnrichmentRepositoryTests
         var importedAt = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
         var film = CreateFilm("film-identity", "Identity Film", 2025, "pending", importedAt);
         film.ImdbId = "tt11111111";
-        film.Title.ImdbId = "tt11111111";
         db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt11111111", UpdatedAt = importedAt });
-        db.OscarFilms.Add(film);
+        db.OscarMovies.Add(film);
         await db.SaveChangesAsync();
 
         var attemptedAt = importedAt.AddDays(1);
@@ -294,17 +286,13 @@ public sealed class OscarEnrichmentRepositoryTests
                 new OscarEnrichmentUpdate("enriched", 1, attemptedAt, null, null, conflictingMetadata)));
 
         db.ChangeTracker.Clear();
-        var unchangedFilm = await db.OscarFilms.AsNoTracking()
-            .Include(candidate => candidate.Title)
-            .SingleAsync(candidate => candidate.Id == film.Id);
+        var unchangedFilm = await db.OscarMovies.AsNoTracking().SingleAsync(candidate => candidate.Id == film.Id);
         Assert.Equal("pending", unchangedFilm.EnrichmentStatus);
         Assert.Equal("tt11111111", unchangedFilm.ImdbId);
-        Assert.Equal("tt11111111", unchangedFilm.Title.ImdbId);
-        Assert.Equal("Identity Film", unchangedFilm.Title.TitleText);
-        Assert.Null(unchangedFilm.Title.ImdbRating);
+        Assert.Empty(await db.Titles.ToListAsync());
     }
 
-    private static OscarFilm CreateFilm(
+    private static OscarMovie CreateFilm(
         string stableKey,
         string titleText,
         int year,
@@ -313,7 +301,7 @@ public sealed class OscarEnrichmentRepositoryTests
         DateTimeOffset? nextAttemptAt = null)
     {
         var normalizedTitle = titleText.ToLowerInvariant();
-        return new OscarFilm
+        return new OscarMovie
         {
             StableKey = stableKey,
             FilmTitle = titleText,
@@ -322,19 +310,7 @@ public sealed class OscarEnrichmentRepositoryTests
             EnrichmentStatus = status,
             NextEnrichmentAttemptAt = nextAttemptAt,
             ImportedAt = now,
-            UpdatedAt = now,
-            Title = new Title
-            {
-                TitleText = titleText,
-                NormalizedTitle = normalizedTitle,
-                Year = year,
-                MediaType = "movie",
-                SourceType = "movie",
-                ContentKind = "standard",
-                FirstSeenAt = now,
-                LastSeenAt = now,
-                UpdatedAt = now
-            }
+            UpdatedAt = now
         };
     }
 }

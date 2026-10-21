@@ -41,10 +41,10 @@ public sealed class CatalogEndpointsApiTests
             Url = "https://feed.rutracker.cc/movies.atom",
             IsEnabled = true
         };
-        var olderTitle = CreateTitle("The Matrix", "the matrix", 1999, "movie", ["Action", "Sci-Fi"]);
-        var newerTitle = CreateTitle("The Matrix Reloaded", "the matrix reloaded", 2003, "movie", ["Action", "Sci-Fi"]);
-        var seriesTitle = CreateTitle("Example Series", "example series", 2010, "series", ["Drama"]);
-        var yearlessTitle = CreateTitle("Year Unknown", "year unknown", null, "movie", ["Drama"]);
+        var olderTitle = CreateTitle("The Matrix", "the matrix", 1999, "movie");
+        var newerTitle = CreateTitle("The Matrix Reloaded", "the matrix reloaded", 2003, "movie");
+        var seriesTitle = CreateTitle("Example Series", "example series", 2010, "series");
+        var yearlessTitle = CreateTitle("Year Unknown", "year unknown", null, "movie");
         db.ImdbTitles.AddRange(
             new ImdbTitle
             {
@@ -65,14 +65,27 @@ public sealed class CatalogEndpointsApiTests
                 Genres = ["Drama"], Countries = ["USA"], UpdatedAt = seriesTitle.UpdatedAt
             });
         db.Sources.Add(source);
-        db.Titles.AddRange(olderTitle, newerTitle, seriesTitle, yearlessTitle);
+        db.TorrentMovies.AddRange(olderTitle, newerTitle, seriesTitle, yearlessTitle);
+        db.Titles.Add(new Title
+        {
+            TitleText = "Year Unknown",
+            NormalizedTitle = "year unknown",
+            MediaType = "movie",
+            ImdbRating = 8.0m,
+            Genres = ["Drama"],
+            Countries = ["USA"],
+            PosterUrl = "https://example.test/legacy-year-unknown.jpg",
+            FirstSeenAt = yearlessTitle.FirstSeenAt!.Value,
+            LastSeenAt = yearlessTitle.LastSeenAt!.Value,
+            UpdatedAt = yearlessTitle.UpdatedAt
+        });
         await db.SaveChangesAsync();
 
         var firstSeen = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        db.Occurrences.AddRange(
-            CreateOccurrence(olderTitle.Id, source.Id, "matrix-1999", "The Matrix (1999)", firstSeen),
-            CreateOccurrence(newerTitle.Id, source.Id, "matrix-2003", "The Matrix Reloaded (2003)", firstSeen.AddDays(1)),
-            CreateOccurrence(yearlessTitle.Id, source.Id, "year-unknown", "Year Unknown", firstSeen.AddDays(2)));
+        db.TorrentReleases.AddRange(
+            CreateRelease(olderTitle.Id, source.Id, "matrix-1999", "The Matrix (1999)", firstSeen, quality: "1080p", ripType: "BDRip"),
+            CreateRelease(newerTitle.Id, source.Id, "matrix-2003", "The Matrix Reloaded (2003)", firstSeen.AddDays(1)),
+            CreateRelease(yearlessTitle.Id, source.Id, "year-unknown", "Year Unknown", firstSeen.AddDays(2)));
         var completeSeriesSource = new Source
         {
             StableKey = "series-complete",
@@ -91,9 +104,9 @@ public sealed class CatalogEndpointsApiTests
         };
         db.Sources.AddRange(completeSeriesSource, ongoingSeriesSource);
         await db.SaveChangesAsync();
-        db.Occurrences.AddRange(
-            CreateOccurrence(seriesTitle.Id, completeSeriesSource.Id, "series-complete", "Example Series", firstSeen.AddDays(2), "series_complete", "Series"),
-            CreateOccurrence(seriesTitle.Id, ongoingSeriesSource.Id, "series-ongoing", "Example Series", firstSeen.AddDays(3), "series_ongoing", "Series in progress"));
+        db.TorrentReleases.AddRange(
+            CreateRelease(seriesTitle.Id, completeSeriesSource.Id, "series-complete", "Example Series", firstSeen.AddDays(2), "series_complete", "Series"),
+            CreateRelease(seriesTitle.Id, ongoingSeriesSource.Id, "series-ongoing", "Example Series", firstSeen.AddDays(3), "series_ongoing", "Series in progress"));
         await db.SaveChangesAsync();
 
         using var catalogResponse = await client.GetAsync(
@@ -126,7 +139,9 @@ public sealed class CatalogEndpointsApiTests
         Assert.Equal(new YearBounds(1999, 2010), unfilteredCatalog.YearBounds);
         var yearlessCatalogTitle = Assert.Single(unfilteredCatalog.Items, title => title.Title == "Year Unknown");
         Assert.Null(yearlessCatalogTitle.Year);
-        Assert.Equal(8.0m, yearlessCatalogTitle.ImdbRating);
+        Assert.Null(yearlessCatalogTitle.ImdbRating);
+        Assert.Empty(yearlessCatalogTitle.Genres);
+        Assert.Null(yearlessCatalogTitle.PosterUrl);
 
         using var inProgressSeriesResponse = await client.GetAsync("/api/catalog?feedTypes=series_ongoing");
         var inProgressSeries = await inProgressSeriesResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
@@ -173,16 +188,18 @@ public sealed class CatalogEndpointsApiTests
         Assert.NotNull(occurrences);
         Assert.Equal(1, occurrences.TotalCount);
         Assert.Equal("Movies", Assert.Single(occurrences.Items).SourceName);
+        Assert.Equal("1080p", Assert.Single(occurrences.Items).Quality);
+        Assert.Equal("BDRip", Assert.Single(occurrences.Items).RipType);
         Assert.DoesNotContain("\"yearBounds\"", await occurrencesResponse.Content.ReadAsStringAsync());
     }
 
-    private static Title CreateTitle(string title, string normalizedTitle, int? year, string mediaType, string[] genres)
+    private static TorrentMovie CreateTitle(string title, string normalizedTitle, int? year, string mediaType)
     {
         var seenAt = year is { } knownYear
             ? new DateTimeOffset(knownYear, 1, 1, 0, 0, 0, TimeSpan.Zero)
             : new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
         var imdbId = year is { } imdbYear ? $"tt{imdbYear}" : null;
-        return new Title
+        return new TorrentMovie
         {
             TitleText = title,
             NormalizedTitle = normalizedTitle,
@@ -191,32 +208,32 @@ public sealed class CatalogEndpointsApiTests
             SourceType = mediaType,
             ContentKind = "standard",
             ImdbId = imdbId,
-            ImdbRating = imdbId is null ? 8.0m : null,
-            ImdbVotes = imdbId is null ? 1000 : null,
-            Genres = imdbId is null ? genres : Array.Empty<string>(),
-            Countries = imdbId is null ? ["USA"] : Array.Empty<string>(),
             FirstSeenAt = seenAt,
             LastSeenAt = seenAt,
             UpdatedAt = seenAt
         };
     }
 
-    private static Occurrence CreateOccurrence(
-        long titleId,
+    private static TorrentRelease CreateRelease(
+        long torrentMovieId,
         long sourceId,
         string sourceItemKey,
         string rawTitle,
         DateTimeOffset lastSeenAt,
         string feedType = "movie",
-        string sourceFeedName = "Movies") => new()
+        string sourceFeedName = "Movies",
+        string? quality = null,
+        string? ripType = null) => new()
     {
-        TitleId = titleId,
+        TorrentMovieId = torrentMovieId,
         SourceId = sourceId,
         SourceItemKey = sourceItemKey,
         TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=1",
         RawTitle = rawTitle,
         SourceFeedName = sourceFeedName,
         FeedType = feedType,
+        Quality = quality,
+        RipType = ripType,
         FirstSeenAt = lastSeenAt,
         LastSeenAt = lastSeenAt
     };

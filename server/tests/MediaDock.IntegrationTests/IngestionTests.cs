@@ -163,7 +163,7 @@ public sealed class IngestionTests
         Assert.Equal(1, result.Run.Summary.TitlesCreated);
         Assert.Equal(2, result.Run.Summary.OccurrencesCreated);
         Assert.Equal(1, handler.OmdbRequestCount);
-        var occurrences = await db.Occurrences.OrderBy(value => value.SourceItemKey).ToListAsync();
+        var occurrences = await db.TorrentReleases.OrderBy(value => value.SourceItemKey).ToListAsync();
         var occurrence = occurrences.Single(value => value.SourceItemKey == "entry:recheck-matrix");
         Assert.Equal("entry:recheck-matrix", occurrence.SourceItemKey);
         Assert.Equal("recheck-matrix", occurrence.FeedEntryId);
@@ -230,7 +230,7 @@ public sealed class IngestionTests
         Assert.Equal(1, result.EntriesUnavailable);
         Assert.Equal("partial", result.Run.Summary.Status);
         Assert.Equal(1, result.Run.Summary.TitlesCreated);
-        Assert.Equal("entry:matrix-1", (await db.Occurrences.SingleAsync()).SourceItemKey);
+        Assert.Equal("entry:matrix-1", (await db.TorrentReleases.SingleAsync()).SourceItemKey);
         var repairedLog = await db.ParseLogs.OrderByDescending(log => log.Id).FirstAsync();
         Assert.Equal(source.Id, repairedLog.SourceId);
         Assert.Equal("entry:matrix-1", repairedLog.SourceItemKey);
@@ -257,12 +257,12 @@ public sealed class IngestionTests
         Assert.Equal(1, first.Summary.TitlesCreated);
         Assert.Equal(2, first.Summary.OccurrencesCreated);
         Assert.Equal(5, first.Summary.OmdbRequests);
-        Assert.Equal("tt2222222", (await db.Titles.SingleAsync()).ImdbId);
+        Assert.Equal("tt2222222", (await db.TorrentMovies.SingleAsync()).ImdbId);
         var sharedMetadata = await db.ImdbTitles.AsNoTracking().SingleAsync();
         Assert.Equal("tt2222222", sharedMetadata.ImdbId);
         Assert.Equal("enriched", sharedMetadata.MetadataStatus);
         Assert.Equal(8.7m, sharedMetadata.ImdbRating);
-        Assert.Null((await db.Titles.SingleAsync()).ImdbRating);
+        Assert.Empty(await db.Titles.ToListAsync());
         var alternateTitleLog = await db.ParseLogs.SingleAsync(log => log.RawTitle.StartsWith("Wrong Film / Right Film"));
         Assert.Equal(new[] { "Wrong Film", "Right Film" }, alternateTitleLog.LookupTitles);
         Assert.Contains(await db.ParseLogs.ToListAsync(), log => log.IgnoreReason == "ambiguous_title_match" && log.RetryState == "terminal");
@@ -271,7 +271,7 @@ public sealed class IngestionTests
         var second = await service.RunAsync();
         Assert.Equal(0, second.Summary.OmdbRequests);
         Assert.Equal(5, handler.OmdbRequestCount);
-        Assert.Equal(2, await db.Occurrences.CountAsync());
+        Assert.Equal(2, await db.TorrentReleases.CountAsync());
     }
 
     [Fact]
@@ -294,7 +294,7 @@ public sealed class IngestionTests
             Url = SuccessfulFeedUrl
         });
         db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt0133093", UpdatedAt = importedAt });
-        db.OscarFilms.Add(new OscarFilm
+        db.OscarMovies.Add(new OscarMovie
         {
             StableKey = "imdb:tt0133093",
             FilmTitle = "The Matrix",
@@ -303,23 +303,9 @@ public sealed class IngestionTests
             ImdbId = "tt0133093",
             EnrichmentStatus = "pending",
             ImportedAt = importedAt,
-            UpdatedAt = importedAt,
-            Title = new Title
-            {
-                TitleText = "The Matrix",
-                NormalizedTitle = "the matrix",
-                Year = 1999,
-                MediaType = "movie",
-                SourceType = "movie",
-                ContentKind = "standard",
-                ImdbId = "tt0133093",
-                UpdatedAt = importedAt
-            }
+            UpdatedAt = importedAt
         });
         await db.SaveChangesAsync();
-        var oscarTitle = await db.OscarFilms.Include(film => film.Title).Select(film => film.Title).SingleAsync();
-        Assert.Null(oscarTitle.FirstSeenAt);
-        Assert.Null(oscarTitle.LastSeenAt);
 
         var handler = new MockProviderHandler();
         using var httpClient = new HttpClient(handler)
@@ -331,16 +317,16 @@ public sealed class IngestionTests
 
         var first = await service.RunAsync();
         Assert.Equal("succeeded", first.Summary.Status);
-        Assert.Equal(0, first.Summary.TitlesCreated);
+        Assert.Equal(1, first.Summary.TitlesCreated);
         Assert.Equal(1, first.Summary.OccurrencesCreated);
         Assert.Equal(3, first.Summary.OmdbRequests);
-        Assert.Equal(1, await db.Titles.CountAsync());
-        Assert.Equal(1, await db.Occurrences.CountAsync());
+        Assert.Equal(1, await db.TorrentMovies.CountAsync());
+        Assert.Equal(1, await db.TorrentReleases.CountAsync());
         Assert.Contains(await db.MetadataCache.ToListAsync(), entry => entry.Status == "confirmed_not_found");
-        var matrixFirstSeenAt = (await db.Titles.AsNoTracking()
+        var matrixFirstSeenAt = (await db.TorrentMovies.AsNoTracking()
             .SingleAsync(title => title.ImdbId == "tt0133093")).FirstSeenAt;
         Assert.NotNull(matrixFirstSeenAt);
-        Assert.NotNull((await db.Titles.SingleAsync(title => title.ImdbId == "tt0133093")).LastSeenAt);
+        Assert.NotNull((await db.TorrentMovies.SingleAsync(title => title.ImdbId == "tt0133093")).LastSeenAt);
 
         await db.RssItemStates.ExecuteDeleteAsync();
         db.ChangeTracker.Clear();
@@ -352,11 +338,11 @@ public sealed class IngestionTests
         Assert.Equal(0, repeated.Summary.CacheHits);
         Assert.Equal(0, repeated.Summary.OmdbRequests);
         Assert.Equal(3, handler.OmdbRequestCount);
-        Assert.Equal(1, await db.Titles.CountAsync());
-        Assert.Equal(1, await db.Occurrences.CountAsync());
+        Assert.Equal(1, await db.TorrentMovies.CountAsync());
+        Assert.Equal(1, await db.TorrentReleases.CountAsync());
         Assert.Equal(
             matrixFirstSeenAt,
-            (await db.Titles.AsNoTracking().SingleAsync(title => title.ImdbId == "tt0133093")).FirstSeenAt);
+            (await db.TorrentMovies.AsNoTracking().SingleAsync(title => title.ImdbId == "tt0133093")).FirstSeenAt);
 
         var source = await db.Sources.SingleAsync();
         source.Url = PartialFeedUrl;
@@ -369,7 +355,7 @@ public sealed class IngestionTests
         Assert.Equal(1, partial.Summary.OccurrencesCreated);
         Assert.Equal(1, partial.Summary.OmdbRequests);
         Assert.Equal(4, handler.OmdbRequestCount);
-        Assert.Equal(2, await db.Occurrences.CountAsync());
+        Assert.Equal(2, await db.TorrentReleases.CountAsync());
         Assert.DoesNotContain(await db.MetadataCache.ToListAsync(), entry => entry.LookupTitle == "temporary film");
 
         var retried = await service.RunAsync();
@@ -377,8 +363,8 @@ public sealed class IngestionTests
         Assert.Equal(1, retried.Summary.TitlesCreated);
         Assert.Equal(1, retried.Summary.OccurrencesCreated);
         Assert.Equal(5, handler.OmdbRequestCount);
-        Assert.Equal(2, await db.Titles.CountAsync());
-        Assert.Equal(3, await db.Occurrences.CountAsync());
+        Assert.Equal(2, await db.TorrentMovies.CountAsync());
+        Assert.Equal(3, await db.TorrentReleases.CountAsync());
         Assert.Contains(await db.MetadataCache.ToListAsync(), entry => entry.LookupTitle == "temporary film" && entry.Status == "found");
 
         var logs = await db.ParseLogs.OrderBy(log => log.Id).ToListAsync();
@@ -427,7 +413,7 @@ public sealed class IngestionTests
         Assert.Equal("succeeded", result.Summary.Status);
         Assert.Equal(1, result.Summary.OmdbRequests);
         Assert.Equal(1, result.Summary.OccurrencesCreated);
-        var title = await db.Titles.SingleAsync();
+        var title = await db.TorrentMovies.SingleAsync();
         Assert.Equal("Silo", title.TitleText);
         Assert.Equal("series", title.SourceType);
         Assert.Equal("series", title.MediaType);
@@ -457,12 +443,13 @@ public sealed class IngestionTests
             FeedType = "movie",
             Url = SuccessfulFeedUrl
         };
-        var existingTitle = new Title
+        var existingMovie = new TorrentMovie
         {
             TitleText = "Shared Film",
             NormalizedTitle = "shared film",
             Year = 2020,
             MediaType = "movie",
+            SourceType = "movie",
             ImdbId = "tt11111111",
             FirstSeenAt = now,
             LastSeenAt = now,
@@ -470,7 +457,7 @@ public sealed class IngestionTests
         };
         db.Sources.Add(source);
         db.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt11111111", UpdatedAt = now });
-        db.Titles.Add(existingTitle);
+        db.TorrentMovies.Add(existingMovie);
         await db.SaveChangesAsync();
 
         var sourceInfo = new IngestionSource(
@@ -493,14 +480,14 @@ public sealed class IngestionTests
             now);
 
         Assert.True(result.TitleCreated);
-        Assert.Equal(2, await db.Titles.CountAsync());
-        Assert.Equal("tt11111111", (await db.Titles.SingleAsync(title => title.Id == existingTitle.Id)).ImdbId);
-        Assert.Equal(1, await db.Titles.CountAsync(title => title.ImdbId == "tt22222222"));
+        Assert.Equal(2, await db.TorrentMovies.CountAsync());
+        Assert.Equal("tt11111111", (await db.TorrentMovies.SingleAsync(title => title.Id == existingMovie.Id)).ImdbId);
+        Assert.Equal(1, await db.TorrentMovies.CountAsync(title => title.ImdbId == "tt22222222"));
     }
 
     [Fact]
     [Trait("Category", "Ingestion")]
-    public async Task UpsertMovesLocalFallbackToSharedMetadataWhenImdbIdIsAdded()
+    public async Task UpsertDoesNotCopyLegacyFallbackMetadataToTorrentMovie()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_metadata_promotion_test").Build();
         await postgres.StartAsync();
@@ -550,15 +537,86 @@ public sealed class IngestionTests
             CreateMetadata("Shared Film", 2020, "tt22222222"),
             now);
 
-        Assert.False(result.TitleCreated);
-        Assert.Equal("tt22222222", localTitle.ImdbId);
-        Assert.Null(localTitle.ImdbRating);
-        Assert.Empty(localTitle.Genres);
-        Assert.Null(localTitle.Plot);
+        Assert.True(result.TitleCreated);
+        Assert.Null(localTitle.ImdbId);
+        Assert.Equal(6.4m, localTitle.ImdbRating);
+        Assert.Equal(new[] { "Drama" }, localTitle.Genres);
+        Assert.Equal("Local fallback plot.", localTitle.Plot);
+        var torrentMovie = await db.TorrentMovies.SingleAsync();
+        Assert.Equal("tt22222222", torrentMovie.ImdbId);
         var sharedMetadata = await db.ImdbTitles.AsNoTracking().SingleAsync(title => title.ImdbId == "tt22222222");
-        Assert.Equal(6.4m, sharedMetadata.ImdbRating);
-        Assert.Equal(new[] { "Drama" }, sharedMetadata.Genres);
-        Assert.Equal("Local fallback plot.", sharedMetadata.Plot);
+        Assert.Null(sharedMetadata.ImdbRating);
+        Assert.Empty(sharedMetadata.Genres);
+        Assert.Null(sharedMetadata.Plot);
+    }
+
+    [Fact]
+    [Trait("Category", "Ingestion")]
+    public async Task UnmatchedUpsertsUseSourceItemIdentityAndPreserveReleaseMetadata()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_unmatched_identity_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString()).Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+        var now = new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero);
+        var source = new Source
+        {
+            StableKey = "unmatched-identity",
+            Name = "Movies",
+            FeedType = "movie",
+            Url = SuccessfulFeedUrl
+        };
+        db.Sources.Add(source);
+        await db.SaveChangesAsync();
+        var sourceInfo = new IngestionSource(source.Id, "Movies", "movie", source.Url);
+        var repository = new PostgresRssIngestionRepository(db);
+        var metadata = CreateMetadata("Same Unmatched Film", 2020, null);
+        var firstItem = new IngestionFeedItem(
+            "Same Unmatched Film (2020) [1080p]",
+            "unmatched-first",
+            "https://feed.example/topic/unmatched-first",
+            now);
+        var firstKey = SourceItemIdentity.From(firstItem.FeedEntryId, firstItem.TorrentUrl);
+
+        var first = await repository.UpsertCatalogItemAsync(
+            sourceInfo, firstItem, firstKey, "first-fingerprint",
+            RutrackerTitleParser.Parse(firstItem.Title, "movie"), metadata, now);
+        Assert.True(first.TitleCreated);
+        Assert.True(first.OccurrenceCreated);
+
+        var storedRelease = await db.TorrentReleases.SingleAsync();
+        storedRelease.Quality = "1080p";
+        storedRelease.RipType = "WEB-DL";
+        await db.SaveChangesAsync();
+        var repeated = await repository.UpsertCatalogItemAsync(
+            sourceInfo, firstItem, firstKey, "updated-fingerprint",
+            RutrackerTitleParser.Parse(firstItem.Title, "movie"), metadata, now.AddMinutes(1));
+        Assert.False(repeated.TitleCreated);
+        Assert.False(repeated.OccurrenceCreated);
+
+        var secondItem = new IngestionFeedItem(
+            "Same Unmatched Film (2020) [720p]",
+            "unmatched-second",
+            "https://feed.example/topic/unmatched-second",
+            now.AddMinutes(2));
+        var second = await repository.UpsertCatalogItemAsync(
+            sourceInfo,
+            secondItem,
+            SourceItemIdentity.From(secondItem.FeedEntryId, secondItem.TorrentUrl),
+            "second-fingerprint",
+            RutrackerTitleParser.Parse(secondItem.Title, "movie"),
+            metadata,
+            now.AddMinutes(2));
+
+        Assert.True(second.TitleCreated);
+        Assert.True(second.OccurrenceCreated);
+        Assert.Equal(2, await db.TorrentMovies.CountAsync());
+        Assert.Equal(2, await db.TorrentReleases.CountAsync());
+        var preservedRelease = await db.TorrentReleases.SingleAsync(row => row.SourceItemKey == firstKey);
+        Assert.Equal("1080p", preservedRelease.Quality);
+        Assert.Equal("WEB-DL", preservedRelease.RipType);
     }
 
     [Fact]
@@ -616,9 +674,9 @@ public sealed class IngestionTests
 
         await using var verifyDb = new MediaDockDbContext(seedOptions);
         Assert.Equal(1, results.Count(result => result.TitleCreated));
-        Assert.Equal(1, await verifyDb.Titles.CountAsync());
-        Assert.Equal("tt33333333", (await verifyDb.Titles.SingleAsync()).ImdbId);
-        Assert.Equal(2, await verifyDb.Occurrences.CountAsync());
+        Assert.Equal(1, await verifyDb.TorrentMovies.CountAsync());
+        Assert.Equal("tt33333333", (await verifyDb.TorrentMovies.SingleAsync()).ImdbId);
+        Assert.Equal(2, await verifyDb.TorrentReleases.CountAsync());
     }
 
     private static RssIngestionService CreateService(
@@ -635,7 +693,7 @@ public sealed class IngestionTests
             resolver);
     }
 
-    private static MetadataDetails CreateMetadata(string title, int year, string imdbId) =>
+    private static MetadataDetails CreateMetadata(string title, int year, string? imdbId) =>
         new(title, year, imdbId, "movie", "movie", "standard", null, null, null, null, [], [],
             null, null, null, null, null, null);
 

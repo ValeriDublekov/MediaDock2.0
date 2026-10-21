@@ -112,7 +112,7 @@ internal sealed class GoldenGlobeNominationConfiguration : IEntityTypeConfigurat
         builder.HasOne(x => x.Award).WithMany(x => x.Nominations).HasForeignKey(x => x.AwardId)
             .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_golden_globe_nominations_awards_award_id");
         builder.HasOne(x => x.Group).WithMany(x => x.Nominations).HasForeignKey(x => x.GroupId)
-            .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_golden_globe_nominations_groups_group_id");
+            .IsRequired(false).OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_golden_globe_nominations_groups_group_id");
         builder.HasOne(x => x.GoldenGlobeTitle).WithMany(x => x.Nominations).HasForeignKey(x => x.GoldenGlobeTitleId)
             .OnDelete(DeleteBehavior.Restrict).HasConstraintName("fk_golden_globe_nominations_titles_title_id");
     }

@@ -144,7 +144,7 @@ public sealed class BackgroundJobExecutionTests
     Assert.True(completed.Status == "succeeded", $"{completed.ErrorCode}: {completed.ResultSummary?.GetRawText()}");
         Assert.NotNull(completed.ScanRunId);
         await using var verificationDb = new MediaDockDbContext(options);
-        var occurrence = await verificationDb.Occurrences.SingleAsync();
+        var occurrence = await verificationDb.TorrentReleases.SingleAsync();
         Assert.Equal("entry:stored-recheck-item", occurrence.SourceItemKey);
         Assert.Equal("stored-recheck-item", occurrence.FeedEntryId);
         Assert.Equal("https://rutracker.org/forum/viewtopic.php?t=191", occurrence.TorrentUrl);
@@ -200,7 +200,7 @@ public sealed class BackgroundJobExecutionTests
         Assert.Equal("queued-film.csv", completed.InputFileName);
 
         await using var verificationDb = new MediaDockDbContext(options);
-        Assert.Equal(1, await verificationDb.OscarFilms.CountAsync());
+        Assert.Equal(1, await verificationDb.OscarMovies.CountAsync());
         var storedJob = await verificationDb.BackgroundJobs.SingleAsync(job => job.Id == accepted.Id);
         Assert.Null(storedJob.InputBytes);
     }
@@ -253,9 +253,9 @@ public sealed class BackgroundJobExecutionTests
         await using var verificationDb = new MediaDockDbContext(options);
         var nomination = await verificationDb.GoldenGlobeNominations
             .Include(row => row.Award)
-            .Include(row => row.Group)
+            .Include(row => row.GoldenGlobeTitle)
             .SingleAsync();
-        Assert.Equal("Queued Golden Globe Film", nomination.Group.Title);
+        Assert.Equal("Queued Golden Globe Film", nomination.GoldenGlobeTitle!.Title);
         Assert.Equal("Best Picture", nomination.Award.Name);
         var storedJob = await verificationDb.BackgroundJobs.SingleAsync(job => job.Id == accepted.Id);
         Assert.Null(storedJob.InputBytes);
@@ -421,15 +421,16 @@ public sealed class BackgroundJobExecutionTests
                 OmdbDailyRequestLimit = 10,
                 UpdatedAt = DateTimeOffset.UtcNow
             });
+            var goldenGlobeTitle = new Infrastructure.Persistence.Entities.GoldenGlobeTitle
+            {
+                Title = "Manual Refresh Film",
+                Year = 2025,
+                NomineeType = "movie"
+            };
             db.GoldenGlobeNominations.Add(new Infrastructure.Persistence.Entities.GoldenGlobeNomination
             {
                 ImportKey = "manual-refresh-film",
-                Group = new Infrastructure.Persistence.Entities.GoldenGlobeGroup
-                {
-                    Title = "Manual Refresh Film",
-                    Year = 2025,
-                    NomineeType = "movie"
-                },
+                GoldenGlobeTitle = goldenGlobeTitle,
                 Award = new Infrastructure.Persistence.Entities.GoldenGlobeAward { Name = "Manual Refresh Award" }
             });
             await db.SaveChangesAsync();
@@ -461,10 +462,10 @@ public sealed class BackgroundJobExecutionTests
         Assert.DoesNotContain("&t=", handler.RequestUris[0].Query);
 
         await using var verificationDb = new MediaDockDbContext(options);
-        var group = await verificationDb.GoldenGlobeGroups.SingleAsync();
-        Assert.Equal("tt12345678", group.ImdbId);
-        Assert.True(group.IsImdbIdManual);
-        Assert.Equal("enriched", group.EnrichmentStatus);
+        var title = await verificationDb.GoldenGlobeTitles.SingleAsync();
+        Assert.Equal("tt12345678", title.ImdbId);
+        Assert.True(title.IsImdbIdManual);
+        Assert.Equal("enriched", title.EnrichmentStatus);
         var cached = await verificationDb.MetadataCache.SingleAsync();
         Assert.Equal("tt12345678", cached.LookupIdentity);
         Assert.Equal("movie", cached.SourceType);

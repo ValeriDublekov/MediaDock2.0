@@ -17,7 +17,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -523,7 +523,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("golden_globe_title_id");
 
-                    b.Property<long>("GroupId")
+                    b.Property<long?>("GroupId")
                         .HasColumnType("bigint")
                         .HasColumnName("group_id");
 
@@ -1321,7 +1321,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("nominees");
 
-                    b.Property<long>("OscarFilmId")
+                    b.Property<long?>("OscarFilmId")
                         .HasColumnType("bigint")
                         .HasColumnName("oscar_film_id");
 
@@ -2235,7 +2235,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .WithMany("Nominations")
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_golden_globe_nominations_groups_group_id");
 
                     b.Navigation("Award");
@@ -2335,7 +2334,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .WithMany("Nominations")
                         .HasForeignKey("OscarFilmId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_oscar_nominations_films_oscar_film_id");
 
                     b.HasOne("MediaDock.Infrastructure.Persistence.Entities.OscarMovie", "OscarMovie")
