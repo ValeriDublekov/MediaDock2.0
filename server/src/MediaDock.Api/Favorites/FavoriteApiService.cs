@@ -37,16 +37,16 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
         var fromCatalog = request.From == "catalog";
         var now = DateTimeOffset.UtcNow;
         var changed = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-            INSERT INTO favorite_movies (user_id, title_id, to_watch, to_download, added_from_oscar, added_from_catalog, created_at, updated_at)
+            INSERT INTO legacy_favorite_movies (user_id, title_id, to_watch, to_download, added_from_oscar, added_from_catalog, created_at, updated_at)
             SELECT {userId}, id, {fromOscar}, {fromCatalog}, {fromOscar}, {fromCatalog}, {now}, {now}
             FROM titles WHERE id = {request.TitleId} AND media_type = 'movie'
               AND (({fromOscar} AND EXISTS (SELECT 1 FROM oscar_films WHERE title_id = titles.id))
                 OR ({fromCatalog} AND EXISTS (SELECT 1 FROM occurrences WHERE title_id = titles.id)))
             ON CONFLICT (user_id, title_id) DO UPDATE SET
-              to_watch = favorite_movies.to_watch OR (EXCLUDED.added_from_oscar AND NOT favorite_movies.added_from_oscar),
-              to_download = favorite_movies.to_download OR (EXCLUDED.added_from_catalog AND NOT favorite_movies.added_from_catalog),
-              added_from_oscar = favorite_movies.added_from_oscar OR EXCLUDED.added_from_oscar,
-              added_from_catalog = favorite_movies.added_from_catalog OR EXCLUDED.added_from_catalog,
+              to_watch = legacy_favorite_movies.to_watch OR (EXCLUDED.added_from_oscar AND NOT legacy_favorite_movies.added_from_oscar),
+              to_download = legacy_favorite_movies.to_download OR (EXCLUDED.added_from_catalog AND NOT legacy_favorite_movies.added_from_catalog),
+              added_from_oscar = legacy_favorite_movies.added_from_oscar OR EXCLUDED.added_from_oscar,
+              added_from_catalog = legacy_favorite_movies.added_from_catalog OR EXCLUDED.added_from_catalog,
               updated_at = EXCLUDED.updated_at
             """, cancellationToken);
         if (changed == 0) throw new ApiNotFoundException("Movie or catalog source not found.");

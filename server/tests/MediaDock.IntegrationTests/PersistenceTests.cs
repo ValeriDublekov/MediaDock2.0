@@ -260,6 +260,264 @@ public sealed class PersistenceTests
 
     [Fact]
     [Trait("Category", "Persistence")]
+    public async Task SourceOwnedMovieMigrationBackfillsDetailsAndTransfersOnlyEnrichedFavorites()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_source_owned_movie_migration_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync("20261020150000_NormalizeGoldenGlobeGroups");
+
+        var now = new DateTimeOffset(2026, 10, 21, 12, 0, 0, TimeSpan.Zero);
+        var user = CreateUser("source-owned@example.com", now);
+        db.Users.Add(user);
+        db.ImdbTitles.AddRange(
+            new ImdbTitle
+            {
+                ImdbId = "tt12345678",
+                TitleText = "Enriched Film",
+                ImdbRating = 8.2m,
+                MetadataStatus = "enriched",
+                UpdatedAt = now
+            },
+            new ImdbTitle { ImdbId = "tt87654321", MetadataStatus = "pending", UpdatedAt = now });
+        await db.SaveChangesAsync();
+
+        await db.Database.ExecuteSqlRawAsync("DROP INDEX ux_titles_imdb_id");
+        var firstFavoriteTitle = CreateTitle("Enriched Film", "enriched film", "tt12345678", now);
+        var secondFavoriteTitle = CreateTitle("Alternate source title", "alternate source title", "tt12345678", now.AddHours(1));
+        var pendingTitle = CreateTitle("Pending Film", "pending film", "tt87654321", now);
+        var unmatchedTitle = CreateTitle("Unmatched Film", "unmatched film", null, now);
+        unmatchedTitle.ImdbRating = 6.3m;
+        unmatchedTitle.Genres = ["Drama"];
+        unmatchedTitle.Plot = "Legacy local metadata";
+        var releaseTitle = CreateTitle("Enriched Film", "enriched film", "tt12345678", now, now, now);
+        db.Titles.AddRange(firstFavoriteTitle, secondFavoriteTitle, pendingTitle, unmatchedTitle, releaseTitle);
+        await db.SaveChangesAsync();
+
+        var source = new Source
+        {
+            StableKey = "source-owned-movies",
+            Name = "Source-owned movies",
+            FeedType = "movie",
+            Url = "https://feed.example/source-owned"
+        };
+        db.Sources.Add(source);
+        var oscarFilm = new OscarFilm
+        {
+            TitleId = firstFavoriteTitle.Id,
+            StableKey = "source-owned-oscar-film",
+            FilmTitle = "Enriched Film",
+            NormalizedTitle = "enriched film",
+            FilmYear = 2025,
+            ImdbId = "tt12345678",
+            EnrichmentStatus = "enriched",
+            ImportedAt = now,
+            UpdatedAt = now
+        };
+        var award = new GoldenGlobeAward { Name = "Source-owned award" };
+        db.AddRange(oscarFilm, award);
+        var movieGroup = new GoldenGlobeGroup
+        {
+            Title = "Enriched Film",
+            Year = 2025,
+            NomineeType = "movie",
+            ImdbId = "tt12345678",
+            EnrichmentStatus = "enriched"
+        };
+        var seriesGroup = new GoldenGlobeGroup
+        {
+            Title = "Example Series",
+            Year = 2025,
+            NomineeType = "series"
+        };
+        db.GoldenGlobeGroups.AddRange(movieGroup, seriesGroup);
+        await db.SaveChangesAsync();
+
+        var releaseTime = now.AddMinutes(-10);
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO oscar_nominations (
+                oscar_film_id, import_key, ceremony, class, canonical_category, category, name,
+                nominees, nominee_ids, detail, is_winner, imported_at, updated_at)
+            VALUES (
+                {oscarFilm.Id}, {"source-owned-oscar-nomination"}, {98}, {"Feature Film"},
+                {"best_picture"}, {"Best Picture"}, {"Source-owned film"}, {"Source-owned film"},
+                {"film-id"}, {"detail"}, {true}, {now}, {now})
+            """);
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO golden_globe_nominations (import_key, winner, award_id, group_id)
+            VALUES ({"source-owned-movie-nomination"}, {true}, {award.Id}, {movieGroup.Id}),
+                   ({"source-owned-series-nomination"}, {false}, {award.Id}, {seriesGroup.Id})
+            """);
+
+        var releaseOccurrences = new[]
+        {
+            new Occurrence
+            {
+                TitleId = releaseTitle.Id,
+                SourceId = source.Id,
+                SourceItemKey = "source-item-one",
+                FeedEntryId = "feed-entry-one",
+                TorrentUrl = "https://feed.example/release/one",
+                RawTitle = "Enriched.Film.2025.1080p",
+                SourceFeedName = source.Name,
+                FeedType = source.FeedType,
+                SourcePublishedAt = releaseTime,
+                ObservedAt = releaseTime,
+                Quality = "1080p",
+                RipType = "WEB-DL",
+                FirstSeenAt = releaseTime,
+                LastSeenAt = now
+            },
+            new Occurrence
+            {
+                TitleId = releaseTitle.Id,
+                SourceId = source.Id,
+                SourceItemKey = "source-item-two",
+                FeedEntryId = "feed-entry-two",
+                TorrentUrl = "https://feed.example/release/two",
+                RawTitle = "Enriched.Film.2025.2160p",
+                SourceFeedName = source.Name,
+                FeedType = source.FeedType,
+                SourcePublishedAt = releaseTime.AddMinutes(1),
+                ObservedAt = releaseTime.AddMinutes(1),
+                Quality = "2160p",
+                RipType = "BluRay",
+                FirstSeenAt = releaseTime,
+                LastSeenAt = now
+            },
+            new Occurrence
+            {
+                TitleId = unmatchedTitle.Id,
+                SourceId = source.Id,
+                SourceItemKey = "source-item-three",
+                FeedEntryId = "feed-entry-three",
+                TorrentUrl = "https://feed.example/release/three",
+                RawTitle = "Unmatched.Film.720p",
+                SourceFeedName = source.Name,
+                FeedType = source.FeedType,
+                SourcePublishedAt = releaseTime.AddMinutes(2),
+                ObservedAt = releaseTime.AddMinutes(2),
+                Quality = "720p",
+                RipType = "WEBRip",
+                FirstSeenAt = releaseTime,
+                LastSeenAt = now
+            }
+        };
+        db.Occurrences.AddRange(releaseOccurrences);
+        await db.SaveChangesAsync();
+
+        async Task AddLegacyFavoriteAsync(Title title, bool toWatch, bool toDownload, bool addedFromOscar, bool addedFromCatalog)
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                INSERT INTO favorite_movies (
+                    user_id, title_id, to_watch, to_download, added_from_oscar, added_from_catalog,
+                    created_at, updated_at)
+                VALUES (
+                    {user.Id}, {title.Id}, {toWatch}, {toDownload}, {addedFromOscar}, {addedFromCatalog},
+                    {now}, {now})
+                """);
+        }
+
+        await AddLegacyFavoriteAsync(firstFavoriteTitle, true, false, true, false);
+        await AddLegacyFavoriteAsync(secondFavoriteTitle, false, true, false, true);
+        await AddLegacyFavoriteAsync(pendingTitle, true, false, true, false);
+        await AddLegacyFavoriteAsync(unmatchedTitle, false, true, false, true);
+
+        var preflightDiscardCount = await db.Database.SqlQuery<long>(
+            $"""
+            SELECT COUNT(*) AS "Value"
+            FROM favorite_movies AS favorite
+            JOIN titles AS title ON title.id = favorite.title_id
+            LEFT JOIN imdb_titles AS imdb ON imdb.imdb_id = title.imdb_id
+            WHERE imdb.metadata_status IS DISTINCT FROM 'enriched'
+            """).SingleAsync();
+        Assert.Equal(2L, preflightDiscardCount);
+                var legacyFallbackCount = await db.Database.SqlQuery<long>(
+                        $"""
+                        SELECT COUNT(*) AS "Value"
+                        FROM titles AS title
+                        WHERE title.imdb_id IS NULL
+                            AND (title.imdb_rating IS NOT NULL OR title.imdb_votes IS NOT NULL OR title.metascore IS NOT NULL
+                                OR cardinality(title.genres) > 0 OR cardinality(title.countries) > 0
+                                OR NULLIF(btrim(title.director), '') IS NOT NULL OR NULLIF(btrim(title.plot), '') IS NOT NULL
+                                OR NULLIF(btrim(title.poster_url), '') IS NOT NULL OR NULLIF(btrim(title.runtime), '') IS NOT NULL
+                                OR NULLIF(btrim(title.awards), '') IS NOT NULL OR NULLIF(btrim(title.box_office), '') IS NOT NULL)
+                        """).SingleAsync();
+                Assert.Equal(1L, legacyFallbackCount);
+
+        await db.Database.MigrateAsync();
+        db.ChangeTracker.Clear();
+
+        var oscarMovie = await db.OscarMovies.AsNoTracking().SingleAsync();
+        Assert.Equal(oscarFilm.StableKey, oscarMovie.StableKey);
+        Assert.Equal("tt12345678", oscarMovie.ImdbId);
+        Assert.Equal("enriched", oscarMovie.EnrichmentStatus);
+        var oscarNomination = await db.OscarNominations.AsNoTracking().SingleAsync();
+        Assert.Equal(oscarMovie.Id, oscarNomination.OscarMovieId);
+
+        var goldenGlobeTitles = await db.GoldenGlobeTitles.AsNoTracking().OrderBy(title => title.Title).ToListAsync();
+        Assert.Equal(new[] { "Enriched Film", "Example Series" }, goldenGlobeTitles.Select(title => title.Title));
+        Assert.Equal("tt12345678", goldenGlobeTitles[0].ImdbId);
+        Assert.Equal("series", goldenGlobeTitles[1].NomineeType);
+        var migratedNominations = await db.GoldenGlobeNominations.AsNoTracking().OrderBy(nomination => nomination.ImportKey).ToListAsync();
+        Assert.Equal(2, migratedNominations.Count);
+        Assert.All(migratedNominations, nomination => Assert.Contains(goldenGlobeTitles, title => title.Id == nomination.GoldenGlobeTitleId));
+
+        var torrentMovie = await db.TorrentMovies.AsNoTracking().SingleAsync(movie => movie.ImdbId == "tt12345678");
+        var unmatchedTorrentMovie = await db.TorrentMovies.AsNoTracking().SingleAsync(movie => movie.TitleText == "Unmatched Film");
+        Assert.Null(unmatchedTorrentMovie.ImdbId);
+        var torrentMovieProviderColumns = await db.Database.SqlQuery<string>(
+            $"""
+            SELECT column_name AS "Value"
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'torrent_movies'
+              AND column_name IN (
+                  'imdb_rating', 'imdb_votes', 'metascore', 'genres', 'countries', 'director',
+                  'plot', 'poster_url', 'runtime', 'awards', 'box_office')
+            """).ToListAsync();
+        Assert.Empty(torrentMovieProviderColumns);
+        var migratedReleases = await db.TorrentReleases.AsNoTracking().OrderBy(release => release.SourceItemKey).ToListAsync();
+        Assert.Equal(3, migratedReleases.Count);
+        var firstRelease = migratedReleases.Single(release => release.SourceItemKey == "source-item-one");
+        var secondRelease = migratedReleases.Single(release => release.SourceItemKey == "source-item-two");
+        var fallbackRelease = migratedReleases.Single(release => release.SourceItemKey == "source-item-three");
+        Assert.Equal(torrentMovie.Id, firstRelease.TorrentMovieId);
+        Assert.Equal("1080p", firstRelease.Quality);
+        Assert.Equal("WEB-DL", firstRelease.RipType);
+        Assert.Equal("https://feed.example/release/one", firstRelease.TorrentUrl);
+        Assert.Equal(torrentMovie.Id, secondRelease.TorrentMovieId);
+        Assert.Equal("2160p", secondRelease.Quality);
+        Assert.Equal("feed-entry-two", secondRelease.FeedEntryId);
+        Assert.Equal(unmatchedTorrentMovie.Id, fallbackRelease.TorrentMovieId);
+        Assert.Equal("720p", fallbackRelease.Quality);
+
+        var favorite = await db.ImdbFavoriteMovies.AsNoTracking().SingleAsync();
+        Assert.Equal(user.Id, favorite.UserId);
+        Assert.Equal("tt12345678", favorite.ImdbId);
+        Assert.True(favorite.ToWatch);
+        Assert.True(favorite.ToDownload);
+        Assert.True(favorite.AddedFromOscar);
+        Assert.True(favorite.AddedFromCatalog);
+        Assert.Equal(now, favorite.CreatedAt);
+        Assert.Equal(now, favorite.UpdatedAt);
+        var retainedLegacyFavorites = await db.FavoriteMovies.AsNoTracking().OrderBy(favorite => favorite.TitleId).ToListAsync();
+        Assert.Equal(new[] { firstFavoriteTitle.Id, secondFavoriteTitle.Id }, retainedLegacyFavorites.Select(favorite => favorite.TitleId));
+
+        await db.Database.MigrateAsync("20261020150000_NormalizeGoldenGlobeGroups");
+        var rolledBackFavoriteCount = await db.Database.SqlQuery<long>(
+            $"SELECT COUNT(*) AS \"Value\" FROM favorite_movies").SingleAsync();
+        Assert.Equal(2L, rolledBackFavoriteCount);
+    }
+
+    [Fact]
+    [Trait("Category", "Persistence")]
     public async Task MigrationCreatesSchemaAndOccurrenceIdentityIsUnique()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_test").Build();
@@ -289,6 +547,7 @@ public sealed class PersistenceTests
         Assert.Contains("20261020125713_EnforceOscarFilmTitleIdentity", appliedMigrations);
         Assert.Contains("20261020140000_EnforceScanRunNonnegativeCounters", appliedMigrations);
         Assert.Contains("20261020150000_NormalizeGoldenGlobeGroups", appliedMigrations);
+        Assert.Contains("20261021061711_SourceOwnedMovieIdentity", appliedMigrations);
 
         await db.Database.OpenConnectionAsync();
         await using (var command = db.Database.GetDbConnection().CreateCommand())
@@ -307,7 +566,8 @@ public sealed class PersistenceTests
                     "titles", "sources", "occurrences", "scan_runs", "parse_logs", "settings", "metadata_cache",
                     "oscar_films", "oscar_nominations", "oscar_enrichment_runs", "omdb_daily_usage",
                     "golden_globe_awards", "golden_globe_groups", "golden_globe_nominations", "favorite_movies", "personal_ratings", "users",
-                    "imdb_titles"
+                    "imdb_titles", "oscar_movies", "golden_globe_titles", "torrent_movies", "torrent_releases",
+                    "legacy_favorite_movies"
                 },
                 tableName => Assert.Contains(tableName, tables));
         }

@@ -326,6 +326,7 @@ public sealed class IdentityPersistenceTests
             NormalizedTitle = "shared title",
             MediaType = "movie",
             ImdbId = "tt12345678",
+            ImdbRating = 8.0m,
             UpdatedAt = updatedAt
         };
         db.Titles.Add(title);

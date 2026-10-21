@@ -7,7 +7,9 @@ public sealed class GoldenGlobeNomination
     public bool Winner { get; set; }
     public long AwardId { get; set; }
     public long GroupId { get; set; }
+    public long? GoldenGlobeTitleId { get; set; }
 
     public GoldenGlobeAward Award { get; set; } = null!;
     public GoldenGlobeGroup Group { get; set; } = null!;
+    public GoldenGlobeTitle? GoldenGlobeTitle { get; set; }
 }

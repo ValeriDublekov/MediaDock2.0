@@ -21,12 +21,17 @@ public sealed class MediaDockDbContext : DbContext
     public DbSet<MetadataCacheEntry> MetadataCache => Set<MetadataCacheEntry>();
     public DbSet<OmdbDailyUsage> OmdbDailyUsage => Set<OmdbDailyUsage>();
     public DbSet<OscarFilm> OscarFilms => Set<OscarFilm>();
+    public DbSet<OscarMovie> OscarMovies => Set<OscarMovie>();
     public DbSet<OscarNomination> OscarNominations => Set<OscarNomination>();
     public DbSet<OscarEnrichmentRun> OscarEnrichmentRuns => Set<OscarEnrichmentRun>();
     public DbSet<GoldenGlobeAward> GoldenGlobeAwards => Set<GoldenGlobeAward>();
     public DbSet<GoldenGlobeGroup> GoldenGlobeGroups => Set<GoldenGlobeGroup>();
+    public DbSet<GoldenGlobeTitle> GoldenGlobeTitles => Set<GoldenGlobeTitle>();
     public DbSet<GoldenGlobeNomination> GoldenGlobeNominations => Set<GoldenGlobeNomination>();
     public DbSet<FavoriteMovie> FavoriteMovies => Set<FavoriteMovie>();
+    public DbSet<ImdbFavoriteMovie> ImdbFavoriteMovies => Set<ImdbFavoriteMovie>();
+    public DbSet<TorrentMovie> TorrentMovies => Set<TorrentMovie>();
+    public DbSet<TorrentRelease> TorrentReleases => Set<TorrentRelease>();
     public DbSet<BackgroundJob> BackgroundJobs => Set<BackgroundJob>();
     public DbSet<BackgroundJobEvent> BackgroundJobEvents => Set<BackgroundJobEvent>();
     public DbSet<BackgroundSchedulerState> BackgroundSchedulerStates => Set<BackgroundSchedulerState>();

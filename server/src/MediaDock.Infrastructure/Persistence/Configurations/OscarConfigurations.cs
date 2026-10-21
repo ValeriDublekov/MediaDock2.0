@@ -4,6 +4,46 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace MediaDock.Infrastructure.Persistence.Configurations;
 
+internal sealed class OscarMovieConfiguration : IEntityTypeConfiguration<OscarMovie>
+{
+    public void Configure(EntityTypeBuilder<OscarMovie> builder)
+    {
+        builder.ToTable("oscar_movies", table =>
+        {
+            table.HasCheckConstraint(
+                "ck_oscar_movies_enrichment_status",
+                "enrichment_status IN ('pending', 'enriched', 'not_found', 'temporary_error')");
+            table.HasCheckConstraint("ck_oscar_movies_enrichment_attempt_count", "enrichment_attempt_count >= 0");
+        });
+        builder.HasKey(entity => entity.Id).HasName("pk_oscar_movies");
+        builder.Property(entity => entity.Id).UseIdentityByDefaultColumn().HasColumnName("id");
+        builder.Property(entity => entity.StableKey).HasColumnName("stable_key").IsRequired();
+        builder.Property(entity => entity.FilmTitle).HasColumnName("film_title").IsRequired();
+        builder.Property(entity => entity.NormalizedTitle).HasColumnName("normalized_title").IsRequired();
+        builder.Property(entity => entity.FilmYear).HasColumnName("film_year");
+        builder.Property(entity => entity.ImdbId).HasColumnName("imdb_id").HasMaxLength(32);
+        builder.Property(entity => entity.EnrichmentStatus)
+            .HasColumnName("enrichment_status")
+            .HasMaxLength(24)
+            .HasDefaultValue("pending")
+            .IsRequired();
+        builder.Property(entity => entity.EnrichmentAttemptCount).HasColumnName("enrichment_attempt_count").HasDefaultValue(0);
+        builder.Property(entity => entity.LastEnrichmentAttemptAt).HasColumnName("last_enrichment_attempt_at");
+        builder.Property(entity => entity.NextEnrichmentAttemptAt).HasColumnName("next_enrichment_attempt_at");
+        builder.Property(entity => entity.LastEnrichmentError).HasColumnName("last_enrichment_error");
+        builder.Property(entity => entity.ImportedAt).HasColumnName("imported_at");
+        builder.Property(entity => entity.UpdatedAt).HasColumnName("updated_at");
+        builder.HasIndex(entity => entity.StableKey).IsUnique().HasDatabaseName("ux_oscar_movies_stable_key");
+        builder.HasIndex(entity => entity.FilmYear).HasDatabaseName("ix_oscar_movies_film_year");
+        builder.HasOne(entity => entity.ImdbTitle)
+            .WithMany()
+            .HasForeignKey(entity => entity.ImdbId)
+            .HasPrincipalKey(imdbTitle => imdbTitle.ImdbId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_oscar_movies_imdb_titles_imdb_id");
+    }
+}
+
 internal sealed class OscarFilmConfiguration : IEntityTypeConfiguration<OscarFilm>
 {
     public void Configure(EntityTypeBuilder<OscarFilm> builder)
@@ -64,6 +104,7 @@ internal sealed class OscarNominationConfiguration : IEntityTypeConfiguration<Os
         builder.HasKey(entity => entity.Id).HasName("pk_oscar_nominations");
         builder.Property(entity => entity.Id).UseIdentityByDefaultColumn().HasColumnName("id");
         builder.Property(entity => entity.OscarFilmId).HasColumnName("oscar_film_id");
+        builder.Property(entity => entity.OscarMovieId).HasColumnName("oscar_movie_id");
         builder.Property(entity => entity.ImportKey).HasColumnName("import_key").IsRequired();
         builder.Property(entity => entity.Ceremony).HasColumnName("ceremony");
         builder.Property(entity => entity.Class).HasColumnName("class").IsRequired();
@@ -86,5 +127,10 @@ internal sealed class OscarNominationConfiguration : IEntityTypeConfiguration<Os
             .HasForeignKey(entity => entity.OscarFilmId)
             .OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("fk_oscar_nominations_films_oscar_film_id");
+        builder.HasOne(entity => entity.OscarMovie)
+            .WithMany(movie => movie.Nominations)
+            .HasForeignKey(entity => entity.OscarMovieId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("fk_oscar_nominations_movies_oscar_movie_id");
     }
 }

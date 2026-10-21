@@ -4,6 +4,7 @@ public sealed class OscarNomination
 {
     public long Id { get; set; }
     public long OscarFilmId { get; set; }
+    public long? OscarMovieId { get; set; }
     public string ImportKey { get; set; } = string.Empty;
     public int Ceremony { get; set; }
     public string Class { get; set; } = string.Empty;
@@ -18,4 +19,5 @@ public sealed class OscarNomination
     public DateTimeOffset UpdatedAt { get; set; }
 
     public OscarFilm OscarFilm { get; set; } = null!;
+    public OscarMovie? OscarMovie { get; set; }
 }
