@@ -16,9 +16,10 @@ public sealed class TorrentTitleMatchApiTests
     {
         const string imdbId = "tt12345678";
         var omdbClient = new StubOmdbClient(imdbId);
+        var omdbClientFactory = new StubOmdbClientFactory(omdbClient);
         await using var host = await CatalogApiTestHost.CreateAsync(
             "mediadock_torrent_title_match_api_test",
-            omdbClient: omdbClient);
+            omdbClientFactory: omdbClientFactory);
         var db = host.Db;
         var observedAt = new DateTimeOffset(2026, 10, 21, 12, 0, 0, TimeSpan.Zero);
         var source = new Source
@@ -41,6 +42,13 @@ public sealed class TorrentTitleMatchApiTests
             LastSeenAt = observedAt,
             UpdatedAt = observedAt
         };
+        db.Settings.Add(new AppSetting
+        {
+            Id = 1,
+            OmdbApiKey = "test-omdb-key",
+            OmdbDailyRequestLimit = 40,
+            UpdatedAt = observedAt
+        });
         db.Sources.Add(source);
         db.TorrentMovies.Add(title);
         await db.SaveChangesAsync();
@@ -95,6 +103,8 @@ public sealed class TorrentTitleMatchApiTests
         Assert.Equal(imdbId, catalogCandidates.Candidates[0].ImdbId);
         Assert.Equal(1, omdbClient.SearchCalls);
         Assert.Equal(1, omdbClient.LastSearchPage);
+        Assert.Equal("test-omdb-key", omdbClientFactory.LastApiKey);
+        Assert.Equal(40, omdbClientFactory.LastDailyRequestLimit);
 
         using var nextCatalogPage = await host.Client.PostAsync(
             $"/api/titles/{title.Id}/imdb-candidates?page=2",
@@ -170,6 +180,19 @@ public sealed class TorrentTitleMatchApiTests
                 [new MetadataSearchCandidate("Quiet River", 2004, imdbId, "movie")],
                 1,
                 HttpAttempts: 1));
+        }
+    }
+
+    private sealed class StubOmdbClientFactory(IOmdbClient client) : IOmdbClientFactory
+    {
+        public string? LastApiKey { get; private set; }
+        public int LastDailyRequestLimit { get; private set; }
+
+        public IOmdbClient Create(string apiKey, int dailyRequestLimit)
+        {
+            LastApiKey = apiKey;
+            LastDailyRequestLimit = dailyRequestLimit;
+            return client;
         }
     }
 }

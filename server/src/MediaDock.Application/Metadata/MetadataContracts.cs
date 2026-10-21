@@ -104,6 +104,11 @@ public interface IOmdbClient
             ErrorCode: "search_not_supported"));
 }
 
+public interface IOmdbClientFactory
+{
+    IOmdbClient Create(string apiKey, int dailyRequestLimit);
+}
+
 public interface IOmdbRequestBudget
 {
     Task<bool> TryReserveAsync(

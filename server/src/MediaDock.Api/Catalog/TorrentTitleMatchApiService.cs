@@ -33,8 +33,8 @@ internal interface ITorrentTitleMatchApiService
 
 internal sealed class TorrentTitleMatchApiService(
     MediaDockDbContext dbContext,
-    IOmdbClient omdbClient,
-    MetadataResolver metadataResolver,
+    IOmdbClientFactory omdbClientFactory,
+    IMetadataCacheStore metadataCache,
     IRssIngestionRepository ingestionRepository,
     TimeProvider timeProvider) : ITorrentTitleMatchApiService
 {
@@ -248,6 +248,7 @@ internal sealed class TorrentTitleMatchApiService(
         int page,
         CancellationToken cancellationToken)
     {
+        var omdbClient = await CreateOmdbClientAsync(cancellationToken);
         var result = await omdbClient.SearchAsync(
             title,
             sourceType,
@@ -270,6 +271,8 @@ internal sealed class TorrentTitleMatchApiService(
 
     private async Task<MetadataDetails> ResolveMetadataAsync(string imdbId, CancellationToken cancellationToken)
     {
+        var omdbClient = await CreateOmdbClientAsync(cancellationToken);
+        var metadataResolver = new MetadataResolver(omdbClient, metadataCache);
         var resolution = await metadataResolver.ResolveByImdbIdAsync(
             imdbId,
             timeProvider.GetUtcNow(),
@@ -283,6 +286,20 @@ internal sealed class TorrentTitleMatchApiService(
         }
 
         return resolution.Metadata;
+    }
+
+    private async Task<IOmdbClient> CreateOmdbClientAsync(CancellationToken cancellationToken)
+    {
+        var settings = await dbContext.Settings.AsNoTracking()
+            .Where(value => value.Id == 1)
+            .Select(value => new { value.OmdbApiKey, value.OmdbDailyRequestLimit })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(settings?.OmdbApiKey) || settings.OmdbDailyRequestLimit <= 0)
+        {
+            throw new ApiConflictException("Configure valid OMDb provider settings before matching torrent titles.");
+        }
+
+        return omdbClientFactory.Create(settings.OmdbApiKey, settings.OmdbDailyRequestLimit);
     }
 
     private static string NormalizeImdbId(string imdbId)

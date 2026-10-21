@@ -35,7 +35,7 @@ internal sealed class CatalogApiTestHost : IAsyncDisposable
     internal static async Task<CatalogApiTestHost> CreateAsync(
         string database,
         IReadOnlyDictionary<string, string?>? buildMetadata = null,
-        IOmdbClient? omdbClient = null)
+        IOmdbClientFactory? omdbClientFactory = null)
     {
         var postgres = PostgreSqlTestContainerBuilder.Create(database).Build();
         MediaDockDbContext? db = null;
@@ -49,7 +49,7 @@ internal sealed class CatalogApiTestHost : IAsyncDisposable
             db = new MediaDockDbContext(dbOptions);
             await db.Database.MigrateAsync();
 
-            factory = new ApiFactory(postgres.GetConnectionString(), buildMetadata, omdbClient);
+            factory = new ApiFactory(postgres.GetConnectionString(), buildMetadata, omdbClientFactory);
             var client = factory.CreateClient();
             return new CatalogApiTestHost(postgres, db, factory, client);
         }
@@ -77,7 +77,7 @@ internal sealed class CatalogApiTestHost : IAsyncDisposable
     private sealed class ApiFactory(
         string connectionString,
         IReadOnlyDictionary<string, string?>? buildMetadata,
-        IOmdbClient? omdbClient) : WebApplicationFactory<Program>
+        IOmdbClientFactory? omdbClientFactory) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -98,12 +98,12 @@ internal sealed class CatalogApiTestHost : IAsyncDisposable
                 configuration.AddInMemoryCollection(values);
             });
 
-            if (omdbClient is not null)
+            if (omdbClientFactory is not null)
             {
                 builder.ConfigureTestServices(services =>
                 {
-                    services.RemoveAll<IOmdbClient>();
-                    services.AddSingleton(omdbClient);
+                    services.RemoveAll<IOmdbClientFactory>();
+                    services.AddSingleton(omdbClientFactory);
                 });
             }
         }
