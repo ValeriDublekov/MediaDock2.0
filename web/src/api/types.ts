@@ -54,6 +54,25 @@ export interface TitleDetails extends CatalogTitle {
   updatedAt: string
 }
 
+export interface ImdbCandidate {
+  title: string
+  year: number | null
+  imdbId: string | null
+  sourceType: string
+}
+
+export interface ImdbCandidateSearch {
+  status: 'found' | 'not_found' | 'quota_exceeded' | 'budget_exhausted' | 'transport_failure' | 'authentication_failure' | 'invalid_request' | 'provider_failure'
+  candidates: ImdbCandidate[]
+  totalResults: number
+  errorCode: string | null
+}
+
+export interface AppliedImdbCandidate {
+  torrentTitleId: number
+  imdbId: string
+}
+
 export type OscarEnrichmentStatus = 'pending' | 'enriched' | 'problem' | 'not_found' | 'temporary_error'
 export type GoldenGlobeEnrichmentStatus = OscarEnrichmentStatus
 

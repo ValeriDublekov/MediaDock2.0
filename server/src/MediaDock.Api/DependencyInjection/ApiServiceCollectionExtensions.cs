@@ -50,6 +50,7 @@ public static class ApiServiceCollectionExtensions
 		services.AddKeyedScoped<IBackgroundJobHandler, GoldenGlobeManualRefreshBackgroundJobHandler>("golden_globe_manual_refresh");
 		services.AddHostedService<BackgroundJobDispatcher>();
 		services.AddScoped<ICatalogApiService, CatalogApiService>();
+		services.AddScoped<ITorrentTitleMatchApiService, TorrentTitleMatchApiService>();
 		services.AddScoped<IMovieAwardsApiService, MovieAwardsApiService>();
 		services.AddScoped<FavoriteApiService>();
 		services.AddScoped<PersonalRatingsApiService>();

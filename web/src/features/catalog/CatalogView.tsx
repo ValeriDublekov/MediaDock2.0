@@ -4,6 +4,7 @@ import type { CatalogQuery, CatalogTitle, FeedType, MediaType, PageResponse } fr
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { ImdbRatingRangeFilter } from '../../components/ImdbRatingRangeFilter'
 import { Pagination } from '../../components/Pagination'
+import { ImdbCandidatePicker, type ImdbCandidateTarget } from '../../components/ImdbCandidatePicker'
 import { YearRangeFilter } from '../../components/YearRangeFilter'
 import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
@@ -98,6 +99,7 @@ export function CatalogView() {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selectedTitleId, setSelectedTitleId] = useState<number | null>(null)
+  const [imdbMatchTarget, setImdbMatchTarget] = useState<ImdbCandidateTarget | null>(null)
   const [detailsSection, setDetailsSection] = useState<'details' | 'torrents'>('details')
   const awardsRequestKey = movieAwardsRequestKey(result?.items.map((title) => title.imdbId) ?? [])
   const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
@@ -303,7 +305,23 @@ export function CatalogView() {
           <Pagination onPageChange={setPage} page={result} />
         </>
       )}
-      {selectedTitleId !== null && <TitleDetailsDialog initialSection={detailsSection} onClose={() => setSelectedTitleId(null)} titleId={selectedTitleId} />}
+      {selectedTitleId !== null && <TitleDetailsDialog
+        initialSection={detailsSection}
+        onClose={() => setSelectedTitleId(null)}
+        onFindImdbMatch={(id, title) => {
+          setSelectedTitleId(null)
+          setImdbMatchTarget({ source: 'catalog', id, title })
+        }}
+        titleId={selectedTitleId}
+      />}
+      {imdbMatchTarget && <ImdbCandidatePicker
+        onApplied={() => {
+          setImdbMatchTarget(null)
+          setAttempt((current) => current + 1)
+        }}
+        onClose={() => setImdbMatchTarget(null)}
+        target={imdbMatchTarget}
+      />}
     </section>
   )
 }

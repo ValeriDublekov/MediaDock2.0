@@ -3,6 +3,7 @@ import { getParseLogs, getScanRuns } from '../../api/client'
 import type { PageResponse, ParseLog, ScanRun } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
+import { ImdbCandidatePicker, type ImdbCandidateTarget } from '../../components/ImdbCandidatePicker'
 import { formatDate, formatWords } from '../../shared/format'
 
 type HistoryTab = 'scans' | 'parses'
@@ -23,6 +24,7 @@ export function HistoryView({ scanRunId = null, onClearScanRun }: {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const [imdbMatchTarget, setImdbMatchTarget] = useState<ImdbCandidateTarget | null>(null)
 
   useEffect(() => {
     let current = true
@@ -100,10 +102,25 @@ export function HistoryView({ scanRunId = null, onClearScanRun }: {
       {!loading && !error && activeResult && activeResult.items.length > 0 && (
         <>
           {tab === 'scans' && <ScanRunTable items={scanResult?.items ?? []} />}
-          {tab === 'parses' && <ParseLogTable items={parseResult?.items ?? []} />}
+          {tab === 'parses' && <ParseLogTable
+            items={parseResult?.items ?? []}
+            onRetry={(entry) => setImdbMatchTarget({
+              source: 'parse-log',
+              id: entry.id,
+              title: entry.parsedTitle ?? entry.rawTitle,
+            })}
+          />}
           <Pagination onPageChange={setPage} page={activeResult} />
         </>
       )}
+      {imdbMatchTarget && <ImdbCandidatePicker
+        onApplied={() => {
+          setImdbMatchTarget(null)
+          setAttempt((current) => current + 1)
+        }}
+        onClose={() => setImdbMatchTarget(null)}
+        target={imdbMatchTarget}
+      />}
     </section>
   )
 }
@@ -127,11 +144,11 @@ function ScanRunTable({ items }: { items: ScanRun[] }) {
   )
 }
 
-function ParseLogTable({ items }: { items: ParseLog[] }) {
+function ParseLogTable({ items, onRetry }: { items: ParseLog[]; onRetry: (entry: ParseLog) => void }) {
   return (
     <div className="table-wrap">
       <table className="data-table">
-        <thead><tr><th>RAW TITLE</th><th>FEED</th><th>PARSE</th><th>DIAGNOSIS</th><th>RETRY</th><th>PROCESSED</th></tr></thead>
+        <thead><tr><th>RAW TITLE</th><th>FEED</th><th>PARSE</th><th>DIAGNOSIS</th><th>RETRY</th><th>PROCESSED</th><th>ACTION</th></tr></thead>
         <tbody>{items.map((entry) => (
           <tr key={entry.id}>
             <td>{entry.rawTitle}<span className="subtle-line">{entry.parsedTitle ?? 'No normalized title'}{entry.parsedYear ? ` | ${entry.parsedYear}` : ''}</span></td>
@@ -146,6 +163,12 @@ function ParseLogTable({ items }: { items: ParseLog[] }) {
             </td>
             <td>{formatWords(entry.retryState)}<span className="subtle-line">{entry.attemptCount} attempts</span></td>
             <td>{formatDate(entry.processedAt)}</td>
+            <td>{entry.retryState !== 'resolved' && <button
+              aria-label={`Retry IMDb match for ${entry.parsedTitle ?? entry.rawTitle}`}
+              className="button button-secondary"
+              onClick={() => onRetry(entry)}
+              type="button"
+            >Retry match</button>}</td>
           </tr>
         ))}</tbody>
       </table>

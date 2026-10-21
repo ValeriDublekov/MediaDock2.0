@@ -11,6 +11,8 @@ import type {
   DeploymentActionResult,
   DeploymentStatus,
   FavoriteMovie,
+  AppliedImdbCandidate,
+  ImdbCandidateSearch,
   OmdbDiagnostic,
   OmdbDailyUsage,
   PersonalRatingsImportResult,
@@ -183,6 +185,17 @@ export function getTitle(id: number, fetcher?: typeof fetch) {
   return requestJson<TitleDetails>(`/titles/${id}`, {}, fetcher)
 }
 
+export function searchCatalogTitleImdbCandidates(id: number, page = 1, fetcher?: typeof fetch) {
+  return requestJson<ImdbCandidateSearch>(withQuery(`/titles/${id}/imdb-candidates`, { page }), { method: 'POST' }, fetcher)
+}
+
+export function applyCatalogTitleImdbCandidate(id: number, imdbId: string, fetcher?: typeof fetch) {
+  return requestJson<AppliedImdbCandidate>(`/titles/${id}/imdb-match`, {
+    method: 'POST',
+    body: JSON.stringify({ imdbId }),
+  }, fetcher)
+}
+
 export function getTitleOccurrences(
   id: number,
   query: { page: number; pageSize: number },
@@ -314,6 +327,17 @@ export function getScanRuns(query: ScanRunQuery, fetcher?: typeof fetch) {
 
 export function getParseLogs(query: ParseLogQuery, fetcher?: typeof fetch) {
   return requestJson<PageResponse<ParseLog>>(withQuery('/parse-logs', query), {}, fetcher)
+}
+
+export function searchParseLogImdbCandidates(id: number, page = 1, fetcher?: typeof fetch) {
+  return requestJson<ImdbCandidateSearch>(withQuery(`/parse-logs/${id}/imdb-candidates`, { page }), { method: 'POST' }, fetcher)
+}
+
+export function applyParseLogImdbCandidate(id: number, imdbId: string, fetcher?: typeof fetch) {
+  return requestJson<AppliedImdbCandidate>(`/parse-logs/${id}/imdb-match`, {
+    method: 'POST',
+    body: JSON.stringify({ imdbId }),
+  }, fetcher)
 }
 
 export async function getActiveBackgroundJob(fetcher?: typeof fetch) {

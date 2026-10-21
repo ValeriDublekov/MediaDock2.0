@@ -178,6 +178,20 @@ button:disabled { cursor: not-allowed; }
 
 .detail-backdrop { position: fixed; z-index: 5; inset: 0; display: grid; place-items: center; padding: 18px; background: rgba(12, 29, 24, 0.62); }
 .detail-dialog { width: min(760px, 100%); max-height: min(88vh, 900px); overflow: auto; border: 1px solid #bdcec1; background: #f8faf7; box-shadow: 0 18px 60px rgba(7, 25, 19, 0.28); }
+.imdb-candidate-dialog { width: min(620px, 100%); }
+.imdb-match-trigger { border-block: 1px solid #d8e1d9; padding: 12px 0; }
+.imdb-candidate-count, .imdb-candidate-empty { margin: 0; color: #596560; font-size: 12px; }
+.imdb-candidate-list { display: grid; gap: 0; margin: 0; border-top: 1px solid #d4ded5; padding: 0; list-style: none; }
+.imdb-candidate-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; border-bottom: 1px solid #d4ded5; padding: 12px 2px; }
+.imdb-candidate-copy { display: grid; min-width: 0; gap: 5px; }
+.imdb-candidate-copy strong { color: #30483c; font-size: 13px; overflow-wrap: anywhere; }
+.imdb-candidate-copy span { color: #7b8780; font-size: 11px; }
+.imdb-candidate-actions { display: flex; align-items: center; gap: 14px; }
+.imdb-candidate-actions a { color: #a55239; font-size: 11px; font-weight: 700; }
+.imdb-candidate-actions .button { min-height: 33px; }
+.imdb-candidate-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #d8e1d9; padding-top: 12px; color: #66736d; font-size: 11px; }
+.imdb-candidate-pagination .button { min-height: 32px; }
+.imdb-candidate-error { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #a64e35; font-size: 12px; overflow-wrap: anywhere; }
 .detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; border-bottom: 1px solid #d5dfd6; padding: 22px 24px 18px; }
 .detail-header h2 { margin: 0; color: #1c372d; font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 400; line-height: 1.2; }
 .detail-meta { margin-top: 7px; color: #758179; font-size: 11px; }
@@ -493,6 +507,11 @@ button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offs
 .state-pill.is-partial { border-color: #dfc18a; color: #76551e; background: #fbf2df; }
 .state-pill.is-failed { border-color: #e5b5a3; color: #a64e35; background: #fff4ef; }
 .ingestion-upload { display: grid; grid-template-columns: minmax(0, 1fr) minmax(140px, 0.32fr) auto; align-items: end; gap: 12px; border-top: 1px solid #d4ded5; padding: 15px 2px 5px; }
+
+@media (max-width: 560px) {
+  .imdb-candidate-list li { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+  .imdb-candidate-actions { justify-content: space-between; }
+}
 .ingestion-upload input[type="file"] { width: 100%; min-height: 36px; color: #40574a; font-size: 11px; }
 .ingestion-upload .form-error { grid-column: 1 / -1; }
 .ingestion-error { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 10px; color: #a64e35; font-size: 11px; overflow-wrap: anywhere; }

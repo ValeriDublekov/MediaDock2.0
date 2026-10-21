@@ -11,9 +11,10 @@ interface TitleDetailsDialogProps {
   titleId: number
   initialSection?: 'details' | 'torrents'
   onClose: () => void
+  onFindImdbMatch?: (titleId: number, title: string) => void
 }
 
-export function TitleDetailsDialog({ titleId, initialSection = 'details', onClose }: TitleDetailsDialogProps) {
+export function TitleDetailsDialog({ titleId, initialSection = 'details', onClose, onFindImdbMatch }: TitleDetailsDialogProps) {
   const [title, setTitle] = useState<TitleDetails | null>(null)
   const [occurrences, setOccurrences] = useState<PageResponse<Occurrence> | null>(null)
   const [oscars, setOscars] = useState<OscarFilm[]>([])
@@ -90,6 +91,11 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
                 <div><dt>Countries</dt><dd>{title.countries.join(', ') || 'Not tagged'}</dd></div>
                 <div><dt>First seen</dt><dd>{formatDate(title.firstSeenAt)}</dd></div>
               </dl>
+              {onFindImdbMatch && <div className="imdb-match-trigger">
+                <button className="button button-secondary" onClick={() => onFindImdbMatch(title.id, title.title)} type="button">
+                  {title.imdbId ? 'Change IMDb match' : 'Find IMDb match'}
+                </button>
+              </div>}
               <FavoriteControls from={oscars.length ? 'oscar' : 'catalog'} imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} />
               {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
               <MovieAwardsList awards={awards} />

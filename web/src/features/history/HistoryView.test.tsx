@@ -1,12 +1,14 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { getParseLogs, getScanRuns } from '../../api/client'
-import type { PageResponse, ParseLog, ScanRun } from '../../api/types'
+import { applyParseLogImdbCandidate, getParseLogs, getScanRuns, searchParseLogImdbCandidates } from '../../api/client'
+import type { ImdbCandidateSearch, PageResponse, ParseLog, ScanRun } from '../../api/types'
 import { HistoryView } from './HistoryView'
 
 vi.mock('../../api/client', () => ({
   getParseLogs: vi.fn(),
   getScanRuns: vi.fn(),
+  searchParseLogImdbCandidates: vi.fn(),
+  applyParseLogImdbCandidate: vi.fn(),
 }))
 
 function createLog(overrides: Partial<ParseLog>): ParseLog {
@@ -82,5 +84,32 @@ describe('HistoryView parse diagnosis', () => {
     expect(await screen.findByText('Parsing failed')).toBeTruthy()
     expect(screen.getByText('OMDb found no result')).toBeTruthy()
     expect(screen.getByText('Lookup names: English Title → Локално име')).toBeTruthy()
+  })
+
+  it('lets an administrator apply a searched IMDb candidate from an unresolved parse log', async () => {
+    const entry = createLog({ id: 42, retryState: 'retryable', omdbStatus: 'not_requested' })
+    const candidates: ImdbCandidateSearch = {
+      status: 'found',
+      candidates: [{ title: 'Example Film', year: 2025, imdbId: 'tt87654321', sourceType: 'movie' }],
+      totalResults: 12,
+      errorCode: null,
+    }
+    vi.mocked(getParseLogs).mockResolvedValue(createPage([entry]))
+    vi.mocked(getScanRuns).mockResolvedValue(createPage<ScanRun>([]))
+    vi.mocked(searchParseLogImdbCandidates).mockResolvedValue(candidates)
+    vi.mocked(applyParseLogImdbCandidate).mockResolvedValue({ torrentTitleId: 17, imdbId: 'tt87654321' })
+
+    render(<HistoryView scanRunId={99} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry IMDb match for Example Film' }))
+
+    expect(await screen.findByRole('link', { name: 'IMDb' })).toBeTruthy()
+    expect(screen.getByText('Page 1 of 2')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Next candidate page' }))
+    await waitFor(() => expect(searchParseLogImdbCandidates).toHaveBeenLastCalledWith(42, 2))
+    expect(await screen.findByText('Page 2 of 2')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Use match' }))
+
+    await waitFor(() => expect(applyParseLogImdbCandidate).toHaveBeenCalledWith(42, 'tt87654321'))
+    await waitFor(() => expect(getParseLogs).toHaveBeenCalledTimes(2))
   })
 })

@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, getCatalog, getMovieAwards, getTitle } from '../../api/client'
-import type { CatalogTitle, MovieAwardRecognition, PageResponse } from '../../api/types'
+import { ApiError, applyCatalogTitleImdbCandidate, getCatalog, getMovieAwards, getTitle, getTitleOccurrences, searchCatalogTitleImdbCandidates } from '../../api/client'
+import type { CatalogTitle, ImdbCandidateSearch, MovieAwardRecognition, PageResponse, TitleDetails } from '../../api/types'
 import { CatalogView } from './CatalogView'
 
 vi.mock('../../api/client', () => ({
@@ -11,6 +11,8 @@ vi.mock('../../api/client', () => ({
   getTitleOccurrences: vi.fn(),
   getTitleOscars: vi.fn().mockResolvedValue([]),
   getMovieAwards: vi.fn().mockResolvedValue([]),
+  searchCatalogTitleImdbCandidates: vi.fn(),
+  applyCatalogTitleImdbCandidate: vi.fn(),
 }))
 
 const catalogRequest = vi.mocked(getCatalog)
@@ -72,6 +74,51 @@ describe('CatalogView', () => {
 
     expect(await screen.findByRole('dialog')).toBeTruthy()
     expect(getTitle).toHaveBeenCalledWith(title.id)
+  })
+
+  it('lets a user confirm a searched IMDb candidate from catalog details', async () => {
+    const details: TitleDetails = {
+      ...title,
+      imdbId: null,
+      imdbRating: null,
+      genres: [],
+      countries: [],
+      broadcastRangeStartYear: null,
+      broadcastRangeEndYear: null,
+      broadcastRangeRaw: null,
+      imdbVotes: null,
+      metascore: null,
+      director: null,
+      plot: null,
+      runtime: null,
+      awards: null,
+      boxOffice: null,
+      firstSeenAt: '2026-09-28T12:00:00Z',
+      updatedAt: '2026-09-28T12:00:00Z',
+    }
+    const candidates: ImdbCandidateSearch = {
+      status: 'found',
+      candidates: [{ title: 'Quiet River', year: 2004, imdbId: 'tt87654321', sourceType: 'series' }],
+      totalResults: 1,
+      errorCode: null,
+    }
+    catalogRequest.mockResolvedValue(page([title]))
+    vi.mocked(getTitle).mockResolvedValue(details)
+    vi.mocked(getTitleOccurrences).mockResolvedValue({ items: [], page: 1, pageSize: 5, totalCount: 0, totalPages: 0 })
+    vi.mocked(searchCatalogTitleImdbCandidates).mockResolvedValue(candidates)
+    vi.mocked(applyCatalogTitleImdbCandidate).mockResolvedValue({ torrentTitleId: title.id, imdbId: 'tt87654321' })
+
+    render(<CatalogView />)
+    fireEvent.click(await screen.findByRole('button', { name: 'View Quiet River details' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Find IMDb match' }))
+
+    expect(await screen.findByRole('heading', { name: 'Choose a match' })).toBeTruthy()
+    const imdbLink = screen.getByRole('link', { name: 'IMDb' })
+    expect(imdbLink.getAttribute('href')).toBe('https://www.imdb.com/title/tt87654321/')
+    fireEvent.click(screen.getByRole('button', { name: 'Use match' }))
+
+    await waitFor(() => expect(applyCatalogTitleImdbCandidate).toHaveBeenCalledWith(title.id, 'tt87654321'))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
   it('opens the title directly on IMDb from the catalog card', async () => {

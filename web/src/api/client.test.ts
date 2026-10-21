@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   ApiError,
   addFavorite,
+  applyCatalogTitleImdbCandidate,
+  applyParseLogImdbCandidate,
   enqueueFailedEntryRecheck,
   enqueueGoldenGlobeEnrichment,
   enqueueGoldenGlobeImport,
@@ -29,6 +31,8 @@ import {
   importPersonalRatings,
   requestJson,
   requestRegistration,
+  searchCatalogTitleImdbCandidates,
+  searchParseLogImdbCandidates,
   runDeploymentAction,
   updateProviderSettings,
   updateFavorite,
@@ -56,6 +60,28 @@ function fetchStub(result: Response | Error) {
 }
 
 describe('typed API client', () => {
+  it('searches and applies explicit IMDb candidates from catalog and parse history', async () => {
+    const searchResponse = {
+      status: 'found' as const,
+      candidates: [{ title: 'Quiet River', year: 2004, imdbId: 'tt12345678', sourceType: 'movie' }],
+      totalResults: 1,
+      errorCode: null,
+    }
+    const stub = fetchStub(response(200, searchResponse))
+
+    await searchCatalogTitleImdbCandidates(7, 2, stub.fetcher)
+    await applyCatalogTitleImdbCandidate(7, 'tt12345678', stub.fetcher)
+    await searchParseLogImdbCandidates(42, 1, stub.fetcher)
+    await applyParseLogImdbCandidate(42, 'tt12345678', stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/titles/7/imdb-candidates?page=2')
+    expect(stub.calls[0]?.init?.method).toBe('POST')
+    expect(String(stub.calls[1]?.input)).toBe('/api/titles/7/imdb-match')
+    expect(JSON.parse(String(stub.calls[1]?.init?.body))).toEqual({ imdbId: 'tt12345678' })
+    expect(String(stub.calls[2]?.input)).toBe('/api/parse-logs/42/imdb-candidates?page=1')
+    expect(String(stub.calls[3]?.input)).toBe('/api/parse-logs/42/imdb-match')
+  })
+
   it('uses IMDb IDs for favorite create and marker requests', async () => {
     const stub = fetchStub(response(200, {}))
 

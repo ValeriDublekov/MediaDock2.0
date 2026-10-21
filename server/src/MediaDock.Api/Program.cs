@@ -76,6 +76,7 @@ app.MapHealthEndpoints();
 app.MapAuthenticationEndpoints();
 app.MapUserAdministrationEndpoints();
 app.MapCatalogEndpoints();
+app.MapTorrentTitleMatchEndpoints();
 app.MapMovieAwardsEndpoints();
 app.MapFavoriteEndpoints();
 app.MapPersonalRatingsEndpoints();

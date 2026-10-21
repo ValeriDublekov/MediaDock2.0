@@ -1,9 +1,13 @@
 using System.Net.Http;
+using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Testcontainers.PostgreSql;
 
 namespace MediaDock.IntegrationTests;
@@ -30,7 +34,8 @@ internal sealed class CatalogApiTestHost : IAsyncDisposable
 
     internal static async Task<CatalogApiTestHost> CreateAsync(
         string database,
-        IReadOnlyDictionary<string, string?>? buildMetadata = null)
+        IReadOnlyDictionary<string, string?>? buildMetadata = null,
+        IOmdbClient? omdbClient = null)
     {
         var postgres = PostgreSqlTestContainerBuilder.Create(database).Build();
         MediaDockDbContext? db = null;
@@ -44,7 +49,7 @@ internal sealed class CatalogApiTestHost : IAsyncDisposable
             db = new MediaDockDbContext(dbOptions);
             await db.Database.MigrateAsync();
 
-            factory = new ApiFactory(postgres.GetConnectionString(), buildMetadata);
+            factory = new ApiFactory(postgres.GetConnectionString(), buildMetadata, omdbClient);
             var client = factory.CreateClient();
             return new CatalogApiTestHost(postgres, db, factory, client);
         }
@@ -71,7 +76,8 @@ internal sealed class CatalogApiTestHost : IAsyncDisposable
 
     private sealed class ApiFactory(
         string connectionString,
-        IReadOnlyDictionary<string, string?>? buildMetadata) : WebApplicationFactory<Program>
+        IReadOnlyDictionary<string, string?>? buildMetadata,
+        IOmdbClient? omdbClient) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -91,6 +97,15 @@ internal sealed class CatalogApiTestHost : IAsyncDisposable
 
                 configuration.AddInMemoryCollection(values);
             });
+
+            if (omdbClient is not null)
+            {
+                builder.ConfigureTestServices(services =>
+                {
+                    services.RemoveAll<IOmdbClient>();
+                    services.AddSingleton(omdbClient);
+                });
+            }
         }
     }
 }
