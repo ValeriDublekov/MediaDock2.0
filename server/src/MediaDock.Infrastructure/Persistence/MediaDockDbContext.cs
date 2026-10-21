@@ -10,25 +10,20 @@ public sealed class MediaDockDbContext : DbContext
     {
     }
 
-    public DbSet<Title> Titles => Set<Title>();
     public DbSet<ImdbTitle> ImdbTitles => Set<ImdbTitle>();
     public DbSet<Source> Sources => Set<Source>();
-    public DbSet<Occurrence> Occurrences => Set<Occurrence>();
     public DbSet<RssItemProcessingState> RssItemStates => Set<RssItemProcessingState>();
     public DbSet<ScanRun> ScanRuns => Set<ScanRun>();
     public DbSet<ParseLog> ParseLogs => Set<ParseLog>();
     public DbSet<AppSetting> Settings => Set<AppSetting>();
     public DbSet<MetadataCacheEntry> MetadataCache => Set<MetadataCacheEntry>();
     public DbSet<OmdbDailyUsage> OmdbDailyUsage => Set<OmdbDailyUsage>();
-    public DbSet<OscarFilm> OscarFilms => Set<OscarFilm>();
     public DbSet<OscarMovie> OscarMovies => Set<OscarMovie>();
     public DbSet<OscarNomination> OscarNominations => Set<OscarNomination>();
     public DbSet<OscarEnrichmentRun> OscarEnrichmentRuns => Set<OscarEnrichmentRun>();
     public DbSet<GoldenGlobeAward> GoldenGlobeAwards => Set<GoldenGlobeAward>();
-    public DbSet<GoldenGlobeGroup> GoldenGlobeGroups => Set<GoldenGlobeGroup>();
     public DbSet<GoldenGlobeTitle> GoldenGlobeTitles => Set<GoldenGlobeTitle>();
     public DbSet<GoldenGlobeNomination> GoldenGlobeNominations => Set<GoldenGlobeNomination>();
-    public DbSet<FavoriteMovie> FavoriteMovies => Set<FavoriteMovie>();
     public DbSet<ImdbFavoriteMovie> ImdbFavoriteMovies => Set<ImdbFavoriteMovie>();
     public DbSet<TorrentMovie> TorrentMovies => Set<TorrentMovie>();
     public DbSet<TorrentRelease> TorrentReleases => Set<TorrentRelease>();

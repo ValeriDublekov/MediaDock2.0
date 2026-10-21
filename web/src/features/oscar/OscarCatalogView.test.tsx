@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { addFavorite, getFavorites, getOscarCategories, getOscarFilm, getOscarFilms, getTitleOccurrences, getTitleOscars, updateFavorite } from '../../api/client'
+import { addFavorite, getFavorites, getOscarCategories, getOscarFilm, getOscarFilms, updateFavorite } from '../../api/client'
 import type { FavoriteMovie, OscarFilm, OscarNomination, PageResponse } from '../../api/types'
 import { FavoriteProvider } from '../favorites/FavoriteContext'
 import { OscarCatalogView } from './OscarCatalogView'
@@ -9,9 +9,7 @@ vi.mock('../../api/client', () => ({
   getOscarFilm: vi.fn(),
   getOscarCategories: vi.fn(),
   getOscarFilms: vi.fn(),
-  getTitleOscars: vi.fn(),
   getMovieAwards: vi.fn().mockResolvedValue([]),
-  getTitleOccurrences: vi.fn(),
   getFavorites: vi.fn(),
   addFavorite: vi.fn(),
   updateFavorite: vi.fn(),
@@ -19,8 +17,6 @@ vi.mock('../../api/client', () => ({
 
 const filmRequest = vi.mocked(getOscarFilms)
 const detailsRequest = vi.mocked(getOscarFilm)
-const titleOscarsRequest = vi.mocked(getTitleOscars)
-const occurrencesRequest = vi.mocked(getTitleOccurrences)
 const favoritesRequest = vi.mocked(getFavorites)
 const addRequest = vi.mocked(addFavorite)
 const updateRequest = vi.mocked(updateFavorite)
@@ -66,7 +62,6 @@ const nominations: OscarNomination[] = [
 
 const film: OscarFilm = {
   id: 7,
-  titleId: 19,
   title: 'The Shape of Water',
   metadataTitle: 'The Shape of Water',
   metadataYear: 2017,
@@ -100,8 +95,6 @@ describe('OscarCatalogView', () => {
       'BEST PICTURE', 'DIRECTING', 'WRITING (Original Screenplay)', 'WRITING (Adapted Screenplay)', 'CINEMATOGRAPHY',
     ])
     detailsRequest.mockReset()
-    titleOscarsRequest.mockReset()
-    occurrencesRequest.mockReset()
     favoritesRequest.mockReset()
     addRequest.mockReset()
     updateRequest.mockReset()
@@ -273,8 +266,6 @@ describe('OscarCatalogView', () => {
     }
     filmRequest.mockResolvedValue(page([film]))
     detailsRequest.mockResolvedValue(awardFilm)
-    titleOscarsRequest.mockResolvedValue([awardFilm])
-    occurrencesRequest.mockResolvedValue({ items: [], page: 1, pageSize: 5, totalCount: 0, totalPages: 0 })
     render(<OscarCatalogView />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'View The Shape of Water Oscar details' }))

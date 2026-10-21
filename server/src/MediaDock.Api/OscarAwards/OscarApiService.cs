@@ -40,40 +40,30 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
             });
         }
 
-        var yearBounds = await dbContext.OscarFilms
+        var yearBounds = await dbContext.OscarMovies
             .AsNoTracking()
             .GroupBy(_ => 1)
             .Select(group => new YearBounds(
                 group.Min(film => film.FilmYear),
                 group.Max(film => film.FilmYear)))
             .FirstOrDefaultAsync(cancellationToken);
-        var imdbRatingBounds = await dbContext.OscarFilms
+        var imdbRatingBounds = await dbContext.OscarMovies
             .AsNoTracking()
-            .Where(film => (film.ImdbTitle == null
-                ? film.Title.ImdbTitle == null ? film.Title.ImdbRating : film.Title.ImdbTitle.ImdbRating
-                : film.ImdbTitle.ImdbRating).HasValue)
+            .Where(film => film.ImdbTitle != null && film.ImdbTitle.ImdbRating.HasValue)
             .GroupBy(_ => 1)
             .Select(group => new ImdbRatingBounds(
-                group.Min(film => (film.ImdbTitle == null
-                    ? film.Title.ImdbTitle == null ? film.Title.ImdbRating : film.Title.ImdbTitle.ImdbRating
-                    : film.ImdbTitle.ImdbRating)!.Value),
-                group.Max(film => (film.ImdbTitle == null
-                    ? film.Title.ImdbTitle == null ? film.Title.ImdbRating : film.Title.ImdbTitle.ImdbRating
-                    : film.ImdbTitle.ImdbRating)!.Value)))
+                group.Min(film => film.ImdbTitle!.ImdbRating!.Value),
+                group.Max(film => film.ImdbTitle!.ImdbRating!.Value)))
             .FirstOrDefaultAsync(cancellationToken);
 
-        IQueryable<OscarFilm> films = dbContext.OscarFilms.AsNoTracking();
+        IQueryable<OscarMovie> films = dbContext.OscarMovies.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var pattern = $"%{query.Search.Trim()}%";
             films = films.Where(film => EF.Functions.ILike(film.FilmTitle, pattern)
                 || EF.Functions.ILike(film.NormalizedTitle, pattern)
-                || EF.Functions.ILike(film.Title.TitleText, pattern)
-                || EF.Functions.ILike(film.Title.NormalizedTitle, pattern)
                 || (film.ImdbTitle != null && film.ImdbTitle.TitleText != null
-                    && EF.Functions.ILike(film.ImdbTitle.TitleText, pattern))
-                || (film.Title.ImdbTitle != null && film.Title.ImdbTitle.TitleText != null
-                    && EF.Functions.ILike(film.Title.ImdbTitle.TitleText, pattern)));
+                    && EF.Functions.ILike(film.ImdbTitle.TitleText, pattern)));
         }
 
         if (query.YearFrom is { } minimumYear)
@@ -88,16 +78,12 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
 
         if (query.ImdbRatingFrom is { } minimumRating)
         {
-            films = films.Where(film => (film.ImdbTitle == null
-                ? film.Title.ImdbTitle == null ? film.Title.ImdbRating : film.Title.ImdbTitle.ImdbRating
-                : film.ImdbTitle.ImdbRating) >= minimumRating);
+            films = films.Where(film => film.ImdbTitle != null && film.ImdbTitle.ImdbRating >= minimumRating);
         }
 
         if (query.ImdbRatingTo is { } maximumRating)
         {
-            films = films.Where(film => (film.ImdbTitle == null
-                ? film.Title.ImdbTitle == null ? film.Title.ImdbRating : film.Title.ImdbTitle.ImdbRating
-                : film.ImdbTitle.ImdbRating) <= maximumRating);
+            films = films.Where(film => film.ImdbTitle != null && film.ImdbTitle.ImdbRating <= maximumRating);
         }
 
         var categoryValues = query.Categories is { Length: > 0 }
@@ -138,8 +124,6 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
 
         var totalCount = await films.CountAsync(cancellationToken);
         var items = await films
-            .Include(film => film.Title)
-                .ThenInclude(title => title.ImdbTitle)
             .Include(film => film.ImdbTitle)
             .Include(film => film.Nominations)
             .OrderByDescending(film => film.FilmYear)
@@ -162,10 +146,8 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
 
     public async Task<OscarFilmResponse> GetOscarFilmAsync(long id, CancellationToken cancellationToken)
     {
-        var film = await dbContext.OscarFilms
+        var film = await dbContext.OscarMovies
             .AsNoTracking()
-            .Include(candidate => candidate.Title)
-                .ThenInclude(title => title.ImdbTitle)
             .Include(candidate => candidate.ImdbTitle)
             .Include(candidate => candidate.Nominations)
             .FirstOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
@@ -177,13 +159,17 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
 
     public async Task<IReadOnlyList<OscarFilmResponse>> GetByTitleAsync(long titleId, CancellationToken cancellationToken)
     {
-        if (!await dbContext.Titles.AnyAsync(title => title.Id == titleId, cancellationToken))
+        var torrentMovie = await dbContext.TorrentMovies.AsNoTracking()
+            .Where(movie => movie.Id == titleId)
+            .Select(movie => new { movie.Id, movie.ImdbId })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (torrentMovie is null)
             throw new ApiNotFoundException("Title not found.");
+        if (string.IsNullOrWhiteSpace(torrentMovie.ImdbId)) return [];
 
-        var films = await dbContext.OscarFilms.AsNoTracking()
-            .Where(film => film.TitleId == titleId)
-            .Include(film => film.Title)
-                .ThenInclude(title => title.ImdbTitle)
+        var imdbId = torrentMovie.ImdbId.Trim().ToLowerInvariant();
+        var films = await dbContext.OscarMovies.AsNoTracking()
+            .Where(film => film.ImdbId == imdbId)
             .Include(film => film.ImdbTitle)
             .Include(film => film.Nominations)
             .OrderBy(film => film.Id)
@@ -191,34 +177,33 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
         return films.Select(ToResponse).ToArray();
     }
 
-    private static OscarFilmResponse ToResponse(OscarFilm film)
+    private static OscarFilmResponse ToResponse(OscarMovie film)
     {
-        var imdbTitle = film.ImdbTitle ?? film.Title.ImdbTitle;
+        var imdbTitle = film.ImdbTitle;
         return new OscarFilmResponse(
             film.Id,
-            film.TitleId,
             film.FilmTitle,
-            imdbTitle?.TitleText ?? film.Title.TitleText,
-            imdbTitle?.Year ?? film.Title.Year,
+            imdbTitle?.TitleText ?? film.FilmTitle,
+            imdbTitle?.Year,
             film.FilmYear,
-            film.ImdbId ?? film.Title.ImdbId,
+            film.ImdbId,
             film.EnrichmentStatus,
             film.EnrichmentAttemptCount,
             film.LastEnrichmentAttemptAt,
             film.NextEnrichmentAttemptAt,
             film.LastEnrichmentError,
-            film.Title.MediaType,
-            imdbTitle is null ? film.Title.ImdbRating : imdbTitle.ImdbRating,
-            imdbTitle is null ? film.Title.ImdbVotes : imdbTitle.ImdbVotes,
-            imdbTitle is null ? film.Title.Metascore : imdbTitle.Metascore,
-            imdbTitle is null ? film.Title.Genres : imdbTitle.Genres,
-            imdbTitle is null ? film.Title.Countries : imdbTitle.Countries,
-            imdbTitle is null ? film.Title.Director : imdbTitle.Director,
-            imdbTitle is null ? film.Title.Plot : imdbTitle.Plot,
-            imdbTitle is null ? film.Title.PosterUrl : imdbTitle.PosterUrl,
-            imdbTitle is null ? film.Title.Runtime : imdbTitle.Runtime,
-            imdbTitle is null ? film.Title.Awards : imdbTitle.Awards,
-            imdbTitle is null ? film.Title.BoxOffice : imdbTitle.BoxOffice,
+            imdbTitle?.MediaType ?? "movie",
+            imdbTitle?.ImdbRating,
+            imdbTitle?.ImdbVotes,
+            imdbTitle?.Metascore,
+            imdbTitle?.Genres ?? Array.Empty<string>(),
+            imdbTitle?.Countries ?? Array.Empty<string>(),
+            imdbTitle?.Director,
+            imdbTitle?.Plot,
+            imdbTitle?.PosterUrl,
+            imdbTitle?.Runtime,
+            imdbTitle?.Awards,
+            imdbTitle?.BoxOffice,
             film.Nominations
                 .OrderBy(nomination => nomination.Ceremony)
                 .ThenBy(nomination => nomination.CanonicalCategory)

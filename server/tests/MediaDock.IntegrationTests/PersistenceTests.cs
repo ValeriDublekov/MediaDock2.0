@@ -82,7 +82,7 @@ public sealed class PersistenceTests
 
     [Fact]
     [Trait("Category", "Persistence")]
-    public async Task OscarFilmSourceImdbIdMustMatchLinkedTitleWhenPresent()
+    public async Task OscarMovieAllowsMissingImdbIdentityAndRequiresCanonicalReferenceWhenPresent()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_oscar_imdb_identity_constraint_test").Build();
         await postgres.StartAsync();
@@ -97,47 +97,36 @@ public sealed class PersistenceTests
         db.ImdbTitles.AddRange(
             new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = now },
             new ImdbTitle { ImdbId = "tt87654321", UpdatedAt = now });
-        var title = CreateTitle("Linked Film", "linked film", "tt12345678", now);
-        db.Titles.Add(title);
+        db.OscarMovies.AddRange(
+            new OscarMovie
+            {
+                StableKey = "matched-oscar-film",
+                FilmTitle = "Linked Film",
+                NormalizedTitle = "linked film",
+                FilmYear = 2025,
+                ImdbId = "tt12345678",
+                ImportedAt = now,
+                UpdatedAt = now
+            },
+            new OscarMovie
+            {
+                StableKey = "unmatched-oscar-film",
+                FilmTitle = "Unmatched Film",
+                NormalizedTitle = "unmatched film",
+                FilmYear = 2025,
+                ImdbId = null,
+                ImportedAt = now,
+                UpdatedAt = now
+            });
         await db.SaveChangesAsync();
 
-        var mismatchedFilm = new OscarFilm
+        await AssertRejectedAsync(db, new OscarMovie
         {
-            TitleId = title.Id,
-            StableKey = "mismatched-imdb-film",
-            FilmTitle = "Linked Film",
-            NormalizedTitle = "linked film",
+            StableKey = "missing-imdb-title-film",
+            FilmTitle = "Missing IMDb Title Film",
+            NormalizedTitle = "missing imdb title film",
             FilmYear = 2025,
-            ImdbId = "tt87654321",
-            ImportedAt = now,
-            UpdatedAt = now
-        };
-        db.OscarFilms.Add(mismatchedFilm);
-        var mismatch = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
-        Assert.Equal(
-            "fk_oscar_films_titles_title_id_imdb_id",
-            (mismatch.InnerException as Npgsql.PostgresException)?.ConstraintName);
-        db.ChangeTracker.Clear();
-
-        db.OscarFilms.Add(new OscarFilm
-        {
-            TitleId = title.Id,
-            StableKey = "missing-source-imdb-film",
-            FilmTitle = "Linked Film",
-            NormalizedTitle = "linked film",
-            FilmYear = 2025,
-            ImportedAt = now,
-            UpdatedAt = now
-        });
-        await db.SaveChangesAsync();
-
-        await AssertRejectedAsync(db, new OscarFilm
-        {
-            TitleId = long.MaxValue,
-            StableKey = "missing-title-film",
-            FilmTitle = "Missing Title Film",
-            NormalizedTitle = "missing title film",
-            FilmYear = 2025,
+            ImdbId = "tt99999999",
             ImportedAt = now,
             UpdatedAt = now
         });
@@ -154,17 +143,22 @@ public sealed class PersistenceTests
             .UseNpgsql(postgres.GetConnectionString())
             .Options;
         await using var db = new MediaDockDbContext(options);
+        var legacyOptions = new DbContextOptionsBuilder<LegacyPersistenceTestContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var legacyDb = new LegacyPersistenceTestContext(legacyOptions);
         await db.Database.MigrateAsync("20261020122556_EnforceTitleMetadataOwnership");
 
         var now = new DateTimeOffset(2026, 10, 20, 0, 0, 0, TimeSpan.Zero);
         db.ImdbTitles.AddRange(
             new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = now },
             new ImdbTitle { ImdbId = "tt87654321", UpdatedAt = now });
-        var title = CreateTitle("Linked Film", "linked film", "tt12345678", now);
-        db.Titles.Add(title);
         await db.SaveChangesAsync();
+        var title = CreateLegacyTitle("Linked Film", "linked film", "tt12345678", now);
+        legacyDb.Titles.Add(title);
+        await legacyDb.SaveChangesAsync();
 
-        db.OscarFilms.Add(new OscarFilm
+        legacyDb.OscarFilms.Add(new LegacyOscarFilmRow
         {
             TitleId = title.Id,
             StableKey = "legacy-mismatched-film",
@@ -175,7 +169,7 @@ public sealed class PersistenceTests
             ImportedAt = now,
             UpdatedAt = now
         });
-        await db.SaveChangesAsync();
+        await legacyDb.SaveChangesAsync();
 
         var migrationFailure = await Assert.ThrowsAsync<Npgsql.PostgresException>(
             () => db.Database.MigrateAsync());
@@ -184,12 +178,11 @@ public sealed class PersistenceTests
             "20261020125713_EnforceOscarFilmTitleIdentity",
             await db.Database.GetAppliedMigrationsAsync());
 
-        var unchangedFilm = await db.OscarFilms
+        var unchangedFilm = await legacyDb.OscarFilms
             .AsNoTracking()
-            .Include(film => film.Title)
             .SingleAsync();
         Assert.Equal("tt87654321", unchangedFilm.ImdbId);
-        Assert.Equal("tt12345678", unchangedFilm.Title.ImdbId);
+        Assert.Equal("tt12345678", (await legacyDb.Titles.AsNoTracking().SingleAsync()).ImdbId);
     }
 
     [Fact]
@@ -243,7 +236,7 @@ public sealed class PersistenceTests
         await db.Database.MigrateAsync();
         db.ChangeTracker.Clear();
 
-        var groups = await db.GoldenGlobeGroups.AsNoTracking()
+        var groups = await db.GoldenGlobeTitles.AsNoTracking()
             .Include(group => group.Nominations)
             .OrderBy(group => group.Title)
             .ToListAsync();
@@ -269,6 +262,10 @@ public sealed class PersistenceTests
             .UseNpgsql(postgres.GetConnectionString())
             .Options;
         await using var db = new MediaDockDbContext(options);
+        var legacyOptions = new DbContextOptionsBuilder<LegacyPersistenceTestContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var legacyDb = new LegacyPersistenceTestContext(legacyOptions);
         await db.Database.MigrateAsync("20261020150000_NormalizeGoldenGlobeGroups");
 
         var now = new DateTimeOffset(2026, 10, 21, 12, 0, 0, TimeSpan.Zero);
@@ -287,16 +284,16 @@ public sealed class PersistenceTests
         await db.SaveChangesAsync();
 
         await db.Database.ExecuteSqlRawAsync("DROP INDEX ux_titles_imdb_id");
-        var firstFavoriteTitle = CreateTitle("Enriched Film", "enriched film", "tt12345678", now);
-        var secondFavoriteTitle = CreateTitle("Alternate source title", "alternate source title", "tt12345678", now.AddHours(1));
-        var pendingTitle = CreateTitle("Pending Film", "pending film", "tt87654321", now);
-        var unmatchedTitle = CreateTitle("Unmatched Film", "unmatched film", null, now);
+        var firstFavoriteTitle = CreateLegacyTitle("Enriched Film", "enriched film", "tt12345678", now);
+        var secondFavoriteTitle = CreateLegacyTitle("Alternate source title", "alternate source title", "tt12345678", now.AddHours(1));
+        var pendingTitle = CreateLegacyTitle("Pending Film", "pending film", "tt87654321", now);
+        var unmatchedTitle = CreateLegacyTitle("Unmatched Film", "unmatched film", null, now);
         unmatchedTitle.ImdbRating = 6.3m;
         unmatchedTitle.Genres = ["Drama"];
         unmatchedTitle.Plot = "Legacy local metadata";
-        var releaseTitle = CreateTitle("Enriched Film", "enriched film", "tt12345678", now, now, now);
-        db.Titles.AddRange(firstFavoriteTitle, secondFavoriteTitle, pendingTitle, unmatchedTitle, releaseTitle);
-        await db.SaveChangesAsync();
+        var releaseTitle = CreateLegacyTitle("Enriched Film", "enriched film", "tt12345678", now, now, now);
+        legacyDb.Titles.AddRange(firstFavoriteTitle, secondFavoriteTitle, pendingTitle, unmatchedTitle, releaseTitle);
+        await legacyDb.SaveChangesAsync();
 
         var source = new Source
         {
@@ -306,7 +303,7 @@ public sealed class PersistenceTests
             Url = "https://feed.example/source-owned"
         };
         db.Sources.Add(source);
-        var oscarFilm = new OscarFilm
+        var oscarFilm = new LegacyOscarFilmRow
         {
             TitleId = firstFavoriteTitle.Id,
             StableKey = "source-owned-oscar-film",
@@ -319,8 +316,11 @@ public sealed class PersistenceTests
             UpdatedAt = now
         };
         var award = new GoldenGlobeAward { Name = "Source-owned award" };
-        db.AddRange(oscarFilm, award);
-        var movieGroup = new GoldenGlobeGroup
+        legacyDb.OscarFilms.Add(oscarFilm);
+        db.GoldenGlobeAwards.Add(award);
+        await legacyDb.SaveChangesAsync();
+        await db.SaveChangesAsync();
+        var movieGroup = new LegacyGoldenGlobeGroupRow
         {
             Title = "Enriched Film",
             Year = 2025,
@@ -328,14 +328,14 @@ public sealed class PersistenceTests
             ImdbId = "tt12345678",
             EnrichmentStatus = "enriched"
         };
-        var seriesGroup = new GoldenGlobeGroup
+        var seriesGroup = new LegacyGoldenGlobeGroupRow
         {
             Title = "Example Series",
             Year = 2025,
             NomineeType = "series"
         };
-        db.GoldenGlobeGroups.AddRange(movieGroup, seriesGroup);
-        await db.SaveChangesAsync();
+        legacyDb.GoldenGlobeGroups.AddRange(movieGroup, seriesGroup);
+        await legacyDb.SaveChangesAsync();
 
         var releaseTime = now.AddMinutes(-10);
         await db.Database.ExecuteSqlInterpolatedAsync(
@@ -357,7 +357,7 @@ public sealed class PersistenceTests
 
         var releaseOccurrences = new[]
         {
-            new Occurrence
+            new LegacyOccurrenceRow
             {
                 TitleId = releaseTitle.Id,
                 SourceId = source.Id,
@@ -374,7 +374,7 @@ public sealed class PersistenceTests
                 FirstSeenAt = releaseTime,
                 LastSeenAt = now
             },
-            new Occurrence
+            new LegacyOccurrenceRow
             {
                 TitleId = releaseTitle.Id,
                 SourceId = source.Id,
@@ -391,7 +391,7 @@ public sealed class PersistenceTests
                 FirstSeenAt = releaseTime,
                 LastSeenAt = now
             },
-            new Occurrence
+            new LegacyOccurrenceRow
             {
                 TitleId = unmatchedTitle.Id,
                 SourceId = source.Id,
@@ -409,10 +409,10 @@ public sealed class PersistenceTests
                 LastSeenAt = now
             }
         };
-        db.Occurrences.AddRange(releaseOccurrences);
-        await db.SaveChangesAsync();
+        legacyDb.Occurrences.AddRange(releaseOccurrences);
+        await legacyDb.SaveChangesAsync();
 
-        async Task AddLegacyFavoriteAsync(Title title, bool toWatch, bool toDownload, bool addedFromOscar, bool addedFromCatalog)
+        async Task AddLegacyFavoriteAsync(LegacyTitleRow title, bool toWatch, bool toDownload, bool addedFromOscar, bool addedFromCatalog)
         {
             await db.Database.ExecuteSqlInterpolatedAsync(
                 $"""
@@ -507,13 +507,23 @@ public sealed class PersistenceTests
         Assert.True(favorite.AddedFromCatalog);
         Assert.Equal(now, favorite.CreatedAt);
         Assert.Equal(now, favorite.UpdatedAt);
-        var retainedLegacyFavorites = await db.FavoriteMovies.AsNoTracking().OrderBy(favorite => favorite.TitleId).ToListAsync();
-        Assert.Equal(new[] { firstFavoriteTitle.Id, secondFavoriteTitle.Id }, retainedLegacyFavorites.Select(favorite => favorite.TitleId));
-
-        await db.Database.MigrateAsync("20261020150000_NormalizeGoldenGlobeGroups");
-        var rolledBackFavoriteCount = await db.Database.SqlQuery<long>(
-            $"SELECT COUNT(*) AS \"Value\" FROM favorite_movies").SingleAsync();
-        Assert.Equal(2L, rolledBackFavoriteCount);
+        var legacyTables = await db.Database.SqlQuery<string>(
+            $"""
+            SELECT table_name AS "Value"
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name IN ('titles', 'occurrences', 'oscar_films', 'golden_globe_groups', 'legacy_favorite_movies')
+            """).ToListAsync();
+        Assert.Empty(legacyTables);
+        var legacyNominationColumns = await db.Database.SqlQuery<string>(
+            $"""
+            SELECT column_name AS "Value"
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND ((table_name = 'oscar_nominations' AND column_name = 'oscar_film_id')
+                OR (table_name = 'golden_globe_nominations' AND column_name = 'group_id'))
+            """).ToListAsync();
+        Assert.Empty(legacyNominationColumns);
     }
 
     [Fact]
@@ -580,7 +590,7 @@ public sealed class PersistenceTests
 
     [Fact]
     [Trait("Category", "Persistence")]
-    public async Task MigrationCreatesSchemaAndOccurrenceIdentityIsUnique()
+    public async Task MigrationCreatesSourceOwnedSchemaAndReleaseIdentityIsUnique()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_test").Build();
         await postgres.StartAsync();
@@ -611,6 +621,9 @@ public sealed class PersistenceTests
         Assert.Contains("20261020150000_NormalizeGoldenGlobeGroups", appliedMigrations);
         Assert.Contains("20261021061711_SourceOwnedMovieIdentity", appliedMigrations);
         Assert.Contains("20261021080502_AllowSourceOwnedNominationLinks", appliedMigrations);
+        Assert.Contains(
+            appliedMigrations,
+            migration => migration.EndsWith("_RemoveLegacyTitleIdentity", StringComparison.Ordinal));
 
         await db.Database.OpenConnectionAsync();
         await using (var command = db.Database.GetDbConnection().CreateCommand())
@@ -626,14 +639,28 @@ public sealed class PersistenceTests
             Assert.All(
                 new[]
                 {
-                    "titles", "sources", "occurrences", "scan_runs", "parse_logs", "settings", "metadata_cache",
-                    "oscar_films", "oscar_nominations", "oscar_enrichment_runs", "omdb_daily_usage",
-                    "golden_globe_awards", "golden_globe_groups", "golden_globe_nominations", "favorite_movies", "personal_ratings", "users",
+                    "sources", "scan_runs", "parse_logs", "settings", "metadata_cache",
+                    "oscar_nominations", "oscar_enrichment_runs", "omdb_daily_usage",
+                    "golden_globe_awards", "golden_globe_nominations", "favorite_movies", "personal_ratings", "users",
                     "imdb_titles", "oscar_movies", "golden_globe_titles", "torrent_movies", "torrent_releases",
-                    "legacy_favorite_movies"
+                    "background_jobs", "background_job_events"
                 },
                 tableName => Assert.Contains(tableName, tables));
+            Assert.DoesNotContain("titles", tables);
+            Assert.DoesNotContain("occurrences", tables);
+            Assert.DoesNotContain("oscar_films", tables);
+            Assert.DoesNotContain("golden_globe_groups", tables);
+            Assert.DoesNotContain("legacy_favorite_movies", tables);
         }
+
+        var favoriteForeignKeys = await db.Database.SqlQuery<string>(
+            $"""
+            SELECT constraint_name AS "Value"
+            FROM information_schema.table_constraints
+            WHERE table_schema = 'public' AND table_name = 'favorite_movies' AND constraint_type = 'FOREIGN KEY'
+            """).ToListAsync();
+        Assert.Contains("fk_favorite_movies_users_user_id", favoriteForeignKeys);
+        Assert.Contains("fk_favorite_movies_imdb_titles_imdb_id", favoriteForeignKeys);
 
         var observedAt = new DateTimeOffset(2026, 9, 28, 0, 0, 0, TimeSpan.Zero);
         var source = new Source
@@ -643,7 +670,7 @@ public sealed class PersistenceTests
             FeedType = "movie",
             Url = "https://feed.example/movies"
         };
-        var title = new Title
+        var movie = new TorrentMovie
         {
             TitleText = "Example Film",
             NormalizedTitle = "example film",
@@ -654,13 +681,13 @@ public sealed class PersistenceTests
             LastSeenAt = observedAt,
             UpdatedAt = observedAt
         };
-        db.AddRange(source, title);
+        db.AddRange(source, movie);
         await db.SaveChangesAsync();
 
         var itemKey = SourceItemKey.From(" guid-123 ", "https://feed.example/topic/1");
-        db.Occurrences.Add(new Occurrence
+        db.TorrentReleases.Add(new TorrentRelease
         {
-            TitleId = title.Id,
+            TorrentMovieId = movie.Id,
             SourceId = source.Id,
             SourceItemKey = itemKey,
             FeedEntryId = "guid-123",
@@ -675,10 +702,10 @@ public sealed class PersistenceTests
         await db.SaveChangesAsync();
 
         Assert.Equal(itemKey, SourceItemKey.From("guid-123", "https://feed.example/topic/changed"));
-    db.ChangeTracker.Clear();
-        db.Occurrences.Add(new Occurrence
+        db.ChangeTracker.Clear();
+        db.TorrentReleases.Add(new TorrentRelease
         {
-            TitleId = title.Id,
+            TorrentMovieId = movie.Id,
             SourceId = source.Id,
             SourceItemKey = SourceItemKey.From("guid-123", "https://feed.example/topic/changed"),
             FeedEntryId = "guid-123",
@@ -693,7 +720,7 @@ public sealed class PersistenceTests
 
         await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
         db.ChangeTracker.Clear();
-        Assert.Equal(1, await db.Occurrences.CountAsync());
+        Assert.Equal(1, await db.TorrentReleases.CountAsync());
     }
 
     [Fact]
@@ -711,29 +738,70 @@ public sealed class PersistenceTests
 
         var now = new DateTimeOffset(2026, 9, 30, 0, 0, 0, TimeSpan.Zero);
         var imdbTitle = new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = now };
-        var title = CreateTitle("Canonical", "canonical", "tt12345678", now);
-        title.ImdbTitle = imdbTitle;
         db.ImdbTitles.Add(imdbTitle);
-        db.Titles.Add(title);
+        var movie = new TorrentMovie
+        {
+            TitleText = "Canonical",
+            NormalizedTitle = "canonical",
+            MediaType = "movie",
+            ImdbId = "tt12345678",
+            FirstSeenAt = now,
+            LastSeenAt = now,
+            UpdatedAt = now
+        };
+        db.TorrentMovies.Add(movie);
         await db.SaveChangesAsync();
-
-        await AssertRejectedAsync(db, CreateTitle("Duplicate ID", "duplicate id", "tt12345678", now));
 
         var firstSameFilmImdbTitle = new ImdbTitle { ImdbId = "tt20000001", UpdatedAt = now };
         var secondSameFilmImdbTitle = new ImdbTitle { ImdbId = "tt20000002", UpdatedAt = now };
-        var firstSameFilmTitle = CreateTitle("Same Film", "same film", "tt20000001", now);
-        firstSameFilmTitle.ImdbTitle = firstSameFilmImdbTitle;
-        var secondSameFilmTitle = CreateTitle("Same Film", "same film", "tt20000002", now);
-        secondSameFilmTitle.ImdbTitle = secondSameFilmImdbTitle;
+        var firstSameFilmTitle = new TorrentMovie
+        {
+            TitleText = "Same Film",
+            NormalizedTitle = "same film",
+            MediaType = "movie",
+            ImdbId = "tt20000001",
+            UpdatedAt = now
+        };
+        var secondSameFilmTitle = new TorrentMovie
+        {
+            TitleText = "Same Film",
+            NormalizedTitle = "same film",
+            MediaType = "movie",
+            ImdbId = "tt20000002",
+            UpdatedAt = now
+        };
         db.ImdbTitles.AddRange(firstSameFilmImdbTitle, secondSameFilmImdbTitle);
-        db.Titles.AddRange(firstSameFilmTitle, secondSameFilmTitle);
+        db.TorrentMovies.AddRange(firstSameFilmTitle, secondSameFilmTitle);
         await db.SaveChangesAsync();
-        Assert.Equal(3, await db.Titles.CountAsync());
+        Assert.Equal(3, await db.TorrentMovies.CountAsync());
 
-        await AssertRejectedAsync(db, CreateTitle("Partial Range", "partial range", null, now, now, null));
+        await AssertRejectedAsync(db, new TorrentMovie
+        {
+            TitleText = "Duplicate ID",
+            NormalizedTitle = "duplicate id",
+            MediaType = "movie",
+            ImdbId = "tt12345678",
+            UpdatedAt = now
+        });
+        await AssertRejectedAsync(db, new TorrentMovie
+        {
+            TitleText = "Partial Range",
+            NormalizedTitle = "partial range",
+            MediaType = "movie",
+            FirstSeenAt = now,
+            UpdatedAt = now
+        });
         await AssertRejectedAsync(
             db,
-            CreateTitle("Reversed Range", "reversed range", null, now, now.AddHours(1), now));
+            new TorrentMovie
+            {
+                TitleText = "Reversed Range",
+                NormalizedTitle = "reversed range",
+                MediaType = "movie",
+                FirstSeenAt = now.AddHours(1),
+                LastSeenAt = now,
+                UpdatedAt = now
+            });
 
         var source = new Source
         {
@@ -744,9 +812,9 @@ public sealed class PersistenceTests
         };
         db.Sources.Add(source);
         await db.SaveChangesAsync();
-        await AssertRejectedAsync(db, new Occurrence
+        await AssertRejectedAsync(db, new TorrentRelease
         {
-            TitleId = title.Id,
+            TorrentMovieId = movie.Id,
             SourceId = source.Id,
             SourceItemKey = "reversed-occurrence",
             TorrentUrl = "https://feed.example/topic/1",
@@ -760,34 +828,28 @@ public sealed class PersistenceTests
         await db.SaveChangesAsync();
         await AssertRejectedAsync(db, new AppSetting { Id = 2, UpdatedAt = now });
 
-        db.OscarFilms.Add(new OscarFilm
+        await AssertRejectedAsync(db, new OscarMovie
         {
-            TitleId = title.Id,
             StableKey = "invalid-status",
-            FilmTitle = title.TitleText,
-            NormalizedTitle = title.NormalizedTitle,
+            FilmTitle = "Invalid Status",
+            NormalizedTitle = "invalid status",
             FilmYear = 2026,
             EnrichmentStatus = "unknown",
             ImportedAt = now,
             UpdatedAt = now
         });
-        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
-        db.ChangeTracker.Clear();
 
-        db.OscarFilms.Add(new OscarFilm
+        await AssertRejectedAsync(db, new OscarMovie
         {
-            TitleId = title.Id,
             StableKey = "negative-attempts",
-            FilmTitle = title.TitleText,
-            NormalizedTitle = title.NormalizedTitle,
+            FilmTitle = "Negative Attempts",
+            NormalizedTitle = "negative attempts",
             FilmYear = 2026,
             EnrichmentStatus = "pending",
             EnrichmentAttemptCount = -1,
             ImportedAt = now,
             UpdatedAt = now
         });
-        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
-        db.ChangeTracker.Clear();
 
         await AssertRejectedAsync(db, new ScanRun
         {
@@ -836,26 +898,31 @@ public sealed class PersistenceTests
             .UseNpgsql(postgres.GetConnectionString())
             .Options;
         await using var db = new MediaDockDbContext(options);
+        var legacyOptions = new DbContextOptionsBuilder<LegacyPersistenceTestContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var legacyDb = new LegacyPersistenceTestContext(legacyOptions);
         await db.Database.MigrateAsync("20261016071457_AddUserOwnershipToFavoritesAndRatings");
 
         var now = new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero);
         var firstUser = CreateUser("first@example.com", now);
         var secondUser = CreateUser("second@example.com", now);
         db.Users.AddRange(firstUser, secondUser);
+        await db.SaveChangesAsync();
 
-        var firstTitle = CreateTitle("Earlier title", "earlier title", " TT12345678 ", now.AddDays(-1));
+        var firstTitle = CreateLegacyTitle("Earlier title", "earlier title", " TT12345678 ", now.AddDays(-1));
         firstTitle.ImdbRating = 7.1m;
-        var duplicateTitle = CreateTitle("Latest metadata", "latest metadata", "tt12345678", now);
+        var duplicateTitle = CreateLegacyTitle("Latest metadata", "latest metadata", "tt12345678", now);
         duplicateTitle.ImdbRating = 8.4m;
         duplicateTitle.ImdbVotes = 1200;
         duplicateTitle.Genres = ["Drama"];
         duplicateTitle.Plot = "Backfilled plot";
-        var localTitle = CreateTitle("Local-only title", "local-only title", null, now);
+        var localTitle = CreateLegacyTitle("Local-only title", "local-only title", null, now);
         localTitle.ImdbRating = 6.1m;
         localTitle.Genres = ["Local genre"];
         localTitle.Plot = "Keep this title-local metadata";
-        db.Titles.AddRange(firstTitle, duplicateTitle, localTitle);
-        await db.SaveChangesAsync();
+        legacyDb.Titles.AddRange(firstTitle, duplicateTitle, localTitle);
+        await legacyDb.SaveChangesAsync();
 
         db.PersonalRatings.AddRange(
             new PersonalRating
@@ -879,7 +946,7 @@ public sealed class PersistenceTests
                 Rating = 6,
                 UpdatedAt = now
             });
-        db.OscarFilms.Add(new OscarFilm
+        legacyDb.OscarFilms.Add(new LegacyOscarFilmRow
         {
             TitleId = firstTitle.Id,
             StableKey = "legacy-imdb-film",
@@ -890,6 +957,7 @@ public sealed class PersistenceTests
             ImportedAt = now,
             UpdatedAt = now
         });
+        await legacyDb.SaveChangesAsync();
         var award = new GoldenGlobeAward { Name = "Legacy award" };
         db.GoldenGlobeAwards.Add(award);
         await db.SaveChangesAsync();
@@ -909,15 +977,16 @@ public sealed class PersistenceTests
             MetadataStatus = "pending",
             UpdatedAt = now
         };
-        var lateLinkedTitle = CreateTitle("Late linked title", "late linked title", "tt88888888", now);
+        var lateLinkedTitle = CreateLegacyTitle("Late linked title", "late linked title", "tt88888888", now);
         lateLinkedTitle.ImdbRating = 6.7m;
         lateLinkedTitle.Genres = ["Documentary"];
         lateLinkedTitle.Plot = "Backfilled after the shared-IMDb migration.";
         db.ImdbTitles.Add(lateImdbTitle);
-        db.Titles.Add(lateLinkedTitle);
         await db.SaveChangesAsync();
+        legacyDb.Titles.Add(lateLinkedTitle);
+        await legacyDb.SaveChangesAsync();
 
-        await db.Database.MigrateAsync();
+        await db.Database.MigrateAsync("20261020150000_NormalizeGoldenGlobeGroups");
         db.ChangeTracker.Clear();
 
         var imdbTitles = await db.ImdbTitles.AsNoTracking().OrderBy(title => title.ImdbId).ToListAsync();
@@ -936,7 +1005,7 @@ public sealed class PersistenceTests
         Assert.Equal("Backfilled after the shared-IMDb migration.", lateBackfilled.Plot);
         Assert.Equal("enriched", lateBackfilled.MetadataStatus);
 
-        var migratedTitles = await db.Titles.AsNoTracking().OrderBy(title => title.Id).ToListAsync();
+        var migratedTitles = await legacyDb.Titles.AsNoTracking().OrderBy(title => title.Id).ToListAsync();
         Assert.Equal("tt12345678", migratedTitles[0].ImdbId);
         Assert.Null(migratedTitles[0].ImdbRating);
         Assert.Null(migratedTitles[0].ImdbVotes);
@@ -952,30 +1021,32 @@ public sealed class PersistenceTests
         Assert.Empty(migratedTitles[3].Genres);
         Assert.Null(migratedTitles[3].Plot);
 
-        var duplicateMetadataTitle = CreateTitle("Duplicate metadata", "duplicate metadata", "tt87654321", now);
+        var duplicateMetadataTitle = CreateLegacyTitle("Duplicate metadata", "duplicate metadata", "tt87654321", now);
         duplicateMetadataTitle.ImdbRating = 5.0m;
-        db.Titles.Add(duplicateMetadataTitle);
-        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
-        db.ChangeTracker.Clear();
+        legacyDb.Titles.Add(duplicateMetadataTitle);
+        await Assert.ThrowsAsync<DbUpdateException>(() => legacyDb.SaveChangesAsync());
+        legacyDb.ChangeTracker.Clear();
 
         var ratings = await db.PersonalRatings.AsNoTracking().OrderBy(rating => rating.UserId).ToListAsync();
         Assert.Equal(2, ratings.Count);
         Assert.All(ratings, rating => Assert.Equal("tt87654321", rating.ImdbId));
         Assert.Equal(8, ratings.Single(rating => rating.UserId == firstUser.Id).Rating);
         Assert.Equal(6, ratings.Single(rating => rating.UserId == secondUser.Id).Rating);
-        Assert.Equal("tt12345678", (await db.OscarFilms.AsNoTracking().SingleAsync()).ImdbId);
-        var migratedGoldenGlobeGroup = await db.GoldenGlobeGroups.AsNoTracking()
-            .Include(group => group.Nominations)
+        Assert.Equal("tt12345678", (await legacyDb.OscarFilms.AsNoTracking().SingleAsync()).ImdbId);
+        var migratedGoldenGlobeGroup = await legacyDb.GoldenGlobeGroups.AsNoTracking()
             .SingleAsync(group => group.Title == "Legacy nominee");
         Assert.Equal("tt87654321", migratedGoldenGlobeGroup.ImdbId);
         Assert.Equal("pending", migratedGoldenGlobeGroup.EnrichmentStatus);
-        Assert.Equal("legacy-imdb-nomination", Assert.Single(migratedGoldenGlobeGroup.Nominations).ImportKey);
+        var migratedNominationKeys = await db.Database.SqlQuery<string>(
+            $"SELECT import_key AS \"Value\" FROM golden_globe_nominations").ToListAsync();
+        Assert.Contains("legacy-imdb-nomination", migratedNominationKeys);
 
-        var noIdTitle = CreateTitle("Nullable IMDb", "nullable imdb", null, now);
-        db.Titles.Add(noIdTitle);
-        var noIdOscarFilm = new OscarFilm
+        var noIdTitle = CreateLegacyTitle("Nullable IMDb", "nullable imdb", null, now);
+        legacyDb.Titles.Add(noIdTitle);
+        await legacyDb.SaveChangesAsync();
+        var noIdOscarFilm = new LegacyOscarFilmRow
         {
-            Title = noIdTitle,
+            TitleId = noIdTitle.Id,
             StableKey = "nullable-imdb-film",
             FilmTitle = noIdTitle.TitleText,
             NormalizedTitle = noIdTitle.NormalizedTitle,
@@ -983,19 +1054,17 @@ public sealed class PersistenceTests
             ImportedAt = now,
             UpdatedAt = now
         };
-        db.OscarFilms.Add(noIdOscarFilm);
-        db.GoldenGlobeNominations.Add(new GoldenGlobeNomination
+        legacyDb.OscarFilms.Add(noIdOscarFilm);
+        var noIdGroup = new LegacyGoldenGlobeGroupRow
         {
-            ImportKey = "nullable-imdb-nomination",
-            AwardId = award.Id,
-            Group = new GoldenGlobeGroup
-            {
-                Title = "Nullable nominee",
-                Year = 2025,
-                NomineeType = "movie"
-            }
-        });
-        await db.SaveChangesAsync();
+            Title = "Nullable nominee",
+            Year = 2025,
+            NomineeType = "movie"
+        };
+        legacyDb.GoldenGlobeGroups.Add(noIdGroup);
+        await legacyDb.SaveChangesAsync();
+        await db.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO golden_globe_nominations (import_key, winner, award_id, group_id) VALUES ({"nullable-imdb-nomination"}, {false}, {award.Id}, {noIdGroup.Id})");
 
         db.PersonalRatings.Add(new PersonalRating
         {
@@ -1010,9 +1079,23 @@ public sealed class PersistenceTests
         var referencedImdbTitle = await db.ImdbTitles.SingleAsync(title => title.ImdbId == "tt12345678");
         db.ImdbTitles.Remove(referencedImdbTitle);
         await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        db.ChangeTracker.Clear();
+
+        await db.Database.MigrateAsync();
+        var legacyTables = await db.Database.SqlQuery<string>(
+            $"""
+            SELECT table_name AS "Value"
+            FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name IN ('titles', 'oscar_films', 'golden_globe_groups')
+            """).ToListAsync();
+        Assert.Empty(legacyTables);
+        Assert.Equal(
+            "tt12345678",
+            (await db.OscarMovies.AsNoTracking().SingleAsync(movie => movie.StableKey == "legacy-imdb-film")).ImdbId);
+        Assert.Contains(await db.GoldenGlobeTitles.AsNoTracking().ToListAsync(), title => title.Title == "Legacy nominee");
     }
 
-    private static Title CreateTitle(
+    private static LegacyTitleRow CreateLegacyTitle(
         string title,
         string normalizedTitle,
         string? imdbId,

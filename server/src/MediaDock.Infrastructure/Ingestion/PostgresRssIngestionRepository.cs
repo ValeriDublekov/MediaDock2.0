@@ -460,7 +460,7 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         }
 
         movie.TitleText = metadata.Title;
-        movie.NormalizedTitle = TitleMetadataMapper.NormalizeTitle(metadata.Title);
+        movie.NormalizedTitle = TitleNormalizer.NormalizeTitle(metadata.Title);
         movie.Year = metadata.Year;
         movie.MediaType = metadata.MediaType;
         movie.SourceType = metadata.SourceType;

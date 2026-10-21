@@ -29,18 +29,16 @@ internal sealed class MovieAwardsApiService(MediaDockDbContext dbContext) : IMov
         }
 
         var imdbIds = requestedIds.Select(id => id.ToLowerInvariant()).Distinct().ToArray();
-        var oscarFilms = await dbContext.OscarFilms
+        var oscarMovies = await dbContext.OscarMovies
             .AsNoTracking()
-            .Where(film => (film.ImdbId != null && imdbIds.Contains(film.ImdbId))
-                || (film.ImdbId == null && film.Title.ImdbId != null && imdbIds.Contains(film.Title.ImdbId)))
-            .Include(film => film.Title)
+            .Where(film => film.ImdbId != null && imdbIds.Contains(film.ImdbId))
             .Include(film => film.Nominations)
             .ToListAsync(cancellationToken);
 
-        var awards = oscarFilms
+        var awards = oscarMovies
             .SelectMany(film => film.Nominations.Select(nomination => new MovieAwardRecognitionResponse(
                 nomination.Id,
-                film.ImdbId ?? film.Title.ImdbId!,
+                film.ImdbId!,
                 "oscars",
                 film.FilmYear,
                 null,
@@ -55,20 +53,22 @@ internal sealed class MovieAwardsApiService(MediaDockDbContext dbContext) : IMov
         var goldenGlobes = await dbContext.GoldenGlobeNominations
             .AsNoTracking()
             .Include(nomination => nomination.Award)
-            .Include(nomination => nomination.Group)
-            .Where(nomination => nomination.Group.ImdbId != null && imdbIds.Contains(nomination.Group.ImdbId))
+            .Include(nomination => nomination.GoldenGlobeTitle)
+            .Where(nomination => nomination.GoldenGlobeTitle != null
+                && nomination.GoldenGlobeTitle.ImdbId != null
+                && imdbIds.Contains(nomination.GoldenGlobeTitle.ImdbId))
             .ToListAsync(cancellationToken);
 
         awards.AddRange(goldenGlobes.Select(nomination => new MovieAwardRecognitionResponse(
             nomination.Id,
-            nomination.Group.ImdbId!,
+            nomination.GoldenGlobeTitle!.ImdbId!,
             "golden_globes",
             null,
-            nomination.Group.Year,
+            nomination.GoldenGlobeTitle.Year,
             null,
             nomination.Award.Name,
             null,
-            nomination.Group.Title,
+            nomination.GoldenGlobeTitle.Title,
             null,
             nomination.Winner)));
 

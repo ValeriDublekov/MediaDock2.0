@@ -353,51 +353,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.FavoriteMovie", b =>
-                {
-                    b.Property<long>("UserId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("user_id");
-
-                    b.Property<long>("TitleId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("title_id");
-
-                    b.Property<bool>("AddedFromCatalog")
-                        .HasColumnType("boolean")
-                        .HasColumnName("added_from_catalog");
-
-                    b.Property<bool>("AddedFromOscar")
-                        .HasColumnType("boolean")
-                        .HasColumnName("added_from_oscar");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<bool>("ToDownload")
-                        .HasColumnType("boolean")
-                        .HasColumnName("to_download");
-
-                    b.Property<bool>("ToWatch")
-                        .HasColumnType("boolean")
-                        .HasColumnName("to_watch");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("UserId", "TitleId")
-                        .HasName("pk_favorite_movies");
-
-                    b.HasIndex("TitleId");
-
-                    b.ToTable("legacy_favorite_movies", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_favorite_movies_origin", "added_from_oscar OR added_from_catalog");
-                        });
-                });
-
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeAward", b =>
                 {
                     b.Property<long>("Id")
@@ -423,89 +378,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.ToTable("golden_globe_awards", (string)null);
                 });
 
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeGroup", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<int>("EnrichmentAttemptCount")
-                        .HasColumnType("integer")
-                        .HasColumnName("enrichment_attempt_count");
-
-                    b.Property<string>("EnrichmentStatus")
-                        .IsRequired()
-                        .HasMaxLength(24)
-                        .HasColumnType("character varying(24)")
-                        .HasColumnName("enrichment_status");
-
-                    b.Property<string>("ImdbId")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("imdb_id");
-
-                    b.Property<int>("ImdbIdVersion")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("imdb_id_version");
-
-                    b.Property<bool>("IsImdbIdManual")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_imdb_id_manual");
-
-                    b.Property<DateTimeOffset?>("LastEnrichmentAttemptAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_enrichment_attempt_at");
-
-                    b.Property<string>("LastEnrichmentError")
-                        .HasColumnType("text")
-                        .HasColumnName("last_enrichment_error");
-
-                    b.Property<DateTimeOffset?>("NextEnrichmentAttemptAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("next_enrichment_attempt_at");
-
-                    b.Property<string>("NomineeType")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasColumnName("nominee_type");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)")
-                        .HasColumnName("title");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("integer")
-                        .HasColumnName("year");
-
-                    b.HasKey("Id")
-                        .HasName("pk_golden_globe_groups");
-
-                    b.HasIndex("ImdbId");
-
-                    b.HasIndex("Title", "Year", "NomineeType")
-                        .IsUnique()
-                        .HasDatabaseName("ux_golden_globe_groups_identity");
-
-                    b.ToTable("golden_globe_groups", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_golden_globe_groups_enrichment_attempt_count", "enrichment_attempt_count >= 0");
-
-                            t.HasCheckConstraint("ck_golden_globe_groups_enrichment_status", "enrichment_status IN ('pending', 'enriched', 'problem', 'not_found', 'temporary_error')");
-
-                            t.HasCheckConstraint("ck_golden_globe_groups_nominee_type", "nominee_type IN ('movie', 'series')");
-                        });
-                });
-
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeNomination", b =>
                 {
                     b.Property<long>("Id")
@@ -522,10 +394,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.Property<long?>("GoldenGlobeTitleId")
                         .HasColumnType("bigint")
                         .HasColumnName("golden_globe_title_id");
-
-                    b.Property<long?>("GroupId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("group_id");
 
                     b.Property<string>("ImportKey")
                         .IsRequired()
@@ -547,9 +415,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.HasIndex("ImportKey")
                         .IsUnique()
                         .HasDatabaseName("ux_golden_globe_nominations_import_key");
-
-                    b.HasIndex("GroupId", "AwardId")
-                        .HasDatabaseName("ix_golden_globe_nominations_group_award");
 
                     b.ToTable("golden_globe_nominations", (string)null);
                 });
@@ -875,91 +740,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.Occurrence", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("FeedEntryId")
-                        .HasColumnType("text")
-                        .HasColumnName("feed_entry_id");
-
-                    b.Property<string>("FeedType")
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasColumnName("feed_type");
-
-                    b.Property<DateTimeOffset>("FirstSeenAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("first_seen_at");
-
-                    b.Property<DateTimeOffset>("LastSeenAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_seen_at");
-
-                    b.Property<DateTimeOffset?>("ObservedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("observed_at");
-
-                    b.Property<string>("Quality")
-                        .HasColumnType("text")
-                        .HasColumnName("quality");
-
-                    b.Property<string>("RawTitle")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("raw_title");
-
-                    b.Property<string>("RipType")
-                        .HasColumnType("text")
-                        .HasColumnName("rip_type");
-
-                    b.Property<string>("SourceFeedName")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("source_feed_name");
-
-                    b.Property<long>("SourceId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("source_id");
-
-                    b.Property<string>("SourceItemKey")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("source_item_key");
-
-                    b.Property<DateTimeOffset?>("SourcePublishedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("source_published_at");
-
-                    b.Property<long>("TitleId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("title_id");
-
-                    b.Property<string>("TorrentUrl")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("torrent_url");
-
-                    b.HasKey("Id")
-                        .HasName("pk_occurrences");
-
-                    b.HasAlternateKey("SourceId", "SourceItemKey")
-                        .HasName("ak_occurrences_source_id_source_item_key");
-
-                    b.HasIndex("TitleId", "LastSeenAt")
-                        .HasDatabaseName("ix_occurrences_title_id_last_seen_at");
-
-                    b.ToTable("occurrences", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_occurrences_seen_range", "first_seen_at <= last_seen_at");
-                        });
-                });
-
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.OmdbDailyUsage", b =>
                 {
                     b.Property<DateOnly>("UtcDate")
@@ -1077,99 +857,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_oscar_enrichment_runs_status", "status IN ('running', 'succeeded', 'partial', 'quota_stopped', 'failed', 'cancelled')");
 
                             t.HasCheckConstraint("ck_oscar_enrichment_runs_trigger", "trigger IN ('manual', 'schedule')");
-                        });
-                });
-
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.OscarFilm", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<int>("EnrichmentAttemptCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("enrichment_attempt_count");
-
-                    b.Property<string>("EnrichmentStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(24)
-                        .HasColumnType("character varying(24)")
-                        .HasDefaultValue("pending")
-                        .HasColumnName("enrichment_status");
-
-                    b.Property<string>("FilmTitle")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("film_title");
-
-                    b.Property<int>("FilmYear")
-                        .HasColumnType("integer")
-                        .HasColumnName("film_year");
-
-                    b.Property<string>("ImdbId")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("imdb_id");
-
-                    b.Property<DateTimeOffset>("ImportedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("imported_at");
-
-                    b.Property<DateTimeOffset?>("LastEnrichmentAttemptAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_enrichment_attempt_at");
-
-                    b.Property<string>("LastEnrichmentError")
-                        .HasColumnType("text")
-                        .HasColumnName("last_enrichment_error");
-
-                    b.Property<DateTimeOffset?>("NextEnrichmentAttemptAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("next_enrichment_attempt_at");
-
-                    b.Property<string>("NormalizedTitle")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("normalized_title");
-
-                    b.Property<string>("StableKey")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("stable_key");
-
-                    b.Property<long>("TitleId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("title_id");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.HasKey("Id")
-                        .HasName("pk_oscar_films");
-
-                    b.HasIndex("FilmYear")
-                        .HasDatabaseName("ix_oscar_films_film_year");
-
-                    b.HasIndex("ImdbId");
-
-                    b.HasIndex("StableKey")
-                        .IsUnique()
-                        .HasDatabaseName("ux_oscar_films_stable_key");
-
-                    b.HasIndex("TitleId");
-
-                    b.ToTable("oscar_films", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_oscar_films_enrichment_attempt_count", "enrichment_attempt_count >= 0");
-
-                            t.HasCheckConstraint("ck_oscar_films_enrichment_status", "enrichment_status IN ('pending', 'enriched', 'not_found', 'temporary_error')");
                         });
                 });
 
@@ -1321,10 +1008,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("nominees");
 
-                    b.Property<long?>("OscarFilmId")
-                        .HasColumnType("bigint")
-                        .HasColumnName("oscar_film_id");
-
                     b.Property<long?>("OscarMovieId")
                         .HasColumnType("bigint")
                         .HasColumnName("oscar_movie_id");
@@ -1339,8 +1022,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.HasIndex("ImportKey")
                         .IsUnique()
                         .HasDatabaseName("ux_oscar_nominations_import_key");
-
-                    b.HasIndex("OscarFilmId");
 
                     b.HasIndex("OscarMovieId");
 
@@ -1749,155 +1430,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.Title", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("id");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Awards")
-                        .HasColumnType("text")
-                        .HasColumnName("awards");
-
-                    b.Property<string>("BoxOffice")
-                        .HasColumnType("text")
-                        .HasColumnName("box_office");
-
-                    b.Property<int?>("BroadcastRangeEndYear")
-                        .HasColumnType("integer")
-                        .HasColumnName("broadcast_range_end_year");
-
-                    b.Property<string>("BroadcastRangeRaw")
-                        .HasColumnType("text")
-                        .HasColumnName("broadcast_range_raw");
-
-                    b.Property<int?>("BroadcastRangeStartYear")
-                        .HasColumnType("integer")
-                        .HasColumnName("broadcast_range_start_year");
-
-                    b.Property<string>("ContentKind")
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasColumnName("content_kind");
-
-                    b.PrimitiveCollection<string[]>("Countries")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text[]")
-                        .HasColumnName("countries")
-                        .HasDefaultValueSql("ARRAY[]::text[]");
-
-                    b.Property<string>("Director")
-                        .HasColumnType("text")
-                        .HasColumnName("director");
-
-                    b.Property<DateTimeOffset?>("FirstSeenAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("first_seen_at");
-
-                    b.PrimitiveCollection<string[]>("Genres")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text[]")
-                        .HasColumnName("genres")
-                        .HasDefaultValueSql("ARRAY[]::text[]");
-
-                    b.Property<string>("ImdbId")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("imdb_id");
-
-                    b.Property<decimal?>("ImdbRating")
-                        .HasPrecision(4, 1)
-                        .HasColumnType("numeric(4,1)")
-                        .HasColumnName("imdb_rating");
-
-                    b.Property<long?>("ImdbVotes")
-                        .HasColumnType("bigint")
-                        .HasColumnName("imdb_votes");
-
-                    b.Property<DateTimeOffset?>("LastSeenAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_seen_at");
-
-                    b.Property<string>("MediaType")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("media_type");
-
-                    b.Property<decimal?>("Metascore")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)")
-                        .HasColumnName("metascore");
-
-                    b.Property<string>("NormalizedTitle")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("normalized_title");
-
-                    b.Property<string>("Plot")
-                        .HasColumnType("text")
-                        .HasColumnName("plot");
-
-                    b.Property<string>("PosterUrl")
-                        .HasColumnType("text")
-                        .HasColumnName("poster_url");
-
-                    b.Property<string>("Runtime")
-                        .HasColumnType("text")
-                        .HasColumnName("runtime");
-
-                    b.Property<string>("SourceType")
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasColumnName("source_type");
-
-                    b.Property<string>("TitleText")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("title");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<int?>("Year")
-                        .HasColumnType("integer")
-                        .HasColumnName("year");
-
-                    b.HasKey("Id")
-                        .HasName("pk_titles");
-
-                    b.HasIndex("ImdbId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_titles_imdb_id")
-                        .HasFilter("imdb_id IS NOT NULL AND btrim(imdb_id) <> ''");
-
-                    b.HasIndex("Id", "ImdbId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_titles_id_imdb_id");
-
-                    b.HasIndex("NormalizedTitle", "Year", "MediaType")
-                        .HasDatabaseName("ix_titles_normalized_title_year_media_type");
-
-                    b.ToTable("titles", null, t =>
-                        {
-                            t.HasCheckConstraint("ck_titles_content_kind", "content_kind IS NULL OR content_kind IN ('standard', 'documentary', 'short')");
-
-                            t.HasCheckConstraint("ck_titles_media_type", "media_type IN ('movie', 'series', 'documentary', 'short')");
-
-                            t.HasCheckConstraint("ck_titles_provider_metadata_without_imdb_id", "imdb_id IS NULL OR (imdb_rating IS NULL AND imdb_votes IS NULL AND metascore IS NULL AND cardinality(genres) = 0 AND cardinality(countries) = 0 AND NULLIF(btrim(director), '') IS NULL AND NULLIF(btrim(plot), '') IS NULL AND NULLIF(btrim(poster_url), '') IS NULL AND NULLIF(btrim(runtime), '') IS NULL AND NULLIF(btrim(awards), '') IS NULL AND NULLIF(btrim(box_office), '') IS NULL)");
-
-                            t.HasCheckConstraint("ck_titles_seen_range", "(first_seen_at IS NULL AND last_seen_at IS NULL) OR (first_seen_at IS NOT NULL AND last_seen_at IS NOT NULL AND first_seen_at <= last_seen_at)");
-
-                            t.HasCheckConstraint("ck_titles_source_type", "source_type IS NULL OR source_type IN ('movie', 'series')");
-                        });
-                });
-
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.TorrentMovie", b =>
                 {
                     b.Property<long>("Id")
@@ -2184,38 +1716,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.FavoriteMovie", b =>
-                {
-                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.Title", "Title")
-                        .WithMany()
-                        .HasForeignKey("TitleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_favorite_movies_titles_title_id");
-
-                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_favorite_movies_users_user_id");
-
-                    b.Navigation("Title");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeGroup", b =>
-                {
-                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.ImdbTitle", "ImdbTitle")
-                        .WithMany()
-                        .HasForeignKey("ImdbId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_golden_globe_groups_imdb_titles_imdb_id");
-
-                    b.Navigation("ImdbTitle");
-                });
-
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeNomination", b =>
                 {
                     b.HasOne("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeAward", "Award")
@@ -2231,17 +1731,9 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_golden_globe_nominations_titles_title_id");
 
-                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeGroup", "Group")
-                        .WithMany("Nominations")
-                        .HasForeignKey("GroupId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_golden_globe_nominations_groups_group_id");
-
                     b.Navigation("Award");
 
                     b.Navigation("GoldenGlobeTitle");
-
-                    b.Navigation("Group");
                 });
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeTitle", b =>
@@ -2276,47 +1768,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.Occurrence", b =>
-                {
-                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.Source", "Source")
-                        .WithMany("Occurrences")
-                        .HasForeignKey("SourceId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_occurrences_sources_source_id");
-
-                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.Title", "Title")
-                        .WithMany("Occurrences")
-                        .HasForeignKey("TitleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_occurrences_titles_title_id");
-
-                    b.Navigation("Source");
-
-                    b.Navigation("Title");
-                });
-
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.OscarFilm", b =>
-                {
-                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.ImdbTitle", "ImdbTitle")
-                        .WithMany()
-                        .HasForeignKey("ImdbId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_oscar_films_imdb_titles_imdb_id");
-
-                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.Title", "Title")
-                        .WithMany()
-                        .HasForeignKey("TitleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_oscar_films_titles_title_id");
-
-                    b.Navigation("ImdbTitle");
-
-                    b.Navigation("Title");
-                });
-
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.OscarMovie", b =>
                 {
                     b.HasOne("MediaDock.Infrastructure.Persistence.Entities.ImdbTitle", "ImdbTitle")
@@ -2330,19 +1781,11 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.OscarNomination", b =>
                 {
-                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.OscarFilm", "OscarFilm")
-                        .WithMany("Nominations")
-                        .HasForeignKey("OscarFilmId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_oscar_nominations_films_oscar_film_id");
-
                     b.HasOne("MediaDock.Infrastructure.Persistence.Entities.OscarMovie", "OscarMovie")
                         .WithMany("Nominations")
                         .HasForeignKey("OscarMovieId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_oscar_nominations_movies_oscar_movie_id");
-
-                    b.Navigation("OscarFilm");
 
                     b.Navigation("OscarMovie");
                 });
@@ -2407,17 +1850,6 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_rss_item_states_sources_source_id");
                 });
 
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.Title", b =>
-                {
-                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.ImdbTitle", "ImdbTitle")
-                        .WithMany()
-                        .HasForeignKey("ImdbId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_titles_imdb_titles_imdb_id");
-
-                    b.Navigation("ImdbTitle");
-                });
-
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.TorrentMovie", b =>
                 {
                     b.HasOne("MediaDock.Infrastructure.Persistence.Entities.ImdbTitle", "ImdbTitle")
@@ -2460,17 +1892,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.Navigation("Nominations");
                 });
 
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeGroup", b =>
-                {
-                    b.Navigation("Nominations");
-                });
-
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeTitle", b =>
-                {
-                    b.Navigation("Nominations");
-                });
-
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.OscarFilm", b =>
                 {
                     b.Navigation("Nominations");
                 });
@@ -2482,14 +1904,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.Source", b =>
                 {
-                    b.Navigation("Occurrences");
-
                     b.Navigation("ParseLogs");
-                });
-
-            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.Title", b =>
-                {
-                    b.Navigation("Occurrences");
                 });
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.TorrentMovie", b =>

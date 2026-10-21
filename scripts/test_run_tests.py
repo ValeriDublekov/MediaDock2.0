@@ -89,6 +89,11 @@ class TestRunnerArtifactAndFallbackTests(unittest.TestCase):
 
         self.assertIn("scripts.test_analyze_complexity", command)
 
+    def test_runner_suite_includes_diff_inspector_tests(self) -> None:
+        command, _, _, _ = build_command("runner", None, self.directory, restore=False)
+
+        self.assertIn("scripts.test_inspect_diff", command)
+
     def test_artifact_directory_defaults_to_unique_workspace_run_directories(self) -> None:
         with mock.patch("scripts.run_tests.ROOT", self.directory):
             first_run = create_run_artifact_dir()

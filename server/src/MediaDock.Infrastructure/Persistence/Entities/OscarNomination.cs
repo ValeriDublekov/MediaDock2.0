@@ -3,7 +3,6 @@ namespace MediaDock.Infrastructure.Persistence.Entities;
 public sealed class OscarNomination
 {
     public long Id { get; set; }
-    public long? OscarFilmId { get; set; }
     public long? OscarMovieId { get; set; }
     public string ImportKey { get; set; } = string.Empty;
     public int Ceremony { get; set; }
@@ -18,6 +17,5 @@ public sealed class OscarNomination
     public DateTimeOffset ImportedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
-    public OscarFilm? OscarFilm { get; set; }
     public OscarMovie? OscarMovie { get; set; }
 }

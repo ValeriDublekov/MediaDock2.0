@@ -66,19 +66,6 @@ public sealed class CatalogEndpointsApiTests
             });
         db.Sources.Add(source);
         db.TorrentMovies.AddRange(olderTitle, newerTitle, seriesTitle, yearlessTitle);
-        db.Titles.Add(new Title
-        {
-            TitleText = "Year Unknown",
-            NormalizedTitle = "year unknown",
-            MediaType = "movie",
-            ImdbRating = 8.0m,
-            Genres = ["Drama"],
-            Countries = ["USA"],
-            PosterUrl = "https://example.test/legacy-year-unknown.jpg",
-            FirstSeenAt = yearlessTitle.FirstSeenAt!.Value,
-            LastSeenAt = yearlessTitle.LastSeenAt!.Value,
-            UpdatedAt = yearlessTitle.UpdatedAt
-        });
         await db.SaveChangesAsync();
 
         var firstSeen = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);

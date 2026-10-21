@@ -53,11 +53,11 @@
 - Множество RSS издания остават отделни и са свързани с един `torrent_movies` запис, когато идентичността е известна.
 - Oscar номинациите и Golden Globes awards/nominations, включително сериалите, се запазват след миграцията.
 - Непреносимите стари favorites се изтриват; преносимите запазват user ownership и marker стойностите.
-- Импортите и RSS обработката остават идемпотентни; противоречащи IMDb ID-та не се сливат по title/year.
+- Импортите на Oscar и Golden Globes, както и повторното RSS сканиране, остават идемпотентни. RSS изданията са уникални по `(source_id, source_item_key)`; отделни издания споделят `torrent_movies` запис само при съвпадащ известен IMDb ID, а липсващи или противоречащи IMDb ID-та не се обединяват само по title/year/type.
 
 ## Основни файлове
 
-- Persistence: `server/src/MediaDock.Infrastructure/Persistence/Entities/Title.cs`, `OscarFilm.cs`, `GoldenGlobeGroup.cs`, `Occurrence.cs`, `FavoriteMovie.cs`, `ImdbTitle.cs`, `MediaDockDbContext.cs`, persistence configurations и нова migration.
+- Persistence: source-owned entity/configuration files, `MediaDockDbContext.cs`, `SourceOwnedMovieIdentity`, and `RemoveLegacyTitleIdentity`; historical legacy rows are represented only in the test-only `LegacyPersistenceTestContext`.
 - Imports и ingestion: `server/src/MediaDock.Infrastructure/OscarAwards/OscarDatasetImporter.cs`, `server/src/MediaDock.Infrastructure/GoldenGlobes/GoldenGlobeDatasetImporter.cs`, `server/src/MediaDock.Infrastructure/Ingestion/PostgresRssIngestionRepository.cs`, `server/src/MediaDock.Application/Ingestion/RssEntryProcessor.cs`.
 - API: `server/src/MediaDock.Api/Favorites/FavoriteApiService.cs`, `FavoriteContracts.cs`, `FavoriteEndpoints.cs`, както и catalog/Oscar/Golden Globes services и contracts, които използват `titleId`.
 - Web: `web/src/api/client.ts`, `web/src/api/types.ts`, `web/src/features/favorites/FavoriteContext.tsx`, `FavoriteControls.tsx`, `FavoritesView.tsx`, и съответните catalog/Oscar/Golden Globes views.

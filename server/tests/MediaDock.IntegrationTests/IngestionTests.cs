@@ -262,7 +262,6 @@ public sealed class IngestionTests
         Assert.Equal("tt2222222", sharedMetadata.ImdbId);
         Assert.Equal("enriched", sharedMetadata.MetadataStatus);
         Assert.Equal(8.7m, sharedMetadata.ImdbRating);
-        Assert.Empty(await db.Titles.ToListAsync());
         var alternateTitleLog = await db.ParseLogs.SingleAsync(log => log.RawTitle.StartsWith("Wrong Film / Right Film"));
         Assert.Equal(new[] { "Wrong Film", "Right Film" }, alternateTitleLog.LookupTitles);
         Assert.Contains(await db.ParseLogs.ToListAsync(), log => log.IgnoreReason == "ambiguous_title_match" && log.RetryState == "terminal");
@@ -483,71 +482,6 @@ public sealed class IngestionTests
         Assert.Equal(2, await db.TorrentMovies.CountAsync());
         Assert.Equal("tt11111111", (await db.TorrentMovies.SingleAsync(title => title.Id == existingMovie.Id)).ImdbId);
         Assert.Equal(1, await db.TorrentMovies.CountAsync(title => title.ImdbId == "tt22222222"));
-    }
-
-    [Fact]
-    [Trait("Category", "Ingestion")]
-    public async Task UpsertDoesNotCopyLegacyFallbackMetadataToTorrentMovie()
-    {
-        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_metadata_promotion_test").Build();
-        await postgres.StartAsync();
-
-        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
-            .UseNpgsql(postgres.GetConnectionString())
-            .Options;
-        await using var db = new MediaDockDbContext(options);
-        await db.Database.MigrateAsync();
-
-        var now = new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero);
-        var source = new Source
-        {
-            StableKey = "movies-metadata-promotion",
-            Name = "Movies",
-            FeedType = "movie",
-            Url = SuccessfulFeedUrl
-        };
-        var localTitle = new Title
-        {
-            TitleText = "Shared Film",
-            NormalizedTitle = "shared film",
-            Year = 2020,
-            MediaType = "movie",
-            ImdbRating = 6.4m,
-            Genres = ["Drama"],
-            Plot = "Local fallback plot.",
-            FirstSeenAt = now,
-            LastSeenAt = now,
-            UpdatedAt = now
-        };
-        db.Sources.Add(source);
-        db.Titles.Add(localTitle);
-        await db.SaveChangesAsync();
-
-        var feedItem = new IngestionFeedItem(
-            "Shared Film (2020)",
-            "metadata-promotion",
-            "https://feed.example/topic/metadata-promotion",
-            now);
-        var result = await new PostgresRssIngestionRepository(db).UpsertCatalogItemAsync(
-            new IngestionSource(source.Id, "Movies", "movie", source.Url),
-            feedItem,
-            SourceItemIdentity.From(feedItem.FeedEntryId, feedItem.TorrentUrl),
-            "metadata-promotion-fingerprint",
-            RutrackerTitleParser.Parse(feedItem.Title, "movie"),
-            CreateMetadata("Shared Film", 2020, "tt22222222"),
-            now);
-
-        Assert.True(result.TitleCreated);
-        Assert.Null(localTitle.ImdbId);
-        Assert.Equal(6.4m, localTitle.ImdbRating);
-        Assert.Equal(new[] { "Drama" }, localTitle.Genres);
-        Assert.Equal("Local fallback plot.", localTitle.Plot);
-        var torrentMovie = await db.TorrentMovies.SingleAsync();
-        Assert.Equal("tt22222222", torrentMovie.ImdbId);
-        var sharedMetadata = await db.ImdbTitles.AsNoTracking().SingleAsync(title => title.ImdbId == "tt22222222");
-        Assert.Null(sharedMetadata.ImdbRating);
-        Assert.Empty(sharedMetadata.Genres);
-        Assert.Null(sharedMetadata.Plot);
     }
 
     [Fact]

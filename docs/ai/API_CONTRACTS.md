@@ -8,6 +8,8 @@ This page is the shared-conventions router for the API in `server/`. Routes are 
 | Sign-in, account administration, favorites, and personal ratings | [Identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md) |
 | Health, configuration, operations, ingestion, and jobs | [Operations and jobs](API_OPERATIONS_AND_JOBS.md) |
 
+Catalog IDs, Oscar record IDs, and Golden Globes film IDs belong to their respective source-owned records. Cross-source Favorites state is keyed by IMDb ID, not by one of those local IDs.
+
 ## Paging
 
 Paged query DTOs accept optional `Page` in `1..1,000,000` and `PageSize` in `1..100`; omitted values are `1` and `25`. Invalid annotated values produce a 400 validation problem. Pagination uses offsets; a page past the end returns an empty `Items` list rather than being clamped.

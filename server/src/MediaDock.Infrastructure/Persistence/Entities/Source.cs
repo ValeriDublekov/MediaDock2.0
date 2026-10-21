@@ -9,6 +9,5 @@ public sealed class Source
     public string Url { get; set; } = string.Empty;
     public bool IsEnabled { get; set; } = true;
 
-    public ICollection<Occurrence> Occurrences { get; set; } = new List<Occurrence>();
     public ICollection<ParseLog> ParseLogs { get; set; } = new List<ParseLog>();
 }

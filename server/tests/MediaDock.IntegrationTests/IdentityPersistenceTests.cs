@@ -18,15 +18,19 @@ public sealed class IdentityPersistenceTests
             .UseNpgsql(postgres.GetConnectionString())
             .Options;
         await using var db = new MediaDockDbContext(options);
+        var legacyOptions = new DbContextOptionsBuilder<LegacyPersistenceTestContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var legacyDb = new LegacyPersistenceTestContext(legacyOptions);
         await db.Database.MigrateAsync("20261005120000_AddGoldenGlobeNomineeType");
 
         var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
-        await SeedLegacyFavoriteAndRatingAsync(db, now.AddDays(-1), now);
+        await SeedLegacyFavoriteAndRatingAsync(db, legacyDb, now.AddDays(-1), now);
 
-        await db.Database.MigrateAsync();
+        await db.Database.MigrateAsync("20261016071457_AddUserOwnershipToFavoritesAndRatings");
         db.ChangeTracker.Clear();
 
-        Assert.Empty(await db.FavoriteMovies.AsNoTracking().ToListAsync());
+        Assert.Empty(await legacyDb.FavoriteMovies.AsNoTracking().ToListAsync());
         Assert.Empty(await db.PersonalRatings.AsNoTracking().ToListAsync());
         Assert.Empty(await db.Users.ToListAsync());
     }
@@ -42,6 +46,10 @@ public sealed class IdentityPersistenceTests
             .UseNpgsql(postgres.GetConnectionString())
             .Options;
         await using var db = new MediaDockDbContext(options);
+        var legacyOptions = new DbContextOptionsBuilder<LegacyPersistenceTestContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var legacyDb = new LegacyPersistenceTestContext(legacyOptions);
         await db.Database.MigrateAsync("20261007170000_AddParseLogFeedPayload");
 
         var now = new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero);
@@ -50,12 +58,12 @@ public sealed class IdentityPersistenceTests
         user.Role = "user";
         db.Users.Add(user);
         await db.SaveChangesAsync();
-        var title = await SeedLegacyFavoriteAndRatingAsync(db, now.AddDays(-1), now);
+        var title = await SeedLegacyFavoriteAndRatingAsync(db, legacyDb, now.AddDays(-1), now);
 
-        await db.Database.MigrateAsync();
+        await db.Database.MigrateAsync("20261016071457_AddUserOwnershipToFavoritesAndRatings");
         db.ChangeTracker.Clear();
 
-        var favorite = await db.FavoriteMovies.AsNoTracking().SingleAsync();
+        var favorite = await legacyDb.FavoriteMovies.AsNoTracking().SingleAsync();
         Assert.Equal(user.Id, favorite.UserId);
         Assert.Equal(title.Id, favorite.TitleId);
         Assert.False(favorite.ToWatch);
@@ -87,6 +95,10 @@ public sealed class IdentityPersistenceTests
             .UseNpgsql(postgres.GetConnectionString())
             .Options;
         await using var db = new MediaDockDbContext(options);
+        var legacyOptions = new DbContextOptionsBuilder<LegacyPersistenceTestContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var legacyDb = new LegacyPersistenceTestContext(legacyOptions);
         await db.Database.MigrateAsync("20261007170000_AddParseLogFeedPayload");
 
         var now = new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero);
@@ -96,12 +108,12 @@ public sealed class IdentityPersistenceTests
         secondUser.Role = "user";
         db.Users.AddRange(firstUser, secondUser);
         await db.SaveChangesAsync();
-        var title = await SeedLegacyFavoriteAndRatingAsync(db, now.AddDays(-1), now);
+        var title = await SeedLegacyFavoriteAndRatingAsync(db, legacyDb, now.AddDays(-1), now);
 
-        await db.Database.MigrateAsync();
+        await db.Database.MigrateAsync("20261016071457_AddUserOwnershipToFavoritesAndRatings");
         db.ChangeTracker.Clear();
 
-        var favorites = await db.FavoriteMovies.AsNoTracking().OrderBy(favorite => favorite.UserId).ToListAsync();
+        var favorites = await legacyDb.FavoriteMovies.AsNoTracking().OrderBy(favorite => favorite.UserId).ToListAsync();
         Assert.Equal(new[] { firstUser.Id, secondUser.Id }.OrderBy(id => id), favorites.Select(favorite => favorite.UserId));
         Assert.All(favorites, favorite =>
         {
@@ -123,7 +135,7 @@ public sealed class IdentityPersistenceTests
             Assert.Equal(now, rating.UpdatedAt);
         });
 
-        db.FavoriteMovies.Add(new FavoriteMovie
+        legacyDb.FavoriteMovies.Add(new LegacyFavoriteMovieRow
         {
             UserId = firstUser.Id,
             TitleId = title.Id,
@@ -132,8 +144,8 @@ public sealed class IdentityPersistenceTests
             CreatedAt = now,
             UpdatedAt = now
         });
-        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
-        db.ChangeTracker.Clear();
+        await Assert.ThrowsAsync<DbUpdateException>(() => legacyDb.SaveChangesAsync());
+        legacyDb.ChangeTracker.Clear();
 
         db.PersonalRatings.Add(new PersonalRating
         {
@@ -315,22 +327,22 @@ public sealed class IdentityPersistenceTests
         UpdatedAt = now
     };
 
-    private static async Task<Title> SeedLegacyFavoriteAndRatingAsync(
+    private static async Task<LegacyTitleRow> SeedLegacyFavoriteAndRatingAsync(
         MediaDockDbContext db,
+        LegacyPersistenceTestContext legacyDb,
         DateTimeOffset createdAt,
         DateTimeOffset updatedAt)
     {
-        var title = new Title
+        var title = new LegacyTitleRow
         {
             TitleText = "Shared title",
             NormalizedTitle = "shared title",
             MediaType = "movie",
             ImdbId = "tt12345678",
-            ImdbRating = 8.0m,
             UpdatedAt = updatedAt
         };
-        db.Titles.Add(title);
-        await db.SaveChangesAsync();
+        legacyDb.Titles.Add(title);
+        await legacyDb.SaveChangesAsync();
 
         await db.Database.ExecuteSqlInterpolatedAsync(
             $"INSERT INTO favorite_movies (title_id, to_watch, to_download, added_from_oscar, added_from_catalog, created_at, updated_at) VALUES ({title.Id}, {false}, {true}, {true}, {false}, {createdAt}, {updatedAt})");

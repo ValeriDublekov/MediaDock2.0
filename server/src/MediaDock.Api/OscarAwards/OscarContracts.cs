@@ -42,7 +42,6 @@ public sealed record OscarCatalogQuery
 
 public sealed record OscarFilmResponse(
     long Id,
-    long TitleId,
     string Title,
     string MetadataTitle,
     int? MetadataYear,

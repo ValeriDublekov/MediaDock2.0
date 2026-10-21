@@ -72,7 +72,6 @@ export interface OscarNomination {
 
 export interface OscarFilm {
   id: number
-  titleId: number
   title: string
   metadataTitle: string
   metadataYear: number | null

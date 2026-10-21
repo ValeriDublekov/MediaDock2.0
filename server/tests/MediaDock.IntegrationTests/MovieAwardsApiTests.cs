@@ -31,23 +31,16 @@ public sealed class MovieAwardsApiTests
             db.ImdbTitles.AddRange(
                 new ImdbTitle { ImdbId = "tt1234567", UpdatedAt = now },
                 new ImdbTitle { ImdbId = "tt7654321", UpdatedAt = now });
-            db.OscarFilms.Add(new OscarFilm
+            db.OscarMovies.Add(new OscarMovie
             {
                 StableKey = "shared-oscar-film",
                 FilmTitle = "Shared Film",
                 NormalizedTitle = "shared film",
                 FilmYear = 2024,
+                ImdbId = "tt1234567",
+                EnrichmentStatus = "enriched",
                 ImportedAt = now,
                 UpdatedAt = now,
-                Title = new Title
-                {
-                    TitleText = "Shared Film",
-                    NormalizedTitle = "shared film",
-                    Year = 2024,
-                    MediaType = "movie",
-                    ImdbId = "tt1234567",
-                    UpdatedAt = now
-                },
                 Nominations =
                 [
                     new OscarNomination
@@ -69,7 +62,7 @@ public sealed class MovieAwardsApiTests
             });
 
             var bestPicture = new GoldenGlobeAward { Name = "Best Motion Picture" };
-            var sharedGroup = new GoldenGlobeGroup
+            var sharedTitle = new GoldenGlobeTitle
             {
                 Title = "Shared Film",
                 Year = 2025,
@@ -82,14 +75,14 @@ public sealed class MovieAwardsApiTests
                 {
                     ImportKey = "shared-globe-nomination",
                     Winner = false,
-                    Group = sharedGroup,
+                    GoldenGlobeTitle = sharedTitle,
                     Award = bestPicture
                 },
                 new GoldenGlobeNomination
                 {
                     ImportKey = "unrequested-globe-nomination",
                     Winner = true,
-                    Group = new GoldenGlobeGroup
+                    GoldenGlobeTitle = new GoldenGlobeTitle
                     {
                         Title = "Other Film",
                         Year = 2025,
@@ -103,7 +96,7 @@ public sealed class MovieAwardsApiTests
                 {
                     ImportKey = "unlinked-globe-nomination",
                     Winner = true,
-                    Group = new GoldenGlobeGroup
+                    GoldenGlobeTitle = new GoldenGlobeTitle
                     {
                         Title = "Unlinked Film",
                         Year = 2025,

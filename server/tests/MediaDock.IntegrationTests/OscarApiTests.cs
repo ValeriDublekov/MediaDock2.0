@@ -37,7 +37,7 @@ public sealed class OscarApiTests
         Assert.Equal(HttpStatusCode.Unauthorized, updateResponse.StatusCode);
         using var deleteResponse = await client.DeleteAsync("/api/favorites/1");
         Assert.Equal(HttpStatusCode.Unauthorized, deleteResponse.StatusCode);
-        Assert.Empty(await db.FavoriteMovies.ToListAsync());
+        Assert.Empty(await db.ImdbFavoriteMovies.ToListAsync());
     }
 
     [Fact]
@@ -55,40 +55,60 @@ public sealed class OscarApiTests
         var now = new DateTimeOffset(2026, 9, 30, 0, 0, 0, TimeSpan.Zero);
         var films = new[]
         {
-            CreateFilm("oppenheimer-2023", "Oppenheimer", 2023, "pending", now, 8.3m,
+            CreateFilm("oppenheimer-2023", "Oppenheimer", 2023, "pending", now, "tt15398776",
                 CreateNomination("oppenheimer-best-picture", 96, "BEST PICTURE", "Best Picture", "Emma Thomas", true),
                 CreateNomination("oppenheimer-directing", 96, "DIRECTING", "Directing", "Christopher Nolan", true)),
             CreateFilm("poor-things-2023", "Poor Things", 2023, "not_found", now, null,
                 CreateNomination("poor-things-best-picture", 96, "BEST PICTURE", "Best Picture", "Ed Guiney", false),
                 CreateNomination("poor-things-directing", 96, "DIRECTING", "Directing", "Yorgos Lanthimos", false)),
-            CreateFilm("category-mix-2023", "Category Mix Example", 2023, "pending", now, 7.0m,
+            CreateFilm("category-mix-2023", "Category Mix Example", 2023, "pending", now, "tt76543210",
                 CreateNomination("category-mix-best-picture", 96, "BEST PICTURE", "Best Picture", "Producer", false),
                 CreateNomination("category-mix-directing", 96, "DIRECTING", "Directing", "Director", true)),
             CreateFilm("year-bounds-2021", "Year Bounds Example", 2021, "pending", now, null,
                 CreateNomination("year-bounds-sound", 93, "SOUND", "Sound", "Sound Team", false))
         };
-        db.ImdbTitles.Add(new ImdbTitle
+        db.ImdbTitles.AddRange(
+            new ImdbTitle
+            {
+                ImdbId = "tt15398776",
+                TitleText = "Canonical Oppenheimer",
+                Year = 2024,
+                MediaType = "movie",
+                ImdbRating = 8.3m,
+                ImdbVotes = 400000,
+                Metascore = 90m,
+                Genres = ["Biography", "Drama"],
+                Countries = ["USA", "UK"],
+                Director = "Canonical Director",
+                Plot = "Canonical plot.",
+                PosterUrl = "https://example.test/canonical-oppenheimer.jpg",
+                Runtime = "180 min",
+                Awards = "Canonical awards.",
+                BoxOffice = "$900 million",
+                UpdatedAt = now
+            },
+            new ImdbTitle
+            {
+                ImdbId = "tt76543210",
+                TitleText = "Canonical Category Mix",
+                Year = 2023,
+                MediaType = "movie",
+                ImdbRating = 7.0m,
+                UpdatedAt = now
+            });
+        db.OscarMovies.AddRange(films);
+        var torrentMovie = new TorrentMovie
         {
-            ImdbId = "tt15398776",
             TitleText = "Canonical Oppenheimer",
+            NormalizedTitle = "canonical oppenheimer",
             Year = 2024,
             MediaType = "movie",
-            ImdbRating = 8.3m,
-            ImdbVotes = 400000,
-            Metascore = 90m,
-            Genres = ["Biography", "Drama"],
-            Countries = ["USA", "UK"],
-            Director = "Canonical Director",
-            Plot = "Canonical plot.",
-            PosterUrl = "https://example.test/canonical-oppenheimer.jpg",
-            Runtime = "180 min",
-            Awards = "Canonical awards.",
-            BoxOffice = "$900 million",
+            ImdbId = "tt15398776",
             UpdatedAt = now
-        });
-        db.OscarFilms.AddRange(films);
+        };
+        db.TorrentMovies.Add(torrentMovie);
         await db.SaveChangesAsync();
-        Assert.Empty(await db.Occurrences.AsNoTracking().ToListAsync());
+        Assert.Empty(await db.TorrentReleases.AsNoTracking().ToListAsync());
 
         using var factory = new ApiFactory(connectionString);
         using var client = factory.CreateClient();
@@ -117,13 +137,11 @@ public sealed class OscarApiTests
         Assert.Equal(new ImdbRatingBounds(7.0m, 8.3m), page.ImdbRatingBounds);
         Assert.Single(page.Items);
 
-        using var titleDetailsResponse = await client.GetAsync($"/api/titles/{films[0].TitleId}");
-        Assert.Equal(HttpStatusCode.OK, titleDetailsResponse.StatusCode);
-        var titleDetails = await titleDetailsResponse.Content.ReadFromJsonAsync<TitleDetailsResponse>();
-        Assert.NotNull(titleDetails);
-        Assert.Null(titleDetails.FirstSeenAt);
-        Assert.Null(titleDetails.LastSeenAt);
-        Assert.Equal(0, titleDetails.OccurrenceCount);
+        using var titleOscarsResponse = await client.GetAsync($"/api/titles/{torrentMovie.Id}/oscars");
+        Assert.Equal(HttpStatusCode.OK, titleOscarsResponse.StatusCode);
+        var titleOscars = await titleOscarsResponse.Content.ReadFromJsonAsync<OscarFilmResponse[]>();
+        Assert.NotNull(titleOscars);
+        Assert.Equal("tt15398776", Assert.Single(titleOscars).ImdbId);
 
         using var winnerResponse = await client.GetAsync(
             "/api/oscars?category=BEST%20PICTURE&result=winner&enrichmentStatus=pending");
@@ -203,38 +221,26 @@ public sealed class OscarApiTests
         Assert.NotNull(await missingFilmResponse.Content.ReadFromJsonAsync<ProblemDetails>());
     }
 
-    private static OscarFilm CreateFilm(
+    private static OscarMovie CreateFilm(
         string stableKey,
         string title,
         int year,
         string enrichmentStatus,
         DateTimeOffset now,
-        decimal? imdbRating,
+        string? imdbId,
         params OscarNomination[] nominations)
     {
         var normalizedTitle = title.ToLowerInvariant();
-        return new OscarFilm
+        return new OscarMovie
         {
             StableKey = stableKey,
             FilmTitle = title,
             NormalizedTitle = normalizedTitle,
             FilmYear = year,
-            ImdbId = stableKey == "oppenheimer-2023" ? "tt15398776" : null,
+            ImdbId = imdbId,
             EnrichmentStatus = enrichmentStatus,
             ImportedAt = now,
             UpdatedAt = now,
-            Title = new Title
-            {
-                TitleText = title,
-                NormalizedTitle = normalizedTitle,
-                Year = year,
-                MediaType = "movie",
-                SourceType = "movie",
-                ContentKind = "standard",
-                ImdbId = stableKey == "oppenheimer-2023" ? "tt15398776" : null,
-                ImdbRating = stableKey == "oppenheimer-2023" ? null : imdbRating,
-                UpdatedAt = now
-            },
             Nominations = nominations
         };
     }

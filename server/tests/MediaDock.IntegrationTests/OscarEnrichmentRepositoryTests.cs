@@ -186,7 +186,7 @@ public sealed class OscarEnrichmentRepositoryTests
     }
 
     [Fact]
-    public async Task SaveOutcomeUpdatesSharedMetadataWithoutCreatingOccurrenceOrChangingLastSeenAt()
+    public async Task SaveOutcomeUpdatesSharedMetadataWithoutCreatingCatalogRecordsOrChangingLastSeenAt()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_oscar_enrichment_save_test").Build();
         await postgres.StartAsync();
@@ -236,8 +236,8 @@ public sealed class OscarEnrichmentRepositoryTests
         Assert.Equal("enriched", sharedMetadata.MetadataStatus);
         Assert.Equal(8.2m, sharedMetadata.ImdbRating);
         Assert.Equal("Director", sharedMetadata.Director);
-        Assert.Empty(await db.Titles.ToListAsync());
-        Assert.Empty(await db.Occurrences.ToListAsync());
+        Assert.Empty(await db.TorrentMovies.ToListAsync());
+        Assert.Empty(await db.TorrentReleases.ToListAsync());
     }
 
     [Fact]
@@ -289,7 +289,7 @@ public sealed class OscarEnrichmentRepositoryTests
         var unchangedFilm = await db.OscarMovies.AsNoTracking().SingleAsync(candidate => candidate.Id == film.Id);
         Assert.Equal("pending", unchangedFilm.EnrichmentStatus);
         Assert.Equal("tt11111111", unchangedFilm.ImdbId);
-        Assert.Empty(await db.Titles.ToListAsync());
+        Assert.Empty(await db.TorrentMovies.ToListAsync());
     }
 
     private static OscarMovie CreateFilm(

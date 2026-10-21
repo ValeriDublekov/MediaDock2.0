@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getMovieAwards, getOscarFilm, getTitleOccurrences, getTitleOscars } from '../../api/client'
+import { getMovieAwards, getOscarFilm } from '../../api/client'
 import type { MovieAwardRecognition, OscarFilm } from '../../api/types'
 import { ErrorState, LoadingState } from '../../components/Feedback'
 import { MovieAwardsList, MovieDetailsIntro } from '../../components/MoviePresentation'
@@ -15,7 +15,6 @@ interface OscarFilmDetailsDialogProps {
 export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDialogProps) {
   const [film, setFilm] = useState<OscarFilm | null>(null)
   const [awards, setAwards] = useState<MovieAwardRecognition[]>([])
-  const [occurrenceCount, setOccurrenceCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -23,15 +22,12 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
     let current = true
     getOscarFilm(filmId)
       .then(async (response) => {
-        const [relatedAwards, sources, combinedAwards] = await Promise.all([
-          getTitleOscars(response.titleId),
-          getTitleOccurrences(response.titleId, { page: 1, pageSize: 5 }),
-          response.imdbId ? getMovieAwards([response.imdbId]).catch(() => []) : Promise.resolve([]),
-        ])
+        const combinedAwards = response.imdbId
+          ? await getMovieAwards([response.imdbId]).catch(() => [])
+          : []
         if (current) {
           setFilm(response)
-          setAwards(combineMovieAwards([response, ...relatedAwards].flatMap(getOscarRecognitions), combinedAwards, response.imdbId))
-          setOccurrenceCount(sources.totalCount)
+          setAwards(combineMovieAwards(getOscarRecognitions(response), combinedAwards, response.imdbId))
         }
       })
       .catch((requestError: unknown) => {
@@ -87,7 +83,7 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
                 <div><dt>Box office</dt><dd>{film.boxOffice ?? 'Not listed'}</dd></div>
                 {film.lastEnrichmentError && <div><dt>Last error</dt><dd>{film.lastEnrichmentError}</dd></div>}
               </dl>
-              <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={occurrenceCount} />
+              <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} />
 
               <MovieAwardsList awards={awards} />
             </>

@@ -10,6 +10,8 @@ Before changing project files, read the [AI documentation index](../../docs/ai/R
 
 For every test run in this repository, use `python -B scripts/run_tests.py <suite>` rather than invoking `dotnet test`, Vitest, or `unittest` directly. Choose the narrowest relevant suite and `--filter`; use `all` when full-suite verification is needed. When integration tests are relevant, check Docker availability and run `server-integration`; do not skip them just because they require Docker. If Docker is unavailable, report that blocker. When changing the runner, run the `runner` suite. See the [testing guide](../../docs/ai/TESTING.md) for suite names and examples.
 
+Store temporary command output and generated inspection artifacts under the repository-root `.test-tmp/`, which is gitignored and created on demand; do not use the user profile or an external temp directory when the destination is selectable. For large Git diffs, use `python -B scripts/inspect_diff.py`: it prints small diffs directly and reports per-file change sizes plus an ignored snapshot when the whole diff or an individual file exceeds its limit. Use `--list`, repeatable `--file PATH`, and `--start-line N --lines N` to inspect the relevant portion without dumping the full diff.
+
 ## Efficient Task Workflow
 
 - Start from the named file, symbol, failing behavior, or test. Inspect `git status --short` before editing and preserve existing user changes. Read the AI documentation index and only the task-specific references that apply.

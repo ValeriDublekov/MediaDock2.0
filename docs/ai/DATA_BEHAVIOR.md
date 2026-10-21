@@ -4,13 +4,15 @@ Cross-component transaction boundaries, retry/recovery, data preservation, and p
 
 ## RSS Ingestion
 
-An RSS item commits its title and occurrence together, but a scan is not one transaction: run creation, parse-log writes, item upserts, and the final summary are separate operations. A failed scan can therefore leave earlier item changes committed. See [`PostgresRssIngestionRepository`](../../server/src/MediaDock.Infrastructure/Ingestion/PostgresRssIngestionRepository.cs) and [`RssIngestionService`](../../server/src/MediaDock.Application/Ingestion/RssIngestionService.cs).
+Each RSS source item is persisted as a `torrent_movies` identity and a distinct `torrent_releases` row. A scan is not one transaction: run creation, parse-log writes, item upserts, and the final summary are separate operations. A failed scan can therefore leave earlier item changes committed. See [`PostgresRssIngestionRepository`](../../server/src/MediaDock.Infrastructure/Ingestion/PostgresRssIngestionRepository.cs) and [`RssIngestionService`](../../server/src/MediaDock.Application/Ingestion/RssIngestionService.cs).
 
 ## Imports And Ownership
 
 Personal-rating import validates the complete input before opening its transaction. Owner scoping and merge-without-deletion semantics are documented in the [personal ratings API contract](API_IDENTITY_AND_PERSONAL_DATA.md); persistence is implemented by [`PersonalRatingsApiService`](../../server/src/MediaDock.Api/PersonalRatings/PersonalRatingsApiService.cs).
 
-Oscar import upserts films and nominations transactionally while preserving populated title metadata and enrichment state; it does not create torrent occurrences or call OMDb. Golden Globes import writes award names, groups, and nominations transactionally. Reimports reuse the `(title, year, nominee_type)` group, so a new nomination inherits the group's existing link and enrichment state. Type corrections move only the affected nomination unless a verified automatic link preserves the existing type. See [`OscarDatasetImporter`](../../server/src/MediaDock.Infrastructure/OscarAwards/OscarDatasetImporter.cs) and [`GoldenGlobeDatasetImporter`](../../server/src/MediaDock.Infrastructure/GoldenGlobes/GoldenGlobeDatasetImporter.cs).
+Oscar import upserts `oscar_movies` and nominations transactionally, preserving source identity and enrichment state without requiring a `torrent_movies` row or IMDb match; it does not call OMDb. Golden Globes import writes award names, `golden_globe_titles`, and nominations transactionally. Reimports reuse the `(title, year, nominee_type)` identity, so a new nomination inherits the group's existing link and enrichment state. Type corrections move only the affected nomination unless a verified automatic link preserves the existing type. Provider metadata is read from `imdb_titles`, never copied into these source-owned records. See [`OscarDatasetImporter`](../../server/src/MediaDock.Infrastructure/OscarAwards/OscarDatasetImporter.cs) and [`GoldenGlobeDatasetImporter`](../../server/src/MediaDock.Infrastructure/GoldenGlobes/GoldenGlobeDatasetImporter.cs).
+
+Favorites are keyed by `(user_id, imdb_id)`, so source screens share one per-user marker set for the same IMDb identity. Add requires an existing `imdb_titles` movie with `metadata_status = 'enriched'`; pending, failed, missing, or non-movie metadata is not eligible. `ToDownload` can be set before any RSS release exists. See [`FavoriteApiService`](../../server/src/MediaDock.Api/Favorites/FavoriteApiService.cs).
 
 ## Enrichment And Retry Persistence
 

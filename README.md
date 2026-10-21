@@ -113,6 +113,10 @@ Favorite markers, origin flags, and timestamps plus rating values and timestamps
 
 The migration's `Down` operation refuses to run while more than one user exists. Automatic rollback/merging after users have independently changed their rows is unsupported; use the approved pre-migration backup and recovery procedure rather than trying to merge user copies. Keep the backup until post-migration acceptance is complete.
 
+### Source-owned movie identity cleanup
+
+The `20261021111712_RemoveLegacyTitleIdentity` migration drops the transitional `titles`, `occurrences`, `oscar_films`, `golden_globe_groups`, and `legacy_favorite_movies` tables plus the old nomination link columns. Its preflight reports remaining provider fallback metadata and retained legacy favorite counts; fallback metadata is intentionally not copied to `torrent_movies`. A generated `Down` can recreate only the old schema, not its deleted rows. Before applying this migration outside disposable testing, validate a fresh backup and staging data counts, obtain separate operator approval, and retain the backup through acceptance. Do not run a production migration or deployment as part of a coding session.
+
 ### Temporary open Users workflow
 
 Configuration > Users remains open while `ACCESS_CONTROL_ENFORCED=false` (the default): any client within the configured network boundary can list accounts and perform account actions, and anti-forgery tokens do not authorize callers. Set `ACCESS_CONTROL_ENFORCED=true` only after Google sign-in is enabled, at least one active administrator is provisioned and linked, and the callback works end to end. In enforced mode, user administration and all global configuration/operation routes resolve active state and role from PostgreSQL on each request; unknown and deactivated identities fail closed. The host-only `bootstrap-admin` procedure remains available, but no production setting or deployment is changed by this code update.

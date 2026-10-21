@@ -5,12 +5,15 @@ Task router for the shared title catalog, Oscars, Golden Globes, and award-recog
 ## Client-visible rules
 
 - When access enforcement is enabled, catalog and award reads require an active linked user or administrator; manual Golden Globes IMDb linking requires an administrator. Open mode makes these routes unprotected, so keep the API within its configured loopback or trusted-network boundary. See [access modes](API_CONTRACTS.md#access-modes).
-- The shared title catalog contains occurrence-backed titles. Oscar-only films appear in the Oscar catalog and remain accessible through title details.
-- Award recognition lookup combines Oscar and Golden Globes records by IMDb ID; it does not perform title-only association or provider lookup.
+- The RSS catalog contains `torrent_movies` with at least one `torrent_releases` row. Its numeric IDs identify catalog records, not Oscar or Golden Globes source records.
+- `/api/oscars` returns source-owned `oscar_movies`; its `id` identifies that Oscar record, and an IMDb match is optional. Provider metadata comes only from `imdb_titles`, so unmatched records retain their Oscar title and nomination facts without provider metadata.
+- Golden Globes catalog rows are grouped by title, year, and nominee type; both movie and series records are retained. IMDb links and provider metadata are shared through `imdb_titles`.
+- Award recognition lookup combines Oscar and Golden Globes records by IMDb ID; it does not perform title-only association or provider lookup. `/api/titles/{id}/oscars` resolves the RSS catalog movie and looks up Oscar records through its IMDb ID.
 - A manual Golden Globes IMDb link is pinned to its nomination group and remains selected after provider failure. Clearing the link returns the group to automatic matching. Automatic matching is type-strict; manual links can retain an IMDb title whose media type differs from the nomination type.
 
 ## Authoritative source and tests
 
 - Endpoints: [CatalogEndpoints.cs](../../server/src/MediaDock.Api/Catalog/CatalogEndpoints.cs), [OscarEndpoints.cs](../../server/src/MediaDock.Api/OscarAwards/OscarEndpoints.cs), [GoldenGlobeEndpoints.cs](../../server/src/MediaDock.Api/GoldenGlobes/GoldenGlobeEndpoints.cs), and [MovieAwardsEndpoints.cs](../../server/src/MediaDock.Api/Awards/MovieAwardsEndpoints.cs).
 - Contracts: [CatalogContracts.cs](../../server/src/MediaDock.Api/Catalog/CatalogContracts.cs), [OscarContracts.cs](../../server/src/MediaDock.Api/OscarAwards/OscarContracts.cs), and [GoldenGlobeContracts.cs](../../server/src/MediaDock.Api/GoldenGlobes/GoldenGlobeContracts.cs).
+- API readers: [CatalogApiService.cs](../../server/src/MediaDock.Api/Catalog/CatalogApiService.cs), [OscarApiService.cs](../../server/src/MediaDock.Api/OscarAwards/OscarApiService.cs), [GoldenGlobeApiService.cs](../../server/src/MediaDock.Api/GoldenGlobes/GoldenGlobeApiService.cs), and [MovieAwardsApiService.cs](../../server/src/MediaDock.Api/Awards/MovieAwardsApiService.cs).
 - API tests: [CatalogEndpointsApiTests.cs](../../server/tests/MediaDock.IntegrationTests/CatalogEndpointsApiTests.cs), [OscarApiTests.cs](../../server/tests/MediaDock.IntegrationTests/OscarApiTests.cs), [GoldenGlobeApiTests.cs](../../server/tests/MediaDock.IntegrationTests/GoldenGlobeApiTests.cs), and [MovieAwardsApiTests.cs](../../server/tests/MediaDock.IntegrationTests/MovieAwardsApiTests.cs).
