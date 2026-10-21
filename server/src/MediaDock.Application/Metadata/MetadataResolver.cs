@@ -39,8 +39,8 @@ public sealed class MetadataResolver
                 "invalid_lookup");
         }
 
-        var yearSemantics = normalizedSourceType == "series" ? "series_title" : "movie_release_year";
-        var lookupYear = normalizedSourceType == "series" ? null : year;
+        var yearSemantics = normalizedSourceType == "series" ? "series_season_year" : "movie_release_year";
+        var lookupYear = year;
         var cacheKey = CreateCacheKey(normalizedTitle, lookupYear, normalizedSourceType, yearSemantics, normalizedImdbId);
         var cached = await _cache.GetAsync(cacheKey, cancellationToken);
         if (cached is not null && cached.ExpiresAt > now)

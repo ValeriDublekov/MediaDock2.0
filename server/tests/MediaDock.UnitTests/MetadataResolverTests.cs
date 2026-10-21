@@ -54,6 +54,22 @@ public sealed class MetadataResolverTests
     }
 
     [Fact]
+    public async Task ResolveAsyncUsesSeasonYearForSeriesCacheAndProviderLookup()
+    {
+        var now = new DateTimeOffset(2026, 10, 2, 8, 0, 0, TimeSpan.Zero);
+        var client = new RecordingOmdbClient();
+        var resolver = new MetadataResolver(client, new InMemoryMetadataCacheStore());
+
+        await resolver.ResolveAsync("East of Eden", 2026, "series", now);
+        var cached = await resolver.ResolveAsync("East of Eden", 2026, "series", now.AddMinutes(1));
+        await resolver.ResolveAsync("East of Eden", 2025, "series", now.AddMinutes(2));
+
+        Assert.True(cached.CacheHit);
+        Assert.Equal([2026, 2025], client.RequestedYears);
+        Assert.Equal(["series", "series"], client.RequestedSourceTypes);
+    }
+
+    [Fact]
     public async Task ResolveByImdbIdCachesVerifiedMetadataWithoutATitle()
     {
         var now = new DateTimeOffset(2026, 10, 2, 8, 0, 0, TimeSpan.Zero);
@@ -397,6 +413,8 @@ public sealed class MetadataResolverTests
     {
         public List<string?> RequestedImdbIds { get; } = [];
         public List<string> RequestedTitles { get; } = [];
+        public List<int?> RequestedYears { get; } = [];
+        public List<string> RequestedSourceTypes { get; } = [];
         public List<OmdbRequestPurpose> RequestPurposes { get; } = [];
         public MetadataLookupStatus LookupStatus { get; init; } = MetadataLookupStatus.Found;
         public string? ReturnedImdbIdOverride { get; init; }
@@ -411,6 +429,8 @@ public sealed class MetadataResolverTests
         {
             RequestedImdbIds.Add(imdbId);
             RequestedTitles.Add(title);
+            RequestedYears.Add(year);
+            RequestedSourceTypes.Add(sourceType);
             RequestPurposes.Add(requestPurpose);
             if (LookupStatus != MetadataLookupStatus.Found)
             {

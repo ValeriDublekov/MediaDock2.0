@@ -386,7 +386,7 @@ public sealed class IngestionTests
     [Theory]
     [InlineData("series_ongoing", "Silo S07E07 [2026]")]
     [InlineData("series_complete", "Silo / Season 7 / Episodes 1-10 of 10 [2026]")]
-    public async Task SeriesProfilesUseSeriesLookupAndDoNotMatchSeasonYearToPremiereYear(
+    public async Task SeriesProfilesTrySeasonYearThenFallbackWithoutMatchingItToPremiereYear(
         string feedType,
         string releaseTitle)
     {
@@ -412,7 +412,7 @@ public sealed class IngestionTests
         var result = await service.RunAsync();
 
         Assert.Equal("succeeded", result.Summary.Status);
-        Assert.Equal(1, result.Summary.OmdbRequests);
+        Assert.Equal(2, result.Summary.OmdbRequests);
         Assert.Equal(1, result.Summary.OccurrencesCreated);
         var title = await db.TorrentMovies.SingleAsync();
         Assert.Equal("Silo", title.TitleText);
@@ -937,9 +937,19 @@ public sealed class IngestionTests
             var query = ParseQuery(uri.Query);
             if (_seriesScenario)
             {
-                if (query["t"] != "Silo" || query["type"] != "series" || query.ContainsKey("y"))
+                if (query["t"] != "Silo" || query["type"] != "series")
                 {
-                    throw new InvalidOperationException("Series lookup must omit season year and use series type.");
+                    throw new InvalidOperationException("Series lookup must use the series title and type.");
+                }
+
+                if (query.GetValueOrDefault("y") == "2026")
+                {
+                    return Task.FromResult(JsonResponse("""{"Response":"False","Error":"Series not found!"}"""));
+                }
+
+                if (query.ContainsKey("y"))
+                {
+                    throw new InvalidOperationException("Series retry must omit the season year.");
                 }
 
                 return Task.FromResult(JsonResponse(SeriesPayload("Silo", "2023-2025", "tt8111088")));

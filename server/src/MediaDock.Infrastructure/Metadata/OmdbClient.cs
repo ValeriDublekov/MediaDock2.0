@@ -73,8 +73,7 @@ public sealed class OmdbClient : IOmdbClient
         var first = await RequestAsync(title.Trim(), year, sourceType, requestPurpose, cancellationToken, normalizedImdbId);
         if (normalizedImdbId is not null
             || first.Status != MetadataLookupStatus.ConfirmedNotFound
-            || year is null
-            || sourceType == "series")
+            || year is null)
         {
             return first;
         }
@@ -101,7 +100,7 @@ public sealed class OmdbClient : IOmdbClient
         {
             query.Append("&t=").Append(Uri.EscapeDataString(title))
                 .Append("&type=").Append(Uri.EscapeDataString(sourceType));
-            if (year is not null && sourceType != "series")
+            if (year is not null)
             {
                 query.Append("&y=").Append(year.Value.ToString(CultureInfo.InvariantCulture));
             }

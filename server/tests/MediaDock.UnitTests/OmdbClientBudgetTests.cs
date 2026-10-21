@@ -54,6 +54,26 @@ public sealed class OmdbClientBudgetTests
     }
 
     [Fact]
+    public async Task SeriesLookupUsesYearThenRetriesWithoutYearWhenNotFound()
+    {
+        var handler = new SeriesFallbackHandler();
+        using var httpClient = new HttpClient(handler);
+        var client = new OmdbClient(httpClient, "test-key");
+
+        var result = await client.LookupAsync("East of Eden", 2026, "series");
+
+        Assert.Equal(MetadataLookupStatus.ConfirmedNotFound, result.Status);
+        Assert.Equal(2, result.HttpAttempts);
+        Assert.Equal(2, handler.RequestUris.Count);
+        Assert.Contains("&t=East%20of%20Eden", handler.RequestUris[0].Query);
+        Assert.Contains("&type=series", handler.RequestUris[0].Query);
+        Assert.Contains("&y=2026", handler.RequestUris[0].Query);
+        Assert.Contains("&t=East%20of%20Eden", handler.RequestUris[1].Query);
+        Assert.Contains("&type=series", handler.RequestUris[1].Query);
+        Assert.DoesNotContain("&y=", handler.RequestUris[1].Query);
+    }
+
+    [Fact]
     public async Task LookupCanUseImdbIdWithoutTitle()
     {
         var handler = new NotFoundHandler();
@@ -250,6 +270,23 @@ public sealed class OmdbClientBudgetTests
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent("""{"Response":"False","Error":"Movie not found!"}""")
+            });
+        }
+    }
+
+    private sealed class SeriesFallbackHandler : HttpMessageHandler
+    {
+        public List<Uri> RequestUris { get; } = [];
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RequestUris.Add(request.RequestUri!);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"Response":"False","Error":"Series not found!"}""")
             });
         }
     }

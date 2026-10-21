@@ -118,6 +118,18 @@ public sealed class RutrackerTitleParserTests
     }
 
     [Fact]
+    public void ParsesCompleteSeasonFeedEntryWithLocalizedAndEnglishTitles()
+    {
+        const string rawTitle = "К востоку от Эдема / East of Eden / Сезон: 1 / Серии: 1-7 из 7 (Гарт Дэвис, Лор де Клермон-Тоннер) [2026, США, драма, WEB-DL 1080p] Dub (Movie Dubbing) + Dub (Ukr) + Original + Sub (Rus, Eng, Chi, Heb, Ron, Ukr) [19.88 GB]";
+
+        var parsed = RutrackerTitleParser.Parse(rawTitle, "series_complete");
+
+        Assert.Equal("East of Eden", parsed.Title);
+        Assert.Equal(2026, parsed.Year);
+        Assert.True(parsed.IsSeries);
+    }
+
+    [Fact]
     public void RemovesNestedDirectorMetadataWithoutLeavingAnExtraClosingParenthesis()
     {
         var parsed = RutrackerTitleParser.Parse(
