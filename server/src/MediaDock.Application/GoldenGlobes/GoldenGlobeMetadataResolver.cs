@@ -249,7 +249,7 @@ public sealed class GoldenGlobeMetadataResolver
         var candidateType = candidate.SourceType.Trim().ToLowerInvariant();
         var details = await _metadataResolver.ResolveAsync(
             request.Title,
-            request.CeremonyYear,
+            candidateType == "series" ? null : request.CeremonyYear,
             candidateType,
             request.Now,
             request.CancellationToken,
