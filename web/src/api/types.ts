@@ -383,6 +383,13 @@ export interface ScanRunQuery {
   trigger?: ScanRun['trigger']
 }
 
+export interface OperationalHistoryCleanupResponse {
+  olderThanDays: number
+  cutoff: string
+  deletedScanRuns: number
+  deletedParseLogs: number
+}
+
 export interface FavoriteMovie {
   imdbId: string
   torrentMovieId: number | null

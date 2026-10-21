@@ -10,6 +10,7 @@ Task router for health/version, application configuration, deployment, operation
 - Background work is asynchronous; clients follow the returned job identity to read status and events. Personal IMDb-title enrichment is owner-scoped, and global job status/events do not expose personal rating IDs or scores.
 - RSS scans do not run award-catalog imports or enrichment as follow-up operations.
 - Parse-log IMDb matching is administrator-only. `POST /api/parse-logs/{id}/imdb-candidates?page=N` searches by the parsed film name (or reparses the raw torrent title), with pages 1-100; `POST /api/parse-logs/{id}/imdb-match` applies a confirmed result only when the log retains a source and usable torrent URL. Applying appends a `manual_retry` log entry with resolved state; rejecting candidates changes nothing.
+- `DELETE /api/operation-history?olderThanDays=N` removes parse logs older than the UTC cutoff and completed scan summaries older than their start-time cutoff. The retention period must be 1-36,500 days. Active scans and their parse logs remain; retained parse logs and background jobs linked to deleted scan summaries are preserved with the scan link cleared. The response reports the cutoff and deleted scan/log counts.
 
 ## Authoritative source and tests
 

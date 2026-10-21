@@ -14,9 +14,15 @@ internal interface IOperationalHistoryApiService
     Task<PageResponse<ScanRunResponse>> GetScanRunsAsync(
         ScanRunQuery query,
         CancellationToken cancellationToken);
+
+    Task<OperationalHistoryCleanupResponse> DeleteOldHistoryAsync(
+        int olderThanDays,
+        CancellationToken cancellationToken);
 }
 
-internal sealed class OperationalHistoryApiService(MediaDockDbContext dbContext) : IOperationalHistoryApiService
+internal sealed class OperationalHistoryApiService(
+    MediaDockDbContext dbContext,
+    TimeProvider timeProvider) : IOperationalHistoryApiService
 {
     public async Task<PageResponse<ParseLogResponse>> GetParseLogsAsync(
         ParseLogQuery query,
@@ -150,6 +156,35 @@ internal sealed class OperationalHistoryApiService(MediaDockDbContext dbContext)
             .ToListAsync(cancellationToken);
 
         return CreatePage(items, page, pageSize, totalCount);
+    }
+
+    public async Task<OperationalHistoryCleanupResponse> DeleteOldHistoryAsync(
+        int olderThanDays,
+        CancellationToken cancellationToken)
+    {
+        var cutoff = timeProvider.GetUtcNow().AddDays(-olderThanDays);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var oldScanRuns = dbContext.ScanRuns
+            .Where(run => run.StartedAt < cutoff && run.Status != "running");
+        var oldScanRunIds = oldScanRuns.Select(run => run.Id);
+
+        var deletedParseLogs = await dbContext.ParseLogs
+            .Where(log => log.ProcessedAt < cutoff
+                && !dbContext.ScanRuns.Any(run => run.Id == log.ScanRunId && run.Status == "running"))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await dbContext.ParseLogs
+            .Where(log => log.ScanRunId.HasValue && oldScanRunIds.Contains(log.ScanRunId.Value))
+            .ExecuteUpdateAsync(setters => setters.SetProperty(log => log.ScanRunId, (long?)null), cancellationToken);
+        await dbContext.BackgroundJobs
+            .Where(job => job.ScanRunId.HasValue && oldScanRunIds.Contains(job.ScanRunId.Value))
+            .ExecuteUpdateAsync(setters => setters.SetProperty(job => job.ScanRunId, (long?)null), cancellationToken);
+
+        var deletedScanRuns = await oldScanRuns.ExecuteDeleteAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+
+        return new OperationalHistoryCleanupResponse(olderThanDays, cutoff, deletedScanRuns, deletedParseLogs);
     }
 
     private static PageResponse<T> CreatePage<T>(IReadOnlyList<T> items, int page, int pageSize, int totalCount) =>

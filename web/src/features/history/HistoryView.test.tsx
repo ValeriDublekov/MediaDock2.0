@@ -1,12 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { applyParseLogImdbCandidate, getParseLogs, getScanRuns, searchParseLogImdbCandidates } from '../../api/client'
+import { applyParseLogImdbCandidate, deleteOldOperationalHistory, getParseLogs, getScanRuns, searchParseLogImdbCandidates } from '../../api/client'
 import type { ImdbCandidateSearch, PageResponse, ParseLog, ScanRun } from '../../api/types'
 import { HistoryView } from './HistoryView'
 
 vi.mock('../../api/client', () => ({
   getParseLogs: vi.fn(),
   getScanRuns: vi.fn(),
+  deleteOldOperationalHistory: vi.fn(),
   searchParseLogImdbCandidates: vi.fn(),
   lookupParseLogImdbCandidate: vi.fn(),
   applyParseLogImdbCandidate: vi.fn(),
@@ -86,6 +87,27 @@ describe('HistoryView parse diagnosis', () => {
     expect(await screen.findByText('Parsing failed')).toBeTruthy()
     expect(screen.getByText('OMDb found no result')).toBeTruthy()
     expect(screen.getByText('Lookup names: English Title → Локално име')).toBeTruthy()
+  })
+
+  it('confirms deletion of history older than the selected days and refreshes scans', async () => {
+    vi.mocked(getScanRuns).mockResolvedValue(createPage<ScanRun>([]))
+    vi.mocked(deleteOldOperationalHistory).mockResolvedValue({
+      olderThanDays: 45,
+      cutoff: '2026-09-06T12:00:00Z',
+      deletedScanRuns: 2,
+      deletedParseLogs: 14,
+    })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    render(<HistoryView />)
+    fireEvent.change(await screen.findByLabelText('Delete older than (days)'), { target: { value: '45' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Delete old logs' }))
+
+    await waitFor(() => expect(deleteOldOperationalHistory).toHaveBeenCalledWith(45))
+    expect(confirm).toHaveBeenCalledWith('Delete scan and parse history older than 45 days? This cannot be undone.')
+    expect(await screen.findByText('Deleted 2 scan runs and 14 parse logs older than 45 days.')).toBeTruthy()
+    await waitFor(() => expect(getScanRuns).toHaveBeenCalledTimes(2))
+    confirm.mockRestore()
   })
 
   it('lets an administrator apply a searched IMDb candidate from an unresolved parse log', async () => {

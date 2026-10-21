@@ -26,6 +26,7 @@ import type {
   GoldenGlobeImdbLinkResult,
   MovieAwardRecognition,
   Occurrence,
+  OperationalHistoryCleanupResponse,
   PageResponse,
   ParseLog,
   ParseLogQuery,
@@ -333,6 +334,14 @@ export function updateProviderSettings(input: ProviderSettingsInput, fetcher?: t
 
 export function getScanRuns(query: ScanRunQuery, fetcher?: typeof fetch) {
   return requestJson<PageResponse<ScanRun>>(withQuery('/scan-runs', query), {}, fetcher)
+}
+
+export function deleteOldOperationalHistory(olderThanDays: number, fetcher?: typeof fetch) {
+  return requestJson<OperationalHistoryCleanupResponse>(
+    withQuery('/operation-history', { olderThanDays }),
+    { method: 'DELETE' },
+    fetcher,
+  )
 }
 
 export function getParseLogs(query: ParseLogQuery, fetcher?: typeof fetch) {

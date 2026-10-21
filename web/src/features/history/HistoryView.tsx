@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { getParseLogs, getScanRuns } from '../../api/client'
+import { deleteOldOperationalHistory, getParseLogs, getScanRuns } from '../../api/client'
 import type { PageResponse, ParseLog, ScanRun } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
@@ -25,6 +25,10 @@ export function HistoryView({ scanRunId = null, onClearScanRun }: {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [imdbMatchTarget, setImdbMatchTarget] = useState<ImdbCandidateTarget | null>(null)
+  const [retentionDays, setRetentionDays] = useState('90')
+  const [deletingHistory, setDeletingHistory] = useState(false)
+  const [retentionMessage, setRetentionMessage] = useState<string | null>(null)
+  const [retentionError, setRetentionError] = useState<string | null>(null)
 
   useEffect(() => {
     let current = true
@@ -69,7 +73,28 @@ export function HistoryView({ scanRunId = null, onClearScanRun }: {
     setSearch(searchDraft.trim())
   }
 
+  async function deleteOldHistory() {
+    const days = Number(retentionDays)
+    if (!Number.isInteger(days) || days < 1 || days > 36_500) return
+    if (!window.confirm(`Delete scan and parse history older than ${days} days? This cannot be undone.`)) return
+
+    setDeletingHistory(true)
+    setRetentionMessage(null)
+    setRetentionError(null)
+    try {
+      const result = await deleteOldOperationalHistory(days)
+      setRetentionMessage(`Deleted ${result.deletedScanRuns} scan runs and ${result.deletedParseLogs} parse logs older than ${days} days.`)
+      setPage(1)
+      setAttempt((current) => current + 1)
+    } catch (requestError: unknown) {
+      setRetentionError(requestError instanceof Error ? requestError.message : 'Could not delete old operation history.')
+    } finally {
+      setDeletingHistory(false)
+    }
+  }
+
   const activeResult = tab === 'scans' ? scanResult : parseResult
+  const validRetentionDays = Number.isInteger(Number(retentionDays)) && Number(retentionDays) >= 1 && Number(retentionDays) <= 36_500
 
   return (
     <section aria-label="Operation history">
@@ -82,6 +107,8 @@ export function HistoryView({ scanRunId = null, onClearScanRun }: {
           <div className="history-filters">
             <div className="field"><label htmlFor="scan-status-filter">Status</label><select id="scan-status-filter" onChange={(event) => { setPage(1); setScanStatus(event.target.value) }} value={scanStatus}><option value="">All statuses</option><option value="running">Running</option><option value="succeeded">Succeeded</option><option value="partial">Partial</option><option value="failed">Failed</option></select></div>
             <div className="field"><label htmlFor="scan-trigger-filter">Trigger</label><select id="scan-trigger-filter" onChange={(event) => { setPage(1); setScanTrigger(event.target.value) }} value={scanTrigger}><option value="">All triggers</option><option value="schedule">Schedule</option><option value="manual">Manual</option><option value="local">Local</option></select></div>
+            <div className="field"><label htmlFor="history-retention-days">Delete older than (days)</label><input id="history-retention-days" max="36500" min="1" onChange={(event) => setRetentionDays(event.target.value)} type="number" value={retentionDays} /></div>
+            <button className="button button-secondary" disabled={deletingHistory || !validRetentionDays} onClick={() => void deleteOldHistory()} type="button">{deletingHistory ? 'Deleting…' : 'Delete old logs'}</button>
           </div>
         ) : (
           <form className="history-filters" onSubmit={applySearch}>
@@ -91,6 +118,9 @@ export function HistoryView({ scanRunId = null, onClearScanRun }: {
           </form>
         )}
       </div>
+
+      {retentionError && <p className="history-retention-feedback" role="alert">{retentionError}</p>}
+      {retentionMessage && <p className="history-retention-feedback" role="status">{retentionMessage}</p>}
 
       {scanRunId !== null && <p className="history-scan-scope">Parse entries for scan #{scanRunId}<button className="text-button" onClick={onClearScanRun} type="button">Show all parse entries</button></p>}
 

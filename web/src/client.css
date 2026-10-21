@@ -149,6 +149,8 @@ button:disabled { cursor: not-allowed; }
 .history-filters .field { min-width: 150px; }
 .history-filters .field-search { min-width: min(260px, 32vw); }
 .history-filters .field input, .history-filters .field select { min-height: 36px; }
+.history-retention-feedback { margin: -6px 0 14px; color: #317153; font-size: 12px; }
+.history-retention-feedback[role="alert"] { color: #a64e35; }
 .management-section { border-top: 1px solid #cbd6cd; padding: 20px 0 8px; }
 .ratings-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 22px 0 10px; border-top: 1px solid #d4ded5; padding-top: 12px; }
 .ratings-toolbar h3 { margin: 0; color: #30473a; font-size: 13px; font-weight: 700; }

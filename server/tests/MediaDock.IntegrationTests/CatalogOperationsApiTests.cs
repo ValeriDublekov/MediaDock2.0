@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using MediaDock.Api.Common;
 using MediaDock.Api.Operations;
 using MediaDock.Infrastructure.Persistence.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace MediaDock.IntegrationTests;
 
@@ -121,5 +122,104 @@ public sealed class CatalogOperationsApiTests
         var runs = await runsResponse.Content.ReadFromJsonAsync<PageResponse<ScanRunResponse>>();
         Assert.NotNull(runs);
         Assert.Equal("succeeded", Assert.Single(runs.Items).Status);
+    }
+
+    [Fact]
+    public async Task OldOperationalHistoryCanBeDeletedWithoutRemovingRecentOrActiveRecords()
+    {
+        await using var host = await CatalogApiTestHost.CreateAsync("mediadock_history_cleanup_api_test");
+        var now = DateTimeOffset.UtcNow;
+        var oldRun = new ScanRun
+        {
+            StartedAt = now.AddDays(-40),
+            FinishedAt = now.AddDays(-40).AddMinutes(1),
+            Status = "succeeded",
+            Trigger = "manual"
+        };
+        var recentRun = new ScanRun
+        {
+            StartedAt = now.AddDays(-20),
+            FinishedAt = now.AddDays(-20).AddMinutes(1),
+            Status = "succeeded",
+            Trigger = "manual"
+        };
+        var activeRun = new ScanRun
+        {
+            StartedAt = now.AddDays(-40),
+            Status = "running",
+            Trigger = "manual"
+        };
+        host.Db.ScanRuns.AddRange(oldRun, recentRun, activeRun);
+        await host.Db.SaveChangesAsync();
+
+        host.Db.ParseLogs.AddRange(
+            new ParseLog
+            {
+                ScanRunId = oldRun.Id,
+                RawTitle = "Old entry",
+                FeedName = "Movies",
+                OmdbStatus = "not_requested",
+                ProcessedAt = now.AddDays(-40),
+                RetryState = "terminal"
+            },
+            new ParseLog
+            {
+                ScanRunId = recentRun.Id,
+                RawTitle = "Recent entry",
+                FeedName = "Movies",
+                OmdbStatus = "not_requested",
+                ProcessedAt = now.AddDays(-20),
+                RetryState = "terminal"
+            },
+            new ParseLog
+            {
+                ScanRunId = activeRun.Id,
+                RawTitle = "Active scan entry",
+                FeedName = "Movies",
+                OmdbStatus = "not_requested",
+                ProcessedAt = now.AddDays(-40),
+                RetryState = "terminal"
+            });
+        var oldJob = new BackgroundJob
+        {
+            JobType = "rss_scan",
+            Trigger = "manual",
+            Status = "succeeded",
+            EnqueuedAt = now.AddDays(-40),
+            StartedAt = now.AddDays(-40),
+            FinishedAt = now.AddDays(-40).AddMinutes(1),
+            ScanRunId = oldRun.Id
+        };
+        host.Db.BackgroundJobs.Add(oldJob);
+        await host.Db.SaveChangesAsync();
+
+        using var response = await host.Client.DeleteAsync("/api/operation-history?olderThanDays=30");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<OperationalHistoryCleanupResponse>();
+        Assert.NotNull(result);
+        Assert.Equal(30, result.OlderThanDays);
+        Assert.Equal(1, result.DeletedScanRuns);
+        Assert.Equal(1, result.DeletedParseLogs);
+        Assert.False(await host.Db.ScanRuns.AnyAsync(run => run.Id == oldRun.Id));
+        Assert.True(await host.Db.ScanRuns.AnyAsync(run => run.Id == recentRun.Id));
+        Assert.True(await host.Db.ScanRuns.AnyAsync(run => run.Id == activeRun.Id));
+        Assert.Equal(
+            new[] { "Active scan entry", "Recent entry" },
+            await host.Db.ParseLogs.OrderBy(log => log.RawTitle).Select(log => log.RawTitle).ToArrayAsync());
+        Assert.Null(await host.Db.BackgroundJobs.AsNoTracking()
+            .Where(job => job.Id == oldJob.Id)
+            .Select(job => job.ScanRunId)
+            .SingleAsync());
+    }
+
+    [Fact]
+    public async Task OperationalHistoryCleanupRejectsInvalidRetentionPeriods()
+    {
+        await using var host = await CatalogApiTestHost.CreateAsync("mediadock_history_cleanup_validation_api_test");
+
+        using var response = await host.Client.DeleteAsync("/api/operation-history?olderThanDays=0");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

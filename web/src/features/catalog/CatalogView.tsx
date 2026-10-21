@@ -26,17 +26,15 @@ interface CatalogFilters {
   genre: string
 }
 
-type CatalogCategory = 'main' | 'movie' | 'series' | 'series_ongoing' | 'all'
+type CatalogCategory = 'movie' | 'series' | 'series_ongoing' | 'all'
 
 const categoryFeedTypes: Record<Exclude<CatalogCategory, 'all'>, FeedType[]> = {
-  main: ['movie', 'series_complete', 'series_ongoing'],
   movie: ['movie'],
   series: ['series_complete'],
   series_ongoing: ['series_ongoing'],
 }
 
 const categories: Array<{ id: CatalogCategory; label: string }> = [
-  { id: 'main', label: 'Main categories' },
   { id: 'movie', label: 'Movies' },
   { id: 'series', label: 'Series' },
   { id: 'series_ongoing', label: 'Series in progress' },
@@ -90,7 +88,7 @@ function CatalogRow({ title, onSelect, awards }: { title: CatalogTitle; onSelect
 
 export function CatalogView() {
   const [viewMode, setViewMode] = useState<ViewMode>('posters')
-  const [category, setCategory] = useState<CatalogCategory>('main')
+  const [category, setCategory] = useState<CatalogCategory>('movie')
   const [page, setPage] = useState(1)
   const [draftFilters, setDraftFilters] = useState<CatalogFilters>(emptyFilters)
   const [appliedFilters, setAppliedFilters] = useState<CatalogFilters>(emptyFilters)

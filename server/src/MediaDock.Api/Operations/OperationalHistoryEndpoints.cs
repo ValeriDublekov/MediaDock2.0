@@ -40,6 +40,21 @@ internal static class OperationalHistoryEndpoints
             .Produces<PageResponse<ScanRunResponse>>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        app.MapDelete("/api/operation-history", async Task<Ok<OperationalHistoryCleanupResponse>> (
+            [AsParameters] OperationalHistoryCleanupQuery query,
+            IOperationalHistoryApiService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.DeleteOldHistoryAsync(query.OlderThanDays, cancellationToken);
+            return TypedResults.Ok(result);
+        })
+            .WithName("DeleteOldOperationalHistory")
+            .WithSummary("Delete operational history older than the requested age.")
+            .WithDescription("Deletes old parse logs and completed scan summaries while preserving active scans and their parse logs.")
+            .RequireAuthorization(AccessPolicies.Administrator)
+            .Produces<OperationalHistoryCleanupResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
         return app;
     }
 }

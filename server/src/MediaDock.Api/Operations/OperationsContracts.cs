@@ -44,6 +44,20 @@ public sealed record ScanRunQuery
     public string? Trigger { get; init; }
 }
 
+/// <summary>Validated retention period for operational history cleanup.</summary>
+public sealed record OperationalHistoryCleanupQuery
+{
+    [Range(1, 36_500)]
+    public int OlderThanDays { get; init; }
+}
+
+/// <summary>Counts and cutoff returned after operational history cleanup.</summary>
+public sealed record OperationalHistoryCleanupResponse(
+    int OlderThanDays,
+    DateTimeOffset Cutoff,
+    int DeletedScanRuns,
+    int DeletedParseLogs);
+
 /// <summary>One parse-log entry returned from history.</summary>
 public sealed record ParseLogResponse(
     long Id,

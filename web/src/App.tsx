@@ -16,7 +16,7 @@ import { UsersView } from './features/users/UsersView'
 type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'account' | 'administration'
 
 const sections: { id: Section; path: string; number: string; label: string }[] = [
-  { id: 'catalog', path: '/catalog', number: '01', label: 'Catalog' },
+  { id: 'catalog', path: '/catalog', number: '01', label: 'Torents catalog' },
   { id: 'oscar', path: '/oscar', number: '02', label: 'Oscar catalog' },
   { id: 'golden-globes', path: '/golden-globes', number: '03', label: 'Golden Globes catalog' },
   { id: 'favorites', path: '/favorites', number: '04', label: 'Favorites' },
@@ -34,7 +34,7 @@ const administrationPages = [
 const sectionContent: Record<Section, { eyebrow: string; title: string; description: string }> = {
   catalog: {
     eyebrow: 'LIBRARY',
-    title: 'Catalog',
+    title: 'Torents catalog',
     description: 'Browse titles collected from your configured feeds.',
   },
   oscar: {

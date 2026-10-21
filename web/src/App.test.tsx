@@ -131,7 +131,7 @@ describe('App routes', () => {
   afterEach(() => cleanup())
 
   it.each([
-    ['/catalog', 'Catalog'],
+    ['/catalog', 'Torents catalog'],
     ['/oscar', 'Oscar catalog'],
     ['/golden-globes', 'Golden Globes catalog'],
     ['/favorites', 'Favorites'],
@@ -147,6 +147,7 @@ describe('App routes', () => {
     renderAt('/catalog')
 
     expect(await screen.findByRole('navigation', { name: 'Library navigation' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: /Torents catalog/ })).toBeTruthy()
     expect(screen.getByRole('link', { name: /Favorites/ })).toBeTruthy()
     expect(screen.queryByRole('navigation', { name: 'Account navigation' })).toBeNull()
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
@@ -225,7 +226,7 @@ describe('App routes', () => {
 
     renderAt('/catalog')
 
-    expect(await screen.findByRole('heading', { name: 'Catalog' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Torents catalog' })).toBeTruthy()
     expect(screen.queryByRole('note')).toBeNull()
   })
 

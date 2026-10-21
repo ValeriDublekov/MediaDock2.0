@@ -16,6 +16,7 @@ import {
   getAdminUsers,
   decideRegistrationRequest,
   setAdminUserStatus,
+  deleteOldOperationalHistory,
   getDeploymentStatus,
   getGoldenGlobeCategories,
   getGoldenGlobeFilms,
@@ -62,6 +63,20 @@ function fetchStub(result: Response | Error) {
 }
 
 describe('typed API client', () => {
+  it('deletes operational history using the selected retention period', async () => {
+    const stub = fetchStub(response(200, {
+      olderThanDays: 90,
+      cutoff: '2026-07-23T12:00:00Z',
+      deletedScanRuns: 2,
+      deletedParseLogs: 14,
+    }))
+
+    await deleteOldOperationalHistory(90, stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/operation-history?olderThanDays=90')
+    expect(stub.calls[0]?.init?.method).toBe('DELETE')
+  })
+
   it('searches and applies explicit IMDb candidates from catalog and parse history', async () => {
     const searchResponse = {
       status: 'found' as const,
