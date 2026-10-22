@@ -14,6 +14,11 @@ internal interface ICatalogApiService
 
     Task<TitleDetailsResponse> GetTitleAsync(long id, CancellationToken cancellationToken);
 
+    Task<DeleteTitleResponse> DeleteTitleAsync(
+        long id,
+        bool deleteImdbInfo,
+        CancellationToken cancellationToken);
+
     Task<PageResponse<OccurrenceResponse>> GetOccurrencesAsync(
         long titleId,
         OccurrencesQuery query,
@@ -195,6 +200,58 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
             .FirstOrDefaultAsync(cancellationToken);
 
         return title ?? throw new ApiNotFoundException("Title not found.");
+    }
+
+    public async Task<DeleteTitleResponse> DeleteTitleAsync(
+        long id,
+        bool deleteImdbInfo,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var title = await dbContext.TorrentMovies
+            .Include(movie => movie.ImdbTitle)
+            .SingleOrDefaultAsync(movie => movie.Id == id, cancellationToken);
+        if (title is null)
+        {
+            throw new ApiNotFoundException("Title not found.");
+        }
+
+        var releases = await dbContext.TorrentReleases
+            .Where(release => release.TorrentMovieId == id)
+            .ToListAsync(cancellationToken);
+        var itemStates = await dbContext.RssItemStates
+            .Where(state => dbContext.TorrentReleases.Any(release =>
+                release.TorrentMovieId == id
+                && release.SourceId == state.SourceId
+                && release.SourceItemKey == state.SourceItemKey))
+            .ToListAsync(cancellationToken);
+
+        dbContext.RssItemStates.RemoveRange(itemStates);
+        dbContext.TorrentReleases.RemoveRange(releases);
+        dbContext.TorrentMovies.Remove(title);
+
+        var imdbInfoDeleted = false;
+        if (deleteImdbInfo && title.ImdbTitle is { } imdbTitle)
+        {
+            var imdbId = imdbTitle.ImdbId;
+            var imdbInfoIsShared = await dbContext.TorrentMovies.AnyAsync(
+                    movie => movie.Id != id && movie.ImdbId == imdbId,
+                    cancellationToken)
+                || await dbContext.OscarMovies.AnyAsync(movie => movie.ImdbId == imdbId, cancellationToken)
+                || await dbContext.GoldenGlobeTitles.AnyAsync(movie => movie.ImdbId == imdbId, cancellationToken)
+                || await dbContext.ImdbFavoriteMovies.AnyAsync(movie => movie.ImdbId == imdbId, cancellationToken)
+                || await dbContext.PersonalRatings.AnyAsync(rating => rating.ImdbId == imdbId, cancellationToken);
+
+            if (!imdbInfoIsShared)
+            {
+                dbContext.ImdbTitles.Remove(imdbTitle);
+                imdbInfoDeleted = true;
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return new DeleteTitleResponse(imdbInfoDeleted);
     }
 
     public async Task<PageResponse<OccurrenceResponse>> GetOccurrencesAsync(

@@ -86,7 +86,7 @@ function CatalogRow({ title, onSelect, awards }: { title: CatalogTitle; onSelect
   )
 }
 
-export function CatalogView() {
+export function CatalogView({ canDeleteTitles = false }: { canDeleteTitles?: boolean } = {}) {
   const [viewMode, setViewMode] = useState<ViewMode>('posters')
   const [category, setCategory] = useState<CatalogCategory>('movie')
   const [page, setPage] = useState(1)
@@ -96,6 +96,7 @@ export function CatalogView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const [deleteNotice, setDeleteNotice] = useState<string | null>(null)
   const [selectedTitleId, setSelectedTitleId] = useState<number | null>(null)
   const [imdbMatchTarget, setImdbMatchTarget] = useState<ImdbCandidateTarget | null>(null)
   const [detailsSection, setDetailsSection] = useState<'details' | 'torrents'>('details')
@@ -104,6 +105,7 @@ export function CatalogView() {
   const activeFilterCount = Object.entries(draftFilters).filter(([key, value]) => key !== 'search' && value !== '').length
 
   function openTitle(titleId: number, section: 'details' | 'torrents') {
+    setDeleteNotice(null)
     setSelectedTitleId(titleId)
     setDetailsSection(section)
   }
@@ -176,6 +178,7 @@ export function CatalogView() {
 
   return (
     <section aria-label="Catalog" className="media-view">
+      {deleteNotice && <p className="form-message" role="status">{deleteNotice}</p>}
       <nav aria-label="Catalog categories" className="catalog-category-nav">
         {categories.map((item) => <button
           aria-pressed={category === item.id}
@@ -297,7 +300,7 @@ export function CatalogView() {
           </div> : <div className="table-wrap">
             <table className="data-table">
               <thead><tr><th>TITLE</th><th>TYPE</th><th>IMDB</th><th>AWARDS</th><th>GENRES</th><th>LAST SEEN</th><th>FAVORITES</th></tr></thead>
-              <tbody>{result.items.map((title) => <CatalogRow awards={combineMovieAwards([], pageAwards, title.imdbId)} key={title.id} onSelect={setSelectedTitleId} title={title} />)}</tbody>
+              <tbody>{result.items.map((title) => <CatalogRow awards={combineMovieAwards([], pageAwards, title.imdbId)} key={title.id} onSelect={(id) => openTitle(id, 'details')} title={title} />)}</tbody>
             </table>
           </div>}
           <Pagination onPageChange={setPage} page={result} />
@@ -310,6 +313,19 @@ export function CatalogView() {
           setSelectedTitleId(null)
           setImdbMatchTarget({ source: 'catalog', id, title, rawTitle })
         }}
+        onDeleted={canDeleteTitles ? (result, deleteImdbInfo, hadImdbInfo) => {
+          setSelectedTitleId(null)
+          setDeleteNotice(deleteImdbInfo
+            ? result.imdbInfoDeleted
+              ? 'Title and IMDb information deleted.'
+              : hadImdbInfo
+                ? 'Title deleted. IMDb information was kept because another record still uses it.'
+                : 'Title deleted.'
+            : hadImdbInfo
+              ? 'Title deleted. IMDb information was kept.'
+              : 'Title deleted.')
+          setAttempt((current) => current + 1)
+        } : undefined}
         titleId={selectedTitleId}
       />}
       {imdbMatchTarget && <ImdbCandidatePicker

@@ -54,6 +54,10 @@ export interface TitleDetails extends CatalogTitle {
   updatedAt: string
 }
 
+export interface DeleteTitleResponse {
+  imdbInfoDeleted: boolean
+}
+
 export interface ImdbCandidate {
   title: string
   year: number | null

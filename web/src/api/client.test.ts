@@ -16,6 +16,7 @@ import {
   getAdminUsers,
   decideRegistrationRequest,
   setAdminUserStatus,
+  deleteCatalogTitle,
   deleteOldOperationalHistory,
   getDeploymentStatus,
   getGoldenGlobeCategories,
@@ -63,6 +64,15 @@ function fetchStub(result: Response | Error) {
 }
 
 describe('typed API client', () => {
+  it('deletes a catalog title with the selected IMDb metadata option', async () => {
+    const stub = fetchStub(response(200, { imdbInfoDeleted: true }))
+
+    await deleteCatalogTitle(7, true, stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/titles/7?deleteImdbInfo=true')
+    expect(stub.calls[0]?.init?.method).toBe('DELETE')
+  })
+
   it('deletes operational history using the selected retention period', async () => {
     const stub = fetchStub(response(200, {
       olderThanDays: 90,

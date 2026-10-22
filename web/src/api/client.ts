@@ -4,6 +4,7 @@ import type {
   CatalogQuery,
   CatalogTitle,
   CurrentSession,
+  DeleteTitleResponse,
   RegistrationRequestStatus,
   BackgroundJob,
   BackgroundJobAccepted,
@@ -184,6 +185,10 @@ export function removeFavorite(imdbId: string, fetcher?: typeof fetch) {
 
 export function getTitle(id: number, fetcher?: typeof fetch) {
   return requestJson<TitleDetails>(`/titles/${id}`, {}, fetcher)
+}
+
+export function deleteCatalogTitle(id: number, deleteImdbInfo: boolean, fetcher?: typeof fetch) {
+  return requestJson<DeleteTitleResponse>(withQuery(`/titles/${id}`, { deleteImdbInfo }), { method: 'DELETE' }, fetcher)
 }
 
 export function searchCatalogTitleImdbCandidates(id: number, title: string, page = 1, fetcher?: typeof fetch) {

@@ -41,7 +41,9 @@ vi.mock('./features/auth/AuthStatus', async () => {
     },
   }
 })
-vi.mock('./features/catalog/CatalogView', () => ({ CatalogView: () => <div>Catalog route content</div> }))
+vi.mock('./features/catalog/CatalogView', () => ({
+  CatalogView: ({ canDeleteTitles }: { canDeleteTitles: boolean }) => <div data-can-delete-titles={canDeleteTitles}>Catalog route content</div>,
+}))
 vi.mock('./features/oscar/OscarCatalogView', () => ({ OscarCatalogView: () => <div>Oscar route content</div> }))
 vi.mock('./features/golden-globes/GoldenGlobeCatalogView', () => ({ GoldenGlobeCatalogView: () => <div>Golden Globes route content</div> }))
 vi.mock('./features/favorites/FavoritesView', () => ({ FavoritesView: () => <div>Favorites route content</div> }))
@@ -169,6 +171,19 @@ describe('App routes', () => {
     expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Favorites')
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Users' })).toBeNull()
+  })
+
+  it('shows catalog delete permission only to active administrators', async () => {
+    authMock.session = activeUserSession
+    const userView = renderAt('/catalog')
+    const userCatalog = await screen.findByText('Catalog route content')
+    expect(userCatalog.getAttribute('data-can-delete-titles')).toBe('false')
+    userView.unmount()
+
+    authMock.session = activeAdminSession
+    renderAt('/catalog')
+    const adminCatalog = await screen.findByText('Catalog route content')
+    expect(adminCatalog.getAttribute('data-can-delete-titles')).toBe('true')
   })
 
   it('shows admin controls separately from account and library navigation', async () => {

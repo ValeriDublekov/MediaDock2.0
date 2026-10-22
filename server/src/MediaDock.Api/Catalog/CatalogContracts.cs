@@ -104,6 +104,9 @@ public sealed record TitleDetailsResponse(
     int OccurrenceCount,
     string? MetadataStatus);
 
+/// <summary>Result of deleting a catalog title and optionally its unshared IMDb metadata.</summary>
+public sealed record DeleteTitleResponse(bool ImdbInfoDeleted);
+
 /// <summary>One observed feed occurrence of a catalog title.</summary>
 public sealed record OccurrenceResponse(
     long Id,

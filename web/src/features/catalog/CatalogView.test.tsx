@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, applyCatalogTitleImdbCandidate, getCatalog, getMovieAwards, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
+import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
 import type { CatalogTitle, ImdbCandidateSearch, MovieAwardRecognition, PageResponse, TitleDetails } from '../../api/types'
 import { CatalogView } from './CatalogView'
 
@@ -9,6 +9,7 @@ vi.mock('../../api/client', () => ({
   getCatalog: vi.fn(),
   getTitle: vi.fn(),
   getTitleOccurrences: vi.fn(),
+  deleteCatalogTitle: vi.fn(),
   getTitleOscars: vi.fn().mockResolvedValue([]),
   getMovieAwards: vi.fn().mockResolvedValue([]),
   searchCatalogTitleImdbCandidates: vi.fn(),
@@ -75,6 +76,53 @@ describe('CatalogView', () => {
 
     expect(await screen.findByRole('dialog')).toBeTruthy()
     expect(getTitle).toHaveBeenCalledWith(title.id)
+  })
+
+  it('offers yes, no, and cancel when deleting a title from its details', async () => {
+    catalogRequest.mockResolvedValue(page([title]))
+    vi.mocked(getTitle).mockResolvedValue({
+      ...title,
+      broadcastRangeStartYear: null, broadcastRangeEndYear: null, broadcastRangeRaw: null,
+      imdbVotes: null, metascore: null, director: null, plot: null, runtime: null, awards: null,
+      boxOffice: null, firstSeenAt: '2026-09-28T12:00:00Z', updatedAt: '2026-09-28T12:00:00Z',
+    })
+    vi.mocked(getTitleOccurrences).mockResolvedValue({ items: [], page: 1, pageSize: 5, totalCount: 0, totalPages: 0 })
+    vi.mocked(deleteCatalogTitle).mockResolvedValue({ imdbInfoDeleted: false })
+    render(<CatalogView canDeleteTitles />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'View Quiet River details' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete from catalog' }))
+    expect(screen.getByRole('group', { name: 'Delete Quiet River from the torrent catalog?' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Yes' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'No' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(deleteCatalogTitle).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete from catalog' }))
+    fireEvent.click(screen.getByRole('button', { name: 'No' }))
+    await waitFor(() => expect(deleteCatalogTitle).toHaveBeenCalledWith(title.id, false))
+    expect(await screen.findByText('Title deleted. IMDb information was kept.')).toBeTruthy()
+  })
+
+  it('reports when shared IMDb information is retained after choosing yes', async () => {
+    catalogRequest.mockResolvedValue(page([title]))
+    vi.mocked(getTitle).mockResolvedValue({
+      ...title,
+      broadcastRangeStartYear: null, broadcastRangeEndYear: null, broadcastRangeRaw: null,
+      imdbVotes: null, metascore: null, director: null, plot: null, runtime: null, awards: null,
+      boxOffice: null, firstSeenAt: '2026-09-28T12:00:00Z', updatedAt: '2026-09-28T12:00:00Z',
+    })
+    vi.mocked(getTitleOccurrences).mockResolvedValue({ items: [], page: 1, pageSize: 5, totalCount: 0, totalPages: 0 })
+    vi.mocked(deleteCatalogTitle).mockResolvedValue({ imdbInfoDeleted: false })
+    render(<CatalogView canDeleteTitles />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'View Quiet River details' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete from catalog' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Yes' }))
+
+    await waitFor(() => expect(deleteCatalogTitle).toHaveBeenCalledWith(title.id, true))
+    expect(await screen.findByText('Title deleted. IMDb information was kept because another record still uses it.')).toBeTruthy()
   })
 
   it('lets a user confirm a searched IMDb candidate from catalog details', async () => {
