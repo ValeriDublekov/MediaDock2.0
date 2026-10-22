@@ -198,12 +198,30 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
         var pinnedProblem = CreateGroup("Pinned Problem", 2026, "problem", 3);
         pinnedProblem.ImdbId = "tt87654321";
         pinnedProblem.IsImdbIdManual = true;
+        var manualPendingWithMetadata = CreateGroup("Manual Pending Canonical Row", 2026);
+        manualPendingWithMetadata.ImdbId = "tt77777771";
+        manualPendingWithMetadata.IsImdbIdManual = true;
+        manualPendingWithMetadata.ImdbIdVersion = 1;
+        var manualEnrichedWithPendingMetadata = CreateGroup("A Manual Enriched Pending Metadata", 2026, "enriched", 1);
+        manualEnrichedWithPendingMetadata.ImdbId = "tt77777773";
+        manualEnrichedWithPendingMetadata.IsImdbIdManual = true;
+        manualEnrichedWithPendingMetadata.ImdbIdVersion = 3;
+        var manualDueTemporaryError = CreateGroup("Manual Due Retry", 2026, "temporary_error", 2, now);
+        manualDueTemporaryError.ImdbId = "tt77777774";
+        manualDueTemporaryError.IsImdbIdManual = true;
+        manualDueTemporaryError.ImdbIdVersion = 4;
         var dueTemporaryError = CreateGroup("A New Film", 2026, "temporary_error", 3, now);
         db.ImdbTitles.AddRange(
             new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = now },
-            new ImdbTitle { ImdbId = "tt87654321", UpdatedAt = now });
+            new ImdbTitle { ImdbId = "tt87654321", UpdatedAt = now },
+            new ImdbTitle { ImdbId = "tt77777771", MetadataStatus = "pending", UpdatedAt = now },
+            new ImdbTitle { ImdbId = "tt77777773", MetadataStatus = "pending", UpdatedAt = now },
+            new ImdbTitle { ImdbId = "tt77777774", MetadataStatus = "temporary_error", UpdatedAt = now });
         db.GoldenGlobeNominations.AddRange(
             CreateNomination("new-a-due", dueTemporaryError, award),
+            CreateNomination("manual-pending-with-metadata", manualPendingWithMetadata, award),
+            CreateNomination("manual-enriched-with-pending-metadata", manualEnrichedWithPendingMetadata, award),
+            CreateNomination("manual-due-temporary-error", manualDueTemporaryError, award),
             CreateNomination("new-a-series", CreateGroup("A New Film", 2026, nomineeType: "series"), award),
             CreateNomination("new-series", CreateGroup("A New Series", 2026, nomineeType: "series"), award),
             CreateNomination("new-z-pending", CreateGroup("Z New Film", 2026, "pending", 4), award),
@@ -221,9 +239,12 @@ public sealed class GoldenGlobeEnrichmentRepositoryTests
         Assert.Equal(
             [
                 new GoldenGlobeEnrichmentCandidate("Enriched Film", 2027, 8),
+                new GoldenGlobeEnrichmentCandidate("A Manual Enriched Pending Metadata", 2026, 1, "movie", "tt77777773", 3),
                 new GoldenGlobeEnrichmentCandidate("A New Film", 2026, 3),
                 new GoldenGlobeEnrichmentCandidate("A New Film", 2026, 0, "series"),
                 new GoldenGlobeEnrichmentCandidate("A New Series", 2026, 0, "series"),
+                new GoldenGlobeEnrichmentCandidate("Manual Due Retry", 2026, 2, "movie", "tt77777774", 4),
+                new GoldenGlobeEnrichmentCandidate("Manual Pending Canonical Row", 2026, 0, "movie", "tt77777771", 1),
                 new GoldenGlobeEnrichmentCandidate("Old Not Found", 2026, 5),
                 new GoldenGlobeEnrichmentCandidate("Old Problem", 2026, 6),
                 new GoldenGlobeEnrichmentCandidate("Z New Film", 2026, 4),

@@ -14,26 +14,43 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
     {
         var candidates = await db.GoldenGlobeTitles.AsNoTracking()
             .Where(x => x.Nominations.Any())
-            .Where(x => x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Pending
-                || x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Problem
-                || x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.NotFound
-                || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.TemporaryError
-                    && (x.NextEnrichmentAttemptAt == null || x.NextEnrichmentAttemptAt <= now))
-                || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched
-                    && (x.ImdbId == null || !Regex.IsMatch(x.ImdbId, "^tt[0-9]{7,10}$"))))
-            .Where(x => !x.IsImdbIdManual)
+            .Where(x => (!x.IsImdbIdManual
+                    && (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Pending
+                        || x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Problem
+                        || x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.NotFound
+                        || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.TemporaryError
+                            && (x.NextEnrichmentAttemptAt == null || x.NextEnrichmentAttemptAt <= now))
+                        || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched
+                            && (x.ImdbId == null || !Regex.IsMatch(x.ImdbId, "^tt[0-9]{7,10}$")))))
+                || (x.IsImdbIdManual
+                    && x.ImdbId != null
+                    && Regex.IsMatch(x.ImdbId, "^tt[0-9]{7,10}$")
+                    && (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Pending
+                        || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.TemporaryError
+                            && (x.NextEnrichmentAttemptAt == null || x.NextEnrichmentAttemptAt <= now))
+                        || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched
+                            && !db.ImdbTitles.Any(title => title.ImdbId == x.ImdbId
+                                && title.MetadataStatus == "enriched")))))
             .Select(x => new
             {
                 x.Title,
                 CeremonyYear = x.Year,
                 x.NomineeType,
-                x.EnrichmentAttemptCount
+                x.EnrichmentAttemptCount,
+                ManualImdbId = x.IsImdbIdManual ? x.ImdbId : null,
+                x.ImdbIdVersion
             })
             .OrderByDescending(x => x.CeremonyYear).ThenBy(x => x.Title).ThenBy(x => x.NomineeType)
             .ToListAsync(cancellationToken);
 
         return candidates
-            .Select(x => new GoldenGlobeEnrichmentCandidate(x.Title, x.CeremonyYear, x.EnrichmentAttemptCount, x.NomineeType))
+            .Select(x => new GoldenGlobeEnrichmentCandidate(
+                x.Title,
+                x.CeremonyYear,
+                x.EnrichmentAttemptCount,
+                x.NomineeType,
+                x.ManualImdbId,
+                x.ImdbIdVersion))
             .ToArray();
     }
 

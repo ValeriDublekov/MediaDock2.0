@@ -2,7 +2,13 @@ using MediaDock.Application.Metadata;
 
 namespace MediaDock.Application.GoldenGlobes;
 
-public sealed record GoldenGlobeEnrichmentCandidate(string Title, int CeremonyYear, int AttemptCount, string SourceType = "movie");
+public sealed record GoldenGlobeEnrichmentCandidate(
+    string Title,
+    int CeremonyYear,
+    int AttemptCount,
+    string SourceType = "movie",
+    string? ManualImdbId = null,
+    int ImdbIdVersion = 0);
 public sealed record GoldenGlobeManualRefreshCandidate(string Title, int CeremonyYear, string SourceType, string ImdbId, int LinkVersion, int AttemptCount);
 public sealed record GoldenGlobeEnrichmentUpdate(
     string Status,
@@ -48,6 +54,38 @@ public sealed class GoldenGlobeEnrichmentService(
         foreach (var candidate in candidates)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (candidate.ManualImdbId is { } manualImdbId)
+            {
+                var manualResult = await RefreshManualAsync(
+                    new GoldenGlobeManualRefreshCandidate(
+                        candidate.Title,
+                        candidate.CeremonyYear,
+                        candidate.SourceType,
+                        manualImdbId,
+                        candidate.ImdbIdVersion,
+                        candidate.AttemptCount),
+                    cancellationToken);
+                http += manualResult.HttpAttempts;
+                cacheHits += manualResult.CacheHit ? 1 : 0;
+                attempted++;
+                if (manualResult.Applied)
+                {
+                    switch (manualResult.Status)
+                    {
+                        case GoldenGlobeEnrichmentStatuses.Enriched: enriched++; break;
+                        case GoldenGlobeEnrichmentStatuses.Problem: problems++; break;
+                        case GoldenGlobeEnrichmentStatuses.NotFound: notFound++; break;
+                        case GoldenGlobeEnrichmentStatuses.TemporaryError: errors++; break;
+                    }
+                }
+                if (manualResult.ErrorCode is "quota_exceeded" or "daily_budget_exhausted")
+                {
+                    quota = true;
+                    break;
+                }
+                continue;
+            }
+
             var attemptedAt = clock.GetUtcNow();
             var resolution = await goldenGlobeMetadataResolver.ResolveGoldenGlobeAsync(
                 candidate.Title,

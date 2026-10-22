@@ -350,6 +350,28 @@ public sealed class GoldenGlobeEnrichmentServiceTests
     }
 
     [Fact]
+    public async Task RunAsyncRefreshesManualCandidatesByExactImdbId()
+    {
+        var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);
+        var candidate = new GoldenGlobeEnrichmentCandidate(
+            "Nomination Title", 2025, 0, "movie", "tt12345678", 3);
+        var repository = new FakeGoldenGlobeEnrichmentRepository([candidate]);
+        var client = new StubOmdbClient(
+        [new(MetadataLookupStatus.Found, CreateMetadata("Different Display Title", 2018, "tt12345678"), 1)]);
+
+        var result = await CreateService(repository, client, now).RunAsync();
+
+        Assert.Equal(new GoldenGlobeEnrichmentSummary(1, 1, 1, 0, 0, 0, 0, 1, false), result.Summary);
+        Assert.Equal((2025, "movie", "tt12345678"), Assert.Single(client.Requests));
+        Assert.Empty(repository.SavedOutcomes);
+        var manualOutcome = Assert.Single(repository.SavedManualOutcomes);
+        Assert.Equal(new GoldenGlobeManualRefreshCandidate(
+            "Nomination Title", 2025, "movie", "tt12345678", 3, 0), manualOutcome.Candidate);
+        Assert.Equal("enriched", manualOutcome.Update.Status);
+        Assert.Equal("tt12345678", manualOutcome.Update.ImdbId);
+    }
+
+    [Fact]
     public async Task RefreshManualAsyncLooksUpExactIdAndPersistsSuccessfulMetadata()
     {
         var now = new DateTimeOffset(2026, 10, 5, 12, 0, 0, TimeSpan.Zero);

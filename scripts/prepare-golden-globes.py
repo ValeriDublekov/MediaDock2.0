@@ -34,6 +34,7 @@ def main() -> None:
 
     output.parent.mkdir(parents=True, exist_ok=True)
     source_rows = year_rows = exported = skipped_type = skipped_invalid = skipped_duplicate = 0
+    skipped_type_categories: dict[tuple[str, str], int] = {}
     seen_keys: set[tuple[int, bool, str, str]] = set()
 
     with source.open("r", encoding="utf-8-sig", newline="") as input_file:
@@ -70,6 +71,9 @@ def main() -> None:
                 nominee_type = (row.get("nominee_type") or "").strip().lower()
                 if nominee_type not in TITLE_TYPES:
                     skipped_type += 1
+                    category = (row.get("award") or "").strip()
+                    key = (nominee_type, category)
+                    skipped_type_categories[key] = skipped_type_categories.get(key, 0) + 1
                     continue
                 title = (row.get("title") or "").strip()
                 award = (row.get("award") or "").strip()
@@ -96,6 +100,8 @@ def main() -> None:
     print(f"Source rows: {source_rows}")
     print(f"Rows with Year > {args.year_after}: {year_rows}")
     print(f"Rows excluded by nominee type: {skipped_type}")
+    for (nominee_type, category), count in sorted(skipped_type_categories.items()):
+        print(f"Excluded category rows: {nominee_type} | {category} | {count}")
     print(f"Rows excluded as invalid: {skipped_invalid}")
     print(f"Rows excluded as duplicates: {skipped_duplicate}")
     print(f"Exported nomination rows: {exported}")
