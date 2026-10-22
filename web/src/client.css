@@ -152,6 +152,40 @@ button:disabled { cursor: not-allowed; }
 .history-retention-feedback { margin: -6px 0 14px; color: #317153; font-size: 12px; }
 .history-retention-feedback[role="alert"] { color: #a64e35; }
 .management-section { border-top: 1px solid #cbd6cd; padding: 20px 0 8px; }
+.recommendation-dirty-warning { margin: 14px 0; border-left: 3px solid #c27b37; padding: 11px 13px; color: #6e4b29; background: #f8f0e3; }
+.recommendation-dirty-warning p { margin: 0; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.recommendation-freshness { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 14px 0; border-block: 1px solid #d4ded5; padding: 12px 0; }
+.recommendation-freshness > div { min-width: 0; }
+.recommendation-freshness strong { color: #30473a; font-size: 12px; }
+.recommendation-freshness .section-caption { margin: 4px 0 0; }
+.recommendation-settings-subheading { margin: 14px 0 0; color: #30473a; font-size: 13px; }
+.recommendation-settings-table { min-width: 640px; }
+.recommendation-settings-table input { width: min(150px, 100%); min-width: 84px; min-height: 34px; border: 1px solid #bdcec1; border-radius: 2px; padding: 6px 8px; color: #263b31; background: #fff; font: inherit; font-variant-numeric: tabular-nums; }
+.recommendation-controls { width: 100%; margin: 18px 0 14px; border: 0; border-block: 1px solid #d4ded5; padding: 13px 0 10px; }
+.recommendation-controls legend { padding-right: 8px; color: #30473a; font-size: 13px; font-weight: 700; }
+.recommendation-sliders { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.recommendation-slider { display: grid; min-width: 0; gap: 8px; color: #40574a; font-size: 11px; }
+.recommendation-slider-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; }
+.recommendation-slider-label output { color: #9b5038; font-variant-numeric: tabular-nums; }
+.recommendation-slider input[type="range"] { width: 100%; min-width: 0; accent-color: #a84c34; }
+.recommendation-weight-total { margin: 10px 0 0; color: #66756c; font-size: 10px; text-align: right; }
+.recommendation-score-guide { margin: 12px 0; border-bottom: 1px solid #d4ded5; padding-bottom: 12px; color: #53665a; font-size: 11px; line-height: 1.5; }
+.recommendation-score-guide summary { width: fit-content; color: #30473a; font-weight: 700; cursor: pointer; }
+.recommendation-score-guide p { max-width: 850px; margin: 8px 0 0; }
+.recommendations-table { min-width: 1040px; }
+.recommendations-table td { vertical-align: top; }
+.recommendation-title-cell { display: grid; min-width: 240px; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 10px; }
+.recommendation-title-cell > div { min-width: 0; }
+.recommendation-title-cell .title-link { max-width: none; overflow-wrap: anywhere; white-space: normal; }
+.recommendation-poster { height: 51px; }
+.recommendation-final-score { color: #8a5428; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.recommendation-component-score { color: #35473f; font-variant-numeric: tabular-nums; font-weight: 700; }
+.recommendation-award-details { min-width: 120px; }
+.recommendation-award-details summary { color: #386247; cursor: pointer; white-space: nowrap; }
+.recommendation-award-details > p { min-width: 160px; color: #78847d; font-size: 10px; }
+.recommendation-award-events { display: grid; min-width: 240px; max-width: 380px; gap: 9px; margin: 8px 0 0; padding-left: 16px; color: #53665a; font-size: 10px; }
+.recommendation-award-events li { display: grid; gap: 3px; }
+.recommendation-award-events strong { color: #30473a; }
 .ratings-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 22px 0 10px; border-top: 1px solid #d4ded5; padding-top: 12px; }
 .ratings-toolbar h3 { margin: 0; color: #30473a; font-size: 13px; font-weight: 700; }
 .personal-ratings-table td:first-child { min-width: 230px; }
@@ -502,6 +536,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offs
   .history-filters, .history-filters .field, .history-filters .field-search { width: 100%; min-width: 0; }
   .management-grid { grid-template-columns: minmax(0, 1fr); gap: 26px; }
   .management-grid > section + section { border-top: 1px solid #d2dbd3; border-left: 0; padding: 22px 0 0; }
+  .recommendation-freshness { align-items: flex-start; flex-direction: column; }
+  .recommendation-sliders { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .source-row { grid-template-columns: minmax(0, 1fr) auto; gap: 7px 10px; }
   .source-actions { gap: 8px; }
   .form-grid, .detail-facts { grid-template-columns: minmax(0, 1fr); }

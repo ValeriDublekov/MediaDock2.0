@@ -206,6 +206,78 @@ export interface SettingsInput {
   minImdbVotes: number
 }
 
+export type RecommendationAwardSource = 'oscar' | 'golden_globes'
+
+export interface RecommendationAwardWeight {
+  awardSource: RecommendationAwardSource
+  categoryKey: string
+  winPoints: number
+  nominationPoints: number
+}
+
+export interface RecommendationSettings {
+  medianPeriodYears: number
+  requiresVoteRecalculation: boolean
+  lastVoteRecalculationAt: string | null
+  lastVoteRecalculationPeriodYears: number | null
+  awardWeights: RecommendationAwardWeight[]
+}
+
+export interface RecommendationSettingsInput {
+  medianPeriodYears: number
+  awardWeights: RecommendationAwardWeight[]
+}
+
+export interface VoteWeightRecalculationResponse {
+  calculatedAt: string
+  durationMilliseconds: number
+  medianPeriodYears: number
+  movieCount: number
+  moviesWithVotesCount: number
+  periodCount: number
+  globalFallbackCount: number
+  missingVoteCount: number
+}
+
+export type VoteWeightRecalculationResult = VoteWeightRecalculationResponse | BackgroundJobAccepted
+
+export interface RecommendationCoefficients {
+  ratingWeight: number
+  votesWeight: number
+  awardsWeight: number
+}
+
+export interface RecommendationAwardEvent {
+  awardSource: RecommendationAwardSource
+  categoryKey: string
+  categoryName: string
+  ceremony: number | null
+  ceremonyYear: number | null
+  outcome: string
+  basePoints: number
+  tasteMultiplier: number
+  adjustedPoints: number
+}
+
+export interface MovieRecommendation {
+  imdbId: string
+  title: string
+  year: number | null
+  mediaType: 'movie'
+  imdbRating: number
+  imdbVotes: number | null
+  posterUrl: string | null
+  genres: string[]
+  ratingComponent: number
+  popularityComponent: number
+  awardComponent: number
+  ratingWeight: number
+  votesWeight: number
+  awardsWeight: number
+  finalScore: number
+  awardEvents: RecommendationAwardEvent[]
+}
+
 export interface ProviderSettings {
   omdbApiKeyConfigured: boolean
   omdbDailyRequestLimit: number

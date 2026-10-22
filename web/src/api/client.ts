@@ -33,6 +33,11 @@ import type {
   ParseLogQuery,
   ProviderSettings,
   ProviderSettingsInput,
+  RecommendationCoefficients,
+  RecommendationSettings,
+  RecommendationSettingsInput,
+  VoteWeightRecalculationResult,
+  MovieRecommendation,
   ScanRun,
   ScanRunQuery,
   Settings,
@@ -250,6 +255,33 @@ export function getSettings(fetcher?: typeof fetch) {
 
 export function updateSettings(input: SettingsInput, fetcher?: typeof fetch) {
   return requestJson<Settings>('/settings', { method: 'PUT', body: JSON.stringify(input) }, fetcher)
+}
+
+export function getRecommendationSettings(fetcher?: typeof fetch) {
+  return requestJson<RecommendationSettings>('/settings/recommendations', {}, fetcher)
+}
+
+export function updateRecommendationSettings(input: RecommendationSettingsInput, fetcher?: typeof fetch) {
+  return requestJson<RecommendationSettings>(
+    '/settings/recommendations',
+    { method: 'PUT', body: JSON.stringify(input) },
+    fetcher,
+  )
+}
+
+export function recalculateRecommendationVoteWeights(fetcher?: typeof fetch) {
+  return requestJson<VoteWeightRecalculationResult>(
+    '/settings/recommendations/recalculate-votes',
+    { method: 'POST' },
+    fetcher,
+  )
+}
+
+export function getRecommendations(
+  query: { page: number; pageSize: number } & RecommendationCoefficients,
+  fetcher?: typeof fetch,
+) {
+  return requestJson<PageResponse<MovieRecommendation>>(withQuery('/recommendations', query), {}, fetcher)
 }
 
 export function getProviderSettings(fetcher?: typeof fetch) {

@@ -47,6 +47,12 @@ vi.mock('./features/catalog/CatalogView', () => ({
 vi.mock('./features/oscar/OscarCatalogView', () => ({ OscarCatalogView: () => <div>Oscar route content</div> }))
 vi.mock('./features/golden-globes/GoldenGlobeCatalogView', () => ({ GoldenGlobeCatalogView: () => <div>Golden Globes route content</div> }))
 vi.mock('./features/favorites/FavoritesView', () => ({ FavoritesView: () => <div>Favorites route content</div> }))
+vi.mock('./features/recommendations/RecommendationSettingsView', () => ({
+  RecommendationSettingsView: () => <div>Recommendation settings route content</div>,
+}))
+vi.mock('./features/recommendations/RecommendationsView', () => ({
+  RecommendationsView: () => <div>Recommendations route content</div>,
+}))
 vi.mock('./features/favorites/FavoriteContext', () => ({
   FavoriteProvider: ({ children }: { children: ReactNode }) => children,
 }))
@@ -151,6 +157,13 @@ describe('App routes', () => {
     expect(screen.queryByText('Favorites route content')).toBeNull()
   })
 
+  it('blocks anonymous visitors from opening recommendations directly', async () => {
+    renderAt('/account/recommendations')
+
+    expect(await screen.findByRole('heading', { name: 'Recommendations unavailable' })).toBeTruthy()
+    expect(screen.queryByText('Recommendations route content')).toBeNull()
+  })
+
   it('shows shared library navigation without personal or admin links to anonymous visitors', async () => {
     renderAt('/catalog')
 
@@ -171,6 +184,17 @@ describe('App routes', () => {
     expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Favorites')
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Users' })).toBeNull()
+  })
+
+  it('shows personal recommendations to active users but keeps administration hidden', async () => {
+    authMock.session = activeUserSession
+
+    renderAt('/account/recommendations')
+
+    expect(await screen.findByText('Recommendations route content')).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Recommendations')
+    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Personal IMDb ratings')
+    expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
   })
 
   it('shows catalog delete permission only to active administrators', async () => {
@@ -196,13 +220,24 @@ describe('App routes', () => {
     expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Personal IMDb ratings')
     const administrationNavigation = screen.getByRole('navigation', { name: 'Administration navigation' })
     expect(administrationNavigation.textContent).toContain('Users')
+    expect(administrationNavigation.textContent).toContain('Recommendation settings')
     expect(administrationNavigation.textContent).not.toContain('Personal IMDb ratings')
     expect(screen.getByRole('navigation', { name: 'Administration section navigation' }).textContent).toContain('Administration')
+  })
+
+  it('opens recommendation settings for administrators', async () => {
+    authMock.session = activeAdminSession
+
+    renderAt('/configuration/recommendations')
+
+    expect(await screen.findByText('Recommendation settings route content')).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Administration navigation' }).textContent).toContain('Recommendation settings')
   })
 
   it.each([
     '/configuration/torrent',
     '/configuration/ingestion',
+    '/configuration/recommendations',
     '/configuration/omdb',
     '/configuration/system',
     '/configuration/users',

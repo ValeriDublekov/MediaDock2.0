@@ -25,3 +25,11 @@ RSS, Oscar, Golden Globes, and personal IMDb enrichment share a persisted Postgr
 ## Cache And Coordination
 
 The dispatcher holds a PostgreSQL session advisory lock while it runs a claimed RSS scan, Oscar/Golden Globes enrichment job, or dataset import. A competing dispatcher leaves queued work for a later poll; this lock does not serialize ordinary API writes. See [`PostgresAdvisoryScanLock`](../../server/src/MediaDock.Infrastructure/Ingestion/PostgresAdvisoryScanLock.cs) and [`BackgroundJobDispatcher`](../../server/src/MediaDock.Api/BackgroundJobs/BackgroundJobDispatcher.cs).
+
+## Recommendation Vote Freshness
+
+`imdb_titles.normalized_vote_weight` is shared per canonical movie, not per user. The `general_recommendation_settings` singleton stores the median period, the dirty flag, and last-success metadata. User-selected score coefficients are request state and never enter these tables.
+
+The PostgreSQL invalidation triggers mark weights dirty when a movie is inserted or a movie's year, IMDb vote count, or media type changes; changing the median period also marks the singleton dirty. The persistence migration marks it dirty when existing movie rows need their first calculation. See [`AddRecommendationVoteInvalidationTriggers`](../../server/src/MediaDock.Infrastructure/Persistence/Migrations/20261022140000_AddRecommendationVoteInvalidationTriggers.cs).
+
+`POST /api/settings/recommendations/recalculate-votes` sets the dirty flag before opening its transaction, locks `imdb_titles` against concurrent input writes, recalculates and bulk-updates movie weights, then writes last-success metadata and clears the flag in the same transaction. The synchronous operation is limited to 10 seconds. A timeout rolls back the weight/metadata transaction and returns 504 while leaving the dirty flag set; a metadata write waiting on the table lock can then mark it dirty again. The web settings view keeps the warning visible until a fresh settings read reports clean. If the endpoint later uses `202 Accepted`, the web view polls that settings state until the flag clears. See [`RecommendationSettingsApiService`](../../server/src/MediaDock.Api/Recommendations/RecommendationSettingsApiService.cs) and [`MovieVoteNormalizer`](../../server/src/MediaDock.Application/Recommendations/MovieVoteNormalizer.cs).

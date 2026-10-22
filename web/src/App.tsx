@@ -12,6 +12,8 @@ import { SourceSettingsView } from './features/sources/SourceSettingsView'
 import { IngestionSettingsView, OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './features/sources/ConfigurationSettingsViews'
 import { AuthStatus } from './features/auth/AuthStatus'
 import { UsersView } from './features/users/UsersView'
+import { RecommendationSettingsView } from './features/recommendations/RecommendationSettingsView'
+import { RecommendationsView } from './features/recommendations/RecommendationsView'
 
 type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'account' | 'administration'
 
@@ -26,6 +28,7 @@ const administrationPages = [
   { path: '/configuration/system', label: 'System', description: 'Review deployment controls and the running version.' },
   { path: '/configuration/torrent', label: 'Torrent settings', description: 'Manage RSS profiles and matching rules.' },
   { path: '/configuration/ingestion', label: 'Ingestion', description: 'Import and enrich award datasets.' },
+  { path: '/configuration/recommendations', label: 'Recommendation settings', description: 'Configure vote normalization and award points.' },
   { path: '/configuration/omdb', label: 'OMDb provider', description: 'Configure provider credentials and shared request limits.' },
   { path: '/configuration/users', label: 'Users', description: 'Review registration requests and manage account status.' },
   { path: '/history', label: 'Scan history', description: 'Review completed scans and individual parser decisions.' },
@@ -79,10 +82,15 @@ function AdminArea({ isAdmin, children }: { isAdmin: boolean; children: ReactNod
     : <RouteAccessRequired message="This page requires an active administrator account." title="Administrator access required" />
 }
 
-function ActiveAccountArea({ isActiveAccount, children }: { isActiveAccount: boolean; children: ReactNode }) {
+function ActiveAccountArea({ isActiveAccount, children, title, message }: {
+  isActiveAccount: boolean
+  children: ReactNode
+  title: string
+  message: string
+}) {
   return isActiveAccount
     ? children
-    : <RouteAccessRequired message="Sign in with an active linked account to manage personal IMDb ratings." title="Personal ratings unavailable" />
+    : <RouteAccessRequired message={message} title={title} />
 }
 
 function RegistrationGate({
@@ -228,6 +236,13 @@ function AppContent() {
               <NavLink
                 className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
                 end
+                to="/account/recommendations"
+              >
+                Recommendations
+              </NavLink>
+              <NavLink
+                className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
+                end
                 to="/account/personal-ratings"
               >
                 Personal IMDb ratings
@@ -317,8 +332,21 @@ function AppContent() {
               : <RouteAccessRequired message="Sign in with an active linked account to view favorites." title="Favorites unavailable" />} />
             <Route path="/configuration/personal-ratings" element={<Navigate replace to="/account/personal-ratings" />} />
             <Route path="/account" element={<Navigate replace to="/account/personal-ratings" />} />
+            <Route path="/account/recommendations" element={(
+              <ActiveAccountArea
+                isActiveAccount={isActiveAccount}
+                message="Sign in with an active linked account to view personal recommendations."
+                title="Recommendations unavailable"
+              >
+                <RecommendationsView key={accountKey ?? 'no-active-account'} />
+              </ActiveAccountArea>
+            )} />
             <Route path="/account/personal-ratings" element={(
-              <ActiveAccountArea isActiveAccount={isActiveAccount}>
+              <ActiveAccountArea
+                isActiveAccount={isActiveAccount}
+                message="Sign in with an active linked account to manage personal IMDb ratings."
+                title="Personal ratings unavailable"
+              >
                 <PersonalRatingsView key={accountKey ?? 'no-active-account'} />
               </ActiveAccountArea>
             )} />
@@ -329,6 +357,7 @@ function AppContent() {
               </AdminArea>
             )} />
             <Route path="/configuration/ingestion" element={<AdminArea isAdmin={isAdmin}><IngestionSettingsView /></AdminArea>} />
+            <Route path="/configuration/recommendations" element={<AdminArea isAdmin={isAdmin}><RecommendationSettingsView /></AdminArea>} />
             <Route path="/configuration/omdb" element={<AdminArea isAdmin={isAdmin}><OmdbProviderView /></AdminArea>} />
             <Route path="/configuration/system" element={<AdminArea isAdmin={isAdmin}><SystemSettingsView /></AdminArea>} />
             <Route path="/configuration/users" element={<AdminArea isAdmin={isAdmin}><UsersView /></AdminArea>} />

@@ -26,6 +26,8 @@ import {
   getOscarFilm,
   getOscarCategories,
   getOscarFilms,
+  getRecommendations,
+  getRecommendationSettings,
   getPersonalRatings,
   getPersonalRatingsEnrichmentJob,
   getProviderSettings,
@@ -35,13 +37,15 @@ import {
   importPersonalRatings,
   requestJson,
   requestRegistration,
+  recalculateRecommendationVoteWeights,
   searchCatalogTitleImdbCandidates,
   searchParseLogImdbCandidates,
   runDeploymentAction,
+  updateRecommendationSettings,
   updateProviderSettings,
   updateFavorite,
 } from './client'
-import type { CatalogTitle, GoldenGlobeFilm, OscarFilm, PageResponse, PersonalRating, ProviderSettings, ProviderSettingsInput } from './types'
+import type { CatalogTitle, GoldenGlobeFilm, MovieRecommendation, OscarFilm, PageResponse, PersonalRating, ProviderSettings, ProviderSettingsInput, RecommendationSettings, RecommendationSettingsInput, VoteWeightRecalculationResponse } from './types'
 
 function response(status: number, value: unknown): Response {
   return {
@@ -166,6 +170,93 @@ describe('typed API client', () => {
     expect(requestUrl.searchParams.get('page')).toBe('2')
     expect(requestUrl.searchParams.get('pageSize')).toBe('25')
     expect(requestUrl.searchParams.get('sort')).toBe('asc')
+  })
+
+  it('loads and updates global recommendation settings', async () => {
+    const settings: RecommendationSettings = {
+      medianPeriodYears: 5,
+      requiresVoteRecalculation: true,
+      lastVoteRecalculationAt: null,
+      lastVoteRecalculationPeriodYears: null,
+      awardWeights: [{ awardSource: 'oscar', categoryKey: 'best_picture', winPoints: 3, nominationPoints: 1 }],
+    }
+    const input: RecommendationSettingsInput = {
+      medianPeriodYears: 7,
+      awardWeights: [{ awardSource: 'oscar', categoryKey: 'best_picture', winPoints: 4, nominationPoints: 1.5 }],
+    }
+    const stub = fetchStub(response(200, settings))
+
+    await getRecommendationSettings(stub.fetcher)
+    await updateRecommendationSettings(input, stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/settings/recommendations')
+    expect(String(stub.calls[1]?.input)).toBe('/api/settings/recommendations')
+    expect(stub.calls[1]?.init?.method).toBe('PUT')
+    expect(JSON.parse(String(stub.calls[1]?.init?.body))).toEqual(input)
+  })
+
+  it('supports synchronous and accepted vote-weight recalculation responses', async () => {
+    const completed: VoteWeightRecalculationResponse = {
+      calculatedAt: '2026-10-22T10:00:00Z',
+      durationMilliseconds: 850,
+      medianPeriodYears: 5,
+      movieCount: 100,
+      moviesWithVotesCount: 92,
+      periodCount: 8,
+      globalFallbackCount: 2,
+      missingVoteCount: 8,
+    }
+    const completedStub = fetchStub(response(200, completed))
+    const acceptedStub = fetchStub(response(202, { id: 17, status: 'queued', statusUrl: '/api/background-jobs/17' }))
+
+    expect(await recalculateRecommendationVoteWeights(completedStub.fetcher)).toEqual(completed)
+    expect(await recalculateRecommendationVoteWeights(acceptedStub.fetcher)).toEqual({
+      id: 17,
+      status: 'queued',
+      statusUrl: '/api/background-jobs/17',
+    })
+    expect(String(completedStub.calls[0]?.input)).toBe('/api/settings/recommendations/recalculate-votes')
+    expect(completedStub.calls[0]?.init?.method).toBe('POST')
+    expect(String(acceptedStub.calls[0]?.input)).toBe('/api/settings/recommendations/recalculate-votes')
+  })
+
+  it('sends required recommendation coefficients with the requested page', async () => {
+    const item: MovieRecommendation = {
+      imdbId: 'tt12345678',
+      title: 'Quiet River',
+      year: 2004,
+      mediaType: 'movie',
+      imdbRating: 8.1,
+      imdbVotes: 2500,
+      posterUrl: null,
+      genres: ['Drama'],
+      ratingComponent: 8.0,
+      popularityComponent: 7.2,
+      awardComponent: 3.5,
+      ratingWeight: 0.5,
+      votesWeight: 0.25,
+      awardsWeight: 0.25,
+      finalScore: 6.675,
+      awardEvents: [],
+    }
+    const page: PageResponse<MovieRecommendation> = { items: [item], page: 2, pageSize: 25, totalCount: 26, totalPages: 2 }
+    const stub = fetchStub(response(200, page))
+
+    await getRecommendations({
+      page: 2,
+      pageSize: 25,
+      ratingWeight: 0.5,
+      votesWeight: 0.25,
+      awardsWeight: 0.25,
+    }, stub.fetcher)
+
+    const requestUrl = new URL(String(stub.calls[0]?.input), 'http://localhost')
+    expect(requestUrl.pathname).toBe('/api/recommendations')
+    expect(requestUrl.searchParams.get('page')).toBe('2')
+    expect(requestUrl.searchParams.get('pageSize')).toBe('25')
+    expect(requestUrl.searchParams.get('ratingWeight')).toBe('0.5')
+    expect(requestUrl.searchParams.get('votesWeight')).toBe('0.25')
+    expect(requestUrl.searchParams.get('awardsWeight')).toBe('0.25')
   })
 
   it('protects personal ratings enrichment enqueue with an antiforgery token', async () => {
