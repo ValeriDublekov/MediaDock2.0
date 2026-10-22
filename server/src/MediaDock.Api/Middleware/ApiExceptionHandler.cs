@@ -39,6 +39,13 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
                 Detail = conflictException.Message,
                 Instance = httpContext.Request.Path
             },
+            ApiTimeoutException timeoutException => new ProblemDetails
+            {
+                Status = StatusCodes.Status504GatewayTimeout,
+                Title = "Gateway Timeout",
+                Detail = timeoutException.Message,
+                Instance = httpContext.Request.Path
+            },
             _ => new ProblemDetails
             {
                 Status = StatusCodes.Status500InternalServerError,
@@ -72,3 +79,4 @@ internal sealed class ApiForbiddenException(string message) : Exception(message)
 internal sealed class ApiNotFoundException(string message) : Exception(message);
 
 internal sealed class ApiConflictException(string message) : Exception(message);
+internal sealed class ApiTimeoutException(string message, Exception innerException) : Exception(message, innerException);

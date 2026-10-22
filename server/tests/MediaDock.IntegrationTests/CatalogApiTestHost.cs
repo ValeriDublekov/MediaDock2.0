@@ -31,6 +31,7 @@ internal sealed class CatalogApiTestHost : IAsyncDisposable
 
     internal MediaDockDbContext Db { get; }
     internal HttpClient Client { get; }
+    internal string ConnectionString => _postgres.GetConnectionString();
 
     internal static async Task<CatalogApiTestHost> CreateAsync(
         string database,

@@ -23,7 +23,7 @@ public sealed class GoldenGlobeDatasetImporterTests
 
         const string csv = """
             nominee_type,year,winner,award,title
-            film,2025,true,Best Motion Picture,"A Film, Extended"
+            film,2025,true,Best Motion Picture - Drama,"A Film, Extended"
             tv-show,2024,false,Best Television Series,Series Title
             tv-show,2023,false,Best Television Series,Auto Type Correction
             person,2025,true,Best Actor,Ignored Person
@@ -32,9 +32,14 @@ public sealed class GoldenGlobeDatasetImporterTests
             """;
         const string tsv = """
             nominee_type	year	winner	award	title
-            movie	2026	1	Best Motion Picture	TSV Film
+            movie	2026	1	Best Motion Picture - Drama	TSV Film
             """;
         var importer = new GoldenGlobeDatasetImporter(db);
+        var configuredAwardWeight = await db.RecommendationAwardWeights.SingleAsync(weight =>
+            weight.AwardSource == "golden_globes" && weight.CategoryKey == "best_motion_picture_drama");
+        configuredAwardWeight.WinPoints = 8.5m;
+        configuredAwardWeight.NominationPoints = 1.25m;
+        await db.SaveChangesAsync();
 
         var firstImport = await importer.ImportAsync(Encoding.UTF8.GetBytes(csv));
 
@@ -44,6 +49,12 @@ public sealed class GoldenGlobeDatasetImporterTests
         Assert.Equal(1, firstImport.RowsSkippedWithoutTitle);
         Assert.Equal(2, firstImport.AwardsCreated);
         Assert.Equal(3, firstImport.NominationsCreated);
+        var awardCategoryKeys = await db.GoldenGlobeAwards.AsNoTracking()
+            .ToDictionaryAsync(award => award.Name, award => award.CategoryKey);
+        Assert.Equal("best_motion_picture_drama", awardCategoryKeys["Best Motion Picture - Drama"]);
+        Assert.Equal("award_other", awardCategoryKeys["Best Television Series"]);
+        Assert.Equal(8.5m, configuredAwardWeight.WinPoints);
+        Assert.Equal(1.25m, configuredAwardWeight.NominationPoints);
 
         var preservedNomination = await db.GoldenGlobeNominations.Include(row => row.GoldenGlobeTitle)
             .SingleAsync(row => row.GoldenGlobeTitle!.Title == "A Film, Extended");
@@ -80,6 +91,9 @@ public sealed class GoldenGlobeDatasetImporterTests
         Assert.Equal(0, tsvImport.AwardsCreated);
         Assert.Equal(1, tsvImport.NominationsCreated);
         Assert.Equal(4, await db.GoldenGlobeNominations.CountAsync());
+        await db.Entry(configuredAwardWeight).ReloadAsync();
+        Assert.Equal(8.5m, configuredAwardWeight.WinPoints);
+        Assert.Equal(1.25m, configuredAwardWeight.NominationPoints);
         var preservedAfterReimport = await db.GoldenGlobeTitles.SingleAsync(row => row.Title == "A Film, Extended");
         Assert.Equal("enriched", preservedAfterReimport.EnrichmentStatus);
         Assert.Equal("tt12345678", preservedAfterReimport.ImdbId);

@@ -858,6 +858,8 @@ public sealed class GoogleAuthenticationApiTests
         };
         using var anonymousStatusResponse = await anonymousClient.SendAsync(anonymousStatusRequest);
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousStatusResponse.StatusCode);
+        using var anonymousRecommendationSettingsResponse = await anonymousClient.GetAsync("/api/settings/recommendations");
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousRecommendationSettingsResponse.StatusCode);
         using var anonymousCatalogResponse = await anonymousClient.GetAsync("/api/catalog");
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousCatalogResponse.StatusCode);
         using var anonymousHealthResponse = await anonymousClient.GetAsync("/health/live");
@@ -904,6 +906,8 @@ public sealed class GoogleAuthenticationApiTests
         Assert.Equal(HttpStatusCode.Forbidden, userStatusResponse.StatusCode);
         using var userSettingsResponse = await userClient.GetAsync("/api/settings");
         Assert.Equal(HttpStatusCode.Forbidden, userSettingsResponse.StatusCode);
+        using var userRecommendationSettingsResponse = await userClient.GetAsync("/api/settings/recommendations");
+        Assert.Equal(HttpStatusCode.Forbidden, userRecommendationSettingsResponse.StatusCode);
         using var userSettingsWrite = new HttpRequestMessage(HttpMethod.Put, "/api/settings")
         {
             Content = new StringContent("{}", System.Text.Encoding.UTF8, "application/json")
@@ -931,6 +935,8 @@ public sealed class GoogleAuthenticationApiTests
         Assert.Equal("admin", adminSession?.User?.Role);
         using var adminSettingsResponse = await adminClient.GetAsync("/api/settings");
         Assert.Equal(HttpStatusCode.OK, adminSettingsResponse.StatusCode);
+        using var adminRecommendationSettingsResponse = await adminClient.GetAsync("/api/settings/recommendations");
+        Assert.Equal(HttpStatusCode.OK, adminRecommendationSettingsResponse.StatusCode);
         using var adminFavoritesResponse = await adminClient.GetAsync("/api/favorites?userId=2");
         Assert.Equal(HttpStatusCode.OK, adminFavoritesResponse.StatusCode);
         using var userFavoritesResponse = await userClient.GetAsync("/api/favorites");

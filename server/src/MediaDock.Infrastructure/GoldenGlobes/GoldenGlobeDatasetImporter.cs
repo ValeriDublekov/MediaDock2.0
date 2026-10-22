@@ -49,6 +49,10 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var awardNames = rows.Select(x => x.Award).Distinct(StringComparer.Ordinal).ToArray();
         var awards = await db.GoldenGlobeAwards.Where(x => awardNames.Contains(x.Name)).ToDictionaryAsync(x => x.Name, StringComparer.Ordinal, cancellationToken);
+        var categoryAliases = await db.AwardCategoryAliases
+            .AsNoTracking()
+            .Where(alias => alias.AwardSource == "golden_globes")
+            .ToDictionaryAsync(alias => alias.RawName, StringComparer.OrdinalIgnoreCase, cancellationToken);
         var keys = rows.Select(Key).Distinct().ToArray();
         var existing = await db.GoldenGlobeNominations
             .Where(x => keys.Contains(x.ImportKey))
@@ -87,7 +91,21 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
         var awardsCreated = 0; var nominationsCreated = 0;
         foreach (var row in rows)
         {
-            if (!awards.TryGetValue(row.Award, out var award)) { award = new GoldenGlobeAward { Name = row.Award }; db.GoldenGlobeAwards.Add(award); awards.Add(row.Award, award); awardsCreated++; }
+            var categoryKey = categoryAliases.TryGetValue(row.Award, out var categoryAlias)
+                ? categoryAlias.CategoryKey
+                : "award_other";
+            if (!awards.TryGetValue(row.Award, out var award))
+            {
+                award = new GoldenGlobeAward { Name = row.Award, CategoryKey = categoryKey };
+                db.GoldenGlobeAwards.Add(award);
+                awards.Add(row.Award, award);
+                awardsCreated++;
+            }
+            else if (award.CategoryKey != categoryKey)
+            {
+                award.CategoryKey = categoryKey;
+            }
+
             var key = Key(row);
             if (!seenKeys.Add(key))
             {

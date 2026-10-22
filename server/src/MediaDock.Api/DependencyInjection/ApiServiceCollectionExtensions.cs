@@ -11,6 +11,7 @@ using MediaDock.Api.Middleware;
 using MediaDock.Api.Operations;
 using MediaDock.Api.OscarAwards;
 using MediaDock.Api.PersonalRatings;
+using MediaDock.Api.Recommendations;
 using MediaDock.Api.Sources;
 using MediaDock.Infrastructure.GoldenGlobes;
 using MediaDock.Infrastructure.Ingestion;
@@ -57,6 +58,7 @@ public static class ApiServiceCollectionExtensions
 		services.AddScoped<IOscarApiService, OscarApiService>();
 		services.AddScoped<IGoldenGlobeApiService, GoldenGlobeApiService>();
 		services.AddScoped<ISourceSettingsApiService, SourceSettingsApiService>();
+		services.AddScoped<IRecommendationSettingsApiService, RecommendationSettingsApiService>();
 		services.AddScoped<IOperationalHistoryApiService, OperationalHistoryApiService>();
 		services.AddScoped<IReadinessService, ReadinessService>();
 		services.AddHttpClient<DeploymentControlApiService>(client =>
