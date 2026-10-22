@@ -42,6 +42,13 @@ public sealed class TorrentTitleMatchApiTests
             LastSeenAt = observedAt,
             UpdatedAt = observedAt
         };
+        var scanRun = new ScanRun
+        {
+            StartedAt = observedAt.AddMinutes(-10),
+            FinishedAt = observedAt.AddMinutes(-9),
+            Status = "succeeded",
+            Trigger = "manual"
+        };
         db.Settings.Add(new AppSetting
         {
             Id = 1,
@@ -51,6 +58,7 @@ public sealed class TorrentTitleMatchApiTests
         });
         db.Sources.Add(source);
         db.TorrentMovies.Add(title);
+        db.ScanRuns.Add(scanRun);
         await db.SaveChangesAsync();
 
         db.TorrentReleases.Add(new TorrentRelease
@@ -70,6 +78,7 @@ public sealed class TorrentTitleMatchApiTests
         var retryUrl = "https://rutracker.org/forum/viewtopic.php?t=200";
         db.ParseLogs.Add(new ParseLog
         {
+            ScanRunId = scanRun.Id,
             SourceId = source.Id,
             SourceItemKey = "entry:retry-1",
             RawTitle = "Quiet River (2004)",
@@ -150,12 +159,35 @@ public sealed class TorrentTitleMatchApiTests
             $"/api/parse-logs/{parseLogId}/imdb-match",
             new ApplyImdbCandidateRequest(imdbId));
         Assert.Equal(HttpStatusCode.OK, logApply.StatusCode);
-        Assert.Equal(2, await db.TorrentReleases.CountAsync(release => release.TorrentMovieId == title.Id));
+        Assert.True(await db.TorrentReleases.AnyAsync(release => release.SourceId == source.Id
+            && release.SourceItemKey == "entry:retry-1"
+            && release.TorrentMovieId == title.Id));
         var manualRetry = await db.ParseLogs.AsNoTracking()
             .SingleAsync(log => log.EventKind == "manual_retry");
         Assert.Equal("resolved", manualRetry.RetryState);
         Assert.Equal("manual_imdb_match", manualRetry.Decision);
         Assert.Equal(2, manualRetry.AttemptCount);
+        Assert.Equal(scanRun.Id, manualRetry.ScanRunId);
+
+        var resolvedOriginal = await db.ParseLogs.AsNoTracking().SingleAsync(log => log.Id == parseLogId);
+        Assert.Equal("resolved", resolvedOriginal.RetryState);
+        Assert.Equal("found", resolvedOriginal.OmdbStatus);
+        Assert.False(resolvedOriginal.Ignored);
+        Assert.Equal("manual_imdb_match", resolvedOriginal.Decision);
+
+        using var scopedLogsResponse = await host.Client.GetAsync(
+            $"/api/parse-logs?scanRunId={scanRun.Id}&page=1&pageSize=10");
+        Assert.Equal(HttpStatusCode.OK, scopedLogsResponse.StatusCode);
+        var scopedLogs = await scopedLogsResponse.Content.ReadFromJsonAsync<MediaDock.Api.Common.PageResponse<MediaDock.Api.Operations.ParseLogResponse>>();
+        Assert.NotNull(scopedLogs);
+        Assert.Contains(scopedLogs.Items, log => log.Id == parseLogId
+            && log.RetryState == "resolved"
+            && log.OmdbStatus == "found"
+            && !log.Ignored
+            && log.Decision == "manual_imdb_match"
+            && !log.CanRetryMatch);
+        Assert.Contains(scopedLogs.Items, log => log.Id == manualRetry.Id && !log.CanRetryMatch);
+        Assert.All(scopedLogs.Items.Where(log => log.SourceItemKey == "entry:retry-1"), log => Assert.False(log.CanRetryMatch));
 
         using var repeatedApply = await host.Client.PostAsJsonAsync(
             $"/api/parse-logs/{parseLogId}/imdb-match",

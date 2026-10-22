@@ -26,6 +26,16 @@ public sealed class CatalogOperationsApiTests
         };
         db.Sources.Add(source);
         await db.SaveChangesAsync();
+        var seriesSource = new Source
+        {
+            StableKey = "series-main",
+            Name = "Series",
+            FeedType = "series_complete",
+            Url = "https://feed.rutracker.cc/series.atom",
+            IsEnabled = true
+        };
+        db.Sources.Add(seriesSource);
+        await db.SaveChangesAsync();
 
         var firstSeen = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
         db.ParseLogs.AddRange(
@@ -88,6 +98,22 @@ public sealed class CatalogOperationsApiTests
                 RetryState = "retryable",
                 FeedType = source.FeedType,
                 EventKind = "feed"
+            },
+            new ParseLog
+            {
+                SourceId = seriesSource.Id,
+                SourceItemKey = "series-entry",
+                RawTitle = "Example Series",
+                FeedName = "Series",
+                ParsedSuccessfully = true,
+                ParsedTitle = "Example Series",
+                LookupTitles = ["Example Series"],
+                OmdbStatus = "confirmed_not_found",
+                Ignored = false,
+                ProcessedAt = firstSeen.AddMinutes(4),
+                RetryState = "terminal",
+                FeedType = seriesSource.FeedType,
+                EventKind = "ingestion"
             });
         db.ScanRuns.Add(new ScanRun
         {
@@ -117,6 +143,15 @@ public sealed class CatalogOperationsApiTests
         Assert.NotNull(allLogs);
         Assert.True(allLogs.Items.Single(log => log.SourceItemKey == "matchable-entry").CanRetryMatch);
         Assert.False(allLogs.Items.Single(log => log.EventKind == "feed").CanRetryMatch);
+
+        using var unresolvedMoviesResponse = await client.GetAsync(
+            "/api/parse-logs?page=1&pageSize=10&unresolvedMoviesOnly=true");
+        var unresolvedMovies = await unresolvedMoviesResponse.Content.ReadFromJsonAsync<PageResponse<ParseLogResponse>>();
+        Assert.NotNull(unresolvedMovies);
+        Assert.Equal(2, unresolvedMovies.TotalCount);
+        Assert.Equal(
+            new[] { "matchable-entry", "bad-entry" },
+            unresolvedMovies.Items.Select(log => log.SourceItemKey));
 
         using var runsResponse = await client.GetAsync("/api/scan-runs?page=1&pageSize=10&status=succeeded");
         var runs = await runsResponse.Content.ReadFromJsonAsync<PageResponse<ScanRunResponse>>();

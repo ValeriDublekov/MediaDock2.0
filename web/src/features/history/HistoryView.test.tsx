@@ -89,7 +89,42 @@ describe('HistoryView parse diagnosis', () => {
     expect(screen.getByText('Lookup names: English Title → Локално име')).toBeTruthy()
   })
 
+  it('opens on unresolved movie parse entries by default', async () => {
+    vi.mocked(getParseLogs).mockResolvedValue(createPage([createLog({
+      retryState: 'terminal',
+      feedType: 'movie',
+    })]))
+
+    render(<HistoryView />)
+
+    await waitFor(() => expect(getParseLogs).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: 20,
+      unresolvedMoviesOnly: true,
+    }))
+    expect(screen.getByLabelText('Retry state')).toHaveProperty('value', 'unresolvedMovies')
+    expect(getScanRuns).not.toHaveBeenCalled()
+  })
+
+  it('shows known torrent URLs as skipped instead of parsing failures', async () => {
+    vi.mocked(getParseLogs).mockResolvedValue(createPage([createLog({
+      parsedSuccessfully: false,
+      parsedTitle: null,
+      omdbStatus: 'not_requested',
+      decision: 'known_torrent_url',
+    })]))
+    vi.mocked(getScanRuns).mockResolvedValue(createPage<ScanRun>([]))
+
+    render(<HistoryView scanRunId={42} />)
+
+    expect(await screen.findByText('Skipped')).toBeTruthy()
+    expect(screen.getByText('Already in catalog')).toBeTruthy()
+    expect(screen.getByText('Decision: Known torrent URL')).toBeTruthy()
+    expect(screen.queryByText('Parsing failed')).toBeNull()
+  })
+
   it('confirms deletion of history older than the selected days and refreshes scans', async () => {
+    vi.mocked(getParseLogs).mockResolvedValue(createPage<ParseLog>([]))
     vi.mocked(getScanRuns).mockResolvedValue(createPage<ScanRun>([]))
     vi.mocked(deleteOldOperationalHistory).mockResolvedValue({
       olderThanDays: 45,
@@ -100,6 +135,7 @@ describe('HistoryView parse diagnosis', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     render(<HistoryView />)
+    fireEvent.click(screen.getByRole('button', { name: 'Scan runs' }))
     fireEvent.change(await screen.findByLabelText('Delete older than (days)'), { target: { value: '45' } })
     fireEvent.click(screen.getByRole('button', { name: 'Delete old logs' }))
 
@@ -118,7 +154,16 @@ describe('HistoryView parse diagnosis', () => {
       totalResults: 12,
       errorCode: null,
     }
-    vi.mocked(getParseLogs).mockResolvedValue(createPage([entry]))
+    vi.mocked(getParseLogs)
+      .mockResolvedValueOnce(createPage([entry]))
+      .mockResolvedValueOnce(createPage([createLog({
+        ...entry,
+        omdbStatus: 'found',
+        ignored: false,
+        decision: 'manual_imdb_match',
+        retryState: 'resolved',
+        canRetryMatch: false,
+      })]))
     vi.mocked(getScanRuns).mockResolvedValue(createPage<ScanRun>([]))
     vi.mocked(searchParseLogImdbCandidates).mockResolvedValue(candidates)
     vi.mocked(applyParseLogImdbCandidate).mockResolvedValue({ torrentTitleId: 17, imdbId: 'tt87654321' })
@@ -138,6 +183,9 @@ describe('HistoryView parse diagnosis', () => {
 
     await waitFor(() => expect(applyParseLogImdbCandidate).toHaveBeenCalledWith(42, 'tt87654321'))
     await waitFor(() => expect(getParseLogs).toHaveBeenCalledTimes(2))
+    const resolvedRow = await screen.findByRole('row', { name: /Example Film/ })
+    expect(resolvedRow.querySelector('td:nth-child(4) .state-pill')?.textContent).toBe('Resolved')
+    expect(screen.queryByRole('button', { name: /Retry IMDb match/ })).toBeNull()
   })
 
   it('does not offer retry matching for feed-level errors without a torrent URL', async () => {

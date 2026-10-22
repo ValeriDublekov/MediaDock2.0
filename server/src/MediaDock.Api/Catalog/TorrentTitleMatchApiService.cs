@@ -244,8 +244,23 @@ internal sealed class TorrentTitleMatchApiService(
             now,
             cancellationToken);
 
+        var attemptCount = checked(log.AttemptCount + 1);
+        log.ParsedSuccessfully = true;
+        log.ParsedTitle = parsed.Title;
+        log.ParsedYear = parsed.Year;
+        log.LookupTitles = [parsed.Title];
+        log.OmdbStatus = "found";
+        log.Ignored = false;
+        log.IgnoreReason = null;
+        log.ErrorMessage = null;
+        log.Decision = "manual_imdb_match";
+        log.RetryState = "resolved";
+        log.AttemptCount = attemptCount;
+        log.LastAttemptAt = now;
+
         dbContext.ParseLogs.Add(new ParseLog
         {
+            ScanRunId = log.ScanRunId,
             SourceId = source.Id,
             SourceItemKey = sourceItemKey,
             RawTitle = log.RawTitle,
@@ -259,7 +274,7 @@ internal sealed class TorrentTitleMatchApiService(
             Decision = "manual_imdb_match",
             ProcessedAt = now,
             RetryState = "resolved",
-            AttemptCount = checked(log.AttemptCount + 1),
+            AttemptCount = attemptCount,
             LastAttemptAt = now,
             FeedType = feedType,
             SourcePublishedAt = log.SourcePublishedAt,

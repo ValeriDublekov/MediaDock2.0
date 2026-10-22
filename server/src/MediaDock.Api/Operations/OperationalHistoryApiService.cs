@@ -56,6 +56,14 @@ internal sealed class OperationalHistoryApiService(
             logs = logs.Where(log => log.RetryState == query.RetryState);
         }
 
+        if (query.UnresolvedMoviesOnly is true)
+        {
+            logs = logs.Where(log => log.RetryState != "resolved"
+                && log.EventKind != "feed"
+                && (log.FeedType == "movie"
+                    || (log.FeedType == null && log.Source != null && log.Source.FeedType == "movie")));
+        }
+
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var pattern = $"%{query.Search.Trim()}%";

@@ -24,6 +24,8 @@ public sealed record ParseLogQuery
     [RegularExpression("^(retryable|terminal|resolved)$")]
     public string? RetryState { get; init; }
 
+    public bool? UnresolvedMoviesOnly { get; init; }
+
     [MaxLength(200)]
     public string? Search { get; init; }
 }

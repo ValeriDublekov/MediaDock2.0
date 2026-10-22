@@ -7,16 +7,17 @@ import { ImdbCandidatePicker, type ImdbCandidateTarget } from '../../components/
 import { formatDate, formatWords } from '../../shared/format'
 
 type HistoryTab = 'scans' | 'parses'
+type ParseLogFilter = '' | 'retryable' | 'terminal' | 'resolved' | 'unresolvedMovies'
 
 export function HistoryView({ scanRunId = null, onClearScanRun }: {
   scanRunId?: number | null
   onClearScanRun?: () => void
 } = {}) {
-  const [tab, setTab] = useState<HistoryTab>(() => scanRunId === null ? 'scans' : 'parses')
+  const [tab, setTab] = useState<HistoryTab>('parses')
   const [page, setPage] = useState(1)
   const [scanStatus, setScanStatus] = useState('')
   const [scanTrigger, setScanTrigger] = useState('')
-  const [retryState, setRetryState] = useState('')
+  const [retryState, setRetryState] = useState<ParseLogFilter>(() => scanRunId === null ? 'unresolvedMovies' : '')
   const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
   const [scanResult, setScanResult] = useState<PageResponse<ScanRun> | null>(null)
@@ -44,7 +45,9 @@ export function HistoryView({ scanRunId = null, onClearScanRun }: {
       : getParseLogs({
         page,
         pageSize: 20,
-        ...(retryState ? { retryState: retryState as 'retryable' | 'terminal' | 'resolved' } : {}),
+        ...(retryState === 'unresolvedMovies'
+          ? { unresolvedMoviesOnly: true }
+          : retryState ? { retryState } : {}),
         ...(search ? { search } : {}),
         ...(scanRunId === null ? {} : { scanRunId }),
       })
@@ -112,7 +115,7 @@ export function HistoryView({ scanRunId = null, onClearScanRun }: {
           </div>
         ) : (
           <form className="history-filters" onSubmit={applySearch}>
-            <div className="field"><label htmlFor="parse-retry-filter">Retry state</label><select id="parse-retry-filter" onChange={(event) => { setPage(1); setRetryState(event.target.value) }} value={retryState}><option value="">All states</option><option value="retryable">Retryable</option><option value="terminal">Terminal</option><option value="resolved">Resolved</option></select></div>
+            <div className="field"><label htmlFor="parse-retry-filter">Retry state</label><select id="parse-retry-filter" onChange={(event) => { setPage(1); setRetryState(event.target.value as ParseLogFilter) }} value={retryState}><option value="unresolvedMovies">Unresolved movies</option><option value="">All states</option><option value="retryable">Retryable</option><option value="terminal">Terminal</option><option value="resolved">Resolved</option></select></div>
             <div className="field field-search"><label htmlFor="parse-search">Search entries</label><input id="parse-search" onChange={(event) => setSearchDraft(event.target.value)} placeholder="Title or feed" value={searchDraft} /></div>
             <button className="button" type="submit">Search</button>
           </form>
@@ -184,13 +187,13 @@ function ParseLogTable({ items, onRetry }: { items: ParseLog[]; onRetry: (entry:
           <tr key={entry.id}>
             <td>{entry.rawTitle}<span className="subtle-line">{entry.parsedTitle ?? 'No normalized title'}{entry.parsedYear ? ` | ${entry.parsedYear}` : ''}</span></td>
             <td>{entry.sourceName ?? entry.feedName}<span className="subtle-line">{entry.feedType ?? 'Unknown feed type'}</span></td>
-            <td><span className={`state-pill${entry.parsedSuccessfully ? '' : ' is-muted'}`}>{entry.parsedSuccessfully ? 'Parsed' : 'Rejected'}</span></td>
+            <td><span className={`state-pill${entry.parsedSuccessfully ? '' : ' is-muted'}`}>{getParseLogStatus(entry)}</span></td>
             <td>
               <span className="state-pill">{getParseLogDiagnosis(entry)}</span>
               {entry.lookupTitles.length > 0 && <span className="subtle-line">Lookup names: {entry.lookupTitles.join(' → ')}</span>}
               {entry.ignoreReason && <span className="subtle-line">Reason: {formatWords(entry.ignoreReason)}</span>}
               {entry.errorMessage && <span className="subtle-line">Error: {entry.errorMessage}</span>}
-              {entry.decision && <span className="subtle-line">Decision: {entry.decision}</span>}
+              {entry.decision && <span className="subtle-line">Decision: {entry.decision === 'known_torrent_url' ? 'Known torrent URL' : formatWords(entry.decision)}</span>}
             </td>
             <td>{formatWords(entry.retryState)}<span className="subtle-line">{entry.attemptCount} attempts</span></td>
             <td>{formatDate(entry.processedAt)}</td>
@@ -207,9 +210,15 @@ function ParseLogTable({ items, onRetry }: { items: ParseLog[]; onRetry: (entry:
   )
 }
 
-function getParseLogDiagnosis(entry: Pick<ParseLog, 'parsedSuccessfully' | 'omdbStatus' | 'ignored' | 'ignoreReason'>) {
+function getParseLogStatus(entry: Pick<ParseLog, 'parsedSuccessfully' | 'decision'>) {
+  if (entry.decision === 'known_torrent_url') return 'Skipped'
+  return entry.parsedSuccessfully ? 'Parsed' : 'Rejected'
+}
+
+function getParseLogDiagnosis(entry: Pick<ParseLog, 'parsedSuccessfully' | 'omdbStatus' | 'ignored' | 'ignoreReason' | 'decision'>) {
   if (entry.ignoreReason === 'feed_error') return 'RSS feed error'
   if (entry.ignoreReason === 'malformed_entry') return 'Invalid RSS entry'
+  if (entry.decision === 'known_torrent_url') return 'Already in catalog'
   if (!entry.parsedSuccessfully) return 'Parsing failed'
   if (entry.omdbStatus === 'confirmed_not_found') return 'OMDb found no result'
   if (entry.omdbStatus === 'found') return entry.ignored ? 'OMDb match rejected' : 'Resolved'

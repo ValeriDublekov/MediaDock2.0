@@ -373,6 +373,7 @@ export interface ParseLogQuery {
   parsedSuccessfully?: boolean
   ignored?: boolean
   retryState?: 'retryable' | 'terminal' | 'resolved'
+  unresolvedMoviesOnly?: boolean
   search?: string
 }
 
