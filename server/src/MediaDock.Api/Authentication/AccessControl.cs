@@ -11,6 +11,7 @@ public static class AccessPolicies
     public const string Administrator = "Administrator";
     public const string OwnerScopedFavorites = "OwnerScopedFavorites";
     public const string OwnerScopedPersonalRatings = "OwnerScopedPersonalRatings";
+    public const string OwnerScopedRecommendations = "OwnerScopedRecommendations";
 }
 
 public sealed record AccessControlSettings(bool Enforced)
@@ -99,6 +100,9 @@ public static class AccessControlServiceCollectionExtensions
                 policy => policy.AddRequirements(new CurrentUserRequirement(RequireActiveUserInOpenMode: true)));
             options.AddPolicy(
                 AccessPolicies.OwnerScopedPersonalRatings,
+                policy => policy.AddRequirements(new CurrentUserRequirement(RequireActiveUserInOpenMode: true)));
+            options.AddPolicy(
+                AccessPolicies.OwnerScopedRecommendations,
                 policy => policy.AddRequirements(new CurrentUserRequirement(RequireActiveUserInOpenMode: true)));
         });
         return services;

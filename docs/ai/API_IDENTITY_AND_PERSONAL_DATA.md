@@ -10,6 +10,15 @@ Task router for Google sign-in, account linking and administration, favorites, a
 - Favorites use IMDb identity, not a catalog or award-source row ID. `POST /api/favorites` accepts `imdbId` and `from`; it succeeds only for an existing enriched IMDb movie. Repeated adds from Oscar and catalog views merge into the same `(user_id, imdb_id)` favorite. `PATCH` and `DELETE /api/favorites/{imdbId}` use the same owner-scoped key.
 - `ToDownload` is a future-search marker and does not require an existing torrent release. Unmatched records and IMDb rows whose metadata is pending or unsuccessful cannot be added; the web controls are only offered for enriched movie matches.
 - Personal-rating import is an owner-scoped merge, not a replacement: IDs omitted from a later file remain stored. The JSON is processed in memory, not saved as an uploaded file.
+- `GET /api/recommendations` always requires an active linked user, including when access enforcement is disabled. The server resolves the owner from validated identity; it does not accept a client-supplied user ID. Results exclude that user's rated and `ToWatch` movies, but include `ToDownload`-only movies.
+
+## Personal Recommendations
+
+- `GET /api/recommendations` uses the shared `PageResponse<T>` contract: `page` defaults to `1`, `pageSize` defaults to `25`, and the maximum page size is `100`.
+- Every request must provide `ratingWeight`, `votesWeight`, and `awardsWeight`. Each is in `[0,1]` and their decimal sum must equal `1.0`. The web client's first-use values are `0.50`, `0.25`, and `0.25`, respectively; they remain in client/request state and are not persisted by the API.
+- Candidates are enriched canonical IMDb movie rows with a non-empty title, a non-null IMDb rating, and at least one Oscar or qualifying Golden Globes nomination linked by IMDb ID. Golden Globes links require both nominee type and canonical IMDb media type `movie`. Torrent-only, unmatched, non-movie, pending, incomplete-title, and missing-rating records are excluded.
+- The rating component uses a Bayesian prior: the prior mean is the average IMDb rating across enriched IMDb movie rows with a rating, and the prior strength is `1,000` raw IMDb votes. A missing vote count uses the prior mean. Popularity is the capped normalized vote weight; award points use the configured source-qualified win or nomination value multiplied by winner-derived category taste, with an award-component cap of `10.0`.
+- Results sort by final score descending, then IMDb ID ascending. Each item includes title data, normalized score components, applied coefficients, final score, and distinct contributing award events with source, category, outcome, base points, taste multiplier, and adjusted points. Award events expose Oscar ceremony numbers separately from Golden Globes ceremony years.
 
 ## Authoritative source and tests
 

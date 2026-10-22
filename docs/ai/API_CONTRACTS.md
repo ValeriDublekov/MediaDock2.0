@@ -6,6 +6,7 @@ This page is the shared-conventions router for the API in `server/`. Routes are 
 | --- | --- |
 | Catalog, Oscars, Golden Globes, and award recognition | [Catalogs and awards](API_CATALOGS_AND_AWARDS.md) |
 | Sign-in, account administration, favorites, and personal ratings | [Identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md) |
+| Personal movie recommendations | [Identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md) and [recommendation plan](plans/movie-recommendations.md) |
 | Health, configuration, operations, ingestion, and jobs | [Operations and jobs](API_OPERATIONS_AND_JOBS.md) |
 
 Catalog IDs, Oscar record IDs, and Golden Globes film IDs belong to their respective source-owned records. Cross-source Favorites state is keyed by IMDb ID, not by one of those local IDs.

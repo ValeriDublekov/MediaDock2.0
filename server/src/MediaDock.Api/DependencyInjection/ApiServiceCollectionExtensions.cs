@@ -55,6 +55,7 @@ public static class ApiServiceCollectionExtensions
 		services.AddScoped<IMovieAwardsApiService, MovieAwardsApiService>();
 		services.AddScoped<FavoriteApiService>();
 		services.AddScoped<PersonalRatingsApiService>();
+		services.AddScoped<MovieRecommendationsApiService>();
 		services.AddScoped<IOscarApiService, OscarApiService>();
 		services.AddScoped<IGoldenGlobeApiService, GoldenGlobeApiService>();
 		services.AddScoped<ISourceSettingsApiService, SourceSettingsApiService>();

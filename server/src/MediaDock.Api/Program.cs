@@ -85,6 +85,7 @@ app.MapOscarEndpoints();
 app.MapGoldenGlobeEndpoints();
 app.MapSourceSettingsEndpoints();
 app.MapRecommendationSettingsEndpoints();
+app.MapMovieRecommendationsEndpoints();
 app.MapOperationalHistoryEndpoints();
 app.MapBackgroundJobEndpoints(maximumUploadBytes);
 app.MapDeploymentControlEndpoints();
