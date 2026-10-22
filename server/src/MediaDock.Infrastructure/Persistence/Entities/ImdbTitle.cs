@@ -8,6 +8,7 @@ public sealed class ImdbTitle
     public string? MediaType { get; set; }
     public decimal? ImdbRating { get; set; }
     public long? ImdbVotes { get; set; }
+    public double NormalizedVoteWeight { get; set; }
     public decimal? Metascore { get; set; }
     public string[] Genres { get; set; } = Array.Empty<string>();
     public string[] Countries { get; set; } = Array.Empty<string>();

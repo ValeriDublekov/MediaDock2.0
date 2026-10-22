@@ -15,6 +15,7 @@ internal sealed class ImdbTitleConfiguration : IEntityTypeConfiguration<ImdbTitl
                 "ck_imdb_titles_metadata_status",
                 "metadata_status IN ('pending', 'enriched', 'not_found', 'temporary_error')");
             table.HasCheckConstraint("ck_imdb_titles_enrichment_attempt_count", "enrichment_attempt_count >= 0");
+            table.HasCheckConstraint("ck_imdb_titles_normalized_vote_weight", "normalized_vote_weight >= 0");
         });
         builder.HasKey(entity => entity.ImdbId).HasName("pk_imdb_titles");
         builder.Property(entity => entity.ImdbId).HasColumnName("imdb_id").HasMaxLength(32).IsRequired();
@@ -23,6 +24,9 @@ internal sealed class ImdbTitleConfiguration : IEntityTypeConfiguration<ImdbTitl
         builder.Property(entity => entity.MediaType).HasColumnName("media_type").HasMaxLength(32);
         builder.Property(entity => entity.ImdbRating).HasColumnName("imdb_rating").HasPrecision(4, 1);
         builder.Property(entity => entity.ImdbVotes).HasColumnName("imdb_votes");
+        builder.Property(entity => entity.NormalizedVoteWeight)
+            .HasColumnName("normalized_vote_weight")
+            .HasDefaultValue(0d);
         builder.Property(entity => entity.Metascore).HasColumnName("metascore").HasPrecision(5, 2);
         builder.Property(entity => entity.Genres)
             .HasColumnName("genres")

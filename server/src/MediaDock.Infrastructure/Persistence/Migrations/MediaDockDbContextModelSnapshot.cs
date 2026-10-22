@@ -76,7 +76,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("oscar_enrichment_max_requests_per_day");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
+                    b.Property<DateTimeOffset?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
@@ -98,6 +98,48 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_settings_oscar_max_requests_per_day", "oscar_enrichment_max_requests_per_day >= 0");
 
                             t.HasCheckConstraint("ck_settings_singleton_id", "id = 1");
+                        });
+                });
+
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.AwardCategoryAlias", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AwardSource")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("award_source");
+
+                    b.Property<string>("CategoryKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("category_key");
+
+                    b.Property<string>("RawName")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("raw_name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_award_category_aliases");
+
+                    b.HasIndex("AwardSource", "RawName")
+                        .IsUnique()
+                        .HasDatabaseName("ux_award_category_aliases_source_raw_name");
+
+                    b.ToTable("award_category_aliases", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_award_category_aliases_names", "btrim(raw_name) <> '' AND btrim(category_key) <> ''");
+
+                            t.HasCheckConstraint("ck_award_category_aliases_source", "award_source IN ('oscar', 'golden_globes')");
                         });
                 });
 
@@ -353,6 +395,50 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GeneralRecommendationSettings", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset?>("LastVoteRecalculationAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_vote_recalculation_at");
+
+                    b.Property<int?>("LastVoteRecalculationPeriodYears")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_vote_recalculation_period_years");
+
+                    b.Property<int>("MedianPeriodYears")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(5)
+                        .HasColumnName("median_period_years");
+
+                    b.Property<bool>("RequiresVoteRecalculation")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("requires_vote_recalculation");
+
+                    b.HasKey("Id")
+                        .HasName("pk_general_recommendation_settings");
+
+                    b.ToTable("general_recommendation_settings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_general_recommendation_settings_last_vote_recalculation_period_years", "last_vote_recalculation_period_years IS NULL OR last_vote_recalculation_period_years > 0");
+
+                            t.HasCheckConstraint("ck_general_recommendation_settings_median_period_years", "median_period_years > 0");
+
+                            t.HasCheckConstraint("ck_general_recommendation_settings_requires_vote_recalculation", "requires_vote_recalculation IN (TRUE, FALSE)");
+
+                            t.HasCheckConstraint("ck_general_recommendation_settings_singleton_id", "id = 1");
+                        });
+                });
+
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.GoldenGlobeAward", b =>
                 {
                     b.Property<long>("Id")
@@ -362,6 +448,14 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("CategoryKey")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasDefaultValue("award_other")
+                        .HasColumnName("category_key");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -370,6 +464,9 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_golden_globe_awards");
+
+                    b.HasIndex("CategoryKey")
+                        .HasDatabaseName("ix_golden_globe_awards_category_key");
 
                     b.HasIndex("Name")
                         .IsUnique()
@@ -627,6 +724,12 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("next_enrichment_attempt_at");
 
+                    b.Property<double>("NormalizedVoteWeight")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("double precision")
+                        .HasDefaultValue(0.0)
+                        .HasColumnName("normalized_vote_weight");
+
                     b.Property<string>("Plot")
                         .HasColumnType("text")
                         .HasColumnName("plot");
@@ -663,6 +766,8 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_imdb_titles_imdb_id_normalized", "imdb_id <> '' AND imdb_id = lower(btrim(imdb_id))");
 
                             t.HasCheckConstraint("ck_imdb_titles_metadata_status", "metadata_status IN ('pending', 'enriched', 'not_found', 'temporary_error')");
+
+                            t.HasCheckConstraint("ck_imdb_titles_normalized_vote_weight", "normalized_vote_weight >= 0");
                         });
                 });
 
@@ -1194,6 +1299,54 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.ToTable("personal_ratings", null, t =>
                         {
                             t.HasCheckConstraint("ck_personal_ratings_rating", "rating BETWEEN 1 AND 10");
+                        });
+                });
+
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.RecommendationAwardWeight", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AwardSource")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("award_source");
+
+                    b.Property<string>("CategoryKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("category_key");
+
+                    b.Property<decimal>("NominationPoints")
+                        .HasColumnType("numeric")
+                        .HasColumnName("nomination_points");
+
+                    b.Property<decimal>("WinPoints")
+                        .HasColumnType("numeric")
+                        .HasColumnName("win_points");
+
+                    b.HasKey("Id")
+                        .HasName("pk_recommendation_award_weights");
+
+                    b.HasIndex("AwardSource", "CategoryKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_recommendation_award_weights_source_category");
+
+                    b.ToTable("recommendation_award_weights", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_recommendation_award_weights_category_key", "btrim(category_key) <> ''");
+
+                            t.HasCheckConstraint("ck_recommendation_award_weights_nomination_points", "nomination_points >= 0");
+
+                            t.HasCheckConstraint("ck_recommendation_award_weights_source", "award_source IN ('oscar', 'golden_globes')");
+
+                            t.HasCheckConstraint("ck_recommendation_award_weights_win_points", "win_points >= 0");
                         });
                 });
 

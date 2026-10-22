@@ -12,7 +12,13 @@ internal sealed class GoldenGlobeAwardConfiguration : IEntityTypeConfiguration<G
         builder.HasKey(x => x.Id).HasName("pk_golden_globe_awards");
         builder.Property(x => x.Id).UseIdentityByDefaultColumn().HasColumnName("id");
         builder.Property(x => x.Name).HasColumnName("name").HasMaxLength(500).IsRequired();
+        builder.Property(x => x.CategoryKey)
+            .HasColumnName("category_key")
+            .HasMaxLength(128)
+            .HasDefaultValue("award_other")
+            .IsRequired();
         builder.HasIndex(x => x.Name).IsUnique().HasDatabaseName("ux_golden_globe_awards_name");
+        builder.HasIndex(x => x.CategoryKey).HasDatabaseName("ix_golden_globe_awards_category_key");
     }
 }
 

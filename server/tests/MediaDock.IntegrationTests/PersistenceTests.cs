@@ -8,6 +8,225 @@ public sealed class PersistenceTests
 {
     [Fact]
     [Trait("Category", "Persistence")]
+    public async Task MovieRecommendationMigrationSeedsDefaultsAndPreservesOwnedData()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_movie_recommendation_migration_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync("20261021130541_DeduplicateTorrentUrls");
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            INSERT INTO imdb_titles (imdb_id, title, year, media_type, imdb_votes, updated_at)
+            VALUES ('tt12345678', 'Migration Movie', 2024, 'movie', 125000, TIMESTAMPTZ '2026-10-20 12:00:00+00');
+            INSERT INTO golden_globe_awards (name)
+            VALUES
+                ('Best Motion Picture - Drama'),
+                ('Best Motion Picture – Non-English Language'),
+                ('Unmapped Category');
+            """);
+
+        var now = new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero);
+        var user = CreateUser("movie-recommendation-migration@example.com", now);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+        db.PersonalRatings.Add(new PersonalRating
+        {
+            UserId = user.Id,
+            ImdbId = "tt12345678",
+            Rating = 8,
+            UpdatedAt = now
+        });
+        await db.SaveChangesAsync();
+
+        await db.Database.MigrateAsync();
+        db.ChangeTracker.Clear();
+
+        var settings = await db.Settings.AsNoTracking().SingleAsync();
+        Assert.Equal(1, settings.Id);
+        Assert.Empty(settings.ExcludedGenres);
+        Assert.Empty(settings.ExcludedCountries);
+        Assert.Equal(0m, settings.MinMovieRating);
+        Assert.Equal(0m, settings.MinSeriesRating);
+        Assert.Equal(0, settings.MinImdbVotes);
+        Assert.Null(settings.OmdbApiKey);
+        Assert.Equal(0, settings.OmdbDailyRequestLimit);
+        Assert.Equal(0, settings.OscarEnrichmentMaxFilmsPerRun);
+        Assert.Equal(0, settings.OscarEnrichmentMaxRequestsPerDay);
+        Assert.Null(settings.UpdatedAt);
+
+        var recommendationSettings = await db.GeneralRecommendationSettings.AsNoTracking().SingleAsync();
+        Assert.Equal(1, recommendationSettings.Id);
+        Assert.Equal(5, recommendationSettings.MedianPeriodYears);
+        Assert.True(recommendationSettings.RequiresVoteRecalculation);
+        Assert.Null(recommendationSettings.LastVoteRecalculationAt);
+        Assert.Null(recommendationSettings.LastVoteRecalculationPeriodYears);
+
+        var movie = await db.ImdbTitles.AsNoTracking().SingleAsync(title => title.ImdbId == "tt12345678");
+        Assert.Equal("Migration Movie", movie.TitleText);
+        Assert.Equal(2024, movie.Year);
+        Assert.Equal("movie", movie.MediaType);
+        Assert.Equal(125000, movie.ImdbVotes);
+        Assert.Equal(0d, movie.NormalizedVoteWeight);
+
+        var awardKeys = await db.GoldenGlobeAwards.AsNoTracking()
+            .ToDictionaryAsync(award => award.Name, award => award.CategoryKey);
+        Assert.Equal("best_motion_picture_drama", awardKeys["Best Motion Picture - Drama"]);
+        Assert.Equal("foreign_film_foreign_language", awardKeys["Best Motion Picture – Non-English Language"]);
+        Assert.Equal("award_other", awardKeys["Unmapped Category"]);
+        Assert.Equal(
+            "foreign_film_foreign_language",
+            (await db.AwardCategoryAliases.AsNoTracking()
+                .SingleAsync(alias => alias.RawName == "Foreign Film - Foreign Language")).CategoryKey);
+
+        var oscarWeight = await db.RecommendationAwardWeights.AsNoTracking()
+            .SingleAsync(weight => weight.AwardSource == "oscar" && weight.CategoryKey == "BEST PICTURE");
+        Assert.Equal(3m, oscarWeight.WinPoints);
+        Assert.Equal(1m, oscarWeight.NominationPoints);
+        var goldenGlobesWeight = await db.RecommendationAwardWeights.AsNoTracking()
+            .SingleAsync(weight => weight.AwardSource == "golden_globes" && weight.CategoryKey == "best_motion_picture_drama");
+        Assert.Equal(2m, goldenGlobesWeight.WinPoints);
+        Assert.Equal(0.5m, goldenGlobesWeight.NominationPoints);
+        Assert.All(
+            await db.RecommendationAwardWeights.AsNoTracking()
+                .Where(weight => weight.CategoryKey == "award_other")
+                .ToListAsync(),
+            weight =>
+            {
+                Assert.Equal(0m, weight.WinPoints);
+                Assert.Equal(0m, weight.NominationPoints);
+            });
+
+        var preservedRating = await db.PersonalRatings.AsNoTracking().SingleAsync();
+        Assert.Equal(user.Id, preservedRating.UserId);
+        Assert.Equal("tt12345678", preservedRating.ImdbId);
+        Assert.Equal(8, preservedRating.Rating);
+        Assert.Equal(now, preservedRating.UpdatedAt);
+
+        await AssertRejectedAsync(db, new AwardCategoryAlias
+        {
+            AwardSource = "golden_globes",
+            RawName = "Best Motion Picture - Drama",
+            CategoryKey = "duplicate_alias"
+        });
+        await AssertRejectedAsync(db, new RecommendationAwardWeight
+        {
+            AwardSource = "oscar",
+            CategoryKey = "BEST PICTURE",
+            WinPoints = 3m,
+            NominationPoints = 1m
+        });
+        await AssertRejectedAsync(db, new RecommendationAwardWeight
+        {
+            AwardSource = "golden_globes",
+            CategoryKey = "negative_win",
+            WinPoints = -1m,
+            NominationPoints = 0m
+        });
+        await AssertRejectedAsync(db, new RecommendationAwardWeight
+        {
+            AwardSource = "golden_globes",
+            CategoryKey = "negative_nomination",
+            WinPoints = 0m,
+            NominationPoints = -1m
+        });
+
+        var invalidPeriod = await db.GeneralRecommendationSettings.SingleAsync();
+        invalidPeriod.MedianPeriodYears = 0;
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        db.ChangeTracker.Clear();
+
+        await db.Database.MigrateAsync("20261021130541_DeduplicateTorrentUrls");
+        var rolledBackUpdatedAt = await db.Database.SqlQuery<DateTimeOffset>(
+            $"SELECT updated_at AS \"Value\" FROM settings WHERE id = 1")
+            .SingleAsync();
+        Assert.NotEqual(default, rolledBackUpdatedAt);
+        Assert.DoesNotContain(
+            "20261022122143_AddMovieRecommendationPersistence",
+            await db.Database.GetAppliedMigrationsAsync());
+    }
+
+    [Fact]
+    [Trait("Category", "Persistence")]
+    public async Task MovieRecommendationMigrationPreservesExistingSettings()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_movie_recommendation_settings_migration_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync("20261021130541_DeduplicateTorrentUrls");
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            INSERT INTO settings (
+                id,
+                excluded_genres,
+                excluded_countries,
+                min_movie_rating,
+                min_series_rating,
+                min_imdb_votes,
+                omdb_api_key,
+                omdb_daily_request_limit,
+                oscar_enrichment_max_films_per_run,
+                oscar_enrichment_max_requests_per_day,
+                updated_at)
+            VALUES (
+                1,
+                ARRAY['Drama']::text[],
+                ARRAY['Canada']::text[],
+                6.5,
+                7.5,
+                1400,
+                'preserved-test-key',
+                37,
+                12,
+                345,
+                TIMESTAMPTZ '2026-10-20 12:00:00+00');
+            """);
+
+        await db.Database.MigrateAsync("20261022122143_AddMovieRecommendationPersistence");
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            UPDATE settings
+            SET median_period_years = 12,
+                requires_vote_recalculation = TRUE,
+                last_vote_recalculation_at = TIMESTAMPTZ '2026-10-19 10:30:00+00',
+                last_vote_recalculation_period_years = 10
+            WHERE id = 1;
+            """);
+        await db.Database.MigrateAsync();
+        db.ChangeTracker.Clear();
+
+        var settings = await db.Settings.AsNoTracking().SingleAsync();
+        Assert.Equal(new[] { "Drama" }, settings.ExcludedGenres);
+        Assert.Equal(new[] { "Canada" }, settings.ExcludedCountries);
+        Assert.Equal(6.5m, settings.MinMovieRating);
+        Assert.Equal(7.5m, settings.MinSeriesRating);
+        Assert.Equal(1400, settings.MinImdbVotes);
+        Assert.Equal("preserved-test-key", settings.OmdbApiKey);
+        Assert.Equal(37, settings.OmdbDailyRequestLimit);
+        Assert.Equal(12, settings.OscarEnrichmentMaxFilmsPerRun);
+        Assert.Equal(345, settings.OscarEnrichmentMaxRequestsPerDay);
+        Assert.Equal(new DateTimeOffset(2026, 10, 20, 12, 0, 0, TimeSpan.Zero), settings.UpdatedAt);
+
+        var recommendationSettings = await db.GeneralRecommendationSettings.AsNoTracking().SingleAsync();
+        Assert.Equal(12, recommendationSettings.MedianPeriodYears);
+        Assert.True(recommendationSettings.RequiresVoteRecalculation);
+        Assert.Equal(
+            new DateTimeOffset(2026, 10, 19, 10, 30, 0, TimeSpan.Zero),
+            recommendationSettings.LastVoteRecalculationAt);
+        Assert.Equal(10, recommendationSettings.LastVoteRecalculationPeriodYears);
+    }
+
+    [Fact]
+    [Trait("Category", "Persistence")]
     public async Task SystemSourceProfileMigrationPreservesUrlsAndMapsLegacySeriesToOngoing()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_source_profiles_migration_test").Build();

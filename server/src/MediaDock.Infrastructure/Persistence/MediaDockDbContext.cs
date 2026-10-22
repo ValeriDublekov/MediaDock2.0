@@ -31,6 +31,9 @@ public sealed class MediaDockDbContext : DbContext
     public DbSet<BackgroundJobEvent> BackgroundJobEvents => Set<BackgroundJobEvent>();
     public DbSet<BackgroundSchedulerState> BackgroundSchedulerStates => Set<BackgroundSchedulerState>();
     public DbSet<PersonalRating> PersonalRatings => Set<PersonalRating>();
+    public DbSet<GeneralRecommendationSettings> GeneralRecommendationSettings => Set<GeneralRecommendationSettings>();
+    public DbSet<AwardCategoryAlias> AwardCategoryAliases => Set<AwardCategoryAlias>();
+    public DbSet<RecommendationAwardWeight> RecommendationAwardWeights => Set<RecommendationAwardWeight>();
     public DbSet<User> Users => Set<User>();
     public DbSet<ExternalIdentity> ExternalIdentities => Set<ExternalIdentity>();
     public DbSet<RegistrationRequest> RegistrationRequests => Set<RegistrationRequest>();

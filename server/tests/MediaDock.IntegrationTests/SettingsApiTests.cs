@@ -22,7 +22,16 @@ public sealed class SettingsApiTests
         var defaultSettings = await settingsResponse.Content.ReadFromJsonAsync<SettingsResponse>();
         Assert.NotNull(defaultSettings);
         Assert.Empty(defaultSettings.ExcludedGenres);
+        Assert.Empty(defaultSettings.ExcludedCountries);
+        Assert.Equal(0m, defaultSettings.MinMovieRating);
+        Assert.Equal(0m, defaultSettings.MinSeriesRating);
+        Assert.Equal(0, defaultSettings.MinImdbVotes);
         Assert.Null(defaultSettings.UpdatedAt);
+        var initialSettingsRow = await db.Settings.AsNoTracking().SingleAsync();
+        Assert.Null(initialSettingsRow.UpdatedAt);
+        var initialRecommendationSettingsRow = await db.GeneralRecommendationSettings.AsNoTracking().SingleAsync();
+        Assert.Equal(5, initialRecommendationSettingsRow.MedianPeriodYears);
+        Assert.False(initialRecommendationSettingsRow.RequiresVoteRecalculation);
 
         using var updateSettingsResponse = await client.PutAsJsonAsync("/api/settings", new UpdateSettingsRequest
         {
@@ -49,6 +58,8 @@ public sealed class SettingsApiTests
             .ReadFromJsonAsync<ProviderSettingsResponse>();
         Assert.NotNull(defaultProviderSettings);
         Assert.False(defaultProviderSettings.OmdbApiKeyConfigured);
+        Assert.Equal(0, defaultProviderSettings.OmdbDailyRequestLimit);
+        Assert.NotNull(defaultProviderSettings.UpdatedAt);
 
         var currentUtcDate = DateOnly.FromDateTime(DateTime.UtcNow);
         db.OmdbDailyUsage.AddRange(

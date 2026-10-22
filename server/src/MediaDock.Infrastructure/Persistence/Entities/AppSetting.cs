@@ -12,5 +12,5 @@ public sealed class AppSetting
     public int OmdbDailyRequestLimit { get; set; }
     public int OscarEnrichmentMaxFilmsPerRun { get; set; }
     public int OscarEnrichmentMaxRequestsPerDay { get; set; }
-    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? UpdatedAt { get; set; }
 }
