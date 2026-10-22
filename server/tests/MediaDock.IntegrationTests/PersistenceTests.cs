@@ -369,10 +369,10 @@ public sealed class PersistenceTests
         await db.Database.MigrateAsync("20261020122556_EnforceTitleMetadataOwnership");
 
         var now = new DateTimeOffset(2026, 10, 20, 0, 0, 0, TimeSpan.Zero);
-        db.ImdbTitles.AddRange(
-            new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = now },
-            new ImdbTitle { ImdbId = "tt87654321", UpdatedAt = now });
-        await db.SaveChangesAsync();
+        legacyDb.ImdbTitles.AddRange(
+            new LegacyImdbTitleRow { ImdbId = "tt12345678", UpdatedAt = now },
+            new LegacyImdbTitleRow { ImdbId = "tt87654321", UpdatedAt = now });
+        await legacyDb.SaveChangesAsync();
         var title = CreateLegacyTitle("Linked Film", "linked film", "tt12345678", now);
         legacyDb.Titles.Add(title);
         await legacyDb.SaveChangesAsync();
@@ -415,14 +415,18 @@ public sealed class PersistenceTests
             .UseNpgsql(postgres.GetConnectionString())
             .Options;
         await using var db = new MediaDockDbContext(options);
+        var legacyOptions = new DbContextOptionsBuilder<LegacyPersistenceTestContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var legacyDb = new LegacyPersistenceTestContext(legacyOptions);
         await db.Database.MigrateAsync("20261020140000_EnforceScanRunNonnegativeCounters");
 
-        db.ImdbTitles.AddRange(
-            new ImdbTitle { ImdbId = "tt12345678", UpdatedAt = DateTimeOffset.UtcNow },
-            new ImdbTitle { ImdbId = "tt87654321", UpdatedAt = DateTimeOffset.UtcNow });
-        var award = new GoldenGlobeAward { Name = "Migration Preflight Award" };
-        db.GoldenGlobeAwards.Add(award);
-        await db.SaveChangesAsync();
+        legacyDb.ImdbTitles.AddRange(
+            new LegacyImdbTitleRow { ImdbId = "tt12345678", UpdatedAt = DateTimeOffset.UtcNow },
+            new LegacyImdbTitleRow { ImdbId = "tt87654321", UpdatedAt = DateTimeOffset.UtcNow });
+        var award = new LegacyGoldenGlobeAwardRow { Name = "Migration Preflight Award" };
+        legacyDb.GoldenGlobeAwards.Add(award);
+        await legacyDb.SaveChangesAsync();
 
         async Task InsertLegacyNominationAsync(string importKey, string title, string? imdbId, string status)
         {
@@ -490,8 +494,8 @@ public sealed class PersistenceTests
         var now = new DateTimeOffset(2026, 10, 21, 12, 0, 0, TimeSpan.Zero);
         var user = CreateUser("source-owned@example.com", now);
         db.Users.Add(user);
-        db.ImdbTitles.AddRange(
-            new ImdbTitle
+        legacyDb.ImdbTitles.AddRange(
+            new LegacyImdbTitleRow
             {
                 ImdbId = "tt12345678",
                 TitleText = "Enriched Film",
@@ -499,8 +503,9 @@ public sealed class PersistenceTests
                 MetadataStatus = "enriched",
                 UpdatedAt = now
             },
-            new ImdbTitle { ImdbId = "tt87654321", MetadataStatus = "pending", UpdatedAt = now });
+            new LegacyImdbTitleRow { ImdbId = "tt87654321", MetadataStatus = "pending", UpdatedAt = now });
         await db.SaveChangesAsync();
+        await legacyDb.SaveChangesAsync();
 
         await db.Database.ExecuteSqlRawAsync("DROP INDEX ux_titles_imdb_id");
         var firstFavoriteTitle = CreateLegacyTitle("Enriched Film", "enriched film", "tt12345678", now);
@@ -534,9 +539,9 @@ public sealed class PersistenceTests
             ImportedAt = now,
             UpdatedAt = now
         };
-        var award = new GoldenGlobeAward { Name = "Source-owned award" };
+        var award = new LegacyGoldenGlobeAwardRow { Name = "Source-owned award" };
         legacyDb.OscarFilms.Add(oscarFilm);
-        db.GoldenGlobeAwards.Add(award);
+        legacyDb.GoldenGlobeAwards.Add(award);
         await legacyDb.SaveChangesAsync();
         await db.SaveChangesAsync();
         var movieGroup = new LegacyGoldenGlobeGroupRow
@@ -1043,7 +1048,9 @@ public sealed class PersistenceTests
             LastSeenAt = now
         });
 
-        db.Settings.Add(new AppSetting { Id = 1, UpdatedAt = now });
+        var settings = await db.Settings.SingleAsync();
+        Assert.Equal(1, settings.Id);
+        settings.UpdatedAt = now;
         await db.SaveChangesAsync();
         await AssertRejectedAsync(db, new AppSetting { Id = 2, UpdatedAt = now });
 
@@ -1177,8 +1184,9 @@ public sealed class PersistenceTests
             UpdatedAt = now
         });
         await legacyDb.SaveChangesAsync();
-        var award = new GoldenGlobeAward { Name = "Legacy award" };
-        db.GoldenGlobeAwards.Add(award);
+        var award = new LegacyGoldenGlobeAwardRow { Name = "Legacy award" };
+        legacyDb.GoldenGlobeAwards.Add(award);
+        await legacyDb.SaveChangesAsync();
         await db.SaveChangesAsync();
         await db.Database.ExecuteSqlInterpolatedAsync(
             $"""
@@ -1190,7 +1198,7 @@ public sealed class PersistenceTests
             """);
 
         await db.Database.MigrateAsync("20261016160138_AddSharedImdbTitles");
-        var lateImdbTitle = new ImdbTitle
+        var lateImdbTitle = new LegacyImdbTitleRow
         {
             ImdbId = "tt88888888",
             MetadataStatus = "pending",
@@ -1200,15 +1208,15 @@ public sealed class PersistenceTests
         lateLinkedTitle.ImdbRating = 6.7m;
         lateLinkedTitle.Genres = ["Documentary"];
         lateLinkedTitle.Plot = "Backfilled after the shared-IMDb migration.";
-        db.ImdbTitles.Add(lateImdbTitle);
-        await db.SaveChangesAsync();
+        legacyDb.ImdbTitles.Add(lateImdbTitle);
+        await legacyDb.SaveChangesAsync();
         legacyDb.Titles.Add(lateLinkedTitle);
         await legacyDb.SaveChangesAsync();
 
         await db.Database.MigrateAsync("20261020150000_NormalizeGoldenGlobeGroups");
         db.ChangeTracker.Clear();
 
-        var imdbTitles = await db.ImdbTitles.AsNoTracking().OrderBy(title => title.ImdbId).ToListAsync();
+        var imdbTitles = await legacyDb.ImdbTitles.AsNoTracking().OrderBy(title => title.ImdbId).ToListAsync();
         Assert.Equal(new[] { "tt12345678", "tt87654321", "tt88888888" }, imdbTitles.Select(title => title.ImdbId));
         var backfilled = imdbTitles.Single(title => title.ImdbId == "tt12345678");
         Assert.Equal("Latest metadata", backfilled.TitleText);
@@ -1295,10 +1303,10 @@ public sealed class PersistenceTests
         await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
         db.ChangeTracker.Clear();
 
-        var referencedImdbTitle = await db.ImdbTitles.SingleAsync(title => title.ImdbId == "tt12345678");
-        db.ImdbTitles.Remove(referencedImdbTitle);
-        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
-        db.ChangeTracker.Clear();
+        var referencedImdbTitle = await legacyDb.ImdbTitles.SingleAsync(title => title.ImdbId == "tt12345678");
+        legacyDb.ImdbTitles.Remove(referencedImdbTitle);
+        await Assert.ThrowsAsync<DbUpdateException>(() => legacyDb.SaveChangesAsync());
+        legacyDb.ChangeTracker.Clear();
 
         await db.Database.MigrateAsync();
         var legacyTables = await db.Database.SqlQuery<string>(

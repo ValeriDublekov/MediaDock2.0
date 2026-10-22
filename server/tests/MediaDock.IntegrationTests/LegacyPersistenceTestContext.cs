@@ -5,14 +5,31 @@ namespace MediaDock.IntegrationTests;
 internal sealed class LegacyPersistenceTestContext(DbContextOptions<LegacyPersistenceTestContext> options)
     : DbContext(options)
 {
+    public DbSet<LegacyImdbTitleRow> ImdbTitles => Set<LegacyImdbTitleRow>();
     public DbSet<LegacyTitleRow> Titles => Set<LegacyTitleRow>();
     public DbSet<LegacyOscarFilmRow> OscarFilms => Set<LegacyOscarFilmRow>();
+    public DbSet<LegacyGoldenGlobeAwardRow> GoldenGlobeAwards => Set<LegacyGoldenGlobeAwardRow>();
     public DbSet<LegacyGoldenGlobeGroupRow> GoldenGlobeGroups => Set<LegacyGoldenGlobeGroupRow>();
     public DbSet<LegacyOccurrenceRow> Occurrences => Set<LegacyOccurrenceRow>();
     public DbSet<LegacyFavoriteMovieRow> FavoriteMovies => Set<LegacyFavoriteMovieRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<LegacyImdbTitleRow>(builder =>
+        {
+            builder.ToTable("imdb_titles");
+            builder.HasKey(entity => entity.ImdbId);
+            builder.Property(entity => entity.ImdbId).HasColumnName("imdb_id");
+            builder.Property(entity => entity.TitleText).HasColumnName("title");
+            builder.Property(entity => entity.ImdbRating).HasColumnName("imdb_rating");
+            builder.Property(entity => entity.ImdbVotes).HasColumnName("imdb_votes");
+            builder.Property(entity => entity.Genres).HasColumnName("genres").HasColumnType("text[]");
+            builder.Property(entity => entity.Plot).HasColumnName("plot");
+            builder.Property(entity => entity.MetadataStatus).HasColumnName("metadata_status");
+            builder.Property(entity => entity.EnrichmentAttemptCount).HasColumnName("enrichment_attempt_count");
+            builder.Property(entity => entity.UpdatedAt).HasColumnName("updated_at");
+        });
+
         modelBuilder.Entity<LegacyTitleRow>(builder =>
         {
             builder.ToTable("titles");
@@ -82,6 +99,14 @@ internal sealed class LegacyPersistenceTestContext(DbContextOptions<LegacyPersis
             builder.Property(entity => entity.LastEnrichmentError).HasColumnName("last_enrichment_error");
         });
 
+        modelBuilder.Entity<LegacyGoldenGlobeAwardRow>(builder =>
+        {
+            builder.ToTable("golden_globe_awards");
+            builder.HasKey(entity => entity.Id);
+            builder.Property(entity => entity.Id).UseIdentityByDefaultColumn().HasColumnName("id");
+            builder.Property(entity => entity.Name).HasColumnName("name").IsRequired();
+        });
+
         modelBuilder.Entity<LegacyOccurrenceRow>(builder =>
         {
             builder.ToTable("occurrences");
@@ -117,6 +142,19 @@ internal sealed class LegacyPersistenceTestContext(DbContextOptions<LegacyPersis
             builder.Property(entity => entity.UpdatedAt).HasColumnName("updated_at");
         });
     }
+}
+
+internal sealed class LegacyImdbTitleRow
+{
+    public string ImdbId { get; set; } = string.Empty;
+    public string? TitleText { get; set; }
+    public decimal? ImdbRating { get; set; }
+    public long? ImdbVotes { get; set; }
+    public string[] Genres { get; set; } = [];
+    public string? Plot { get; set; }
+    public string MetadataStatus { get; set; } = "pending";
+    public int EnrichmentAttemptCount { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
 }
 
 internal sealed class LegacyTitleRow
@@ -180,6 +218,12 @@ internal sealed class LegacyGoldenGlobeGroupRow
     public DateTimeOffset? LastEnrichmentAttemptAt { get; set; }
     public DateTimeOffset? NextEnrichmentAttemptAt { get; set; }
     public string? LastEnrichmentError { get; set; }
+}
+
+internal sealed class LegacyGoldenGlobeAwardRow
+{
+    public long Id { get; set; }
+    public string Name { get; set; } = string.Empty;
 }
 
 internal sealed class LegacyOccurrenceRow

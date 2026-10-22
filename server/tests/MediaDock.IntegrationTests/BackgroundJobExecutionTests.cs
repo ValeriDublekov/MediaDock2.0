@@ -32,13 +32,7 @@ public sealed class BackgroundJobExecutionTests
         await using (var db = new MediaDockDbContext(options))
         {
             await db.Database.MigrateAsync();
-            db.Settings.Add(new Infrastructure.Persistence.Entities.AppSetting
-            {
-                Id = 1,
-                OmdbApiKey = "synthetic-test-key",
-                OmdbDailyRequestLimit = 10,
-                UpdatedAt = DateTimeOffset.UtcNow
-            });
+            await ConfigureSettingsAsync(db, DateTimeOffset.UtcNow);
             await db.SaveChangesAsync();
         }
 
@@ -92,13 +86,7 @@ public sealed class BackgroundJobExecutionTests
                 Url = "https://feed.rutracker.cc/success.atom"
             };
             db.Sources.Add(source);
-            db.Settings.Add(new Infrastructure.Persistence.Entities.AppSetting
-            {
-                Id = 1,
-                OmdbApiKey = "synthetic-test-key",
-                OmdbDailyRequestLimit = 10,
-                UpdatedAt = processedAt
-            });
+            await ConfigureSettingsAsync(db, processedAt);
             await db.SaveChangesAsync();
             db.ParseLogs.Add(new Infrastructure.Persistence.Entities.ParseLog
             {
@@ -301,13 +289,7 @@ public sealed class BackgroundJobExecutionTests
             ownerUserId = owner.Id;
             otherUserId = otherUser.Id;
 
-            db.Settings.Add(new Infrastructure.Persistence.Entities.AppSetting
-            {
-                Id = 1,
-                OmdbApiKey = "synthetic-test-key",
-                OmdbDailyRequestLimit = 10,
-                UpdatedAt = enqueuedAt
-            });
+            await ConfigureSettingsAsync(db, enqueuedAt);
             db.ImdbTitles.AddRange(
                 new Infrastructure.Persistence.Entities.ImdbTitle
                 {
@@ -414,13 +396,7 @@ public sealed class BackgroundJobExecutionTests
         await using (var db = new MediaDockDbContext(options))
         {
             await db.Database.MigrateAsync();
-            db.Settings.Add(new Infrastructure.Persistence.Entities.AppSetting
-            {
-                Id = 1,
-                OmdbApiKey = "synthetic-test-key",
-                OmdbDailyRequestLimit = 10,
-                UpdatedAt = DateTimeOffset.UtcNow
-            });
+            await ConfigureSettingsAsync(db, DateTimeOffset.UtcNow);
             var goldenGlobeTitle = new Infrastructure.Persistence.Entities.GoldenGlobeTitle
             {
                 Title = "Manual Refresh Film",
@@ -478,6 +454,14 @@ public sealed class BackgroundJobExecutionTests
         Assert.True(film.IsImdbIdManual);
         Assert.Equal("tt12345678", film.ImdbId);
         Assert.Equal(8.7m, film.ImdbRating);
+    }
+
+    private static async Task ConfigureSettingsAsync(MediaDockDbContext db, DateTimeOffset updatedAt)
+    {
+        var settings = await db.Settings.SingleAsync();
+        settings.OmdbApiKey = "synthetic-test-key";
+        settings.OmdbDailyRequestLimit = 10;
+        settings.UpdatedAt = updatedAt;
     }
 
     private sealed class BackgroundJobsApiFactory(

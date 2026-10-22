@@ -49,13 +49,10 @@ public sealed class TorrentTitleMatchApiTests
             Status = "succeeded",
             Trigger = "manual"
         };
-        db.Settings.Add(new AppSetting
-        {
-            Id = 1,
-            OmdbApiKey = "test-omdb-key",
-            OmdbDailyRequestLimit = 40,
-            UpdatedAt = observedAt
-        });
+        var settings = await db.Settings.SingleAsync();
+        settings.OmdbApiKey = "test-omdb-key";
+        settings.OmdbDailyRequestLimit = 40;
+        settings.UpdatedAt = observedAt;
         db.Sources.Add(source);
         db.TorrentMovies.Add(title);
         db.ScanRuns.Add(scanRun);
