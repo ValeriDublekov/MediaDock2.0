@@ -243,8 +243,11 @@ describe('CatalogView', () => {
 
     expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     const minimum = screen.getByRole('slider', { name: 'Title year minimum' }) as HTMLInputElement
+    const maximum = screen.getByRole('slider', { name: 'Title year maximum' }) as HTMLInputElement
     expect(minimum.min).toBe('1980')
     expect(minimum.max).toBe('2024')
+    expect(maximum.min).toBe('1980')
+    expect(maximum.max).toBe('2024')
     expect(screen.getByText('1980 – 2024')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Search titles'), { target: { value: 'Quiet River' } })
@@ -260,8 +263,20 @@ describe('CatalogView', () => {
     fireEvent.change(screen.getByLabelText('Search titles'), { target: { value: 'Unsubmitted search' } })
     fireEvent.change(minimum, { target: { value: '2000' } })
     expect(screen.getByText('2000 – 2024')).toBeTruthy()
+    fireEvent.change(maximum, { target: { value: '2005' } })
+    expect(screen.getByText('2000 – 2005')).toBeTruthy()
+    expect(minimum.max).toBe('2024')
+    expect(maximum.min).toBe('1980')
+
+    fireEvent.change(minimum, { target: { value: '2010' } })
+    expect(screen.getByText('2005 – 2005')).toBeTruthy()
+    fireEvent.change(minimum, { target: { value: '2000' } })
+    fireEvent.change(maximum, { target: { value: '1995' } })
+    expect(screen.getByText('2000 – 2000')).toBeTruthy()
+    fireEvent.change(maximum, { target: { value: '2005' } })
+    expect(screen.getByText('2000 – 2005')).toBeTruthy()
     expect(catalogRequest).toHaveBeenCalledTimes(3)
-    fireEvent.pointerUp(minimum)
+    fireEvent.pointerUp(maximum)
 
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
       page: 1,
@@ -269,6 +284,7 @@ describe('CatalogView', () => {
       feedTypes: ['movie'],
       search: 'Quiet River',
       yearFrom: 2000,
+      yearTo: 2005,
     }))
   })
 
@@ -280,20 +296,28 @@ describe('CatalogView', () => {
     expect(screen.queryByRole('slider')).toBeNull()
   })
 
-  it('applies an IMDb rating minimum using the database-provided bounds', async () => {
+  it('selects a narrow IMDb rating range using the database-provided bounds', async () => {
     catalogRequest.mockResolvedValue(page([title], 1, 1, undefined, { minRating: 6.4, maxRating: 9.2 }))
     render(<CatalogView />)
 
     expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     const minimum = screen.getByRole('slider', { name: 'IMDb rating minimum' }) as HTMLInputElement
+    const maximum = screen.getByRole('slider', { name: 'IMDb rating maximum' }) as HTMLInputElement
     expect(minimum.min).toBe('6.4')
     expect(minimum.max).toBe('9.2')
+    expect(maximum.min).toBe('6.4')
+    expect(maximum.max).toBe('9.2')
     fireEvent.change(minimum, { target: { value: '8.1' } })
-    expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('8.1 – 9.2')
-    fireEvent.pointerUp(minimum)
+    fireEvent.change(maximum, { target: { value: '8.5' } })
+    expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('8.1 – 8.5')
+    fireEvent.change(maximum, { target: { value: '7.9' } })
+    expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('8.1 – 8.1')
+    fireEvent.change(maximum, { target: { value: '8.5' } })
+    expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('8.1 – 8.5')
+    fireEvent.pointerUp(maximum)
 
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 20, feedTypes: ['movie'], imdbRatingFrom: 8.1,
+      page: 1, pageSize: 20, feedTypes: ['movie'], imdbRatingFrom: 8.1, imdbRatingTo: 8.5,
     }))
   })
 
