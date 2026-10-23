@@ -4,6 +4,7 @@ import {
   getRecommendationGenres,
   getRecommendations,
   getRecommendationSettings,
+  markRecommendationWatched,
   recalculateRecommendationVoteWeights,
   updateRecommendationSettings,
 } from '../../api/client'
@@ -15,6 +16,7 @@ vi.mock('../../api/client', () => ({
   getRecommendationGenres: vi.fn(),
   getRecommendations: vi.fn(),
   getRecommendationSettings: vi.fn(),
+  markRecommendationWatched: vi.fn(),
   recalculateRecommendationVoteWeights: vi.fn(),
   updateRecommendationSettings: vi.fn(),
 }))
@@ -224,6 +226,7 @@ describe('RecommendationsView', () => {
     vi.mocked(getRecommendationGenres).mockReset()
     vi.mocked(getRecommendationGenres).mockResolvedValue(['Comedy', 'Drama'])
     vi.mocked(getRecommendations).mockReset()
+    vi.mocked(markRecommendationWatched).mockReset().mockResolvedValue(undefined)
     vi.mocked(getRecommendationSettings).mockReset()
     vi.mocked(updateRecommendationSettings).mockReset()
     vi.mocked(recalculateRecommendationVoteWeights).mockReset()
@@ -346,6 +349,26 @@ describe('RecommendationsView', () => {
 
     fireEvent.pointerDown(document.body)
     expect(menu?.open).toBe(false)
+  })
+
+  it('requires a rating before marking a recommendation watched and refreshes the results', async () => {
+    vi.mocked(getRecommendations)
+      .mockResolvedValueOnce(recommendationPage([recommendation()]))
+      .mockResolvedValueOnce(recommendationPage([]))
+
+    render(<RecommendationsView />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Mark Quiet River as watched' }))
+    expect(screen.getByRole('dialog').getAttribute('aria-modal')).toBe('true')
+    const submit = screen.getByRole('button', { name: 'Save rating and mark watched' }) as HTMLButtonElement
+    expect(submit.disabled).toBe(true)
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Your rating (1-10)' }), { target: { value: '9' } })
+    expect(submit.disabled).toBe(false)
+    fireEvent.click(submit)
+
+    await waitFor(() => expect(markRecommendationWatched).toHaveBeenCalledWith('tt12345678', 9))
+    expect(await screen.findByText('No recommendations available')).toBeTruthy()
   })
 
   it('shows an empty state when the server returns no candidates', async () => {

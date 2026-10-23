@@ -288,6 +288,15 @@ export function getRecommendationGenres(fetcher?: typeof fetch) {
   return requestJson<string[]>('/recommendations/genres', {}, fetcher)
 }
 
+export async function markRecommendationWatched(imdbId: string, rating: number, fetcher?: typeof fetch) {
+  const requestToken = await getAuthRequestToken(fetcher)
+  return requestJson<void>(`/recommendations/${encodeURIComponent(imdbId)}/watched`, {
+    method: 'POST',
+    body: JSON.stringify({ rating }),
+    headers: { RequestVerificationToken: requestToken },
+  }, fetcher)
+}
+
 export function getProviderSettings(fetcher?: typeof fetch) {
   return requestJson<ProviderSettings>('/settings/providers/omdb', {}, fetcher)
 }

@@ -31,6 +31,7 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
             .Select(rating => new PersonalRatingResponse(
                 rating.ImdbId,
                 rating.Rating,
+                rating.IsManuallyAdded,
                 rating.ImdbTitle.TitleText ?? rating.ImdbId,
                 rating.ImdbTitle.Year,
                 rating.ImdbTitle.MediaType,

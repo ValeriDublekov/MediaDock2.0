@@ -23,6 +23,7 @@ public sealed class PersonalRatingsImportForm
 public sealed record PersonalRatingResponse(
     string ImdbId,
     int Rating,
+    bool IsManuallyAdded,
     string Title,
     int? Year,
     string? MediaType,

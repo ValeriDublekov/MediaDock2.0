@@ -3,6 +3,7 @@ using MediaDock.Api.Common;
 using MediaDock.Api.Middleware;
 using MediaDock.Application.Recommendations;
 using MediaDock.Infrastructure.Persistence;
+using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace MediaDock.Api.Recommendations;
@@ -44,25 +45,7 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             IsolationLevel.RepeatableRead,
             cancellationToken);
 
-        var allCandidates = await dbContext.ImdbTitles
-            .AsNoTracking()
-            .Where(title => title.MetadataStatus == "enriched"
-                && title.MediaType == "movie"
-                && title.TitleText != null
-                && title.TitleText.Trim() != string.Empty
-                && title.ImdbRating.HasValue
-                && !dbContext.PersonalRatings.Any(rating =>
-                    rating.UserId == userId && rating.ImdbId == title.ImdbId)
-                && !dbContext.ImdbFavoriteMovies.Any(favorite =>
-                    favorite.UserId == userId && favorite.ImdbId == title.ImdbId && favorite.ToWatch)
-                && (dbContext.OscarNominations.Any(nomination =>
-                        nomination.OscarMovie != null && nomination.OscarMovie.ImdbId == title.ImdbId)
-                    || dbContext.GoldenGlobeNominations.Any(nomination =>
-                        nomination.GoldenGlobeTitle != null
-                        && nomination.GoldenGlobeTitle.NomineeType == "movie"
-                        && nomination.GoldenGlobeTitle.ImdbId == title.ImdbId
-                        && nomination.GoldenGlobeTitle.ImdbTitle != null
-                        && nomination.GoldenGlobeTitle.ImdbTitle.MediaType == "movie")))
+        var allCandidates = await GetEligibleCandidatesQuery(userId)
             .Select(title => new CandidateTitle(
                 title.ImdbId,
                 title.TitleText!.Trim(),
@@ -278,6 +261,46 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             yearBounds);
     }
 
+    public async Task<bool> MarkWatchedAsync(
+        long userId,
+        string imdbId,
+        int rating,
+        CancellationToken cancellationToken)
+    {
+        if (rating is < 1 or > 10)
+        {
+            throw ValidationError("rating", "Rating must be between 1 and 10.");
+        }
+
+        var existingRating = await dbContext.PersonalRatings
+            .AsNoTracking()
+            .Where(item => item.UserId == userId && item.ImdbId == imdbId)
+            .Select(item => new { item.Rating, item.IsManuallyAdded })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (existingRating is not null)
+        {
+            return existingRating.IsManuallyAdded && existingRating.Rating == rating;
+        }
+
+        var isEligible = await GetEligibleCandidatesQuery(userId)
+            .AnyAsync(title => title.ImdbId == imdbId, cancellationToken);
+        if (!isEligible)
+        {
+            return false;
+        }
+
+        dbContext.PersonalRatings.Add(new PersonalRating
+        {
+            UserId = userId,
+            ImdbId = imdbId,
+            Rating = rating,
+            IsManuallyAdded = true,
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     public async Task<IReadOnlyList<string>> GetGenresAsync(CancellationToken cancellationToken) =>
         await dbContext.ImdbTitles
             .AsNoTracking()
@@ -286,6 +309,27 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             .Distinct()
             .OrderBy(genre => genre)
             .ToListAsync(cancellationToken);
+
+    private IQueryable<ImdbTitle> GetEligibleCandidatesQuery(long userId) =>
+        dbContext.ImdbTitles
+            .AsNoTracking()
+            .Where(title => title.MetadataStatus == "enriched"
+                && title.MediaType == "movie"
+                && title.TitleText != null
+                && title.TitleText.Trim() != string.Empty
+                && title.ImdbRating.HasValue
+                && !dbContext.PersonalRatings.Any(rating =>
+                    rating.UserId == userId && rating.ImdbId == title.ImdbId)
+                && !dbContext.ImdbFavoriteMovies.Any(favorite =>
+                    favorite.UserId == userId && favorite.ImdbId == title.ImdbId && favorite.ToWatch)
+                && (dbContext.OscarNominations.Any(nomination =>
+                        nomination.OscarMovie != null && nomination.OscarMovie.ImdbId == title.ImdbId)
+                    || dbContext.GoldenGlobeNominations.Any(nomination =>
+                        nomination.GoldenGlobeTitle != null
+                        && nomination.GoldenGlobeTitle.NomineeType == "movie"
+                        && nomination.GoldenGlobeTitle.ImdbId == title.ImdbId
+                        && nomination.GoldenGlobeTitle.ImdbTitle != null
+                        && nomination.GoldenGlobeTitle.ImdbTitle.MediaType == "movie")));
 
     private static PageResponse<RecommendationResponse> CreatePage(
         IReadOnlyList<RecommendationResponse> items,

@@ -73,6 +73,8 @@ Final_Score = (Bayesian_Rating * ratingWeight)
 
 Candidates must be enriched IMDb movie rows with a nonempty title and IMDb rating, linked by IMDb ID to an Oscar or qualifying Golden Globes nomination, and not already rated by the active user. Golden Globes links require both the nominee type and canonical IMDb media type to be `movie`. The active user's `ToWatch` movies are also excluded; `ToDownload`-only movies remain eligible. Results sort by final score descending, then IMDb ID ascending. Year and genre filters are applied before paging.
 
+The recommendations view can mark an eligible result as watched only after the user supplies an integer rating from `1` to `10`. The API rechecks eligibility, saves the rating as an owner-scoped personal record with `is_manually_added = true`, and the result is excluded from that user's next recommendation read. New imported ratings use `false`, while import updates preserve an existing marker; the personal-ratings response exposes it for future filtering.
+
 The API resolves the active linked user on the server and never accepts a client-supplied owner ID. Personal ratings and taste profiles are scoped to that user. In enforced mode, recommendation settings and vote recalculation remain administrator-only.
 
 ## Freshness and verification

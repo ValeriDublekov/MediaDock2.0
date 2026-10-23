@@ -31,6 +31,8 @@ public sealed record RecommendationsQuery
     public decimal? AwardsWeight { get; init; }
 }
 
+public sealed record MarkRecommendationWatchedRequest(int Rating);
+
 public sealed record RecommendationResponse(
     string ImdbId,
     string Title,

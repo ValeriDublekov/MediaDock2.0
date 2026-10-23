@@ -43,11 +43,16 @@ See [data schema](../DATA_SCHEMA.md), [data contracts](../DATA_CONTRACTS.md), [p
 
 The eight architecture decisions and these Phase 3 inputs are approved.
 
+## Additional Approved Behavior
+
+- A recommendation can be marked watched only after the active user supplies an integer rating from `1` to `10`. Store it in the existing owner-scoped `personal_ratings` table with `is_manually_added = true`; rows present at migration time and new imports remain `false`, while import updates preserve the existing marker. Recheck eligibility on the server, expose the marker in personal-rating responses for future filtering, and do not add a separate watched table or accept a client-supplied user ID.
+
 ## Acceptance Criteria
 
 - All four phase exit criteria are met. No parallel catalog or global-settings table is added, and source-owned records remain linked to the canonical IMDb title by IMDb ID.
 - Vote weights remain global per canonical movie, and recalculation publishes a complete result atomically while keeping freshness state accurate after input changes, failures, and timeouts.
 - Recommendations follow the approved eligibility and scoring decisions, are deterministic and paged, and remain isolated to the active user without changing the existing access or network boundaries.
+- Marking a recommendation watched requires a `1..10` personal rating, stores an owner-scoped `is_manually_added` record, and excludes the movie from that user's subsequent recommendation results.
 - Recommendation results support inclusive year-range and any-selected-genre filters before paging; genre options come from distinct values across `imdb_titles`.
 - The approved Bayesian prior, missing-rating candidate exclusion, slider defaults, and client-only coefficient state are used consistently by the API, web UI, and documentation.
 - In enforced mode, global recommendation settings and recalculation remain administrator-only, while personal results require the active linked user. The web displays server-scored results and award events without duplicating candidate eligibility or scoring logic.

@@ -1331,6 +1331,12 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(14)")
                         .HasColumnName("imdb_id");
 
+                    b.Property<bool>("IsManuallyAdded")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_manually_added");
+
                     b.Property<int>("Rating")
                         .HasColumnType("integer")
                         .HasColumnName("rating");

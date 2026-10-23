@@ -220,6 +220,8 @@ button:disabled { cursor: not-allowed; }
 
 .detail-backdrop { position: fixed; z-index: 5; inset: 0; display: grid; place-items: center; padding: 18px; background: rgba(12, 29, 24, 0.62); }
 .detail-dialog { width: min(760px, 100%); max-height: min(88vh, 900px); overflow: auto; border: 1px solid #bdcec1; background: #f8faf7; box-shadow: 0 18px 60px rgba(7, 25, 19, 0.28); }
+.recommendation-watch-dialog { width: min(440px, 100%); }
+.recommendation-watch-form { display: grid; gap: 12px; }
 .imdb-candidate-dialog { width: min(620px, 100%); }
 .imdb-match-trigger { border-block: 1px solid #d8e1d9; padding: 12px 0; }
 .title-delete-trigger { border-bottom: 1px solid #d8e1d9; padding: 12px 0; }

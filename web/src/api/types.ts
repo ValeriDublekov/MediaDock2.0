@@ -349,6 +349,7 @@ export type PersonalRatingsSort = 'asc' | 'desc'
 export interface PersonalRating {
   imdbId: string
   rating: number
+  isManuallyAdded: boolean
   title: string
   year: number | null
   mediaType: string | null

@@ -4,6 +4,7 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using MediaDock.Api.Authentication;
 using MediaDock.Api.Common;
+using MediaDock.Api.PersonalRatings;
 using MediaDock.Api.Recommendations;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
@@ -359,6 +360,58 @@ public sealed class MovieRecommendationsApiTests
         var enforcedPage = await enforcedResponse.Content.ReadFromJsonAsync<PageResponse<RecommendationResponse>>();
         Assert.Equal(firstPage.TotalCount, enforcedPage?.TotalCount);
         Assert.Equal(firstPage.Items.Select(item => item.ImdbId), enforcedPage?.Items.Select(item => item.ImdbId));
+
+        const string watchedPath = "/api/recommendations/tt3000005/watched";
+        using var missingTokenResponse = await firstClient.PostAsJsonAsync(watchedPath, new { rating = 9 });
+        Assert.Equal(HttpStatusCode.BadRequest, missingTokenResponse.StatusCode);
+
+        var requestToken = await GetAntiforgeryTokenAsync(firstClient);
+        using var invalidRatingRequest = new HttpRequestMessage(HttpMethod.Post, watchedPath)
+        {
+            Content = JsonContent.Create(new { rating = 11 })
+        };
+        invalidRatingRequest.Headers.Add("RequestVerificationToken", requestToken);
+        using var invalidRatingResponse = await firstClient.SendAsync(invalidRatingRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, invalidRatingResponse.StatusCode);
+
+        using var markWatchedRequest = new HttpRequestMessage(HttpMethod.Post, watchedPath)
+        {
+            Content = JsonContent.Create(new { rating = 9 })
+        };
+        markWatchedRequest.Headers.Add("RequestVerificationToken", requestToken);
+        using var markWatchedResponse = await firstClient.SendAsync(markWatchedRequest);
+        Assert.Equal(HttpStatusCode.NoContent, markWatchedResponse.StatusCode);
+
+        using var personalRatingsResponse = await firstClient.GetAsync("/api/personal-ratings");
+        var personalRatings = await personalRatingsResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
+        Assert.True(personalRatings!.Items.Single(item => item.ImdbId == "tt3000005").IsManuallyAdded);
+
+        using var refreshedRecommendationsResponse = await firstClient.GetAsync($"/api/recommendations?{weights}");
+        var refreshedRecommendations = await refreshedRecommendationsResponse.Content
+            .ReadFromJsonAsync<PageResponse<RecommendationResponse>>();
+        Assert.Equal(3, refreshedRecommendations?.TotalCount);
+        Assert.DoesNotContain(refreshedRecommendations!.Items, item => item.ImdbId == "tt3000005");
+
+        using var secondUserAfterWriteResponse = await secondClient.GetAsync($"/api/recommendations?{weights}");
+        var secondUserAfterWrite = await secondUserAfterWriteResponse.Content
+            .ReadFromJsonAsync<PageResponse<RecommendationResponse>>();
+        Assert.Contains(secondUserAfterWrite!.Items, item => item.ImdbId == "tt3000005");
+
+        await using var verifyDb = new MediaDockDbContext(new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options);
+        var manuallyAddedRating = await verifyDb.PersonalRatings.AsNoTracking()
+            .SingleAsync(rating => rating.UserId == firstUserId && rating.ImdbId == "tt3000005");
+        Assert.Equal(9, manuallyAddedRating.Rating);
+        Assert.True(manuallyAddedRating.IsManuallyAdded);
+    }
+
+    private static async Task<string> GetAntiforgeryTokenAsync(HttpClient client)
+    {
+        using var response = await client.GetAsync("/api/auth/antiforgery");
+        response.EnsureSuccessStatusCode();
+        var token = await response.Content.ReadFromJsonAsync<AntiforgeryTokenResponse>();
+        return token!.RequestToken;
     }
 
     private static ClaimsPrincipal CreatePrincipal(string subject, string email) => new(new ClaimsIdentity(

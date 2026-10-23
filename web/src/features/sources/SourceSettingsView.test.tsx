@@ -61,7 +61,7 @@ const systemVersion: SystemVersion = {
 
 function personalRating(imdbId: string, title: string, rating = 8, metadataStatus = 'enriched'): PersonalRating {
   return {
-    imdbId, title, rating, year: 2024, mediaType: 'movie', imdbRating: 7.5, imdbVotes: 1000,
+    imdbId, title, rating, isManuallyAdded: false, year: 2024, mediaType: 'movie', imdbRating: 7.5, imdbVotes: 1000,
     metascore: null, genres: [], countries: [], director: null, plot: null, posterUrl: null,
     runtime: null, awards: null, boxOffice: null, metadataStatus,
   }

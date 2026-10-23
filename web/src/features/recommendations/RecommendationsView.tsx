@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { getRecommendationGenres, getRecommendations } from '../../api/client'
+import { useEffect, useState, type FormEvent } from 'react'
+import { getRecommendationGenres, getRecommendations, markRecommendationWatched } from '../../api/client'
 import type { MovieRecommendation, PageResponse, RecommendationCoefficients, RecommendationQuery } from '../../api/types'
 import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
@@ -86,6 +86,10 @@ export function RecommendationsView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const [watchDialogItem, setWatchDialogItem] = useState<MovieRecommendation | null>(null)
+  const [watchRating, setWatchRating] = useState('')
+  const [savingWatched, setSavingWatched] = useState(false)
+  const [watchError, setWatchError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -169,6 +173,45 @@ export function RecommendationsView() {
     setAttempt((value) => value + 1)
   }
 
+  function openWatchDialog(item: MovieRecommendation) {
+    setWatchDialogItem(item)
+    setWatchRating('')
+    setWatchError(null)
+  }
+
+  function closeWatchDialog() {
+    if (savingWatched) return
+    setWatchDialogItem(null)
+    setWatchRating('')
+    setWatchError(null)
+  }
+
+  async function submitWatchRating(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!watchDialogItem || !watchRating) return
+
+    const rating = Number(watchRating)
+    if (!Number.isInteger(rating) || rating < 1 || rating > 10) {
+      setWatchError('Enter a whole-number rating from 1 to 10.')
+      return
+    }
+
+    setSavingWatched(true)
+    setWatchError(null)
+    try {
+      await markRecommendationWatched(watchDialogItem.imdbId, rating)
+      setWatchDialogItem(null)
+      setWatchRating('')
+      setLoading(true)
+      setError(null)
+      setAttempt((value) => value + 1)
+    } catch (requestError: unknown) {
+      setWatchError(requestError instanceof Error ? requestError.message : 'Could not mark this movie as watched.')
+    } finally {
+      setSavingWatched(false)
+    }
+  }
+
   return <section aria-labelledby="recommendations-heading" className="management-section recommendations-view">
     <h2 id="recommendations-heading">Recommendations</h2>
     <p className="section-caption">A personal ranking of eligible award-nominated movies, based on your ratings and the shared metadata catalog.</p>
@@ -225,7 +268,7 @@ export function RecommendationsView() {
     {!loading && !error && result && result.items.length > 0 && <>
       <div className="table-wrap">
         <table className="data-table recommendations-table">
-          <thead><tr><th scope="col">MOVIE</th><th scope="col">FINAL SCORE</th><th scope="col">RATING</th><th scope="col">POPULARITY</th><th scope="col">AWARD POINTS</th><th scope="col">AWARD EVENTS</th></tr></thead>
+          <thead><tr><th scope="col">MOVIE</th><th scope="col">FINAL SCORE</th><th scope="col">RATING</th><th scope="col">POPULARITY</th><th scope="col">AWARD POINTS</th><th scope="col">AWARD EVENTS</th><th scope="col">ACTIONS</th></tr></thead>
           <tbody>{result.items.map((item) => <tr key={item.imdbId}>
             <td>
               <div className="recommendation-title-cell">
@@ -253,10 +296,56 @@ export function RecommendationsView() {
                 </ul>}
               </details>
             </td>
+            <td><button aria-label={`Mark ${item.title} as watched`} className="button button-secondary" onClick={() => openWatchDialog(item)} type="button">Mark watched</button></td>
           </tr>)}</tbody>
         </table>
       </div>
       <Pagination page={result} onPageChange={changePage} />
     </>}
+
+    {watchDialogItem && <div className="detail-backdrop" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) closeWatchDialog()
+    }}>
+      <section
+        aria-labelledby="recommendation-watch-heading"
+        aria-modal="true"
+        className="detail-dialog recommendation-watch-dialog"
+        onKeyDown={(event) => { if (event.key === 'Escape') closeWatchDialog() }}
+        role="dialog"
+        tabIndex={-1}
+      >
+        <header className="detail-header">
+          <div>
+            <p className="eyebrow">PERSONAL RATING</p>
+            <h2 id="recommendation-watch-heading">Mark {watchDialogItem.title} as watched</h2>
+          </div>
+          <button aria-label="Close rating dialog" className="button button-secondary" disabled={savingWatched} onClick={closeWatchDialog} type="button">Close</button>
+        </header>
+        <div className="detail-body">
+          <form className="recommendation-watch-form" onSubmit={(event) => void submitWatchRating(event)}>
+            <label className="field" htmlFor="recommendation-watch-rating">
+              Your rating (1-10)
+              <input
+                autoFocus
+                id="recommendation-watch-rating"
+                max="10"
+                min="1"
+                onChange={(event) => setWatchRating(event.currentTarget.value)}
+                required
+                step="1"
+                type="number"
+                value={watchRating}
+              />
+            </label>
+            {watchError && <p className="form-error" role="alert">{watchError}</p>}
+            <div className="form-actions">
+              <button className="button button-primary" disabled={!watchRating || savingWatched} type="submit">Save rating and mark watched</button>
+              <button className="button button-secondary" disabled={savingWatched} onClick={closeWatchDialog} type="button">Cancel</button>
+            </div>
+            {savingWatched && <p role="status">Saving rating…</p>}
+          </form>
+        </div>
+      </section>
+    </div>}
   </section>
 }
