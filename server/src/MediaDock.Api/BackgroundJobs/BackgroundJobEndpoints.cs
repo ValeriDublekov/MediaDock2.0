@@ -149,6 +149,24 @@ internal static class BackgroundJobEndpoints
             .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        app.MapPost("/api/background-jobs/imdb-title-import", async (
+            [FromForm] ImdbTitleImportForm form,
+            BackgroundJobApiService service,
+            CancellationToken token) =>
+        {
+            var job = await service.EnqueueImdbTitleImportAsync(form, token);
+            var statusUrl = $"/api/background-jobs/{job.Id}";
+            return Results.Accepted(statusUrl, new BackgroundJobAcceptedResponse(job.Id, job.Status, statusUrl));
+        })
+            .WithName("EnqueueImdbTitleImport")
+            .WithSummary("Queue a TSV IMDb title dataset import and begin shared metadata enrichment.")
+            .WithDescription("Uploads an IMDb title TSV, preserves existing canonical rows, and schedules shared OMDb enrichment for eligible titles.")
+            .RequireAuthorization(AccessPolicies.Administrator)
+            .WithMetadata(new RequestSizeLimitAttribute(maximumUploadBytes + 1024 * 1024))
+            .DisableAntiforgery()
+            .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
         app.MapGet("/api/background-jobs/{id:long}", async (
             long id,
             BackgroundJobApiService service,

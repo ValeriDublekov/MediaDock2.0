@@ -10,12 +10,12 @@ internal sealed class BackgroundJobConfiguration : IEntityTypeConfiguration<Back
     {
         builder.ToTable("background_jobs", table =>
         {
-            table.HasCheckConstraint("ck_background_jobs_type", "job_type IN ('rss_scan', 'oscar_import', 'golden_globe_import', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment')");
+            table.HasCheckConstraint("ck_background_jobs_type", "job_type IN ('rss_scan', 'oscar_import', 'golden_globe_import', 'imdb_title_import', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment', 'imdb_catalog_enrichment')");
             table.HasCheckConstraint("ck_background_jobs_trigger", "trigger IN ('manual', 'schedule')");
             table.HasCheckConstraint("ck_background_jobs_status", "status IN ('queued', 'running', 'succeeded', 'partial', 'failed')");
             table.HasCheckConstraint(
                 "ck_background_jobs_type_trigger",
-                "(job_type = 'rss_scan' AND trigger IN ('manual', 'schedule')) OR (job_type IN ('oscar_import', 'golden_globe_import', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment') AND trigger = 'manual')");
+                "(job_type IN ('rss_scan', 'imdb_catalog_enrichment') AND trigger IN ('manual', 'schedule')) OR (job_type IN ('oscar_import', 'golden_globe_import', 'imdb_title_import', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment') AND trigger = 'manual')");
             table.HasCheckConstraint(
                 "ck_background_jobs_owner_user_id",
                 "(job_type = 'imdb_title_enrichment' AND owner_user_id IS NOT NULL) OR (job_type <> 'imdb_title_enrichment' AND owner_user_id IS NULL)");
@@ -25,9 +25,9 @@ internal sealed class BackgroundJobConfiguration : IEntityTypeConfiguration<Back
                 + "(status = 'running' AND started_at IS NOT NULL AND finished_at IS NULL) OR "
                 + "(status IN ('succeeded', 'partial', 'failed') AND started_at IS NOT NULL AND finished_at IS NOT NULL)");
             table.HasCheckConstraint(
-                "ck_background_jobs_input_type",
-                "(job_type IN ('oscar_import', 'golden_globe_import') AND (input_bytes IS NOT NULL OR status IN ('succeeded', 'partial', 'failed'))) OR "
-                + "(job_type IN ('rss_scan', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment') AND input_bytes IS NULL)");
+                    "ck_background_jobs_input_type",
+                    "(job_type IN ('oscar_import', 'golden_globe_import', 'imdb_title_import') AND (input_bytes IS NOT NULL OR status IN ('succeeded', 'partial', 'failed'))) OR " +
+                    "(job_type IN ('rss_scan', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment', 'imdb_catalog_enrichment') AND input_bytes IS NULL)");
         });
         builder.HasKey(entity => entity.Id).HasName("pk_background_jobs");
         builder.Property(entity => entity.Id).UseIdentityByDefaultColumn().HasColumnName("id");
@@ -83,6 +83,10 @@ internal sealed class BackgroundJobConfiguration : IEntityTypeConfiguration<Back
             .IsUnique()
             .HasFilter("job_type = 'imdb_title_enrichment' AND status IN ('queued', 'running')")
             .HasDatabaseName("ux_background_jobs_active_imdb_title_enrichment_owner");
+        builder.HasIndex(entity => entity.JobType, "ux_background_jobs_active_imdb_catalog_enrichment")
+            .IsUnique()
+            .HasFilter("job_type = 'imdb_catalog_enrichment' AND status IN ('queued', 'running')")
+            .HasDatabaseName("ux_background_jobs_active_imdb_catalog_enrichment");
     }
 }
 

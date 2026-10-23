@@ -101,3 +101,16 @@ Accept: application/json
 
 GET {{MediaDock.Api_HostAddress}}/api/scan-runs?page=1&pageSize=25
 Accept: application/json
+
+###
+
+# Admin-only. Queues the one-time IMDb TSV import and catalog enrichment.
+POST {{MediaDock.Api_HostAddress}}/api/background-jobs/imdb-title-import
+Content-Type: multipart/form-data; boundary=MediaDockBoundary
+
+--MediaDockBoundary
+Content-Disposition: form-data; name="File"; filename="title.ratings.filtered.movies-series.tsv"
+Content-Type: text/tab-separated-values
+
+< ../../../title.ratings.filtered.movies-series.tsv
+--MediaDockBoundary--

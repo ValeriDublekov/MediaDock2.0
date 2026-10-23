@@ -20,6 +20,41 @@ namespace MediaDock.IntegrationTests;
 public sealed class BackgroundJobExecutionTests
 {
     [Fact]
+    public async Task SchedulerQueuesCatalogEnrichmentAlongsideTheDailyScanWhenTitlesRemain()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_imdb_catalog_schedule_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        var now = new DateTimeOffset(2026, 10, 23, 20, 0, 0, TimeSpan.Zero);
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+        db.ImdbTitles.Add(new Infrastructure.Persistence.Entities.ImdbTitle
+        {
+            ImdbId = "tt1111111",
+            MetadataStatus = "pending",
+            UpdatedAt = now
+        });
+        db.BackgroundSchedulerStates.Add(new Infrastructure.Persistence.Entities.BackgroundSchedulerState
+        {
+            ScheduleName = "rss_ingestion",
+            LastEvaluatedSlotUtc = now.AddDays(-1)
+        });
+        await db.SaveChangesAsync();
+
+        var scheduler = new BackgroundJobScheduler(db, new FixedTimeProvider(now));
+        await scheduler.EnqueueDueSlotAsync(CancellationToken.None);
+
+        var jobs = await db.BackgroundJobs.AsNoTracking().ToListAsync();
+        Assert.Contains(jobs, job => job.JobType == "rss_scan" && job.Trigger == "schedule");
+        Assert.Contains(jobs, job =>
+            job.JobType == "imdb_catalog_enrichment"
+            && job.Trigger == "schedule"
+            && job.Status == "queued");
+    }
+
+    [Fact]
     public async Task ApiHostedDispatcherCompletesManualScanAndAssociatesScanRun()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_background_scan_execution_test").Build();
@@ -250,6 +285,91 @@ public sealed class BackgroundJobExecutionTests
     }
 
     [Fact]
+    public async Task ApiHostedDispatcherImportsAndEnrichesAnImdbTsvDataset()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_imdb_title_import_execution_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            await ConfigureSettingsAsync(db, DateTimeOffset.UtcNow);
+            await db.SaveChangesAsync();
+        }
+
+        var handler = new PersonalRatingsOmdbHandler();
+        using var factory = new BackgroundJobsApiFactory(connectionString, handler);
+        using var client = factory.CreateClient();
+        using var upload = new MultipartFormDataContent();
+        var tsv = string.Join(
+            '\n',
+            "tconst\taverageRating\tnumVotes\ttitleType\tprimaryTitle\tstartYear\tgenres",
+            "tt1111111\t7.1\t60001\tmovie\tImported Film\t1999\tDrama");
+        var tsvContent = new ByteArrayContent(Encoding.UTF8.GetBytes(tsv));
+        tsvContent.Headers.ContentType = MediaTypeHeaderValue.Parse("text/tab-separated-values");
+        upload.Add(tsvContent, "File", "title-ratings.tsv");
+
+        using var acceptedResponse = await client.PostAsync("/api/background-jobs/imdb-title-import", upload);
+        Assert.Equal(HttpStatusCode.Accepted, acceptedResponse.StatusCode);
+        var accepted = await acceptedResponse.Content.ReadFromJsonAsync<BackgroundJobAcceptedResponse>();
+        Assert.NotNull(accepted);
+
+        BackgroundJobResponse? completedImport = null;
+        for (var attempt = 0; attempt < 60; attempt++)
+        {
+            completedImport = await client.GetFromJsonAsync<BackgroundJobResponse>(
+                $"/api/background-jobs/{accepted.Id}");
+            if (completedImport?.Status is "succeeded" or "partial" or "failed")
+            {
+                break;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+        }
+
+        Assert.NotNull(completedImport);
+        Assert.Equal("succeeded", completedImport.Status);
+        Assert.Equal("title-ratings.tsv", completedImport.InputFileName);
+        Assert.True(completedImport.ResultSummary.HasValue);
+        var importSummary = completedImport.ResultSummary.Value.GetProperty("import");
+        Assert.Equal(1, importSummary.GetProperty("RowsInserted").GetInt32());
+        var enrichmentJobId = completedImport.ResultSummary.Value.GetProperty("enrichmentJobId").GetInt64();
+
+        BackgroundJobResponse? completedEnrichment = null;
+        for (var attempt = 0; attempt < 60; attempt++)
+        {
+            completedEnrichment = await client.GetFromJsonAsync<BackgroundJobResponse>(
+                $"/api/background-jobs/{enrichmentJobId}");
+            if (completedEnrichment?.Status is "succeeded" or "partial" or "failed")
+            {
+                break;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+        }
+
+        Assert.NotNull(completedEnrichment);
+        Assert.Equal("succeeded", completedEnrichment.Status);
+        Assert.Single(handler.RequestUris);
+        Assert.Contains("&i=tt1111111", handler.RequestUris[0].Query);
+
+        await using var verificationDb = new MediaDockDbContext(options);
+        var title = await verificationDb.ImdbTitles.AsNoTracking()
+            .SingleAsync(item => item.ImdbId == "tt1111111");
+        Assert.Equal("enriched", title.MetadataStatus);
+        Assert.Equal("Dispatcher Enriched Film", title.TitleText);
+        Assert.Equal(8.7m, title.ImdbRating);
+        Assert.Empty(await verificationDb.PersonalRatings.ToListAsync());
+        Assert.Equal(1, (await verificationDb.OmdbDailyUsage.AsNoTracking().SingleAsync()).TotalRequests);
+        var storedImport = await verificationDb.BackgroundJobs.AsNoTracking()
+            .SingleAsync(job => job.Id == accepted.Id);
+        Assert.Null(storedImport.InputBytes);
+    }
+
+    [Fact]
     public async Task ApiHostedDispatcherEnrichesOnlyTheQueuedOwnersRatedImdbTitles()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_personal_ratings_enrichment_execution_test").Build();
@@ -462,6 +582,11 @@ public sealed class BackgroundJobExecutionTests
         settings.OmdbApiKey = "synthetic-test-key";
         settings.OmdbDailyRequestLimit = 10;
         settings.UpdatedAt = updatedAt;
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
     }
 
     private sealed class BackgroundJobsApiFactory(

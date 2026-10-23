@@ -119,6 +119,70 @@ public sealed class ImdbTitleEnrichmentServiceTests
         Assert.DoesNotContain("tt0000100", client.RequestedImdbIds);
     }
 
+    [Fact]
+    public async Task RunCatalogUsesGlobalCandidatesAndPersistsThroughTheSharedResolver()
+    {
+        var now = new DateTimeOffset(2026, 10, 19, 10, 30, 0, TimeSpan.Zero);
+        var repository = new RecordingRepository([new("tt1234567", 0)]);
+        var client = new RecordingOmdbClient(imdbId => CreateFoundResult(imdbId));
+        var service = CreateService(repository, client, now);
+
+        var result = await service.RunCatalogAsync();
+
+        Assert.Equal("succeeded", result.Status);
+        Assert.Equal(ImdbTitleEnrichmentService.MaximumBatchSize, repository.RequestedCatalogLimit);
+        Assert.Empty(repository.Updates);
+        Assert.Equal([("tt1234567", "enriched")], repository.CatalogUpdates
+            .Select(update => (update.ImdbId, update.Update.Status)));
+        Assert.Equal(["tt1234567"], client.RequestedImdbIds);
+    }
+
+    [Fact]
+    public async Task RunCatalogContinuesAcrossBatchesUntilCandidatesAreExhausted()
+    {
+        var now = new DateTimeOffset(2026, 10, 19, 10, 30, 0, TimeSpan.Zero);
+        var candidates = Enumerable.Range(0, ImdbTitleEnrichmentService.MaximumBatchSize + 1)
+            .Select(index => new ImdbTitleEnrichmentCandidate($"tt{index:D7}", 0))
+            .ToArray();
+        var repository = new RecordingRepository(candidates);
+        var client = new RecordingOmdbClient(imdbId => CreateFoundResult(imdbId));
+        var service = CreateService(repository, client, now);
+
+        var result = await service.RunCatalogAsync();
+
+        Assert.Equal("succeeded", result.Status);
+        Assert.Equal(candidates.Length, result.Summary.AttemptedTitles);
+        Assert.Equal(candidates.Length, repository.CatalogUpdates.Count);
+        Assert.Equal(2, repository.CatalogCandidateQueryCount);
+        Assert.Equal(candidates.Length, client.RequestedImdbIds.Count);
+    }
+
+    [Fact]
+    public async Task RunCatalogStopsWithoutSavingWhenTheSharedDailyBudgetIsExhausted()
+    {
+        var now = new DateTimeOffset(2026, 10, 19, 10, 30, 0, TimeSpan.Zero);
+        var repository = new RecordingRepository([
+            new("tt1234567", 0),
+            new("tt7654321", 0)
+        ]);
+        var client = new RecordingOmdbClient(_ => new MetadataLookupResult(
+            MetadataLookupStatus.RequestBudgetExhausted,
+            HttpAttempts: 0,
+            ErrorCode: "daily_budget_exhausted"));
+        var service = CreateService(repository, client, now);
+
+        var result = await service.RunCatalogAsync();
+
+        Assert.Equal("partial", result.Status);
+        Assert.True(result.Summary.StoppedForQuota);
+        Assert.Equal(2, result.Summary.EligibleTitles);
+        Assert.Equal(0, result.Summary.AttemptedTitles);
+        Assert.Empty(repository.CatalogUpdates);
+        Assert.Empty(repository.Updates);
+        Assert.Equal(["tt1234567"], client.RequestedImdbIds);
+        Assert.Equal(0, result.Summary.HttpAttempts);
+    }
+
     private static ImdbTitleEnrichmentService CreateService(
         RecordingRepository repository,
         RecordingOmdbClient client,
@@ -169,7 +233,10 @@ public sealed class ImdbTitleEnrichmentServiceTests
         : IImdbTitleEnrichmentRepository
     {
         public int RequestedLimit { get; private set; }
+        public int RequestedCatalogLimit { get; private set; }
+        public int CatalogCandidateQueryCount { get; private set; }
         public List<(long OwnerUserId, string ImdbId, ImdbTitleEnrichmentUpdate Update)> Updates { get; } = [];
+        public List<(string ImdbId, ImdbTitleEnrichmentUpdate Update)> CatalogUpdates { get; } = [];
 
         public Task<IReadOnlyList<ImdbTitleEnrichmentCandidate>> GetEligibleCandidatesAsync(
             long ownerUserId,
@@ -181,6 +248,18 @@ public sealed class ImdbTitleEnrichmentServiceTests
             return Task.FromResult<IReadOnlyList<ImdbTitleEnrichmentCandidate>>(candidates.Take(limit).ToArray());
         }
 
+        public Task<IReadOnlyList<ImdbTitleEnrichmentCandidate>> GetEligibleCatalogCandidatesAsync(
+            DateTimeOffset now,
+            int limit,
+            CancellationToken cancellationToken = default)
+        {
+            RequestedCatalogLimit = limit;
+            CatalogCandidateQueryCount++;
+            var completedIds = CatalogUpdates.Select(update => update.ImdbId).ToHashSet(StringComparer.Ordinal);
+            return Task.FromResult<IReadOnlyList<ImdbTitleEnrichmentCandidate>>(
+                candidates.Where(candidate => !completedIds.Contains(candidate.ImdbId)).Take(limit).ToArray());
+        }
+
         public Task SaveOutcomeAsync(
             long ownerUserId,
             string imdbId,
@@ -188,6 +267,15 @@ public sealed class ImdbTitleEnrichmentServiceTests
             CancellationToken cancellationToken = default)
         {
             Updates.Add((ownerUserId, imdbId, update));
+            return Task.CompletedTask;
+        }
+
+        public Task SaveCatalogOutcomeAsync(
+            string imdbId,
+            ImdbTitleEnrichmentUpdate update,
+            CancellationToken cancellationToken = default)
+        {
+            CatalogUpdates.Add((imdbId, update));
             return Task.CompletedTask;
         }
     }

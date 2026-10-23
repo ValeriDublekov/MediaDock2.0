@@ -58,4 +58,10 @@ public sealed class GoldenGlobeImportForm
     public int YearAfter { get; init; } = 1980;
 }
 
+/// <summary>Multipart form for importing a tab-separated IMDb title dataset.</summary>
+public sealed record ImdbTitleImportForm
+{
+    public IFormFile? File { get; init; }
+}
+
 internal sealed record EnqueuedBackgroundJob(BackgroundJobResponse Job, bool Accepted);

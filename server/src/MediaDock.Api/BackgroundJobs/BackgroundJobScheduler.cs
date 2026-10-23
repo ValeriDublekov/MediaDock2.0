@@ -60,6 +60,36 @@ public sealed class BackgroundJobScheduler(MediaDockDbContext dbContext, TimePro
             DataJson = "{}"
         });
         dbContext.BackgroundJobs.Add(job);
+
+        var activeImdbCatalogEnrichment = await dbContext.BackgroundJobs.AsNoTracking()
+            .AnyAsync(item => item.JobType == "imdb_catalog_enrichment"
+                && (item.Status == "queued" || item.Status == "running"), cancellationToken);
+        var hasEligibleImdbTitles = await dbContext.ImdbTitles.AsNoTracking().AnyAsync(title =>
+            title.MetadataStatus == "pending"
+            || ((title.MetadataStatus == "temporary_error" || title.MetadataStatus == "not_found")
+                && (title.NextEnrichmentAttemptAt == null || title.NextEnrichmentAttemptAt <= now)),
+            cancellationToken);
+        if (!activeImdbCatalogEnrichment && hasEligibleImdbTitles)
+        {
+            var enrichmentJob = new BackgroundJob
+            {
+                JobType = "imdb_catalog_enrichment",
+                Trigger = "schedule",
+                Status = "queued",
+                EnqueuedAt = now,
+                CurrentStage = "queued"
+            };
+            enrichmentJob.Events.Add(new BackgroundJobEvent
+            {
+                OccurredAt = now,
+                Level = "information",
+                EventCode = "job_scheduled",
+                Message = "Scheduled IMDb catalog enrichment queued.",
+                DataJson = "{}"
+            });
+            dbContext.BackgroundJobs.Add(enrichmentJob);
+        }
+
         var trackedState = await dbContext.BackgroundSchedulerStates
             .SingleAsync(item => item.ScheduleName == ScheduleName, cancellationToken);
         trackedState.LastEvaluatedSlotUtc = dueSlot;

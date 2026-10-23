@@ -42,8 +42,18 @@ public interface IImdbTitleEnrichmentRepository
         int limit,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ImdbTitleEnrichmentCandidate>> GetEligibleCatalogCandidatesAsync(
+        DateTimeOffset now,
+        int limit,
+        CancellationToken cancellationToken = default);
+
     Task SaveOutcomeAsync(
         long ownerUserId,
+        string imdbId,
+        ImdbTitleEnrichmentUpdate update,
+        CancellationToken cancellationToken = default);
+
+    Task SaveCatalogOutcomeAsync(
         string imdbId,
         ImdbTitleEnrichmentUpdate update,
         CancellationToken cancellationToken = default);

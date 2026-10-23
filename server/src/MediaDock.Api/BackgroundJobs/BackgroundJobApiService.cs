@@ -375,6 +375,129 @@ internal sealed class BackgroundJobApiService(
         dbContext.BackgroundJobs.Add(job); await dbContext.SaveChangesAsync(cancellationToken); return ToResponse(job);
     }
 
+    public async Task<BackgroundJobResponse> EnqueueImdbTitleImportAsync(
+        ImdbTitleImportForm form,
+        CancellationToken cancellationToken)
+    {
+        if (form.File is not { } file || file.Length == 0)
+        {
+            throw ValidationError("file", "Select a non-empty IMDb TSV file.");
+        }
+
+        if (file.Length > _maximumUploadBytes)
+        {
+            throw ValidationError("file", $"The upload exceeds the {_maximumUploadBytes}-byte limit.");
+        }
+
+        var fileName = SanitizeFileName(file.FileName);
+        if (!string.Equals(Path.GetExtension(fileName), ".tsv", StringComparison.OrdinalIgnoreCase))
+        {
+            throw ValidationError("file", "Only tab-separated IMDb dataset files are supported.");
+        }
+
+        await using var buffer = new MemoryStream((int)file.Length);
+        await file.CopyToAsync(buffer, cancellationToken);
+        if (buffer.Length == 0 || buffer.Length > _maximumUploadBytes)
+        {
+            throw ValidationError("file", "The IMDb TSV file is empty or exceeds the upload limit.");
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var job = new BackgroundJob
+        {
+            JobType = "imdb_title_import",
+            Trigger = "manual",
+            Status = "queued",
+            EnqueuedAt = now,
+            CurrentStage = "queued",
+            InputFileName = fileName,
+            InputContentType = file.ContentType,
+            InputBytes = buffer.ToArray()
+        };
+        job.Events.Add(new BackgroundJobEvent
+        {
+            OccurredAt = now,
+            Level = "information",
+            EventCode = "job_queued",
+            Message = "IMDb title dataset import queued."
+        });
+        dbContext.BackgroundJobs.Add(job);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToResponse(job);
+    }
+
+    public async Task<BackgroundJobResponse?> EnqueueImdbCatalogEnrichmentAsync(
+        string trigger,
+        CancellationToken cancellationToken)
+    {
+        if (trigger is not ("manual" or "schedule"))
+        {
+            throw new ArgumentOutOfRangeException(nameof(trigger));
+        }
+
+        var active = await dbContext.BackgroundJobs.AsNoTracking()
+            .Where(job => job.JobType == "imdb_catalog_enrichment"
+                && (job.Status == "queued" || job.Status == "running"))
+            .OrderByDescending(job => job.EnqueuedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (active is not null)
+        {
+            return ToResponse(active);
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var hasEligibleTitles = await dbContext.ImdbTitles.AnyAsync(title =>
+            title.MetadataStatus == "pending"
+            || ((title.MetadataStatus == "temporary_error" || title.MetadataStatus == "not_found")
+                && (title.NextEnrichmentAttemptAt == null || title.NextEnrichmentAttemptAt <= now)),
+            cancellationToken);
+        if (!hasEligibleTitles)
+        {
+            return null;
+        }
+
+        var job = new BackgroundJob
+        {
+            JobType = "imdb_catalog_enrichment",
+            Trigger = trigger,
+            Status = "queued",
+            EnqueuedAt = now,
+            CurrentStage = "queued"
+        };
+        job.Events.Add(new BackgroundJobEvent
+        {
+            OccurredAt = now,
+            Level = "information",
+            EventCode = trigger == "schedule" ? "job_scheduled" : "job_queued",
+            Message = trigger == "schedule"
+                ? "Scheduled IMDb catalog enrichment queued."
+                : "IMDb catalog enrichment queued.",
+            DataJson = trigger == "schedule" ? "{}" : null
+        });
+        dbContext.BackgroundJobs.Add(job);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return ToResponse(job);
+        }
+        catch (DbUpdateException exception) when (IsActiveImdbCatalogEnrichmentConflict(exception))
+        {
+            foreach (var jobEvent in job.Events)
+            {
+                dbContext.Entry(jobEvent).State = EntityState.Detached;
+            }
+
+            dbContext.Entry(job).State = EntityState.Detached;
+            var existing = await dbContext.BackgroundJobs.AsNoTracking()
+                .Where(item => item.JobType == "imdb_catalog_enrichment"
+                    && (item.Status == "queued" || item.Status == "running"))
+                .OrderByDescending(item => item.EnqueuedAt)
+                .SingleAsync(cancellationToken);
+            return ToResponse(existing);
+        }
+    }
+
     private static BackgroundJobResponse ToResponse(BackgroundJobStatusProjection job) => new(
         job.Id,
         job.JobType,
@@ -466,5 +589,12 @@ internal sealed class BackgroundJobApiService(
         {
             SqlState: PostgresErrorCodes.UniqueViolation,
             ConstraintName: "ux_background_jobs_active_imdb_title_enrichment_owner"
+        };
+
+    private static bool IsActiveImdbCatalogEnrichmentConflict(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "ux_background_jobs_active_imdb_catalog_enrichment"
         };
 }

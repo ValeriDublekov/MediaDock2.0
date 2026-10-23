@@ -4,6 +4,7 @@ using MediaDock.Application.Ingestion;
 using MediaDock.Application.OscarAwards;
 using MediaDock.Application.PersonalRatings;
 using MediaDock.Infrastructure.GoldenGlobes;
+using MediaDock.Infrastructure.Metadata;
 using MediaDock.Infrastructure.OscarAwards;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
@@ -141,6 +142,30 @@ internal sealed class GoldenGlobeImportBackgroundJobHandler(
     }
 }
 
+internal sealed class ImdbTitleImportBackgroundJobHandler(
+    ImdbTitleDatasetImporter importer,
+    BackgroundJobApiService backgroundJobs) : IBackgroundJobHandler
+{
+    public async Task<BackgroundJobExecutionResult> ExecuteAsync(
+        BackgroundJobExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        if (context.Job.InputBytes is null)
+        {
+            throw new InvalidDataException("The queued IMDb import payload is unavailable.");
+        }
+
+        await context.SetStageAsync("imdb_title_import", "IMDb title dataset import started.", cancellationToken);
+        var summary = await importer.ImportAsync(context.Job.InputBytes, cancellationToken);
+        var enrichmentJob = await backgroundJobs.EnqueueImdbCatalogEnrichmentAsync("manual", cancellationToken);
+        return new BackgroundJobExecutionResult("succeeded", new
+        {
+            import = summary,
+            enrichmentJobId = enrichmentJob?.Id
+        });
+    }
+}
+
 internal sealed class OscarEnrichmentBackgroundJobHandler(IServiceProvider services)
     : IBackgroundJobHandler
 {
@@ -200,6 +225,24 @@ internal sealed class ImdbTitleEnrichmentBackgroundJobHandler(IServiceProvider s
         var enrichmentService = services.GetRequiredService<ImdbTitleEnrichmentService>();
         var result = await enrichmentService.RunAsync(ownerUserId, cancellationToken);
         return new BackgroundJobExecutionResult(result.Status);
+    }
+}
+
+internal sealed class ImdbCatalogEnrichmentBackgroundJobHandler(IServiceProvider services)
+    : IBackgroundJobHandler
+{
+    public async Task<BackgroundJobExecutionResult> ExecuteAsync(
+        BackgroundJobExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        await context.LoadProviderSettingsAsync(cancellationToken);
+        await context.SetStageAsync(
+            "imdb_catalog_enrichment",
+            "IMDb catalog enrichment started.",
+            cancellationToken);
+        var enrichmentService = services.GetRequiredService<ImdbTitleEnrichmentService>();
+        var result = await enrichmentService.RunCatalogAsync(cancellationToken);
+        return new BackgroundJobExecutionResult(result.Status, result.Summary);
     }
 }
 

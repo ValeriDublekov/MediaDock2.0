@@ -22,7 +22,7 @@ public sealed class ImdbTitleEnrichmentService
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    public async Task<ImdbTitleEnrichmentResult> RunAsync(
+    public Task<ImdbTitleEnrichmentResult> RunAsync(
         long ownerUserId,
         CancellationToken cancellationToken = default)
     {
@@ -31,11 +31,41 @@ public sealed class ImdbTitleEnrichmentService
             throw new ArgumentOutOfRangeException(nameof(ownerUserId));
         }
 
-        var eligible = await _repository.GetEligibleCandidatesAsync(
-            ownerUserId,
-            _timeProvider.GetUtcNow(),
-            MaximumBatchSize,
+        return RunCoreAsync(
+            (now, token) => _repository.GetEligibleCandidatesAsync(
+                ownerUserId,
+                now,
+                MaximumBatchSize,
+                token),
+            (imdbId, update, token) => _repository.SaveOutcomeAsync(
+                ownerUserId,
+                imdbId,
+                update,
+                token),
+            continueUntilEmpty: false,
             cancellationToken);
+    }
+
+    public Task<ImdbTitleEnrichmentResult> RunCatalogAsync(CancellationToken cancellationToken = default) =>
+        RunCoreAsync(
+            (now, token) => _repository.GetEligibleCatalogCandidatesAsync(
+                now,
+                MaximumBatchSize,
+                token),
+            (imdbId, update, token) => _repository.SaveCatalogOutcomeAsync(
+                imdbId,
+                update,
+                token),
+            continueUntilEmpty: true,
+            cancellationToken);
+
+    private async Task<ImdbTitleEnrichmentResult> RunCoreAsync(
+        Func<DateTimeOffset, CancellationToken, Task<IReadOnlyList<ImdbTitleEnrichmentCandidate>>> getEligibleCandidatesAsync,
+        Func<string, ImdbTitleEnrichmentUpdate, CancellationToken, Task> saveOutcomeAsync,
+        bool continueUntilEmpty,
+        CancellationToken cancellationToken)
+    {
+        var eligibleCount = 0;
         var attemptedTitles = 0;
         var enrichedTitles = 0;
         var notFoundTitles = 0;
@@ -44,50 +74,60 @@ public sealed class ImdbTitleEnrichmentService
         var httpAttempts = 0;
         var stoppedForQuota = false;
 
-        foreach (var candidate in eligible)
+        while (true)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var attemptedAt = _timeProvider.GetUtcNow();
-            var resolution = await _metadataResolver.ResolveByImdbIdAsync(
-                candidate.ImdbId,
-                attemptedAt,
-                cancellationToken,
-                OmdbRequestPurpose.ImdbTitleEnrichment);
-            httpAttempts += resolution.HttpAttempts;
-            cacheHits += resolution.CacheHit ? 1 : 0;
-
-            if (resolution.Status == MetadataLookupStatus.RequestBudgetExhausted)
+            var eligible = await getEligibleCandidatesAsync(_timeProvider.GetUtcNow(), cancellationToken);
+            eligibleCount += eligible.Count;
+            foreach (var candidate in eligible)
             {
-                stoppedForQuota = true;
-                break;
+                cancellationToken.ThrowIfCancellationRequested();
+                var attemptedAt = _timeProvider.GetUtcNow();
+                var resolution = await _metadataResolver.ResolveByImdbIdAsync(
+                    candidate.ImdbId,
+                    attemptedAt,
+                    cancellationToken,
+                    OmdbRequestPurpose.ImdbTitleEnrichment);
+                httpAttempts += resolution.HttpAttempts;
+                cacheHits += resolution.CacheHit ? 1 : 0;
+
+                if (resolution.Status == MetadataLookupStatus.RequestBudgetExhausted)
+                {
+                    stoppedForQuota = true;
+                    break;
+                }
+
+                var update = CreateUpdate(resolution, candidate, attemptedAt);
+                await saveOutcomeAsync(candidate.ImdbId, update, cancellationToken);
+                attemptedTitles++;
+
+                switch (update.Status)
+                {
+                    case ImdbTitleEnrichmentStatuses.Enriched:
+                        enrichedTitles++;
+                        break;
+                    case ImdbTitleEnrichmentStatuses.NotFound:
+                        notFoundTitles++;
+                        break;
+                    default:
+                        temporaryErrors++;
+                        break;
+                }
+
+                if (resolution.Status == MetadataLookupStatus.QuotaExceeded)
+                {
+                    stoppedForQuota = true;
+                    break;
+                }
             }
 
-            var update = CreateUpdate(resolution, candidate, attemptedAt);
-            await _repository.SaveOutcomeAsync(ownerUserId, candidate.ImdbId, update, cancellationToken);
-            attemptedTitles++;
-
-            switch (update.Status)
+            if (stoppedForQuota || !continueUntilEmpty || eligible.Count < MaximumBatchSize)
             {
-                case ImdbTitleEnrichmentStatuses.Enriched:
-                    enrichedTitles++;
-                    break;
-                case ImdbTitleEnrichmentStatuses.NotFound:
-                    notFoundTitles++;
-                    break;
-                default:
-                    temporaryErrors++;
-                    break;
-            }
-
-            if (resolution.Status == MetadataLookupStatus.QuotaExceeded)
-            {
-                stoppedForQuota = true;
                 break;
             }
         }
 
         var summary = new ImdbTitleEnrichmentSummary(
-            eligible.Count,
+            eligibleCount,
             attemptedTitles,
             enrichedTitles,
             notFoundTitles,
