@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getRecommendationGenres, getRecommendations, markRecommendationWatched } from '../../api/client'
-import type { MovieRecommendation, PageResponse, RecommendationCoefficients, RecommendationQuery } from '../../api/types'
+import type { PageResponse, Recommendation, RecommendationCoefficients, RecommendationMediaType, RecommendationQuery } from '../../api/types'
 import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
@@ -65,17 +65,20 @@ function scoreValue(value: number): string {
   return value.toFixed(2)
 }
 
-function sourceLabel(source: MovieRecommendation['awardEvents'][number]['awardSource']): string {
+function sourceLabel(source: Recommendation['awardEvents'][number]['awardSource']): string {
   return source === 'oscar' ? 'Oscar' : 'Golden Globes'
 }
 
-function eventOccasion(event: MovieRecommendation['awardEvents'][number]): string | null {
+function eventOccasion(event: Recommendation['awardEvents'][number]): string | null {
   if (event.awardSource === 'oscar' && event.ceremony !== null) return `Ceremony ${event.ceremony}`
   if (event.awardSource === 'golden_globes' && event.ceremonyYear !== null) return String(event.ceremonyYear)
   return null
 }
 
-export function RecommendationsView() {
+export function RecommendationsView({ mediaType }: { mediaType: RecommendationMediaType }) {
+  const titleTypeHeading = mediaType === 'movie' ? 'Movie' : 'Series'
+  const titleType = mediaType === 'movie' ? 'movie' : 'series'
+  const titleTypes = mediaType === 'movie' ? 'movies' : 'series'
   const [sliderPercentages, setSliderPercentages] = useState(initialSliderPercentages)
   const [pageNumber, setPageNumber] = useState(1)
   const [draftYearFilter, setDraftYearFilter] = useState(emptyYearFilter)
@@ -85,11 +88,11 @@ export function RecommendationsView() {
   const [genreOptions, setGenreOptions] = useState<string[]>([])
   const [genresLoading, setGenresLoading] = useState(true)
   const [genresError, setGenresError] = useState<string | null>(null)
-  const [result, setResult] = useState<PageResponse<MovieRecommendation> | null>(null)
+  const [result, setResult] = useState<PageResponse<Recommendation> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
-  const [watchDialogItem, setWatchDialogItem] = useState<MovieRecommendation | null>(null)
+  const [watchDialogItem, setWatchDialogItem] = useState<Recommendation | null>(null)
   const [watchRating, setWatchRating] = useState('')
   const [savingWatched, setSavingWatched] = useState(false)
   const [watchError, setWatchError] = useState<string | null>(null)
@@ -101,7 +104,7 @@ export function RecommendationsView() {
 
   useEffect(() => {
     let active = true
-    getRecommendationGenres()
+    getRecommendationGenres(mediaType)
       .then((options) => { if (active) setGenreOptions(options) })
       .catch((requestError: unknown) => {
         if (active) setGenresError(requestError instanceof Error ? requestError.message : 'Could not load genres.')
@@ -109,13 +112,14 @@ export function RecommendationsView() {
       .finally(() => { if (active) setGenresLoading(false) })
 
     return () => { active = false }
-  }, [])
+  }, [mediaType])
 
   useEffect(() => {
     let active = true
     setLoading(true)
     setError(null)
     const query: RecommendationQuery = {
+      mediaType,
       page: pageNumber,
       pageSize: recommendationsPageSize,
       ...toCoefficients(sliderPercentages),
@@ -132,7 +136,7 @@ export function RecommendationsView() {
       .finally(() => { if (active) setLoading(false) })
 
     return () => { active = false }
-  }, [appliedYearFilter, attempt, excludeWatched, ignoredMoviesRevision, pageNumber, selectedGenres, sliderPercentages])
+  }, [appliedYearFilter, attempt, excludeWatched, ignoredMoviesRevision, mediaType, pageNumber, selectedGenres, sliderPercentages])
 
   function updateSlider(key: CoefficientKey, value: string) {
     setSliderPercentages((current) => changeSliderPercentages(current, key, value))
@@ -192,7 +196,7 @@ export function RecommendationsView() {
     setAttempt((value) => value + 1)
   }
 
-  function openWatchDialog(item: MovieRecommendation) {
+  function openWatchDialog(item: Recommendation) {
     setWatchDialogItem(item)
     setWatchRating('')
     setWatchError(null)
@@ -218,14 +222,14 @@ export function RecommendationsView() {
     setSavingWatched(true)
     setWatchError(null)
     try {
-      await markRecommendationWatched(watchDialogItem.imdbId, rating)
+      await markRecommendationWatched(watchDialogItem.imdbId, rating, mediaType)
       setWatchDialogItem(null)
       setWatchRating('')
       setLoading(true)
       setError(null)
       setAttempt((value) => value + 1)
     } catch (requestError: unknown) {
-      setWatchError(requestError instanceof Error ? requestError.message : 'Could not mark this movie as watched.')
+      setWatchError(requestError instanceof Error ? requestError.message : `Could not mark this ${titleType} as watched.`)
     } finally {
       setSavingWatched(false)
     }
@@ -233,13 +237,13 @@ export function RecommendationsView() {
 
   return <section aria-labelledby="recommendations-heading" className="management-section recommendations-view">
     <h2 id="recommendations-heading">Recommendations</h2>
-    <p className="section-caption">A personal ranking of eligible award-nominated movies, based on your ratings and the shared metadata catalog.</p>
+    <p className="section-caption">A personal ranking of eligible award-nominated {titleTypes}, based on your ratings and the shared metadata catalog.</p>
 
     <div className="recommendation-filter-controls">
       {result?.yearBounds && <YearRangeFilter
         bounds={result.yearBounds}
         id="recommendation-year-range"
-        label="Movie year"
+        label={`${titleTypeHeading} year`}
         onCommit={(from, to) => updateYearRange(from, to, true)}
         onPreview={(from, to) => updateYearRange(from, to, false)}
         valueFrom={draftYearFilter.from ? Number(draftYearFilter.from) : result.yearBounds.minYear}
@@ -256,7 +260,7 @@ export function RecommendationsView() {
       />
       <label className="recommendation-filter-toggle">
         <input checked={excludeWatched} onChange={(event) => updateExcludeWatched(event.currentTarget.checked)} type="checkbox" />
-        Exclude already watched movies
+        Exclude already watched {titleTypes}
       </label>
       <button className="button button-secondary" disabled={!appliedYearFilter.from && !appliedYearFilter.to && (selectedGenres === null || selectedGenres.length === 0) && excludeWatched} onClick={clearFilters} type="button">Clear filters</button>
     </div>
@@ -287,11 +291,11 @@ export function RecommendationsView() {
 
     {loading && <LoadingState label="Loading recommendations" />}
     {!loading && error && <ErrorState message={error} onRetry={retry} />}
-    {!loading && !error && result?.items.length === 0 && <EmptyState title="No recommendations available" message="No eligible award-nominated movies are available for this account yet." />}
+    {!loading && !error && result?.items.length === 0 && <EmptyState title="No recommendations available" message={`No eligible award-nominated ${titleTypes} are available for this account yet.`} />}
     {!loading && !error && result && result.items.length > 0 && <>
       <div className="table-wrap">
         <table className="data-table recommendations-table">
-          <thead><tr><th scope="col">MOVIE</th><th scope="col">FINAL SCORE</th><th scope="col">RATING</th><th scope="col">POPULARITY</th><th scope="col">AWARD POINTS</th><th scope="col">AWARD EVENTS</th><th scope="col">ACTIONS</th></tr></thead>
+          <thead><tr><th scope="col">{titleTypeHeading.toUpperCase()}</th><th scope="col">FINAL SCORE</th><th scope="col">RATING</th><th scope="col">POPULARITY</th><th scope="col">AWARD POINTS</th><th scope="col">AWARD EVENTS</th><th scope="col">ACTIONS</th></tr></thead>
           <tbody>{result.items.map((item) => <tr key={item.imdbId}>
             <td>
               <div className="recommendation-title-cell">

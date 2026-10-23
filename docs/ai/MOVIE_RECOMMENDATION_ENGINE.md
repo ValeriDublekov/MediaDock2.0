@@ -1,8 +1,8 @@
-# Movie Recommendation Engine
+# Movie and Series Recommendation Engine
 
 ## Ownership and settings
 
-The engine scores canonical `imdb_titles` movie rows. Its singleton `general_recommendation_settings` row stores the global calculation settings; recommendation coefficients remain request-local. No parallel catalog or `global_settings` table is used.
+The engine scores canonical `imdb_titles` movie or series rows selected by the request. Its singleton `general_recommendation_settings` row stores the global calculation settings; recommendation coefficients remain request-local. Persisted vote weights and their recalculation workflow remain movie-only; series weights use the same normalizer over series vote counts at request time. No parallel catalog or `global_settings` table is used.
 
 | Setting | Default | Validation |
 | --- | ---: | --- |
@@ -18,15 +18,15 @@ The engine scores canonical `imdb_titles` movie rows. Its singleton `general_rec
 
 ## Vote periods and popularity
 
-For a movie with year `Y`, the period starts at:
+For a title of the selected media type with year `Y`, the period starts at:
 
 ```text
 Period_Start = Y - (Y % median_period_years)
 ```
 
-The period median uses all movie vote counts in that period, including zeroes. An even number of values uses the mean of the middle pair. If the period has no median, or its median is below `1`, the effective median is `1000`. A title without a year also uses `1000`; missing-year titles are not grouped into a synthetic period.
+The period median uses all vote counts of the selected media type in that period, including zeroes. An even number of values uses the mean of the middle pair. If the period has no median, or its median is below `1`, the effective median is `1000`. A title without a year also uses `1000`; missing-year titles are not grouped into a synthetic period.
 
-For vote count `v`, the stored popularity weight is:
+For vote count `v`, the normalized popularity weight is:
 
 ```text
 NormalizedVoteWeight = min(10, log10(v / Period_Median_Votes + 1) * 3.33)
@@ -34,11 +34,11 @@ NormalizedVoteWeight = min(10, log10(v / Period_Median_Votes + 1) * 3.33)
 
 Missing or negative vote counts are treated as zero. A missing vote count therefore has popularity `0`; a title with exactly the median votes scores about `1.0` before any cap.
 
-Weights are stored per canonical movie and recalculated together in one transaction. A PostgreSQL trigger marks them dirty when a movie is inserted or its year, vote count, or media type changes, and when `median_period_years` changes. The formula-change migration also marks an existing movie catalog dirty so old-format weights are not mistaken for current values.
+Movie weights are stored per canonical movie and recalculated together in one transaction. A PostgreSQL trigger marks them dirty when a movie is inserted or its year, vote count, or media type changes, and when `median_period_years` changes. The formula-change migration also marks an existing movie catalog dirty so old-format weights are not mistaken for current values. Series weights use the same formula and period setting, computed from the current series vote data for each recommendation request.
 
 ## Bayesian rating
 
-For each recommendation request, the engine obtains the candidate's period median from current movie vote data and applies the `1000` fallback when needed. The effective prior strength is:
+For each recommendation request, the engine obtains the candidate's period median from current vote data for the selected media type and applies the `1000` fallback when needed. The effective prior strength is:
 
 ```text
 m = Period_Median_Votes * bayesian_m_ratio
@@ -54,12 +54,12 @@ Missing votes use `v = 0`, which yields `bayesian_default_c`. The positive ratio
 
 ## Personal taste and award points
 
-The user's global average uses all of that user's personal IMDb ratings. For each source-qualified award category, the category average uses distinct rated movies with a nomination or win in that category. Duplicate rows for one movie/category do not increase the count.
+The user's global average uses all of that user's personal IMDb ratings. For each source-qualified award category, the category average uses distinct rated titles of the selected media type with a nomination or win in that category. Duplicate rows for one title/category do not increase the count. Movie recommendations use Oscar and movie Golden Globes records; series recommendations use series Golden Globes records.
 
 - Fewer than three rated movies, or a zero/missing global average, gives a multiplier of `1.0`.
 - Otherwise, the multiplier is `Category_Avg / User_Global_Avg`, clamped to `[0.5, 1.5]`.
 
-Each distinct movie/source/category/ceremony-or-year award event contributes either win points or nomination points, never both. Duplicate event rows collapse into one event; if any duplicate is a winner, the event is scored as a win. The applicable global default or explicit category override is multiplied by the taste multiplier. Adjusted event points are summed and capped at `10.0` for the award component.
+Each distinct title/source/category/ceremony-or-year award event contributes either win points or nomination points, never both. Duplicate event rows collapse into one event; if any duplicate is a winner, the event is scored as a win. The applicable global default or explicit category override is multiplied by the taste multiplier. Adjusted event points are summed and capped at `10.0` for the award component.
 
 ## Composite score and eligibility
 
@@ -71,15 +71,15 @@ Final_Score = (Bayesian_Rating * ratingWeight)
             + (Award_Component * awardsWeight)
 ```
 
-Candidates must be enriched IMDb movie rows with a nonempty title and IMDb rating, linked by IMDb ID to an Oscar or qualifying Golden Globes nomination, and not already rated by the active user by default. The recommendations view's checked `Exclude already watched movies` option uses personal ratings as the watched signal; disabling it sends `excludeWatched=false` and includes rated titles. Golden Globes links require both the nominee type and canonical IMDb media type to be `movie`. The active user's `ToWatch` and ignored movies remain excluded; `ToDownload`-only movies remain eligible. Results sort by final score descending, then IMDb ID ascending. Year and genre filters are applied before paging.
+Candidates must be enriched IMDb rows of the requested media type with a nonempty title and IMDb rating. Movies must link by IMDb ID to an Oscar or qualifying movie Golden Globes nomination; series must link to a Golden Globes nomination whose nominee type and canonical IMDb media type are both `series`. Candidates are not already rated by the active user by default. The checked `Exclude already watched movies` or `Exclude already watched series` option uses personal ratings as the watched signal; disabling it sends `excludeWatched=false` and includes rated titles. The active user's ignored titles remain excluded; movie `ToWatch` entries are also excluded, while `ToDownload`-only movies remain eligible. Results sort by final score descending, then IMDb ID ascending. Year and genre filters are applied before paging.
 
-The recommendations view can mark an eligible, not-yet-rated result as watched only after the user supplies an integer rating from `1` to `10`. The API rechecks eligibility, saves the rating as an owner-scoped personal record with `is_manually_added = true`, and the result is excluded from that user's next recommendation read. If already-rated titles are included, the API marks them with `isWatched` and the view omits both the Ignore and Mark watched actions. New imported ratings use `false`, while import updates preserve an existing marker; the personal-ratings response exposes it for future filtering.
+The recommendations view can mark an eligible, not-yet-rated result as watched only after the user supplies an integer rating from `1` to `10`. The API rechecks eligibility for the selected media type, saves the rating as an owner-scoped personal record with `is_manually_added = true`, and the title is excluded from that user's next recommendation read. If already-rated titles are included, the API marks them with `isWatched` and the view omits both the Ignore and Mark watched actions. New imported ratings use `false`, while import updates preserve an existing marker; the personal-ratings response exposes it for future filtering.
 
 The API resolves the active linked user on the server and never accepts a client-supplied owner ID. Personal ratings and taste profiles are scoped to that user. In enforced mode, recommendation settings and vote recalculation remain administrator-only.
 
 ## Freshness and verification
 
-The settings API exposes the dirty flag and last successful vote-weight recalculation. Recalculation is synchronous with a 10-second execution limit; a timeout rolls back and leaves the dirty flag set. Recalculate weights after a period change or when the UI reports stale metadata.
+The settings API exposes the dirty flag and last successful movie vote-weight recalculation. Recalculation is synchronous with a 10-second execution limit; a timeout rolls back and leaves the dirty flag set. Recalculate movie weights after a period change or when the UI reports stale metadata. Series weights are request-time calculations and do not use this dirty flag.
 
 Run focused checks through the repository runner:
 

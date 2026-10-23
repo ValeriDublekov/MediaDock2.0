@@ -206,6 +206,8 @@ export interface SettingsInput {
   minImdbVotes: number
 }
 
+export type RecommendationMediaType = 'movie' | 'series'
+
 export type RecommendationAwardSource = 'oscar' | 'golden_globes'
 
 export interface RecommendationAwardWeight {
@@ -261,6 +263,7 @@ export interface RecommendationCoefficients {
 }
 
 export interface RecommendationQuery extends RecommendationCoefficients {
+  mediaType: RecommendationMediaType
   page: number
   pageSize: number
   yearFrom?: number
@@ -281,11 +284,11 @@ export interface RecommendationAwardEvent {
   adjustedPoints: number
 }
 
-export interface MovieRecommendation {
+export interface Recommendation {
   imdbId: string
   title: string
   year: number | null
-  mediaType: 'movie'
+  mediaType: RecommendationMediaType
   isWatched: boolean
   imdbRating: number
   imdbVotes: number | null
@@ -300,6 +303,8 @@ export interface MovieRecommendation {
   finalScore: number
   awardEvents: RecommendationAwardEvent[]
 }
+
+export type MovieRecommendation = Recommendation
 
 export interface ProviderSettings {
   omdbApiKeyConfigured: boolean

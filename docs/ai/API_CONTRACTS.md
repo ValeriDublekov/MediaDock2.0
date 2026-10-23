@@ -6,7 +6,7 @@ This page is the shared-conventions router for the API in `server/`. Routes are 
 | --- | --- |
 | Catalog, Oscars, Golden Globes, and award recognition | [Catalogs and awards](API_CATALOGS_AND_AWARDS.md) |
 | Sign-in, account administration, favorites, and personal ratings | [Identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md) |
-| Personal movie recommendations | [Identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md) and [recommendation plan](plans/movie-recommendations.md) |
+| Personal movie and series recommendations | [Identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md) and [recommendation plan](plans/movie-recommendations.md) |
 | Health, configuration, operations, ingestion, and jobs | [Operations and jobs](API_OPERATIONS_AND_JOBS.md) |
 
 Catalog IDs, Oscar record IDs, and Golden Globes film IDs belong to their respective source-owned records. Cross-source Favorites state is keyed by IMDb ID, not by one of those local IDs.
@@ -17,7 +17,7 @@ Paged query DTOs accept optional `Page` in `1..1,000,000` and `PageSize` in `1..
 
 `PageResponse<T>` contains `Items`, `Page`, `PageSize`, `TotalCount`, and `TotalPages`. `TotalPages` is zero for an empty result and otherwise the ceiling of `TotalCount / PageSize`. Catalog list responses additionally expose optional year and IMDb-rating bounds; see [catalog and award contracts](API_CATALOGS_AND_AWARDS.md) for their sources and filtering behavior. Recommendation pages expose year bounds from the active user's eligible candidates before recommendation filters are applied.
 
-`GET /api/recommendations` uses the same page envelope, defaults to page `1` and page size `25`, and caps page size at `100`. Optional inclusive `yearFrom`/`yearTo` and repeatable `genres` filters apply before counting and paging; a movie matches when it has any selected genre. Every request also requires `ratingWeight`, `votesWeight`, and `awardsWeight`; each must be in `[0,1]` and their sum must be `1.0`. `GET /api/recommendations/genres` returns distinct genres from all IMDb title rows and uses the recommendation access policy. Recommendation settings and vote recalculation use separate administrator routes; see [identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md) for owner resolution, settings DTOs, and freshness behavior.
+`GET /api/recommendations` uses the same page envelope, defaults to page `1` and page size `25`, and caps page size at `100`. Optional `mediaType` selects `movie` or `series` and defaults to `movie`. Optional inclusive `yearFrom`/`yearTo` and repeatable `genres` filters apply before counting and paging; a title matches when it has any selected genre. Every request also requires `ratingWeight`, `votesWeight`, and `awardsWeight`; each must be in `[0,1]` and their sum must be `1.0`. `GET /api/recommendations/genres?mediaType=...` returns distinct genres for that title type and defaults to `movie`. Recommendation settings and vote recalculation use separate administrator routes; see [identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md) for owner resolution, settings DTOs, and freshness behavior.
 
 ## Errors
 

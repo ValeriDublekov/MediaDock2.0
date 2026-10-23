@@ -105,7 +105,7 @@ public sealed class MovieRecommendationsApiTests
             AddTitle("tt3000006", "Download Only", 7m, year: 2024, genres: ["Action"]);
             AddTitle("tt3000007", "Watch List", 7m, year: 2019, genres: ["Horror"]);
             AddTitle("tt3000008", "Rated Candidate", 7m, year: 2018, genres: ["Mystery"]);
-            AddTitle("tt3000009", "Series Nominee", 7m);
+            AddTitle("tt3000009", "Series Nominee", 7m, "series", genres: ["Drama"]);
             AddTitle("tt3000010", "Linked Series", 8m, "series", genres: ["Animation"]);
             AddTitle("tt3000011", "Pending Candidate", 7m, metadataStatus: "pending");
             AddTitle("tt3000012", "Missing Rating", null);
@@ -173,11 +173,16 @@ public sealed class MovieRecommendationsApiTests
                 Name = "Unmapped Movie Award",
                 CategoryKey = "award_other"
             };
-            db.GoldenGlobeAwards.AddRange(dramaAward, unknownAward);
+            var televisionAward = new GoldenGlobeAward
+            {
+                Name = "Best Television Series - Drama",
+                CategoryKey = "best_television_series_drama"
+            };
+            db.GoldenGlobeAwards.AddRange(dramaAward, unknownAward, televisionAward);
             db.GoldenGlobeNominations.AddRange(
                 CreateGoldenGlobeNomination("recommendation-download-only", "Download Only", "movie", "tt3000006", dramaAward),
                 CreateGoldenGlobeNomination("recommendation-unknown-award", "Unknown Award", "movie", "tt3000015", unknownAward),
-                CreateGoldenGlobeNomination("recommendation-series-nominee", "Series Nominee", "series", "tt3000009", dramaAward),
+                CreateGoldenGlobeNomination("recommendation-series-nominee", "Series Nominee", "series", "tt3000009", televisionAward),
                 CreateGoldenGlobeNomination("recommendation-linked-series", "Linked Series", "movie", "tt3000010", dramaAward),
                 CreateGoldenGlobeNomination("recommendation-unmatched", "Unmatched Nominee", "movie", null, dramaAward));
             await db.SaveChangesAsync();
@@ -275,8 +280,28 @@ public sealed class MovieRecommendationsApiTests
         using var genresResponse = await firstClient.GetAsync("/api/recommendations/genres");
         Assert.Equal(HttpStatusCode.OK, genresResponse.StatusCode);
         Assert.Equal(
-            ["Action", "Animation", "Comedy", "Drama", "Horror", "Mystery"],
+            ["Action", "Comedy", "Drama", "Horror", "Mystery"],
             await genresResponse.Content.ReadFromJsonAsync<string[]>());
+
+        using var seriesGenresResponse = await firstClient.GetAsync("/api/recommendations/genres?mediaType=series");
+        Assert.Equal(HttpStatusCode.OK, seriesGenresResponse.StatusCode);
+        Assert.Equal(
+            ["Animation", "Drama"],
+            await seriesGenresResponse.Content.ReadFromJsonAsync<string[]>());
+
+        using var seriesResponse = await firstClient.GetAsync($"/api/recommendations?{weights}&mediaType=series");
+        Assert.Equal(HttpStatusCode.OK, seriesResponse.StatusCode);
+        var seriesPage = await seriesResponse.Content.ReadFromJsonAsync<PageResponse<RecommendationResponse>>();
+        Assert.NotNull(seriesPage);
+        Assert.Equal(1, seriesPage.TotalCount);
+        var seriesCandidate = Assert.Single(seriesPage.Items);
+        Assert.Equal("tt3000009", seriesCandidate.ImdbId);
+        Assert.Equal("series", seriesCandidate.MediaType);
+        Assert.True(seriesCandidate.PopularityComponent > 0m);
+        Assert.Equal("golden_globes", Assert.Single(seriesCandidate.AwardEvents).AwardSource);
+        using var invalidMediaTypeResponse = await firstClient.GetAsync(
+            $"/api/recommendations?{weights}&mediaType=episode");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidMediaTypeResponse.StatusCode);
 
         using var filteredResponse = await firstClient.GetAsync(
             $"/api/recommendations?{weights}&yearFrom=2021&yearTo=2024&genres=Comedy&genres=Action");
@@ -382,9 +407,26 @@ public sealed class MovieRecommendationsApiTests
         using var markWatchedResponse = await firstClient.SendAsync(markWatchedRequest);
         Assert.Equal(HttpStatusCode.NoContent, markWatchedResponse.StatusCode);
 
+        using var markSeriesWatchedRequest = new HttpRequestMessage(
+            HttpMethod.Post,
+            "/api/recommendations/tt3000009/watched")
+        {
+            Content = JsonContent.Create(new { rating = 8, mediaType = "series" })
+        };
+        markSeriesWatchedRequest.Headers.Add("RequestVerificationToken", requestToken);
+        using var markSeriesWatchedResponse = await firstClient.SendAsync(markSeriesWatchedRequest);
+        Assert.Equal(HttpStatusCode.NoContent, markSeriesWatchedResponse.StatusCode);
+
+        using var refreshedSeriesResponse = await firstClient.GetAsync(
+            $"/api/recommendations?{weights}&mediaType=series");
+        var refreshedSeriesPage = await refreshedSeriesResponse.Content
+            .ReadFromJsonAsync<PageResponse<RecommendationResponse>>();
+        Assert.Equal(0, refreshedSeriesPage?.TotalCount);
+
         using var personalRatingsResponse = await firstClient.GetAsync("/api/personal-ratings");
         var personalRatings = await personalRatingsResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
         Assert.True(personalRatings!.Items.Single(item => item.ImdbId == "tt3000005").IsManuallyAdded);
+        Assert.True(personalRatings.Items.Single(item => item.ImdbId == "tt3000009").IsManuallyAdded);
 
         using var refreshedRecommendationsResponse = await firstClient.GetAsync($"/api/recommendations?{weights}");
         var refreshedRecommendations = await refreshedRecommendationsResponse.Content

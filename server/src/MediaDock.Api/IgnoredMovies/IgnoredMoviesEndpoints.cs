@@ -21,7 +21,7 @@ internal static class IgnoredMoviesEndpoints
             return TypedResults.Ok(await service.GetAsync(currentUser.Id, query, cancellationToken));
         })
             .WithName("GetIgnoredMovies")
-            .WithSummary("List the current user's ignored movies.")
+            .WithSummary("List the current user's ignored titles.")
             .RequireAuthorization(AccessPolicies.OwnerScopedIgnoredMovies)
             .Produces<PageResponse<IgnoredMovieResponse>>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
@@ -38,7 +38,7 @@ internal static class IgnoredMoviesEndpoints
             return TypedResults.Ok(await service.AddAsync(currentUser.Id, request, cancellationToken));
         })
             .WithName("AddIgnoredMovie")
-            .WithSummary("Add an existing IMDb movie to the current user's ignore list.")
+            .WithSummary("Add an existing IMDb movie or series to the current user's ignore list.")
             .RequireAuthorization(AccessPolicies.OwnerScopedIgnoredMovies)
             .Produces<IgnoredMovieResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)
@@ -57,7 +57,7 @@ internal static class IgnoredMoviesEndpoints
             return TypedResults.NoContent();
         })
             .WithName("DeleteIgnoredMovie")
-            .WithSummary("Remove a movie from the current user's ignore list.")
+            .WithSummary("Remove a title from the current user's ignore list.")
             .RequireAuthorization(AccessPolicies.OwnerScopedIgnoredMovies)
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status403Forbidden);

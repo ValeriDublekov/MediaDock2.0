@@ -29,7 +29,7 @@ namespace MediaDock.IntegrationTests;
 public sealed class UserIgnoredMoviesApiTests
 {
     [Fact]
-    public async Task IgnoreListIsOwnerScopedRequiresAnExistingMovieAndFiltersEveryMovieList()
+    public async Task IgnoreListIsOwnerScopedRequiresAnExistingMovieOrSeriesAndFiltersMovieLists()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_user_ignored_movies_api_test").Build();
         await postgres.StartAsync();
@@ -109,7 +109,11 @@ public sealed class UserIgnoredMoviesApiTests
         Assert.Equal(HttpStatusCode.NotFound, missingMovieResponse.StatusCode);
         using var seriesResponse = await ownerClient.PostAsJsonAsync(
             "/api/ignored-movies", new { imdbId = "tt4100003" });
-        Assert.Equal(HttpStatusCode.NotFound, seriesResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, seriesResponse.StatusCode);
+        var ignoredSeries = await seriesResponse.Content.ReadFromJsonAsync<IgnoredMovieResponse>();
+        Assert.NotNull(ignoredSeries);
+        Assert.Equal("tt4100003", ignoredSeries.ImdbId);
+        Assert.Equal("series", ignoredSeries.MediaType);
 
         using var addResponse = await ownerClient.PostAsJsonAsync(
             "/api/ignored-movies", new { imdbId = "TT4100001" });
@@ -124,8 +128,9 @@ public sealed class UserIgnoredMoviesApiTests
         Assert.Equal(HttpStatusCode.OK, duplicateResponse.StatusCode);
         var ownerList = await ownerClient.GetFromJsonAsync<PageResponse<IgnoredMovieResponse>>("/api/ignored-movies");
         Assert.NotNull(ownerList);
-        Assert.Equal(1, ownerList.TotalCount);
-        Assert.Single(ownerList.Items);
+        Assert.Equal(2, ownerList.TotalCount);
+        Assert.Contains(ownerList.Items, item => item.ImdbId == "tt4100001");
+        Assert.Contains(ownerList.Items, item => item.ImdbId == "tt4100003");
 
         var otherList = await otherClient.GetFromJsonAsync<PageResponse<IgnoredMovieResponse>>("/api/ignored-movies");
         Assert.NotNull(otherList);
@@ -162,10 +167,14 @@ public sealed class UserIgnoredMoviesApiTests
 
         using var otherDeleteResponse = await otherClient.DeleteAsync("/api/ignored-movies/tt4100001");
         Assert.Equal(HttpStatusCode.NoContent, otherDeleteResponse.StatusCode);
-        Assert.Equal(1, (await ownerClient.GetFromJsonAsync<PageResponse<IgnoredMovieResponse>>("/api/ignored-movies"))!.TotalCount);
+        Assert.Equal(2, (await ownerClient.GetFromJsonAsync<PageResponse<IgnoredMovieResponse>>("/api/ignored-movies"))!.TotalCount);
 
         using var deleteResponse = await ownerClient.DeleteAsync("/api/ignored-movies/tt4100001");
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+        Assert.Equal(1, (await ownerClient.GetFromJsonAsync<PageResponse<IgnoredMovieResponse>>("/api/ignored-movies"))!.TotalCount);
+
+        using var deleteSeriesResponse = await ownerClient.DeleteAsync("/api/ignored-movies/tt4100003");
+        Assert.Equal(HttpStatusCode.NoContent, deleteSeriesResponse.StatusCode);
         Assert.Equal(0, (await ownerClient.GetFromJsonAsync<PageResponse<IgnoredMovieResponse>>("/api/ignored-movies"))!.TotalCount);
 
         await using var foreignKeyDb = new MediaDockDbContext(options);

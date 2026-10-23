@@ -6,19 +6,19 @@ export function IgnoredMoviesView() {
   const { available, movies, pending, loading, error, remove, retry } = useIgnoredMovies()
   const items = Object.values(movies).sort((left, right) => left.title.localeCompare(right.title))
 
-  return <section aria-label="Ignored movies" className="media-view ignored-movies-view">
+  return <section aria-label="Ignored titles" className="media-view ignored-movies-view">
     <div className="section-toolbar">
-      <span className="result-count">{available && !error ? `${items.length} movies` : 'Ignored movies'}</span>
+      <span className="result-count">{available && !error ? `${items.length} titles` : 'Ignored titles'}</span>
     </div>
-    {!available && <EmptyState title="Sign in to view ignored movies" message="An active linked account is required." />}
+    {!available && <EmptyState title="Sign in to view ignored titles" message="An active linked account is required." />}
     {available && loading && <LoadingState label="Loading ignored movies" />}
     {available && !loading && error && <ErrorState message={error} onRetry={retry} />}
     {available && !loading && !error && items.length === 0 && (
-      <EmptyState title="No ignored movies" message="Your list is empty." />
+      <EmptyState title="No ignored titles" message="Your list is empty." />
     )}
     {available && !loading && !error && items.length > 0 && <div className="table-wrap">
       <table className="data-table ignored-movies-table">
-        <thead><tr><th scope="col">MOVIE</th><th scope="col">IMDB</th><th scope="col">RATING</th><th scope="col">ADDED</th><th scope="col">ACTION</th></tr></thead>
+        <thead><tr><th scope="col">TITLE</th><th scope="col">IMDB</th><th scope="col">RATING</th><th scope="col">ADDED</th><th scope="col">ACTION</th></tr></thead>
         <tbody>{items.map((movie) => <tr key={movie.imdbId}>
           <td><div className="title-cell">
             <Poster className="poster-small" src={movie.posterUrl} title={movie.title} />

@@ -12,6 +12,7 @@ internal static class MovieRecommendationsEndpoints
     public static WebApplication MapMovieRecommendationsEndpoints(this WebApplication app)
     {
         app.MapGet("/api/recommendations/genres", async Task<Ok<IReadOnlyList<string>>> (
+            [AsParameters] RecommendationMediaTypeQuery query,
             ClaimsPrincipal principal,
             CurrentUserContext currentUserContext,
             MovieRecommendationsApiService service,
@@ -19,10 +20,10 @@ internal static class MovieRecommendationsEndpoints
         {
             _ = await currentUserContext.ResolveAsync(principal, cancellationToken)
                 ?? throw new MediaDock.Api.Middleware.ApiForbiddenException("An active linked user is required.");
-            return TypedResults.Ok(await service.GetGenresAsync(cancellationToken));
+            return TypedResults.Ok(await service.GetGenresAsync(query.MediaType, cancellationToken));
         })
             .WithName("GetRecommendationGenres")
-            .WithSummary("List IMDb genres for recommendation filters.")
+            .WithSummary("List IMDb genres for the selected recommendation title type.")
             .RequireAuthorization(AccessPolicies.OwnerScopedRecommendations)
             .Produces<IReadOnlyList<string>>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
@@ -69,6 +70,7 @@ internal static class MovieRecommendationsEndpoints
             var markedWatched = await service.MarkWatchedAsync(
                 currentUser.Id,
                 imdbId,
+                request.MediaType,
                 request.Rating,
                 cancellationToken);
             if (!markedWatched)

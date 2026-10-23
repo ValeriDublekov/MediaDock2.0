@@ -30,6 +30,7 @@ import {
   getOscarFilms,
   getRecommendations,
   getRecommendationGenres,
+  markRecommendationWatched,
   getRecommendationSettings,
   getPersonalRatings,
   getPersonalRatingsEnrichmentJob,
@@ -49,7 +50,7 @@ import {
   updateProviderSettings,
   updateFavorite,
 } from './client'
-import type { CatalogTitle, GoldenGlobeFilm, MovieRecommendation, OscarFilm, PageResponse, PersonalRating, ProviderSettings, ProviderSettingsInput, RecommendationSettings, RecommendationSettingsInput, VoteWeightRecalculationResponse } from './types'
+import type { CatalogTitle, GoldenGlobeFilm, Recommendation, OscarFilm, PageResponse, PersonalRating, ProviderSettings, ProviderSettingsInput, RecommendationSettings, RecommendationSettingsInput, VoteWeightRecalculationResponse } from './types'
 
 function response(status: number, value: unknown): Response {
   return {
@@ -252,7 +253,7 @@ describe('typed API client', () => {
   })
 
   it('sends required recommendation coefficients with the requested page', async () => {
-    const item: MovieRecommendation = {
+    const item: Recommendation = {
       imdbId: 'tt12345678',
       title: 'Quiet River',
       year: 2004,
@@ -271,10 +272,11 @@ describe('typed API client', () => {
       finalScore: 6.675,
       awardEvents: [],
     }
-    const page: PageResponse<MovieRecommendation> = { items: [item], page: 2, pageSize: 25, totalCount: 26, totalPages: 2 }
+    const page: PageResponse<Recommendation> = { items: [item], page: 2, pageSize: 25, totalCount: 26, totalPages: 2 }
     const stub = fetchStub(response(200, page))
 
     await getRecommendations({
+      mediaType: 'series',
       page: 2,
       pageSize: 25,
       ratingWeight: 0.5,
@@ -292,6 +294,7 @@ describe('typed API client', () => {
     expect(requestUrl.searchParams.get('ratingWeight')).toBe('0.5')
     expect(requestUrl.searchParams.get('votesWeight')).toBe('0.25')
     expect(requestUrl.searchParams.get('awardsWeight')).toBe('0.25')
+    expect(requestUrl.searchParams.get('mediaType')).toBe('series')
     expect(requestUrl.searchParams.get('yearFrom')).toBe('2000')
     expect(requestUrl.searchParams.get('yearTo')).toBe('2020')
     expect(requestUrl.searchParams.getAll('genres')).toEqual(['Drama', 'Comedy'])
@@ -300,9 +303,24 @@ describe('typed API client', () => {
   it('loads IMDb genres for recommendation filters', async () => {
     const stub = fetchStub(response(200, ['Comedy', 'Drama']))
 
-    await getRecommendationGenres(stub.fetcher)
+    await getRecommendationGenres('series', stub.fetcher)
 
-    expect(String(stub.calls[0]?.input)).toBe('/api/recommendations/genres')
+    expect(String(stub.calls[0]?.input)).toBe('/api/recommendations/genres?mediaType=series')
+  })
+
+  it('includes the recommendation media type when marking a title watched', async () => {
+    const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = []
+    const fetcher: typeof fetch = async (input, init) => {
+      calls.push({ input, init })
+      return String(input) === '/api/auth/antiforgery'
+        ? response(200, { requestToken: 'recommendation-csrf' })
+        : response(204, undefined)
+    }
+
+    await markRecommendationWatched('tt12345678', 8, 'series', fetcher)
+
+    expect(String(calls[1]?.input)).toBe('/api/recommendations/tt12345678/watched')
+    expect(JSON.parse(String(calls[1]?.init?.body))).toEqual({ rating: 8, mediaType: 'series' })
   })
 
   it('protects personal ratings enrichment enqueue with an antiforgery token', async () => {

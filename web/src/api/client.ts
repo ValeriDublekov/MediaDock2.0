@@ -34,11 +34,12 @@ import type {
   ParseLogQuery,
   ProviderSettings,
   ProviderSettingsInput,
+  Recommendation,
+  RecommendationMediaType,
   RecommendationQuery,
   RecommendationSettings,
   RecommendationSettingsInput,
   VoteWeightRecalculationResult,
-  MovieRecommendation,
   ScanRun,
   ScanRunQuery,
   Settings,
@@ -294,18 +295,23 @@ export function getRecommendations(
   query: RecommendationQuery,
   fetcher?: typeof fetch,
 ) {
-  return requestJson<PageResponse<MovieRecommendation>>(withQuery('/recommendations', query, ['genres']), {}, fetcher)
+  return requestJson<PageResponse<Recommendation>>(withQuery('/recommendations', query, ['genres']), {}, fetcher)
 }
 
-export function getRecommendationGenres(fetcher?: typeof fetch) {
-  return requestJson<string[]>('/recommendations/genres', {}, fetcher)
+export function getRecommendationGenres(mediaType: RecommendationMediaType, fetcher?: typeof fetch) {
+  return requestJson<string[]>(withQuery('/recommendations/genres', { mediaType }), {}, fetcher)
 }
 
-export async function markRecommendationWatched(imdbId: string, rating: number, fetcher?: typeof fetch) {
+export async function markRecommendationWatched(
+  imdbId: string,
+  rating: number,
+  mediaType: RecommendationMediaType,
+  fetcher?: typeof fetch,
+) {
   const requestToken = await getAuthRequestToken(fetcher)
   return requestJson<void>(`/recommendations/${encodeURIComponent(imdbId)}/watched`, {
     method: 'POST',
-    body: JSON.stringify({ rating }),
+    body: JSON.stringify({ rating, mediaType }),
     headers: { RequestVerificationToken: requestToken },
   }, fetcher)
 }

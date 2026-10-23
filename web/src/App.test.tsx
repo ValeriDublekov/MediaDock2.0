@@ -52,7 +52,9 @@ vi.mock('./features/recommendations/RecommendationSettingsView', () => ({
   RecommendationSettingsView: () => <div>Recommendation settings route content</div>,
 }))
 vi.mock('./features/recommendations/RecommendationsView', () => ({
-  RecommendationsView: () => <div>Recommendations route content</div>,
+  RecommendationsView: ({ mediaType }: { mediaType: string }) => (
+    <div data-media-type={mediaType} data-testid="recommendations-route-content">Recommendations route content</div>
+  ),
 }))
 vi.mock('./features/favorites/FavoriteContext', () => ({
   FavoriteProvider: ({ children }: { children: ReactNode }) => children,
@@ -193,7 +195,7 @@ describe('App routes', () => {
     expect(await screen.findByText('Ratings route content')).toBeTruthy()
     expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Personal IMDb ratings')
     expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Favorites')
-    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Ignored movies')
+    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Ignored titles')
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Users' })).toBeNull()
   })
@@ -204,9 +206,22 @@ describe('App routes', () => {
     renderAt('/account/recommendations')
 
     expect(await screen.findByText('Recommendations route content')).toBeTruthy()
-    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Recommendations')
+    expect(screen.getByTestId('recommendations-route-content').getAttribute('data-media-type')).toBe('movie')
+    expect(screen.getByRole('link', { name: 'Movie recommendations' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: 'Series recommendations' })).toBeTruthy()
     expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Personal IMDb ratings')
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
+  })
+
+  it('opens series recommendations from their own personal navigation item', async () => {
+    authMock.session = activeUserSession
+
+    renderAt('/account/recommendations/series')
+
+    expect(await screen.findByText('Recommendations route content')).toBeTruthy()
+    expect(screen.getByTestId('recommendations-route-content').getAttribute('data-media-type')).toBe('series')
+    expect(screen.getByRole('link', { name: 'Series recommendations' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: 'Movie recommendations' }).getAttribute('aria-current')).toBeNull()
   })
 
   it('shows the ignore list to active users', async () => {
@@ -215,7 +230,7 @@ describe('App routes', () => {
     renderAt('/account/ignored-movies')
 
     expect(await screen.findByText('Ignored movies route content')).toBeTruthy()
-    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Ignored movies')
+    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Ignored titles')
   })
 
   it('shows catalog delete permission only to active administrators', async () => {

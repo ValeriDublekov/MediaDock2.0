@@ -15,6 +15,12 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
         RecommendationsQuery query,
         CancellationToken cancellationToken)
     {
+        var mediaType = query.MediaType ?? RecommendationMediaTypes.Movie;
+        if (!RecommendationMediaTypes.IsSupported(mediaType))
+        {
+            throw ValidationError("mediaType", "MediaType must be movie or series.");
+        }
+
         if (query.RatingWeight is not decimal ratingWeight
             || query.VotesWeight is not decimal votesWeight
             || query.AwardsWeight is not decimal awardsWeight)
@@ -45,11 +51,12 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             IsolationLevel.RepeatableRead,
             cancellationToken);
 
-        var allCandidates = await GetEligibleCandidatesQuery(userId, query.ExcludeWatched ?? true)
+        var allCandidates = await GetEligibleCandidatesQuery(userId, mediaType, query.ExcludeWatched ?? true)
             .Select(title => new CandidateTitle(
                 title.ImdbId,
                 title.TitleText!.Trim(),
                 title.Year,
+                title.MediaType!,
                 title.ImdbRating!.Value,
                 title.ImdbVotes,
                 title.NormalizedVoteWeight,
@@ -89,10 +96,11 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
         var ratingsByImdbId = ratingRows.ToDictionary(rating => rating.ImdbId);
         var ratedOscarMovies = await dbContext.OscarNominations
             .AsNoTracking()
-            .Where(nomination => nomination.OscarMovie != null
+            .Where(nomination => mediaType == RecommendationMediaTypes.Movie
+                && nomination.OscarMovie != null
                 && nomination.OscarMovie.ImdbId != null
                 && nomination.OscarMovie.ImdbTitle != null
-                && nomination.OscarMovie.ImdbTitle.MediaType == "movie"
+                && nomination.OscarMovie.ImdbTitle.MediaType == mediaType
                 && dbContext.PersonalRatings.Any(rating =>
                     rating.UserId == userId && rating.ImdbId == nomination.OscarMovie.ImdbId))
             .Select(nomination => new RatedWinnerReference(
@@ -103,10 +111,10 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
         var ratedGoldenGlobeMovies = await dbContext.GoldenGlobeNominations
             .AsNoTracking()
             .Where(nomination => nomination.GoldenGlobeTitle != null
-                && nomination.GoldenGlobeTitle.NomineeType == "movie"
+                && nomination.GoldenGlobeTitle.NomineeType == mediaType
                 && nomination.GoldenGlobeTitle.ImdbId != null
                 && nomination.GoldenGlobeTitle.ImdbTitle != null
-                && nomination.GoldenGlobeTitle.ImdbTitle.MediaType == "movie"
+                && nomination.GoldenGlobeTitle.ImdbTitle.MediaType == mediaType
                 && dbContext.PersonalRatings.Any(rating =>
                     rating.UserId == userId && rating.ImdbId == nomination.GoldenGlobeTitle.ImdbId))
             .Select(nomination => new RatedWinnerReference(
@@ -129,7 +137,7 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             .SingleAsync(settings => settings.Id == 1, cancellationToken);
         var voteInputs = await dbContext.ImdbTitles
             .AsNoTracking()
-            .Where(title => title.MediaType == "movie")
+            .Where(title => title.MediaType == mediaType)
             .Select(title => new MovieVoteNormalizationInput(title.ImdbId, title.Year, title.ImdbVotes))
             .ToListAsync(cancellationToken);
         var periodDataByImdbId = MovieVoteNormalizer.Normalize(voteInputs, recommendationSettings.MedianPeriodYears)
@@ -145,7 +153,8 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
         var candidateIds = candidates.Select(candidate => candidate.ImdbId).ToArray();
         var oscarEvents = await dbContext.OscarNominations
             .AsNoTracking()
-            .Where(nomination => nomination.OscarMovie != null
+            .Where(nomination => mediaType == RecommendationMediaTypes.Movie
+                && nomination.OscarMovie != null
                 && nomination.OscarMovie.ImdbId != null
                 && candidateIds.Contains(nomination.OscarMovie.ImdbId))
             .Select(nomination => new AwardEventReference(
@@ -159,10 +168,10 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
         var goldenGlobeEvents = await dbContext.GoldenGlobeNominations
             .AsNoTracking()
             .Where(nomination => nomination.GoldenGlobeTitle != null
-                && nomination.GoldenGlobeTitle.NomineeType == "movie"
+                && nomination.GoldenGlobeTitle.NomineeType == mediaType
                 && nomination.GoldenGlobeTitle.ImdbId != null
                 && nomination.GoldenGlobeTitle.ImdbTitle != null
-                && nomination.GoldenGlobeTitle.ImdbTitle.MediaType == "movie"
+                && nomination.GoldenGlobeTitle.ImdbTitle.MediaType == mediaType
                 && candidateIds.Contains(nomination.GoldenGlobeTitle.ImdbId))
             .Select(nomination => new AwardEventReference(
                 nomination.GoldenGlobeTitle!.ImdbId!,
@@ -202,13 +211,16 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                 var periodMedianVotes = periodDataByImdbId.TryGetValue(candidate.ImdbId, out var periodData)
                     ? periodData.PeriodMedianVotes
                     : MovieRecommendationScorer.FallbackPeriodMedianVotes;
+                var normalizedVoteWeight = mediaType == RecommendationMediaTypes.Movie
+                    ? candidate.NormalizedVoteWeight
+                    : periodData?.NormalizedVoteWeight ?? candidate.NormalizedVoteWeight;
                 var scoringCandidate = new MovieRecommendationCandidate(
                     candidate.ImdbId,
                     candidate.Title,
                     candidate.Year,
                     candidate.ImdbRating,
                     candidate.ImdbVotes,
-                    candidate.NormalizedVoteWeight,
+                    normalizedVoteWeight,
                     candidate.PosterUrl,
                     candidate.Genres,
                     awardEvents,
@@ -223,7 +235,7 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                     candidate.ImdbId,
                     candidate.Title,
                     candidate.Year,
-                    "movie",
+                    candidate.MediaType,
                     ratingsByImdbId.ContainsKey(candidate.ImdbId),
                     candidate.ImdbRating,
                     candidate.ImdbVotes,
@@ -265,9 +277,15 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
     public async Task<bool> MarkWatchedAsync(
         long userId,
         string imdbId,
+        string mediaType,
         int rating,
         CancellationToken cancellationToken)
     {
+        if (!RecommendationMediaTypes.IsSupported(mediaType))
+        {
+            throw ValidationError("mediaType", "MediaType must be movie or series.");
+        }
+
         if (rating is < 1 or > 10)
         {
             throw ValidationError("rating", "Rating must be between 1 and 10.");
@@ -283,7 +301,7 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             return existingRating.IsManuallyAdded && existingRating.Rating == rating;
         }
 
-        var isEligible = await GetEligibleCandidatesQuery(userId)
+        var isEligible = await GetEligibleCandidatesQuery(userId, mediaType)
             .AnyAsync(title => title.ImdbId == imdbId, cancellationToken);
         if (!isEligible)
         {
@@ -302,20 +320,34 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
         return true;
     }
 
-    public async Task<IReadOnlyList<string>> GetGenresAsync(CancellationToken cancellationToken) =>
-        await dbContext.ImdbTitles
+    public async Task<IReadOnlyList<string>> GetGenresAsync(
+        string? mediaType,
+        CancellationToken cancellationToken)
+    {
+        mediaType ??= RecommendationMediaTypes.Movie;
+        if (!RecommendationMediaTypes.IsSupported(mediaType))
+        {
+            throw ValidationError("mediaType", "MediaType must be movie or series.");
+        }
+
+        return await dbContext.ImdbTitles
             .AsNoTracking()
+            .Where(title => title.MediaType == mediaType)
             .SelectMany(title => title.Genres)
             .Where(genre => genre != string.Empty)
             .Distinct()
             .OrderBy(genre => genre)
             .ToListAsync(cancellationToken);
+    }
 
-    private IQueryable<ImdbTitle> GetEligibleCandidatesQuery(long userId, bool excludeWatched = true) =>
+    private IQueryable<ImdbTitle> GetEligibleCandidatesQuery(
+        long userId,
+        string mediaType,
+        bool excludeWatched = true) =>
         dbContext.ImdbTitles
             .AsNoTracking()
             .Where(title => title.MetadataStatus == "enriched"
-                && title.MediaType == "movie"
+                && title.MediaType == mediaType
                 && title.TitleText != null
                 && title.TitleText.Trim() != string.Empty
                 && title.ImdbRating.HasValue
@@ -325,14 +357,15 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                     ignored.UserId == userId && ignored.ImdbId == title.ImdbId)
                 && !dbContext.ImdbFavoriteMovies.Any(favorite =>
                     favorite.UserId == userId && favorite.ImdbId == title.ImdbId && favorite.ToWatch)
-                && (dbContext.OscarNominations.Any(nomination =>
-                        nomination.OscarMovie != null && nomination.OscarMovie.ImdbId == title.ImdbId)
+                && ((mediaType == RecommendationMediaTypes.Movie
+                        && dbContext.OscarNominations.Any(nomination =>
+                            nomination.OscarMovie != null && nomination.OscarMovie.ImdbId == title.ImdbId))
                     || dbContext.GoldenGlobeNominations.Any(nomination =>
                         nomination.GoldenGlobeTitle != null
-                        && nomination.GoldenGlobeTitle.NomineeType == "movie"
+                        && nomination.GoldenGlobeTitle.NomineeType == mediaType
                         && nomination.GoldenGlobeTitle.ImdbId == title.ImdbId
                         && nomination.GoldenGlobeTitle.ImdbTitle != null
-                        && nomination.GoldenGlobeTitle.ImdbTitle.MediaType == "movie")));
+                        && nomination.GoldenGlobeTitle.ImdbTitle.MediaType == mediaType)));
 
     private static PageResponse<RecommendationResponse> CreatePage(
         IReadOnlyList<RecommendationResponse> items,
@@ -349,6 +382,7 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
         string ImdbId,
         string Title,
         int? Year,
+        string MediaType,
         decimal ImdbRating,
         long? ImdbVotes,
         double NormalizedVoteWeight,

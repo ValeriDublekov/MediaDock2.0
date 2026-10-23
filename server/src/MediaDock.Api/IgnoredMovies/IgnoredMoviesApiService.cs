@@ -44,12 +44,12 @@ internal sealed class IgnoredMoviesApiService(MediaDockDbContext dbContext)
             INSERT INTO user_ignored_movies (user_id, imdb_id, created_at)
             SELECT {userId}, imdb_id, {now}
             FROM imdb_titles
-            WHERE imdb_id = {imdbId} AND media_type = 'movie'
+            WHERE imdb_id = {imdbId} AND media_type IN ('movie', 'series')
             ON CONFLICT (user_id, imdb_id) DO NOTHING
             """, cancellationToken);
 
         return await GetOneAsync(userId, imdbId, cancellationToken)
-            ?? throw new ApiNotFoundException("IMDb movie not found.");
+            ?? throw new ApiNotFoundException("IMDb movie or series not found.");
     }
 
     public Task<int> DeleteAsync(long userId, string imdbId, CancellationToken cancellationToken) =>

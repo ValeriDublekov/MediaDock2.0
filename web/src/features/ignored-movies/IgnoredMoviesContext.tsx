@@ -73,7 +73,7 @@ export function IgnoredMoviesProvider({ children, accountKey }: { children: Reac
       setMovies((current) => ({ ...current, [movie.imdbId]: movie }))
       setRevision((current) => current + 1)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not add this movie to the ignore list.')
+      setError(reason instanceof Error ? reason.message : 'Could not add this title to the ignore list.')
     } finally {
       setPending(null)
     }
@@ -92,7 +92,7 @@ export function IgnoredMoviesProvider({ children, accountKey }: { children: Reac
       })
       setRevision((current) => current + 1)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not remove this movie from the ignore list.')
+      setError(reason instanceof Error ? reason.message : 'Could not remove this title from the ignore list.')
     } finally {
       setPending(null)
     }

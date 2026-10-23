@@ -1,7 +1,7 @@
 import { useCallback, useState, type ReactNode } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { getCurrentSession, requestRegistration } from './api/client'
-import type { AuthDiagnostic, CurrentSession } from './api/types'
+import type { AuthDiagnostic, CurrentSession, RecommendationMediaType } from './api/types'
 import { CatalogView } from './features/catalog/CatalogView'
 import { HistoryView } from './features/history/HistoryView'
 import { OscarCatalogView } from './features/oscar/OscarCatalogView'
@@ -34,6 +34,11 @@ const administrationPages = [
   { path: '/configuration/omdb', label: 'OMDb provider', description: 'Configure provider credentials and shared request limits.' },
   { path: '/configuration/users', label: 'Users', description: 'Review registration requests and manage account status.' },
   { path: '/history', label: 'Scan history', description: 'Review completed scans and individual parser decisions.' },
+]
+
+const recommendationPages: { path: string; label: string; mediaType: RecommendationMediaType }[] = [
+  { path: '/account/recommendations/movies', label: 'Movie recommendations', mediaType: 'movie' },
+  { path: '/account/recommendations/series', label: 'Series recommendations', mediaType: 'series' },
 ]
 
 const sectionContent: Record<Section, { eyebrow: string; title: string; description: string }> = {
@@ -93,6 +98,24 @@ function ActiveAccountArea({ isActiveAccount, children, title, message }: {
   return isActiveAccount
     ? children
     : <RouteAccessRequired message={message} title={title} />
+}
+
+function PersonalRecommendationsRoute({
+  accountKey,
+  isActiveAccount,
+  mediaType,
+}: {
+  accountKey: string | null
+  isActiveAccount: boolean
+  mediaType: RecommendationMediaType
+}) {
+  return <ActiveAccountArea
+    isActiveAccount={isActiveAccount}
+    message="Sign in with an active linked account to view personal recommendations."
+    title="Recommendations unavailable"
+  >
+    <RecommendationsView key={`${accountKey ?? 'no-active-account'}-${mediaType}`} mediaType={mediaType} />
+  </ActiveAccountArea>
 }
 
 function RegistrationGate({
@@ -188,14 +211,17 @@ function AppContent() {
       ? 'account'
       : sections.find((item) => item.path === location.pathname)?.id ?? 'catalog'
   const administrationPage = isAdmin ? administrationPages.find((page) => page.path === location.pathname) : undefined
+  const recommendationPage = recommendationPages.find((page) => page.path === location.pathname)
   const requestedScanRunId = Number(searchParams.get('scanRunId'))
   const historyScanRunId = Number.isSafeInteger(requestedScanRunId) && requestedScanRunId > 0
     ? requestedScanRunId
     : null
   const content = sectionContent[section]
   const pageContent = location.pathname === '/account/ignored-movies'
-    ? { eyebrow: 'PERSONAL', title: 'Ignored movies', description: '' }
-    : content
+    ? { eyebrow: 'PERSONAL', title: 'Ignored titles', description: '' }
+    : recommendationPage
+      ? { eyebrow: 'PERSONAL', title: recommendationPage.label, description: '' }
+      : content
   const title = administrationPage?.label ?? pageContent.title
   const description = administrationPage?.description ?? pageContent.description
   const registrationSession = session?.authenticated && session.accountState === 'unmatched' ? session : null
@@ -244,15 +270,16 @@ function AppContent() {
                 end
                 to="/account/ignored-movies"
               >
-                Ignored movies
+                Ignored titles
               </NavLink>
-              <NavLink
+              {recommendationPages.map((page) => <NavLink
                 className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
                 end
-                to="/account/recommendations"
+                key={page.path}
+                to={page.path}
               >
-                Recommendations
-              </NavLink>
+                {page.label}
+              </NavLink>)}
               <NavLink
                 className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
                 end
@@ -346,7 +373,7 @@ function AppContent() {
             <Route path="/account/ignored-movies" element={(
               <ActiveAccountArea
                 isActiveAccount={isActiveAccount}
-                message="Sign in with an active linked account to manage ignored movies."
+                message="Sign in with an active linked account to manage ignored titles."
                 title="Ignore list unavailable"
               >
                 <IgnoredMoviesView />
@@ -354,15 +381,16 @@ function AppContent() {
             )} />
             <Route path="/configuration/personal-ratings" element={<Navigate replace to="/account/personal-ratings" />} />
             <Route path="/account" element={<Navigate replace to="/account/personal-ratings" />} />
-            <Route path="/account/recommendations" element={(
-              <ActiveAccountArea
-                isActiveAccount={isActiveAccount}
-                message="Sign in with an active linked account to view personal recommendations."
-                title="Recommendations unavailable"
-              >
-                <RecommendationsView key={accountKey ?? 'no-active-account'} />
-              </ActiveAccountArea>
-            )} />
+            <Route path="/account/recommendations" element={<Navigate replace to="/account/recommendations/movies" />} />
+            {recommendationPages.map((page) => <Route
+              element={<PersonalRecommendationsRoute
+                accountKey={accountKey}
+                isActiveAccount={Boolean(isActiveAccount)}
+                mediaType={page.mediaType}
+              />}
+              key={page.path}
+              path={page.path}
+            />)}
             <Route path="/account/personal-ratings" element={(
               <ActiveAccountArea
                 isActiveAccount={isActiveAccount}

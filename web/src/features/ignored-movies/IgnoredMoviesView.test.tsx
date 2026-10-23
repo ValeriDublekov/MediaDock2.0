@@ -22,6 +22,13 @@ const movie: IgnoredMovie = {
   createdAt: '2026-10-23T12:00:00Z',
 }
 
+const series: IgnoredMovie = {
+  ...movie,
+  imdbId: 'tt87654321',
+  title: 'Quiet Rivers',
+  mediaType: 'series',
+}
+
 const emptyPage: PageResponse<IgnoredMovie> = {
   items: [],
   page: 1,
@@ -52,17 +59,30 @@ describe('IgnoredMoviesView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(removeIgnoredMovie).toHaveBeenCalledWith(movie.imdbId))
-    expect(await screen.findByText('No ignored movies')).toBeTruthy()
+    expect(await screen.findByText('No ignored titles')).toBeTruthy()
     expect(await screen.findByRole('button', { name: 'Ignore movie' })).toBeTruthy()
   })
 
-  it('does not offer ignore actions to anonymous users or for non-movies', async () => {
+  it('offers ignore actions for both movies and series', async () => {
+    render(<IgnoredMoviesProvider accountKey="issuer:subject">
+      <IgnoredMovieControl imdbId={movie.imdbId} mediaType="movie" />
+      <IgnoredMovieControl imdbId={series.imdbId} mediaType="series" />
+    </IgnoredMoviesProvider>)
+
+    expect(await screen.findByRole('button', { name: 'Ignore movie' })).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: 'Ignore series' }))
+    await waitFor(() => expect(addIgnoredMovie).toHaveBeenCalledWith(series.imdbId))
+  })
+
+  it('does not offer ignore actions to anonymous users or unsupported media types', async () => {
     const view = render(<IgnoredMoviesProvider accountKey={null}>
       <IgnoredMovieControl imdbId={movie.imdbId} mediaType="movie" />
       <IgnoredMovieControl imdbId={movie.imdbId} mediaType="series" />
+      <IgnoredMovieControl imdbId={movie.imdbId} mediaType="episode" />
     </IgnoredMoviesProvider>)
 
     expect(view.queryByRole('button', { name: 'Ignore movie' })).toBeNull()
+    expect(view.queryByRole('button', { name: 'Ignore series' })).toBeNull()
     expect(getIgnoredMovies).not.toHaveBeenCalled()
   })
 })

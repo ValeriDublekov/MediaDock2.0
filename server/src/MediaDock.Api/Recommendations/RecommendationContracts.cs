@@ -2,8 +2,20 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MediaDock.Api.Recommendations;
 
+internal static class RecommendationMediaTypes
+{
+    public const string Movie = "movie";
+    public const string Series = "series";
+    public const string Pattern = "^(movie|series)$";
+
+    public static bool IsSupported(string? mediaType) => mediaType is Movie or Series;
+}
+
 public sealed record RecommendationsQuery
 {
+    [RegularExpression(RecommendationMediaTypes.Pattern)]
+    public string? MediaType { get; init; }
+
     [Range(1, 1_000_000)]
     public int? Page { get; init; }
 
@@ -33,7 +45,19 @@ public sealed record RecommendationsQuery
     public decimal? AwardsWeight { get; init; }
 }
 
-public sealed record MarkRecommendationWatchedRequest(int Rating);
+public sealed record RecommendationMediaTypeQuery
+{
+    [RegularExpression(RecommendationMediaTypes.Pattern)]
+    public string? MediaType { get; init; }
+}
+
+public sealed record MarkRecommendationWatchedRequest
+{
+    public int Rating { get; init; }
+
+    [RegularExpression(RecommendationMediaTypes.Pattern)]
+    public string MediaType { get; init; } = RecommendationMediaTypes.Movie;
+}
 
 public sealed record RecommendationResponse(
     string ImdbId,

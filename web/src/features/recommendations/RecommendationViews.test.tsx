@@ -8,7 +8,7 @@ import {
   recalculateRecommendationVoteWeights,
   updateRecommendationSettings,
 } from '../../api/client'
-import type { MovieRecommendation, PageResponse, RecommendationSettings, VoteWeightRecalculationResponse } from '../../api/types'
+import type { Recommendation, PageResponse, RecommendationSettings, VoteWeightRecalculationResponse } from '../../api/types'
 import { RecommendationsView } from './RecommendationsView'
 import { RecommendationSettingsView } from './RecommendationSettingsView'
 
@@ -33,7 +33,7 @@ const voteRecalculation: VoteWeightRecalculationResponse = {
   missingVoteCount: 8,
 }
 
-function recommendation(overrides: Partial<MovieRecommendation> = {}): MovieRecommendation {
+function recommendation(overrides: Partial<Recommendation> = {}): Recommendation {
   return {
     imdbId: 'tt12345678',
     title: 'Quiet River',
@@ -67,12 +67,12 @@ function recommendation(overrides: Partial<MovieRecommendation> = {}): MovieReco
 }
 
 function recommendationPage(
-  items: MovieRecommendation[],
+  items: Recommendation[],
   page = 1,
   totalCount = items.length,
   totalPages = totalCount === 0 ? 0 : 1,
-  yearBounds?: PageResponse<MovieRecommendation>['yearBounds'],
-): PageResponse<MovieRecommendation> {
+  yearBounds?: PageResponse<Recommendation>['yearBounds'],
+): PageResponse<Recommendation> {
   return { items, page, pageSize: 25, totalCount, totalPages, ...(yearBounds ? { yearBounds } : {}) }
 }
 
@@ -238,7 +238,7 @@ describe('RecommendationsView', () => {
   it('renders only server-returned candidates and keeps all three coefficients at 100%', async () => {
     vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()], 1, 26, 2, { minYear: 2000, maxYear: 2025 }))
 
-    render(<RecommendationsView />)
+    render(<RecommendationsView mediaType="movie" />)
 
     expect(await screen.findByRole('link', { name: 'Quiet River' })).toBeTruthy()
     expect(screen.queryByText('Unrated feature')).toBeNull()
@@ -248,6 +248,7 @@ describe('RecommendationsView', () => {
     expect(sliders.map((slider) => slider.value)).toEqual(['50', '25', '25'])
     expect(screen.getByText('Total weight: 100%')).toBeTruthy()
     expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'movie',
       page: 1,
       pageSize: 25,
       ratingWeight: 0.5,
@@ -260,6 +261,7 @@ describe('RecommendationsView', () => {
 
     fireEvent.change(sliders[0]!, { target: { value: '80' } })
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'movie',
       page: 1,
       pageSize: 25,
       ratingWeight: 0.8,
@@ -272,6 +274,7 @@ describe('RecommendationsView', () => {
     fireEvent.change(yearMinimum, { target: { value: '2010' } })
     fireEvent.pointerUp(yearMinimum)
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'movie',
       page: 1,
       pageSize: 25,
       ratingWeight: 0.8,
@@ -283,6 +286,7 @@ describe('RecommendationsView', () => {
     fireEvent.click(await screen.findByText('All genres (2)'))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Drama' }))
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'movie',
       page: 1,
       pageSize: 25,
       ratingWeight: 0.8,
@@ -294,6 +298,7 @@ describe('RecommendationsView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'movie',
       page: 2,
       pageSize: 25,
       ratingWeight: 0.8,
@@ -307,7 +312,7 @@ describe('RecommendationsView', () => {
   it('selects or clears all genres and closes the menu on outside pointer', async () => {
     vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()]))
 
-    render(<RecommendationsView />)
+    render(<RecommendationsView mediaType="movie" />)
 
     const trigger = await screen.findByText('All genres (2)')
     const menu = trigger.closest('details')
@@ -324,6 +329,7 @@ describe('RecommendationsView', () => {
     expect(screen.getByText('0 of 2 selected')).toBeTruthy()
     expect(checkboxes.map((checkbox) => checkbox.checked)).toEqual([false, false])
     expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'movie',
       page: 1,
       pageSize: 25,
       ratingWeight: 0.5,
@@ -335,6 +341,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenCalledTimes(requestCount + 1))
     requestCount += 1
     expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'movie',
       page: 1,
       pageSize: 25,
       ratingWeight: 0.5,
@@ -358,12 +365,13 @@ describe('RecommendationsView', () => {
       .mockResolvedValueOnce(recommendationPage([recommendation({ isWatched: true })]))
       .mockResolvedValue(recommendationPage([recommendation()]))
 
-    render(<RecommendationsView />)
+    render(<RecommendationsView mediaType="movie" />)
 
     const watchedCheckbox = await screen.findByRole('checkbox', { name: 'Exclude already watched movies' }) as HTMLInputElement
     expect(watchedCheckbox.checked).toBe(true)
     fireEvent.click(watchedCheckbox)
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'movie',
       page: 1,
       pageSize: 25,
       ratingWeight: 0.5,
@@ -380,6 +388,7 @@ describe('RecommendationsView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'movie',
       page: 1,
       pageSize: 25,
       ratingWeight: 0.5,
@@ -394,7 +403,7 @@ describe('RecommendationsView', () => {
       .mockResolvedValueOnce(recommendationPage([recommendation()]))
       .mockResolvedValueOnce(recommendationPage([]))
 
-    render(<RecommendationsView />)
+    render(<RecommendationsView mediaType="movie" />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Mark Quiet River as watched' }))
     expect(screen.getByRole('dialog').getAttribute('aria-modal')).toBe('true')
@@ -405,14 +414,14 @@ describe('RecommendationsView', () => {
     expect(submit.disabled).toBe(false)
     fireEvent.click(submit)
 
-    await waitFor(() => expect(markRecommendationWatched).toHaveBeenCalledWith('tt12345678', 9))
+    await waitFor(() => expect(markRecommendationWatched).toHaveBeenCalledWith('tt12345678', 9, 'movie'))
     expect(await screen.findByText('No recommendations available')).toBeTruthy()
   })
 
   it('shows an empty state when the server returns no candidates', async () => {
     vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([]))
 
-    render(<RecommendationsView />)
+    render(<RecommendationsView mediaType="movie" />)
 
     expect(await screen.findByText('No recommendations available')).toBeTruthy()
     expect(screen.getByText('No eligible award-nominated movies are available for this account yet.')).toBeTruthy()
@@ -423,17 +432,69 @@ describe('RecommendationsView', () => {
       .mockRejectedValueOnce(new Error('Recommendations offline'))
       .mockResolvedValueOnce(recommendationPage([recommendation()]))
 
-    render(<RecommendationsView />)
+    render(<RecommendationsView mediaType="movie" />)
 
     expect((await screen.findByRole('alert')).textContent).toContain('Recommendations offline')
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByRole('link', { name: 'Quiet River' })).toBeTruthy()
     expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'movie',
       page: 1,
       pageSize: 25,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
     })
+  })
+
+  it('uses the shared controls and watch action for series', async () => {
+    vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([
+      recommendation({
+        mediaType: 'series',
+        awardEvents: [{
+          awardSource: 'golden_globes',
+          categoryKey: 'best_television_series_drama',
+          categoryName: 'Best Television Series - Drama',
+          ceremony: null,
+          ceremonyYear: 2025,
+          outcome: 'nomination',
+          basePoints: 0.5,
+          tasteMultiplier: 1,
+          adjustedPoints: 0.5,
+        }],
+      }),
+    ], 1, 1, 1, { minYear: 2000, maxYear: 2025 }))
+
+    render(<RecommendationsView mediaType="series" />)
+
+    expect(await screen.findByRole('columnheader', { name: 'SERIES' })).toBeTruthy()
+    expect(getRecommendationGenres).toHaveBeenCalledWith('series')
+    expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'series',
+      page: 1,
+      pageSize: 25,
+      ratingWeight: 0.5,
+      votesWeight: 0.25,
+      awardsWeight: 0.25,
+    })
+
+    const yearMinimum = screen.getByRole('slider', { name: 'Series year minimum' })
+    fireEvent.change(yearMinimum, { target: { value: '2010' } })
+    fireEvent.pointerUp(yearMinimum)
+    await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'series',
+      page: 1,
+      pageSize: 25,
+      ratingWeight: 0.5,
+      votesWeight: 0.25,
+      awardsWeight: 0.25,
+      yearFrom: 2010,
+    }))
+
+    expect(await screen.findByRole('checkbox', { name: 'Exclude already watched series' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Mark Quiet River as watched' }))
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Your rating (1-10)' }), { target: { value: '9' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save rating and mark watched' }))
+    await waitFor(() => expect(markRecommendationWatched).toHaveBeenCalledWith('tt12345678', 9, 'series'))
   })
 })
