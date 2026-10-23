@@ -313,7 +313,7 @@ describe('RecommendationsView', () => {
     fireEvent.click(trigger)
     expect(menu?.open).toBe(true)
 
-    const checkboxes = screen.getAllByRole('checkbox') as HTMLInputElement[]
+    const checkboxes = within(menu as HTMLElement).getAllByRole('checkbox') as HTMLInputElement[]
     expect(checkboxes.map((checkbox) => checkbox.checked)).toEqual([true, true])
     let requestCount = vi.mocked(getRecommendations).mock.calls.length
 
@@ -349,6 +349,35 @@ describe('RecommendationsView', () => {
 
     fireEvent.pointerDown(document.body)
     expect(menu?.open).toBe(false)
+  })
+
+  it('can include already watched movies and clear that filter', async () => {
+    vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()]))
+
+    render(<RecommendationsView />)
+
+    const watchedCheckbox = await screen.findByRole('checkbox', { name: 'Exclude already watched movies' }) as HTMLInputElement
+    expect(watchedCheckbox.checked).toBe(true)
+    fireEvent.click(watchedCheckbox)
+    await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 25,
+      ratingWeight: 0.5,
+      votesWeight: 0.25,
+      awardsWeight: 0.25,
+      excludeWatched: false,
+    }))
+    expect(watchedCheckbox.checked).toBe(false)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+    await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 25,
+      ratingWeight: 0.5,
+      votesWeight: 0.25,
+      awardsWeight: 0.25,
+    }))
+    expect(watchedCheckbox.checked).toBe(true)
   })
 
   it('requires a rating before marking a recommendation watched and refreshes the results', async () => {

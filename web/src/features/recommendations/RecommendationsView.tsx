@@ -81,6 +81,7 @@ export function RecommendationsView() {
   const [draftYearFilter, setDraftYearFilter] = useState(emptyYearFilter)
   const [appliedYearFilter, setAppliedYearFilter] = useState(emptyYearFilter)
   const [selectedGenres, setSelectedGenres] = useState<string[] | null>(null)
+  const [excludeWatched, setExcludeWatched] = useState(true)
   const [genreOptions, setGenreOptions] = useState<string[]>([])
   const [genresLoading, setGenresLoading] = useState(true)
   const [genresError, setGenresError] = useState<string | null>(null)
@@ -118,6 +119,7 @@ export function RecommendationsView() {
       page: pageNumber,
       pageSize: recommendationsPageSize,
       ...toCoefficients(sliderPercentages),
+      ...(excludeWatched ? {} : { excludeWatched: false }),
       ...(appliedYearFilter.from ? { yearFrom: Number(appliedYearFilter.from) } : {}),
       ...(appliedYearFilter.to ? { yearTo: Number(appliedYearFilter.to) } : {}),
       ...(selectedGenres?.length ? { genres: selectedGenres } : {}),
@@ -130,7 +132,7 @@ export function RecommendationsView() {
       .finally(() => { if (active) setLoading(false) })
 
     return () => { active = false }
-  }, [appliedYearFilter, attempt, ignoredMoviesRevision, pageNumber, selectedGenres, sliderPercentages])
+  }, [appliedYearFilter, attempt, excludeWatched, ignoredMoviesRevision, pageNumber, selectedGenres, sliderPercentages])
 
   function updateSlider(key: CoefficientKey, value: string) {
     setSliderPercentages((current) => changeSliderPercentages(current, key, value))
@@ -167,10 +169,18 @@ export function RecommendationsView() {
     setError(null)
   }
 
+  function updateExcludeWatched(value: boolean) {
+    setExcludeWatched(value)
+    setPageNumber(1)
+    setLoading(true)
+    setError(null)
+  }
+
   function clearFilters() {
     setDraftYearFilter({ from: '', to: '' })
     setAppliedYearFilter({ from: '', to: '' })
     setSelectedGenres(null)
+    setExcludeWatched(true)
     setPageNumber(1)
     setLoading(true)
     setError(null)
@@ -244,7 +254,11 @@ export function RecommendationsView() {
         optionsLabel="genres"
         selectedValues={selectedGenres}
       />
-      <button className="button button-secondary" disabled={!appliedYearFilter.from && !appliedYearFilter.to && (selectedGenres === null || selectedGenres.length === 0)} onClick={clearFilters} type="button">Clear filters</button>
+      <label className="recommendation-filter-toggle">
+        <input checked={excludeWatched} onChange={(event) => updateExcludeWatched(event.currentTarget.checked)} type="checkbox" />
+        Exclude already watched movies
+      </label>
+      <button className="button button-secondary" disabled={!appliedYearFilter.from && !appliedYearFilter.to && (selectedGenres === null || selectedGenres.length === 0) && excludeWatched} onClick={clearFilters} type="button">Clear filters</button>
     </div>
 
     <fieldset aria-label="Recommendation score weights" className="recommendation-controls">

@@ -392,6 +392,18 @@ public sealed class MovieRecommendationsApiTests
         Assert.Equal(3, refreshedRecommendations?.TotalCount);
         Assert.DoesNotContain(refreshedRecommendations!.Items, item => item.ImdbId == "tt3000005");
 
+        using var includeWatchedResponse = await firstClient.GetAsync($"/api/recommendations?{weights}&excludeWatched=false");
+        var includeWatchedPage = await includeWatchedResponse.Content
+            .ReadFromJsonAsync<PageResponse<RecommendationResponse>>();
+        Assert.Equal(HttpStatusCode.OK, includeWatchedResponse.StatusCode);
+        Assert.Equal(8, includeWatchedPage?.TotalCount);
+        Assert.Contains(includeWatchedPage!.Items, item => item.ImdbId == "tt3000001");
+        Assert.Contains(includeWatchedPage.Items, item => item.ImdbId == "tt3000002");
+        Assert.Contains(includeWatchedPage.Items, item => item.ImdbId == "tt3000003");
+        Assert.Contains(includeWatchedPage.Items, item => item.ImdbId == "tt3000005");
+        Assert.Contains(includeWatchedPage.Items, item => item.ImdbId == "tt3000008");
+        Assert.DoesNotContain(includeWatchedPage.Items, item => item.ImdbId == "tt3000007");
+
         using var secondUserAfterWriteResponse = await secondClient.GetAsync($"/api/recommendations?{weights}");
         var secondUserAfterWrite = await secondUserAfterWriteResponse.Content
             .ReadFromJsonAsync<PageResponse<RecommendationResponse>>();

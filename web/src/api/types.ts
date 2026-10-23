@@ -266,6 +266,7 @@ export interface RecommendationQuery extends RecommendationCoefficients {
   yearFrom?: number
   yearTo?: number
   genres?: string[]
+  excludeWatched?: boolean
 }
 
 export interface RecommendationAwardEvent {

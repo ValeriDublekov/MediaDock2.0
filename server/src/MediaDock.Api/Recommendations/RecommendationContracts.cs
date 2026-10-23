@@ -18,6 +18,8 @@ public sealed record RecommendationsQuery
 
     public string[]? Genres { get; init; }
 
+    public bool? ExcludeWatched { get; init; }
+
     [Required]
     [Range(typeof(decimal), "0", "1")]
     public decimal? RatingWeight { get; init; }

@@ -45,7 +45,7 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             IsolationLevel.RepeatableRead,
             cancellationToken);
 
-        var allCandidates = await GetEligibleCandidatesQuery(userId)
+        var allCandidates = await GetEligibleCandidatesQuery(userId, query.ExcludeWatched ?? true)
             .Select(title => new CandidateTitle(
                 title.ImdbId,
                 title.TitleText!.Trim(),
@@ -310,7 +310,7 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             .OrderBy(genre => genre)
             .ToListAsync(cancellationToken);
 
-    private IQueryable<ImdbTitle> GetEligibleCandidatesQuery(long userId) =>
+    private IQueryable<ImdbTitle> GetEligibleCandidatesQuery(long userId, bool excludeWatched = true) =>
         dbContext.ImdbTitles
             .AsNoTracking()
             .Where(title => title.MetadataStatus == "enriched"
@@ -318,8 +318,8 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                 && title.TitleText != null
                 && title.TitleText.Trim() != string.Empty
                 && title.ImdbRating.HasValue
-                && !dbContext.PersonalRatings.Any(rating =>
-                    rating.UserId == userId && rating.ImdbId == title.ImdbId)
+                && (!excludeWatched || !dbContext.PersonalRatings.Any(rating =>
+                    rating.UserId == userId && rating.ImdbId == title.ImdbId))
                 && !dbContext.UserIgnoredMovies.Any(ignored =>
                     ignored.UserId == userId && ignored.ImdbId == title.ImdbId)
                 && !dbContext.ImdbFavoriteMovies.Any(favorite =>
