@@ -31,13 +31,20 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             throw ValidationError("weights", exception.Message);
         }
 
+        if (query.YearFrom is { } yearFrom
+            && query.YearTo is { } yearTo
+            && yearFrom > yearTo)
+        {
+            throw ValidationError(nameof(query.YearTo), "YearTo must be greater than or equal to YearFrom.");
+        }
+
         var page = query.Page ?? 1;
         var pageSize = query.PageSize ?? 25;
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
             IsolationLevel.RepeatableRead,
             cancellationToken);
 
-        var candidates = await dbContext.ImdbTitles
+        var allCandidates = await dbContext.ImdbTitles
             .AsNoTracking()
             .Where(title => title.MetadataStatus == "enriched"
                 && title.MediaType == "movie"
@@ -67,10 +74,28 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                 title.Genres))
             .ToListAsync(cancellationToken);
 
+        var candidateYears = allCandidates
+            .Where(candidate => candidate.Year.HasValue)
+            .Select(candidate => candidate.Year!.Value)
+            .ToArray();
+        var yearBounds = candidateYears.Length == 0
+            ? null
+            : new YearBounds(candidateYears.Min(), candidateYears.Max());
+        var selectedGenres = (query.Genres ?? [])
+            .Where(genre => !string.IsNullOrWhiteSpace(genre))
+            .Select(genre => genre.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var candidates = allCandidates
+            .Where(candidate =>
+                (query.YearFrom is null || (candidate.Year.HasValue && candidate.Year.Value >= query.YearFrom.Value))
+                && (query.YearTo is null || (candidate.Year.HasValue && candidate.Year.Value <= query.YearTo.Value))
+                && (selectedGenres.Count == 0 || candidate.Genres.Any(selectedGenres.Contains)))
+            .ToList();
+
         if (candidates.Count == 0)
         {
             await transaction.CommitAsync(cancellationToken);
-            return CreatePage([], page, pageSize, 0);
+            return CreatePage([], page, pageSize, 0, yearBounds);
         }
 
         var ratingRows = await dbContext.PersonalRatings
@@ -239,15 +264,26 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             scoredCandidates.Skip((page - 1) * pageSize).Take(pageSize).ToArray(),
             page,
             pageSize,
-            scoredCandidates.Length);
+            scoredCandidates.Length,
+            yearBounds);
     }
+
+    public async Task<IReadOnlyList<string>> GetGenresAsync(CancellationToken cancellationToken) =>
+        await dbContext.ImdbTitles
+            .AsNoTracking()
+            .SelectMany(title => title.Genres)
+            .Where(genre => genre != string.Empty)
+            .Distinct()
+            .OrderBy(genre => genre)
+            .ToListAsync(cancellationToken);
 
     private static PageResponse<RecommendationResponse> CreatePage(
         IReadOnlyList<RecommendationResponse> items,
         int page,
         int pageSize,
-        int totalCount) =>
-        new(items, page, pageSize, totalCount, totalCount == 0 ? 0 : (totalCount + pageSize - 1) / pageSize);
+        int totalCount,
+        YearBounds? yearBounds = null) =>
+        new(items, page, pageSize, totalCount, totalCount == 0 ? 0 : (totalCount + pageSize - 1) / pageSize, yearBounds);
 
     private static ApiValidationException ValidationError(string field, string message) =>
         new(new Dictionary<string, string[]> { [field] = [message] });

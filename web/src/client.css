@@ -163,6 +163,10 @@ button:disabled { cursor: not-allowed; }
 .recommendation-settings-table input { width: min(150px, 100%); min-width: 84px; min-height: 34px; border: 1px solid #bdcec1; border-radius: 2px; padding: 6px 8px; color: #263b31; background: #fff; font: inherit; font-variant-numeric: tabular-nums; }
 .recommendation-controls { width: 100%; margin: 18px 0 14px; border: 0; border-block: 1px solid #d4ded5; padding: 13px 0 10px; }
 .recommendation-controls legend { padding-right: 8px; color: #30473a; font-size: 13px; font-weight: 700; }
+.recommendation-filter-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); align-items: end; gap: 16px; margin: 16px 0 18px; }
+.recommendation-filter-controls .year-range-filter { min-width: 0; margin: 0; }
+.recommendation-filter-controls .category-multiselect { min-width: 0; }
+.recommendation-filter-controls > .button { justify-self: start; }
 .recommendation-sliders { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .recommendation-slider { display: grid; min-width: 0; gap: 8px; color: #40574a; font-size: 11px; }
 .recommendation-slider-label { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; }

@@ -73,19 +73,21 @@ public sealed class MovieRecommendationsApiTests
                 string? titleText,
                 decimal? imdbRating,
                 string mediaType = "movie",
-                string metadataStatus = "enriched")
+                string metadataStatus = "enriched",
+                int year = 2025,
+                string[]? genres = null)
             {
                 var title = new ImdbTitle
                 {
                     ImdbId = imdbId,
                     TitleText = titleText,
-                    Year = 2025,
+                    Year = year,
                     MediaType = mediaType,
                     ImdbRating = imdbRating,
                     ImdbVotes = 1000,
                     NormalizedVoteWeight = 0.5d,
                     PosterUrl = $"https://example.com/{imdbId}.jpg",
-                    Genres = ["Drama"],
+                    Genres = genres ?? ["Drama"],
                     MetadataStatus = metadataStatus,
                     UpdatedAt = now
                 };
@@ -97,13 +99,13 @@ public sealed class MovieRecommendationsApiTests
             AddTitle("tt3000001", "Winner One", 8m);
             AddTitle("tt3000002", "Winner Two", 8m);
             AddTitle("tt3000003", "Winner Three", 8m);
-            AddTitle("tt3000004", "Candidate A", 7m);
-            AddTitle("tt3000005", "Candidate B", 7m);
-            AddTitle("tt3000006", "Download Only", 7m);
-            AddTitle("tt3000007", "Watch List", 7m);
-            AddTitle("tt3000008", "Rated Candidate", 7m);
+            AddTitle("tt3000004", "Candidate A", 7m, year: 2020, genres: ["Drama"]);
+            AddTitle("tt3000005", "Candidate B", 7m, year: 2022, genres: ["Comedy"]);
+            AddTitle("tt3000006", "Download Only", 7m, year: 2024, genres: ["Action"]);
+            AddTitle("tt3000007", "Watch List", 7m, year: 2019, genres: ["Horror"]);
+            AddTitle("tt3000008", "Rated Candidate", 7m, year: 2018, genres: ["Mystery"]);
             AddTitle("tt3000009", "Series Nominee", 7m);
-            AddTitle("tt3000010", "Linked Series", 8m, "series");
+            AddTitle("tt3000010", "Linked Series", 8m, "series", genres: ["Animation"]);
             AddTitle("tt3000011", "Pending Candidate", 7m, metadataStatus: "pending");
             AddTitle("tt3000012", "Missing Rating", null);
             AddTitle("tt3000013", " ", null);
@@ -244,6 +246,8 @@ public sealed class MovieRecommendationsApiTests
         using var anonymousClient = anonymousFactory.CreateClient();
         using var anonymousResponse = await anonymousClient.GetAsync($"/api/recommendations?{weights}");
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
+        using var anonymousGenresResponse = await anonymousClient.GetAsync("/api/recommendations/genres");
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousGenresResponse.StatusCode);
 
         using var unknownFactory = new RecommendationsApiFactory(
             connectionString,
@@ -262,9 +266,25 @@ public sealed class MovieRecommendationsApiTests
         Assert.Equal(25, firstPage.PageSize);
         Assert.Equal(4, firstPage.TotalCount);
         Assert.Equal(1, firstPage.TotalPages);
+        Assert.Equal(new YearBounds(2020, 2025), firstPage.YearBounds);
         Assert.Equal(
             ["tt3000004", "tt3000005", "tt3000006", "tt3000015"],
             firstPage.Items.Select(item => item.ImdbId));
+
+        using var genresResponse = await firstClient.GetAsync("/api/recommendations/genres");
+        Assert.Equal(HttpStatusCode.OK, genresResponse.StatusCode);
+        Assert.Equal(
+            ["Action", "Animation", "Comedy", "Drama", "Horror", "Mystery"],
+            await genresResponse.Content.ReadFromJsonAsync<string[]>());
+
+        using var filteredResponse = await firstClient.GetAsync(
+            $"/api/recommendations?{weights}&yearFrom=2021&yearTo=2024&genres=Comedy&genres=Action");
+        Assert.Equal(HttpStatusCode.OK, filteredResponse.StatusCode);
+        var filteredPage = await filteredResponse.Content.ReadFromJsonAsync<PageResponse<RecommendationResponse>>();
+        Assert.NotNull(filteredPage);
+        Assert.Equal(2, filteredPage.TotalCount);
+        Assert.Equal(new YearBounds(2020, 2025), filteredPage.YearBounds);
+        Assert.Equal(["tt3000005", "tt3000006"], filteredPage.Items.Select(item => item.ImdbId).Order());
 
         var candidate = firstPage.Items[0];
         Assert.Equal("Candidate A", candidate.Title);
@@ -314,6 +334,9 @@ public sealed class MovieRecommendationsApiTests
         using var invalidPageSizeResponse = await firstClient.GetAsync(
             $"/api/recommendations?{weights}&pageSize=101");
         Assert.Equal(HttpStatusCode.BadRequest, invalidPageSizeResponse.StatusCode);
+        using var invalidYearRangeResponse = await firstClient.GetAsync(
+            $"/api/recommendations?{weights}&yearFrom=2025&yearTo=2020");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidYearRangeResponse.StatusCode);
 
         using var secondFactory = new RecommendationsApiFactory(
             connectionString,

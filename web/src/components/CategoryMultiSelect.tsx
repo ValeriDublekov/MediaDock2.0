@@ -1,5 +1,6 @@
 interface CategoryMultiSelectProps {
   label: string
+  optionsLabel?: string
   options: string[]
   selectedValues: string[] | null
   loading?: boolean
@@ -9,6 +10,7 @@ interface CategoryMultiSelectProps {
 
 export function CategoryMultiSelect({
   label,
+  optionsLabel = 'categories',
   options,
   selectedValues,
   loading = false,
@@ -27,13 +29,13 @@ export function CategoryMultiSelect({
   }
 
   const summary = loading
-    ? 'Loading categories'
+    ? `Loading ${optionsLabel}`
     : error
-      ? 'Categories unavailable'
+      ? `${optionsLabel[0]?.toUpperCase()}${optionsLabel.slice(1)} unavailable`
       : options.length === 0
-        ? 'No categories available'
+        ? `No ${optionsLabel} available`
         : allSelected
-          ? `All categories (${options.length})`
+          ? `All ${optionsLabel} (${options.length})`
           : `${selectedCount} of ${options.length} selected`
 
   return (
@@ -41,7 +43,7 @@ export function CategoryMultiSelect({
       <legend>{label}</legend>
       {loading || error || options.length === 0 ? (
         <p className={error ? 'category-multiselect-error' : 'category-multiselect-status'} role={error ? 'alert' : 'status'}>
-          {error ? `Could not load categories. ${error}` : summary}
+          {error ? `Could not load ${optionsLabel}. ${error}` : summary}
         </p>
       ) : (
         <details className="category-multiselect-menu">

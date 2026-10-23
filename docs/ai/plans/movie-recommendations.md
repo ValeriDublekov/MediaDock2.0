@@ -48,6 +48,7 @@ The eight architecture decisions and these Phase 3 inputs are approved.
 - All four phase exit criteria are met. No parallel catalog or global-settings table is added, and source-owned records remain linked to the canonical IMDb title by IMDb ID.
 - Vote weights remain global per canonical movie, and recalculation publishes a complete result atomically while keeping freshness state accurate after input changes, failures, and timeouts.
 - Recommendations follow the approved eligibility and scoring decisions, are deterministic and paged, and remain isolated to the active user without changing the existing access or network boundaries.
+- Recommendation results support inclusive year-range and any-selected-genre filters before paging; genre options come from distinct values across `imdb_titles`.
 - The approved Bayesian prior, missing-rating candidate exclusion, slider defaults, and client-only coefficient state are used consistently by the API, web UI, and documentation.
 - In enforced mode, global recommendation settings and recalculation remain administrator-only, while personal results require the active linked user. The web displays server-scored results and award events without duplicating candidate eligibility or scoring logic.
 

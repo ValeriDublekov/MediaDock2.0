@@ -27,6 +27,7 @@ import {
   getOscarCategories,
   getOscarFilms,
   getRecommendations,
+  getRecommendationGenres,
   getRecommendationSettings,
   getPersonalRatings,
   getPersonalRatingsEnrichmentJob,
@@ -248,6 +249,9 @@ describe('typed API client', () => {
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
+      yearFrom: 2000,
+      yearTo: 2020,
+      genres: ['Drama', 'Comedy'],
     }, stub.fetcher)
 
     const requestUrl = new URL(String(stub.calls[0]?.input), 'http://localhost')
@@ -257,6 +261,17 @@ describe('typed API client', () => {
     expect(requestUrl.searchParams.get('ratingWeight')).toBe('0.5')
     expect(requestUrl.searchParams.get('votesWeight')).toBe('0.25')
     expect(requestUrl.searchParams.get('awardsWeight')).toBe('0.25')
+    expect(requestUrl.searchParams.get('yearFrom')).toBe('2000')
+    expect(requestUrl.searchParams.get('yearTo')).toBe('2020')
+    expect(requestUrl.searchParams.getAll('genres')).toEqual(['Drama', 'Comedy'])
+  })
+
+  it('loads IMDb genres for recommendation filters', async () => {
+    const stub = fetchStub(response(200, ['Comedy', 'Drama']))
+
+    await getRecommendationGenres(stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/recommendations/genres')
   })
 
   it('protects personal ratings enrichment enqueue with an antiforgery token', async () => {

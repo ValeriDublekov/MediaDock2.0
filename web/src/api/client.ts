@@ -33,7 +33,7 @@ import type {
   ParseLogQuery,
   ProviderSettings,
   ProviderSettingsInput,
-  RecommendationCoefficients,
+  RecommendationQuery,
   RecommendationSettings,
   RecommendationSettingsInput,
   VoteWeightRecalculationResult,
@@ -278,10 +278,14 @@ export function recalculateRecommendationVoteWeights(fetcher?: typeof fetch) {
 }
 
 export function getRecommendations(
-  query: { page: number; pageSize: number } & RecommendationCoefficients,
+  query: RecommendationQuery,
   fetcher?: typeof fetch,
 ) {
-  return requestJson<PageResponse<MovieRecommendation>>(withQuery('/recommendations', query), {}, fetcher)
+  return requestJson<PageResponse<MovieRecommendation>>(withQuery('/recommendations', query, ['genres']), {}, fetcher)
+}
+
+export function getRecommendationGenres(fetcher?: typeof fetch) {
+  return requestJson<string[]>('/recommendations/genres', {}, fetcher)
 }
 
 export function getProviderSettings(fetcher?: typeof fetch) {

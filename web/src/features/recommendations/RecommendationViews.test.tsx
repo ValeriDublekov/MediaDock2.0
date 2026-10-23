@@ -1,6 +1,7 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  getRecommendationGenres,
   getRecommendations,
   getRecommendationSettings,
   recalculateRecommendationVoteWeights,
@@ -11,6 +12,7 @@ import { RecommendationsView } from './RecommendationsView'
 import { RecommendationSettingsView } from './RecommendationSettingsView'
 
 vi.mock('../../api/client', () => ({
+  getRecommendationGenres: vi.fn(),
   getRecommendations: vi.fn(),
   getRecommendationSettings: vi.fn(),
   recalculateRecommendationVoteWeights: vi.fn(),
@@ -66,8 +68,9 @@ function recommendationPage(
   page = 1,
   totalCount = items.length,
   totalPages = totalCount === 0 ? 0 : 1,
+  yearBounds?: PageResponse<MovieRecommendation>['yearBounds'],
 ): PageResponse<MovieRecommendation> {
-  return { items, page, pageSize: 25, totalCount, totalPages }
+  return { items, page, pageSize: 25, totalCount, totalPages, ...(yearBounds ? { yearBounds } : {}) }
 }
 
 function recommendationSettings(overrides: Partial<RecommendationSettings> = {}): RecommendationSettings {
@@ -197,6 +200,8 @@ describe('RecommendationSettingsView', () => {
 
 describe('RecommendationsView', () => {
   beforeEach(() => {
+    vi.mocked(getRecommendationGenres).mockReset()
+    vi.mocked(getRecommendationGenres).mockResolvedValue(['Comedy', 'Drama'])
     vi.mocked(getRecommendations).mockReset()
     vi.mocked(getRecommendationSettings).mockReset()
     vi.mocked(updateRecommendationSettings).mockReset()
@@ -206,14 +211,15 @@ describe('RecommendationsView', () => {
   afterEach(cleanup)
 
   it('renders only server-returned candidates and keeps all three coefficients at 100%', async () => {
-    vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation() ], 1, 26, 2))
+    vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()], 1, 26, 2, { minYear: 2000, maxYear: 2025 }))
 
     render(<RecommendationsView />)
 
     expect(await screen.findByRole('link', { name: 'Quiet River' })).toBeTruthy()
     expect(screen.queryByText('Unrated feature')).toBeNull()
     expect(screen.queryByText('Series candidate')).toBeNull()
-    const sliders = screen.getAllByRole('slider') as HTMLInputElement[]
+    const scoreWeights = within(screen.getByRole('group', { name: 'Recommendation score weights' }))
+    const sliders = scoreWeights.getAllByRole('slider') as HTMLInputElement[]
     expect(sliders.map((slider) => slider.value)).toEqual(['50', '25', '25'])
     expect(screen.getByText('Total weight: 100%')).toBeTruthy()
     expect(getRecommendations).toHaveBeenLastCalledWith({
@@ -223,6 +229,7 @@ describe('RecommendationsView', () => {
       votesWeight: 0.25,
       awardsWeight: 0.25,
     })
+    expect(screen.getByLabelText('Movie year selected years').textContent).toBe('2000 – 2025')
     expect(screen.getByText('Best Picture')).toBeTruthy()
     expect(screen.getByText('3.00 base × 1.20 taste = 3.60')).toBeTruthy()
 
@@ -234,7 +241,31 @@ describe('RecommendationsView', () => {
       votesWeight: 0.1,
       awardsWeight: 0.1,
     }))
-    expect((screen.getAllByRole('slider') as HTMLInputElement[]).map((slider) => slider.value)).toEqual(['80', '10', '10'])
+    expect((scoreWeights.getAllByRole('slider') as HTMLInputElement[]).map((slider) => slider.value)).toEqual(['80', '10', '10'])
+
+    const yearMinimum = screen.getByRole('slider', { name: 'Movie year minimum' })
+    fireEvent.change(yearMinimum, { target: { value: '2010' } })
+    fireEvent.pointerUp(yearMinimum)
+    await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 25,
+      ratingWeight: 0.8,
+      votesWeight: 0.1,
+      awardsWeight: 0.1,
+      yearFrom: 2010,
+    }))
+
+    fireEvent.click(await screen.findByText('All genres (2)'))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Drama' }))
+    await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 25,
+      ratingWeight: 0.8,
+      votesWeight: 0.1,
+      awardsWeight: 0.1,
+      yearFrom: 2010,
+      genres: ['Comedy'],
+    }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
@@ -243,6 +274,8 @@ describe('RecommendationsView', () => {
       ratingWeight: 0.8,
       votesWeight: 0.1,
       awardsWeight: 0.1,
+      yearFrom: 2010,
+      genres: ['Comedy'],
     }))
   })
 

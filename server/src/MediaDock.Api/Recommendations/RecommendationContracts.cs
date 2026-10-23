@@ -10,6 +10,14 @@ public sealed record RecommendationsQuery
     [Range(1, 100)]
     public int? PageSize { get; init; }
 
+    [Range(1800, 2200)]
+    public int? YearFrom { get; init; }
+
+    [Range(1800, 2200)]
+    public int? YearTo { get; init; }
+
+    public string[]? Genres { get; init; }
+
     [Required]
     [Range(typeof(decimal), "0", "1")]
     public decimal? RatingWeight { get; init; }

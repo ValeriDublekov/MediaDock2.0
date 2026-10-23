@@ -247,6 +247,14 @@ export interface RecommendationCoefficients {
   awardsWeight: number
 }
 
+export interface RecommendationQuery extends RecommendationCoefficients {
+  page: number
+  pageSize: number
+  yearFrom?: number
+  yearTo?: number
+  genres?: string[]
+}
+
 export interface RecommendationAwardEvent {
   awardSource: RecommendationAwardSource
   categoryKey: string
