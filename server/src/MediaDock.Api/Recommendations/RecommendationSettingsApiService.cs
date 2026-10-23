@@ -29,19 +29,40 @@ internal sealed class RecommendationSettingsApiService(MediaDockDbContext dbCont
         var settings = await dbContext.GeneralRecommendationSettings
             .AsNoTracking()
             .SingleAsync(value => value.Id == 1, cancellationToken);
-        var weights = await dbContext.RecommendationAwardWeights
+        var configuredWeights = await dbContext.RecommendationAwardWeights
             .AsNoTracking()
             .OrderBy(weight => weight.AwardSource)
             .ThenBy(weight => weight.CategoryKey)
-            .Select(weight => new RecommendationAwardWeightResponse(
+            .Select(weight => new
+            {
                 weight.AwardSource,
                 weight.CategoryKey,
                 weight.WinPoints,
-                weight.NominationPoints))
+                weight.NominationPoints,
+                weight.IsOverride
+            })
             .ToArrayAsync(cancellationToken);
+        var weights = configuredWeights.Select(weight =>
+        {
+            var (defaultWinPoints, defaultNominationPoints) = weight.AwardSource == "oscar"
+                ? (settings.OscarWinPoints, settings.OscarNomPoints)
+                : (settings.GgWinPoints, settings.GgNomPoints);
+            return new RecommendationAwardWeightResponse(
+                weight.AwardSource,
+                weight.CategoryKey,
+                weight.IsOverride ? weight.WinPoints : defaultWinPoints,
+                weight.IsOverride ? weight.NominationPoints : defaultNominationPoints,
+                weight.IsOverride);
+        }).ToArray();
 
         return new RecommendationSettingsResponse(
             settings.MedianPeriodYears,
+            settings.BayesianDefaultC,
+            settings.BayesianMRatio,
+            settings.OscarWinPoints,
+            settings.OscarNomPoints,
+            settings.GgWinPoints,
+            settings.GgNomPoints,
             settings.RequiresVoteRecalculation,
             settings.LastVoteRecalculationAt,
             settings.LastVoteRecalculationPeriodYears,
@@ -56,6 +77,26 @@ internal sealed class RecommendationSettingsApiService(MediaDockDbContext dbCont
         if (request.MedianPeriodYears <= 0)
         {
             AddError(errors, nameof(request.MedianPeriodYears), "The median period must be positive.");
+        }
+
+        if (request.BayesianDefaultC is < 0m or > 10m)
+        {
+            AddError(errors, nameof(request.BayesianDefaultC), "The Bayesian default rating must be between 0 and 10.");
+        }
+
+        if (request.BayesianMRatio is <= 0m or > 1m)
+        {
+            AddError(errors, nameof(request.BayesianMRatio), "The Bayesian m ratio must be greater than 0 and at most 1.");
+        }
+
+        if (request.OscarWinPoints < 0m || request.OscarNomPoints < 0m)
+        {
+            AddError(errors, nameof(request.OscarWinPoints), "Oscar award points cannot be negative.");
+        }
+
+        if (request.GgWinPoints < 0m || request.GgNomPoints < 0m)
+        {
+            AddError(errors, nameof(request.GgWinPoints), "Golden Globes award points cannot be negative.");
         }
 
         if (request.AwardWeights is null)
@@ -116,11 +157,18 @@ internal sealed class RecommendationSettingsApiService(MediaDockDbContext dbCont
 
             weight.WinPoints = update.WinPoints;
             weight.NominationPoints = update.NominationPoints;
+            weight.IsOverride = update.IsOverride ?? true;
         }
 
         ThrowIfInvalid(errors);
 
         settings.MedianPeriodYears = request.MedianPeriodYears;
+        settings.BayesianDefaultC = request.BayesianDefaultC;
+        settings.BayesianMRatio = request.BayesianMRatio;
+        settings.OscarWinPoints = request.OscarWinPoints;
+        settings.OscarNomPoints = request.OscarNomPoints;
+        settings.GgWinPoints = request.GgWinPoints;
+        settings.GgNomPoints = request.GgNomPoints;
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return await GetSettingsAsync(cancellationToken);
@@ -206,7 +254,7 @@ internal sealed class RecommendationSettingsApiService(MediaDockDbContext dbCont
                     .Select(movie => movie.PeriodStart)
                     .Distinct()
                     .Count(),
-                normalizedMovies.Count(movie => movie.UsedGlobalMedian),
+                normalizedMovies.Count(movie => movie.UsedFallbackMedian),
                 movies.Count(movie => !movie.TotalVotes.HasValue));
         }
         catch (OperationCanceledException exception)

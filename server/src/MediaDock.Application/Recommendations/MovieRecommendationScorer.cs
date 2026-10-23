@@ -2,7 +2,7 @@ namespace MediaDock.Application.Recommendations;
 
 public readonly record struct MovieRecommendationCategoryKey(string AwardSource, string CategoryKey);
 
-public sealed record MovieRecommendationRatedWinner(
+public sealed record MovieRecommendationRatedAwardMovie(
     string ImdbId,
     string AwardSource,
     string CategoryKey,
@@ -19,7 +19,16 @@ public sealed record MovieRecommendationAwardWeight(
     string AwardSource,
     string CategoryKey,
     decimal WinPoints,
-    decimal NominationPoints);
+    decimal NominationPoints,
+    bool IsOverride = true);
+
+public sealed record MovieRecommendationScoringSettings(
+    decimal BayesianDefaultC,
+    decimal BayesianMRatio,
+    decimal OscarWinPoints,
+    decimal OscarNomPoints,
+    decimal GgWinPoints,
+    decimal GgNomPoints);
 
 public sealed record MovieRecommendationCoefficients(
     decimal Rating,
@@ -35,10 +44,11 @@ public sealed record MovieRecommendationCandidate(
     double NormalizedVoteWeight,
     string? PosterUrl,
     IReadOnlyList<string> Genres,
-    IReadOnlyList<MovieRecommendationAwardEvent> AwardEvents);
+    IReadOnlyList<MovieRecommendationAwardEvent> AwardEvents,
+    decimal PeriodMedianVotes = 1000m);
 
 public sealed record MovieRecommendationCategoryTaste(
-    int RatedWinnerCount,
+    int RatedMovieCount,
     decimal AverageRating,
     decimal Multiplier);
 
@@ -74,40 +84,40 @@ public sealed record MovieRecommendationScore(
 
 public static class MovieRecommendationScorer
 {
-    public const decimal RatingPriorStrength = 1000m;
-    public const int MinimumRatedWinnerCount = 3;
+    public const decimal FallbackPeriodMedianVotes = 1000m;
+    public const int MinimumRatedMovieCount = 3;
 
     public static MovieRecommendationTasteProfile BuildTasteProfile(
         IReadOnlyCollection<int> personalRatings,
-        IReadOnlyCollection<MovieRecommendationRatedWinner> ratedWinners)
+        IReadOnlyCollection<MovieRecommendationRatedAwardMovie> ratedAwardMovies)
     {
         ArgumentNullException.ThrowIfNull(personalRatings);
-        ArgumentNullException.ThrowIfNull(ratedWinners);
+        ArgumentNullException.ThrowIfNull(ratedAwardMovies);
 
         decimal? globalAverage = personalRatings.Count == 0
             ? null
             : personalRatings.Average(rating => (decimal)rating);
-        var distinctWinners = ratedWinners
-            .GroupBy(winner => new
+        var distinctAwardMovies = ratedAwardMovies
+            .GroupBy(awardMovie => new
             {
-                winner.ImdbId,
-                Category = new MovieRecommendationCategoryKey(winner.AwardSource, winner.CategoryKey)
+                awardMovie.ImdbId,
+                Category = new MovieRecommendationCategoryKey(awardMovie.AwardSource, awardMovie.CategoryKey)
             })
             .Select(group => group.First());
         var categories = new Dictionary<MovieRecommendationCategoryKey, MovieRecommendationCategoryTaste>();
 
-        foreach (var group in distinctWinners.GroupBy(winner =>
-                     new MovieRecommendationCategoryKey(winner.AwardSource, winner.CategoryKey)))
+        foreach (var group in distinctAwardMovies.GroupBy(awardMovie =>
+                     new MovieRecommendationCategoryKey(awardMovie.AwardSource, awardMovie.CategoryKey)))
         {
-            var ratedWinnerCount = group.Count();
-            var averageRating = group.Average(winner => (decimal)winner.Rating);
-            var multiplier = ratedWinnerCount < MinimumRatedWinnerCount
+            var ratedMovieCount = group.Count();
+            var averageRating = group.Average(awardMovie => (decimal)awardMovie.Rating);
+            var multiplier = ratedMovieCount < MinimumRatedMovieCount
                 || globalAverage is null
                 || globalAverage == 0m
                 ? 1m
                 : Math.Clamp(averageRating / globalAverage.Value, 0.5m, 1.5m);
             categories[group.Key] = new MovieRecommendationCategoryTaste(
-                ratedWinnerCount,
+                ratedMovieCount,
                 averageRating,
                 multiplier);
         }
@@ -117,19 +127,33 @@ public static class MovieRecommendationScorer
 
     public static MovieRecommendationScore Score(
         MovieRecommendationCandidate candidate,
-        decimal ratingPriorMean,
+        MovieRecommendationScoringSettings scoringSettings,
         MovieRecommendationTasteProfile tasteProfile,
         IReadOnlyCollection<MovieRecommendationAwardWeight> awardWeights,
         MovieRecommendationCoefficients coefficients)
     {
         ArgumentNullException.ThrowIfNull(candidate);
+        ArgumentNullException.ThrowIfNull(scoringSettings);
         ArgumentNullException.ThrowIfNull(tasteProfile);
         ArgumentNullException.ThrowIfNull(awardWeights);
         ValidateCoefficients(coefficients);
 
-        if (ratingPriorMean is < 0m or > 10m)
+        if (scoringSettings.BayesianDefaultC is < 0m or > 10m)
         {
-            throw new ArgumentOutOfRangeException(nameof(ratingPriorMean));
+            throw new ArgumentOutOfRangeException(nameof(scoringSettings), "The Bayesian default rating must be between 0 and 10.");
+        }
+
+        if (scoringSettings.BayesianMRatio is <= 0m or > 1m)
+        {
+            throw new ArgumentOutOfRangeException(nameof(scoringSettings), "The Bayesian m ratio must be greater than 0 and at most 1.");
+        }
+
+        if (scoringSettings.OscarWinPoints < 0m
+            || scoringSettings.OscarNomPoints < 0m
+            || scoringSettings.GgWinPoints < 0m
+            || scoringSettings.GgNomPoints < 0m)
+        {
+            throw new ArgumentOutOfRangeException(nameof(scoringSettings), "Award points cannot be negative.");
         }
 
         if (candidate.ImdbRating is < 0m or > 10m)
@@ -143,10 +167,13 @@ public static class MovieRecommendationScorer
         }
 
         var voteCount = Math.Max(candidate.ImdbVotes ?? 0L, 0L);
-        var ratingComponent = candidate.ImdbVotes is null
-            ? ratingPriorMean
-            : (candidate.ImdbRating * voteCount + ratingPriorMean * RatingPriorStrength)
-                / (voteCount + RatingPriorStrength);
+        var periodMedianVotes = candidate.PeriodMedianVotes < 1m
+            ? FallbackPeriodMedianVotes
+            : candidate.PeriodMedianVotes;
+        var priorStrength = periodMedianVotes * scoringSettings.BayesianMRatio;
+        var ratingComponent = (candidate.ImdbRating * voteCount
+            + scoringSettings.BayesianDefaultC * priorStrength)
+            / (voteCount + priorStrength);
         var popularityComponent = (decimal)Math.Clamp(candidate.NormalizedVoteWeight, 0d, 10d);
         var configuredWeights = awardWeights.ToDictionary(
             weight => new MovieRecommendationCategoryKey(weight.AwardSource, weight.CategoryKey));
@@ -155,9 +182,9 @@ public static class MovieRecommendationScorer
             {
                 var category = new MovieRecommendationCategoryKey(awardEvent.AwardSource, awardEvent.CategoryKey);
                 var configuredWeight = configuredWeights.GetValueOrDefault(category);
-                var basePoints = awardEvent.IsWinner
-                    ? configuredWeight?.WinPoints ?? 0m
-                    : configuredWeight?.NominationPoints ?? 0m;
+                var basePoints = configuredWeight?.IsOverride == true
+                    ? awardEvent.IsWinner ? configuredWeight.WinPoints : configuredWeight.NominationPoints
+                    : GetDefaultAwardPoints(awardEvent.AwardSource, awardEvent.IsWinner, scoringSettings);
                 var tasteMultiplier = tasteProfile.GetMultiplier(awardEvent.AwardSource, awardEvent.CategoryKey);
                 return new MovieRecommendationAwardContribution(
                     awardEvent.AwardSource,
@@ -219,6 +246,19 @@ public static class MovieRecommendationScorer
             .ThenBy(awardEvent => awardEvent.AwardSource, StringComparer.Ordinal)
             .ThenBy(awardEvent => awardEvent.CategoryKey, StringComparer.Ordinal)
             .ThenBy(awardEvent => awardEvent.CategoryName, StringComparer.Ordinal);
+
+    private static decimal GetDefaultAwardPoints(
+        string awardSource,
+        bool isWinner,
+        MovieRecommendationScoringSettings settings) =>
+        (awardSource, isWinner) switch
+        {
+            ("oscar", true) => settings.OscarWinPoints,
+            ("oscar", false) => settings.OscarNomPoints,
+            ("golden_globes", true) => settings.GgWinPoints,
+            ("golden_globes", false) => settings.GgNomPoints,
+            _ => 0m
+        };
 
     private readonly record struct AwardEventKey(string AwardSource, string CategoryKey, int EventId);
 }

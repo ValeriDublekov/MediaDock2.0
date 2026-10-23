@@ -4,6 +4,12 @@ namespace MediaDock.Api.Recommendations;
 
 public sealed record RecommendationSettingsResponse(
     int MedianPeriodYears,
+    decimal BayesianDefaultC,
+    decimal BayesianMRatio,
+    decimal OscarWinPoints,
+    decimal OscarNomPoints,
+    decimal GgWinPoints,
+    decimal GgNomPoints,
     bool RequiresVoteRecalculation,
     DateTimeOffset? LastVoteRecalculationAt,
     int? LastVoteRecalculationPeriodYears,
@@ -13,12 +19,25 @@ public sealed record RecommendationAwardWeightResponse(
     string AwardSource,
     string CategoryKey,
     decimal WinPoints,
-    decimal NominationPoints);
+    decimal NominationPoints,
+    bool IsOverride);
 
 public sealed record UpdateRecommendationSettingsRequest
 {
     [Range(1, int.MaxValue)]
     public int MedianPeriodYears { get; init; } = 5;
+
+    public decimal BayesianDefaultC { get; init; } = 5.5m;
+
+    public decimal BayesianMRatio { get; init; } = 0.25m;
+
+    public decimal OscarWinPoints { get; init; } = 3m;
+
+    public decimal OscarNomPoints { get; init; } = 1m;
+
+    public decimal GgWinPoints { get; init; } = 2m;
+
+    public decimal GgNomPoints { get; init; } = 0.5m;
 
     [Required]
     public UpdateRecommendationAwardWeightRequest[] AwardWeights { get; init; } = [];
@@ -35,6 +54,8 @@ public sealed record UpdateRecommendationAwardWeightRequest
     public decimal WinPoints { get; init; }
 
     public decimal NominationPoints { get; init; }
+
+    public bool? IsOverride { get; init; }
 }
 
 public sealed record VoteWeightRecalculationResponse(
@@ -44,5 +65,5 @@ public sealed record VoteWeightRecalculationResponse(
     int MovieCount,
     int MoviesWithVotesCount,
     int PeriodCount,
-    int GlobalFallbackCount,
+    int FallbackMedianCount,
     int MissingVoteCount);

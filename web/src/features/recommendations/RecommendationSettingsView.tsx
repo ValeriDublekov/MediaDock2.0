@@ -18,12 +18,21 @@ interface RecommendationAwardWeightDraft {
   categoryKey: string
   winPoints: string
   nominationPoints: string
+  isOverride: boolean
 }
 
 interface RecommendationSettingsDraft {
   medianPeriodYears: string
+  bayesianDefaultC: string
+  bayesianMRatio: string
+  oscarWinPoints: string
+  oscarNomPoints: string
+  ggWinPoints: string
+  ggNomPoints: string
   awardWeights: RecommendationAwardWeightDraft[]
 }
+
+type RecommendationGlobalSetting = Exclude<keyof RecommendationSettingsDraft, 'awardWeights'>
 
 const voteWeightPollIntervalMs = 2_000
 const dirtyWarning = 'New metadata detected. Recommended scores may be inaccurate. Recalculate vote weights.'
@@ -31,11 +40,18 @@ const dirtyWarning = 'New metadata detected. Recommended scores may be inaccurat
 function settingsToDraft(settings: RecommendationSettings): RecommendationSettingsDraft {
   return {
     medianPeriodYears: String(settings.medianPeriodYears),
+    bayesianDefaultC: String(settings.bayesianDefaultC),
+    bayesianMRatio: String(settings.bayesianMRatio),
+    oscarWinPoints: String(settings.oscarWinPoints),
+    oscarNomPoints: String(settings.oscarNomPoints),
+    ggWinPoints: String(settings.ggWinPoints),
+    ggNomPoints: String(settings.ggNomPoints),
     awardWeights: settings.awardWeights.map((weight) => ({
       awardSource: weight.awardSource,
       categoryKey: weight.categoryKey,
       winPoints: String(weight.winPoints),
       nominationPoints: String(weight.nominationPoints),
+      isOverride: weight.isOverride,
     })),
   }
 }
@@ -121,8 +137,30 @@ export function RecommendationSettingsView() {
     setDraft((current) => current && ({
       ...current,
       awardWeights: current.awardWeights.map((weight, weightIndex) =>
-        weightIndex === index ? { ...weight, [field]: value } : weight),
+        weightIndex === index ? { ...weight, [field]: value, isOverride: true } : weight),
     }))
+    setSettingsSaved(false)
+  }
+
+  function updateAwardOverride(index: number, isOverride: boolean) {
+    setDraft((current) => current && ({
+      ...current,
+      awardWeights: current.awardWeights.map((weight, weightIndex) => {
+        if (weightIndex !== index) return weight
+        if (!isOverride) return { ...weight, isOverride: false }
+        return {
+          ...weight,
+          isOverride: true,
+          winPoints: weight.awardSource === 'oscar' ? current.oscarWinPoints : current.ggWinPoints,
+          nominationPoints: weight.awardSource === 'oscar' ? current.oscarNomPoints : current.ggNomPoints,
+        }
+      }),
+    }))
+    setSettingsSaved(false)
+  }
+
+  function updateGlobalSetting(field: RecommendationGlobalSetting, value: string) {
+    setDraft((current) => current && ({ ...current, [field]: value }))
     setSettingsSaved(false)
   }
 
@@ -131,22 +169,41 @@ export function RecommendationSettingsView() {
     if (!draft) return
 
     const medianPeriodYears = Number(draft.medianPeriodYears)
+    const bayesianDefaultC = Number(draft.bayesianDefaultC)
+    const bayesianMRatio = Number(draft.bayesianMRatio)
+    const oscarWinPoints = Number(draft.oscarWinPoints)
+    const oscarNomPoints = Number(draft.oscarNomPoints)
+    const ggWinPoints = Number(draft.ggWinPoints)
+    const ggNomPoints = Number(draft.ggNomPoints)
     const awardWeights = draft.awardWeights.map((weight) => ({
       awardSource: weight.awardSource,
       categoryKey: weight.categoryKey,
       winPoints: Number(weight.winPoints),
       nominationPoints: Number(weight.nominationPoints),
+      isOverride: weight.isOverride,
     }))
     if (!Number.isInteger(medianPeriodYears) || medianPeriodYears < 1
+      || !Number.isFinite(bayesianDefaultC) || bayesianDefaultC < 0 || bayesianDefaultC > 10
+      || !Number.isFinite(bayesianMRatio) || bayesianMRatio <= 0 || bayesianMRatio > 1
+      || [oscarWinPoints, oscarNomPoints, ggWinPoints, ggNomPoints].some((points) => !Number.isFinite(points) || points < 0)
       || awardWeights.some((weight) => !Number.isFinite(weight.winPoints)
         || weight.winPoints < 0
         || !Number.isFinite(weight.nominationPoints)
         || weight.nominationPoints < 0)) {
-      setSaveError('Enter a positive whole-year period and nonnegative award points.')
+      setSaveError('Enter valid Bayesian settings and nonnegative award points.')
       return
     }
 
-    const input: RecommendationSettingsInput = { medianPeriodYears, awardWeights }
+    const input: RecommendationSettingsInput = {
+      medianPeriodYears,
+      bayesianDefaultC,
+      bayesianMRatio,
+      oscarWinPoints,
+      oscarNomPoints,
+      ggWinPoints,
+      ggNomPoints,
+      awardWeights,
+    }
     setSaving(true)
     setSaveError(null)
     setSettingsSaved(false)
@@ -240,11 +297,7 @@ export function RecommendationSettingsView() {
           disabled={controlsDisabled}
           id="recommendation-median-period"
           min="1"
-          onChange={(event) => {
-            const value = event.currentTarget.value
-            setDraft((current) => current && ({ ...current, medianPeriodYears: value }))
-            setSettingsSaved(false)
-          }}
+          onChange={(event) => updateGlobalSetting('medianPeriodYears', event.currentTarget.value)}
           required
           step="1"
           type="number"
@@ -253,12 +306,43 @@ export function RecommendationSettingsView() {
       </div>
 
       <div>
-        <h3 className="recommendation-settings-subheading">Award points</h3>
-        <p className="section-caption">Winning events use win points; other nominations use nomination points. Source and category are kept separate.</p>
+        <h3 className="recommendation-settings-subheading">Scoring defaults</h3>
+        <p className="section-caption">Bayesian confidence uses each movie period's vote median. Source-level award points apply unless a category override is enabled.</p>
+        <div className="recommendation-scoring-fields">
+          <div className="field">
+            <label htmlFor="recommendation-bayesian-default-c">Bayesian default C</label>
+            <input disabled={controlsDisabled} id="recommendation-bayesian-default-c" max="10" min="0" onChange={(event) => updateGlobalSetting('bayesianDefaultC', event.currentTarget.value)} required step="any" type="number" value={draft.bayesianDefaultC} />
+          </div>
+          <div className="field">
+            <label htmlFor="recommendation-bayesian-m-ratio">Bayesian m ratio</label>
+            <input disabled={controlsDisabled} id="recommendation-bayesian-m-ratio" max="1" min="0.0001" onChange={(event) => updateGlobalSetting('bayesianMRatio', event.currentTarget.value)} required step="any" type="number" value={draft.bayesianMRatio} />
+          </div>
+          <div className="field">
+            <label htmlFor="recommendation-oscar-win-points">Oscar win points</label>
+            <input disabled={controlsDisabled} id="recommendation-oscar-win-points" min="0" onChange={(event) => updateGlobalSetting('oscarWinPoints', event.currentTarget.value)} required step="any" type="number" value={draft.oscarWinPoints} />
+          </div>
+          <div className="field">
+            <label htmlFor="recommendation-oscar-nom-points">Oscar nomination points</label>
+            <input disabled={controlsDisabled} id="recommendation-oscar-nom-points" min="0" onChange={(event) => updateGlobalSetting('oscarNomPoints', event.currentTarget.value)} required step="any" type="number" value={draft.oscarNomPoints} />
+          </div>
+          <div className="field">
+            <label htmlFor="recommendation-gg-win-points">Golden Globes win points</label>
+            <input disabled={controlsDisabled} id="recommendation-gg-win-points" min="0" onChange={(event) => updateGlobalSetting('ggWinPoints', event.currentTarget.value)} required step="any" type="number" value={draft.ggWinPoints} />
+          </div>
+          <div className="field">
+            <label htmlFor="recommendation-gg-nom-points">Golden Globes nomination points</label>
+            <input disabled={controlsDisabled} id="recommendation-gg-nom-points" min="0" onChange={(event) => updateGlobalSetting('ggNomPoints', event.currentTarget.value)} required step="any" type="number" value={draft.ggNomPoints} />
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="recommendation-settings-subheading">Category overrides</h3>
+        <p className="section-caption">Enable an override to use custom points for one source and category.</p>
         {draft.awardWeights.length === 0 ? <EmptyState title="No award weights configured" message="The server has not returned any source-qualified award categories." /> : (
           <div className="table-wrap">
             <table className="data-table recommendation-settings-table">
-              <thead><tr><th scope="col">SOURCE</th><th scope="col">CATEGORY</th><th scope="col">WIN POINTS</th><th scope="col">NOMINATION POINTS</th></tr></thead>
+              <thead><tr><th scope="col">SOURCE</th><th scope="col">CATEGORY</th><th scope="col">OVERRIDE</th><th scope="col">WIN POINTS</th><th scope="col">NOMINATION POINTS</th></tr></thead>
               <tbody>{draft.awardWeights.map((weight, index) => {
                 const source = awardSourceLabel(weight.awardSource)
                 const category = formatWords(weight.categoryKey)
@@ -266,8 +350,15 @@ export function RecommendationSettingsView() {
                   <td>{source}</td>
                   <td>{category}</td>
                   <td><input
-                    aria-label={`${source} ${category} win points`}
+                    aria-label={`${source} ${category} use category override`}
+                    checked={weight.isOverride}
                     disabled={controlsDisabled}
+                    onChange={(event) => updateAwardOverride(index, event.currentTarget.checked)}
+                    type="checkbox"
+                  /></td>
+                  <td><input
+                    aria-label={`${source} ${category} win points`}
+                    disabled={controlsDisabled || !weight.isOverride}
                     min="0"
                     onChange={(event) => updateAwardWeight(index, 'winPoints', event.currentTarget.value)}
                     required
@@ -277,7 +368,7 @@ export function RecommendationSettingsView() {
                   /></td>
                   <td><input
                     aria-label={`${source} ${category} nomination points`}
-                    disabled={controlsDisabled}
+                    disabled={controlsDisabled || !weight.isOverride}
                     min="0"
                     onChange={(event) => updateAwardWeight(index, 'nominationPoints', event.currentTarget.value)}
                     required

@@ -22,9 +22,9 @@ public sealed class MovieRecommendationScorerTests
             ]);
 
         Assert.Equal(6m, profile.GlobalAverage);
-        Assert.Equal(2, profile.Categories[new MovieRecommendationCategoryKey("oscar", "threshold")].RatedWinnerCount);
+        Assert.Equal(2, profile.Categories[new MovieRecommendationCategoryKey("oscar", "threshold")].RatedMovieCount);
         Assert.Equal(1m, profile.GetMultiplier("oscar", "threshold"));
-        Assert.Equal(3, profile.Categories[new MovieRecommendationCategoryKey("oscar", "high")].RatedWinnerCount);
+        Assert.Equal(3, profile.Categories[new MovieRecommendationCategoryKey("oscar", "high")].RatedMovieCount);
         Assert.Equal(1.5m, profile.GetMultiplier("oscar", "high"));
         Assert.Equal(0.5m, profile.GetMultiplier("oscar", "low"));
         Assert.Equal(1m, profile.GetMultiplier("golden_globes", "high"));
@@ -54,7 +54,7 @@ public sealed class MovieRecommendationScorerTests
 
         var score = MovieRecommendationScorer.Score(
             candidate,
-            7m,
+            ScoringSettings(bayesianDefaultC: 7m),
             MovieRecommendationScorer.BuildTasteProfile([], []),
             weights,
             new MovieRecommendationCoefficients(0.5m, 0.25m, 0.25m));
@@ -89,20 +89,57 @@ public sealed class MovieRecommendationScorerTests
 
         var score = MovieRecommendationScorer.Score(
             candidate,
-            6m,
+            ScoringSettings(bayesianDefaultC: 6m),
             MovieRecommendationScorer.BuildTasteProfile([], []),
             weights,
             new MovieRecommendationCoefficients(0.5m, 0.25m, 0.25m));
 
-        Assert.Equal(7m, score.RatingComponent);
+        Assert.Equal(7.6m, score.RatingComponent);
         Assert.Equal(0.5m, score.PopularityComponent);
-        Assert.Equal(3.5m, score.AwardComponent);
+        Assert.Equal(4m, score.AwardComponent);
         Assert.Equal(3, score.AwardEvents.Count);
         Assert.Equal(3m, score.AwardEvents.Single(item => item.AwardSource == "oscar").BasePoints);
         Assert.Equal(0.5m, score.AwardEvents.Single(item =>
             item.AwardSource == "golden_globes" && item.CategoryKey == "BEST PICTURE").BasePoints);
-        Assert.Equal(0m, score.AwardEvents.Single(item => item.CategoryKey == "award_other").AdjustedPoints);
-        Assert.Equal(4.5m, score.FinalScore);
+        Assert.Equal(0.5m, score.AwardEvents.Single(item => item.CategoryKey == "award_other").AdjustedPoints);
+        Assert.Equal(4.925m, score.FinalScore);
+    }
+
+    [Fact]
+    public void ScoreUsesEraMedianForBayesianConfidenceAndGlobalAwardDefaults()
+    {
+        var candidate = Candidate(
+            imdbRating: 9m,
+            imdbVotes: 100,
+            normalizedVoteWeight: Math.Log10(2d) * 3.33d,
+            awardEvents: [new("oscar", "new_category", "New Category", 2025, true)]) with
+        {
+            PeriodMedianVotes = 100m
+        };
+        var nonOverride = new[]
+        {
+            new MovieRecommendationAwardWeight("oscar", "new_category", 3m, 1m, IsOverride: false)
+        };
+
+        var score = MovieRecommendationScorer.Score(
+            candidate,
+            ScoringSettings(oscarWinPoints: 4.5m),
+            MovieRecommendationScorer.BuildTasteProfile([], []),
+            nonOverride,
+            new MovieRecommendationCoefficients(0.5m, 0.25m, 0.25m));
+
+        Assert.Equal(8.3m, score.RatingComponent);
+        Assert.Equal(4.5m, score.AwardComponent);
+
+        var olderEraCandidate = candidate with { PeriodMedianVotes = 1000m };
+        var olderEraScore = MovieRecommendationScorer.Score(
+            olderEraCandidate,
+            ScoringSettings(oscarWinPoints: 4.5m),
+            MovieRecommendationScorer.BuildTasteProfile([], []),
+            nonOverride,
+            new MovieRecommendationCoefficients(0.5m, 0.25m, 0.25m));
+
+        Assert.Equal(6.5m, olderEraScore.RatingComponent);
     }
 
     [Fact]
@@ -113,13 +150,13 @@ public sealed class MovieRecommendationScorerTests
 
         Assert.Throws<ArgumentException>(() => MovieRecommendationScorer.Score(
             candidate,
-            7m,
+            ScoringSettings(),
             profile,
             [],
             new MovieRecommendationCoefficients(0.5m, 0.25m, 0.3m)));
         Assert.Throws<ArgumentOutOfRangeException>(() => MovieRecommendationScorer.Score(
             candidate,
-            7m,
+            ScoringSettings(),
             profile,
             [],
             new MovieRecommendationCoefficients(1.1m, 0m, -0.1m)));
@@ -140,4 +177,18 @@ public sealed class MovieRecommendationScorerTests
             "https://example.com/poster.jpg",
             ["Drama"],
             awardEvents);
+
+    private static MovieRecommendationScoringSettings ScoringSettings(
+        decimal bayesianDefaultC = 5.5m,
+        decimal bayesianMRatio = 0.25m,
+        decimal oscarWinPoints = 3m,
+        decimal oscarNomPoints = 1m,
+        decimal ggWinPoints = 2m,
+        decimal ggNomPoints = 0.5m) => new(
+            bayesianDefaultC,
+            bayesianMRatio,
+            oscarWinPoints,
+            oscarNomPoints,
+            ggWinPoints,
+            ggNomPoints);
 }

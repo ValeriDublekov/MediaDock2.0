@@ -24,17 +24,17 @@ public sealed class MovieVoteNormalizerTests
         Assert.Equal(2000, results["tt00000002"].PeriodStart);
         Assert.Equal(2005, results["tt00000004"].PeriodStart);
         Assert.Equal(2010, results["tt00000007"].PeriodStart);
-        Assert.Equal(Math.Log10(2d), results["tt00000001"].NormalizedVoteWeight, 12);
-        Assert.Equal(Math.Log10(1.2d), results["tt00000002"].NormalizedVoteWeight, 12);
-        Assert.Equal(Math.Log10(2.8d), results["tt00000003"].NormalizedVoteWeight, 12);
-        Assert.Equal(Math.Log10(1.5d), results["tt00000004"].NormalizedVoteWeight, 12);
-        Assert.Equal(Math.Log10(2d), results["tt00000005"].NormalizedVoteWeight, 12);
-        Assert.Equal(Math.Log10(5.5d), results["tt00000006"].NormalizedVoteWeight, 12);
-        Assert.Equal(Math.Log10(2d), results["tt00000007"].NormalizedVoteWeight, 12);
+        Assert.Equal(Popularity(10, 10m), results["tt00000001"].NormalizedVoteWeight, 12);
+        Assert.Equal(Popularity(10, 50m), results["tt00000002"].NormalizedVoteWeight, 12);
+        Assert.Equal(Popularity(90, 50m), results["tt00000003"].NormalizedVoteWeight, 12);
+        Assert.Equal(Popularity(10, 20m), results["tt00000004"].NormalizedVoteWeight, 12);
+        Assert.Equal(Popularity(20, 20m), results["tt00000005"].NormalizedVoteWeight, 12);
+        Assert.Equal(Popularity(90, 20m), results["tt00000006"].NormalizedVoteWeight, 12);
+        Assert.Equal(Popularity(100, 100m), results["tt00000007"].NormalizedVoteWeight, 12);
     }
 
     [Fact]
-    public void NormalizeUsesGlobalMedianForMissingYearsIncludingZeroVotes()
+    public void NormalizeUsesTheDefaultMedianForMissingYearsIncludingZeroVotes()
     {
         var movies = new[]
         {
@@ -48,10 +48,12 @@ public sealed class MovieVoteNormalizerTests
 
         Assert.Equal(2020, results["tt00000001"].PeriodStart);
         Assert.Equal(0d, results["tt00000001"].NormalizedVoteWeight);
-        Assert.True(results["tt00000003"].UsedGlobalMedian);
-        Assert.True(results["tt00000004"].UsedGlobalMedian);
+        Assert.True(results["tt00000003"].UsedFallbackMedian);
+        Assert.True(results["tt00000004"].UsedFallbackMedian);
+        Assert.Equal(1000m, results["tt00000003"].PeriodMedianVotes);
+        Assert.Equal(1000m, results["tt00000004"].PeriodMedianVotes);
         Assert.Equal(0d, results["tt00000003"].NormalizedVoteWeight);
-        Assert.Equal(Math.Log10(21d), results["tt00000004"].NormalizedVoteWeight, 12);
+        Assert.Equal(Popularity(1000, 1000m), results["tt00000004"].NormalizedVoteWeight, 12);
     }
 
     [Fact]
@@ -69,9 +71,10 @@ public sealed class MovieVoteNormalizerTests
 
         Assert.All(results.Values, result => Assert.Equal(0d, result.NormalizedVoteWeight));
         Assert.Equal(2020, results["tt00000003"].PeriodStart);
-        Assert.False(results["tt00000003"].UsedGlobalMedian);
+        Assert.True(results["tt00000001"].UsedFallbackMedian);
+        Assert.True(results["tt00000003"].UsedFallbackMedian);
         Assert.Null(results["tt00000004"].PeriodStart);
-        Assert.True(results["tt00000004"].UsedGlobalMedian);
+        Assert.True(results["tt00000004"].UsedFallbackMedian);
     }
 
     [Fact]
@@ -85,7 +88,24 @@ public sealed class MovieVoteNormalizerTests
 
         var results = MovieVoteNormalizer.Normalize(movies, 5);
 
-        Assert.All(results, result => Assert.Equal(Math.Log10(2d), result.NormalizedVoteWeight, 12));
+        Assert.All(results, result => Assert.Equal(Popularity(100, 100m), result.NormalizedVoteWeight, 12));
+    }
+
+    [Fact]
+    public void NormalizeCapsPopularityAndUsesFallbackForZeroPeriodMedian()
+    {
+        var movies = new[]
+        {
+            new MovieVoteNormalizationInput("tt00000001", 2020, 0),
+            new MovieVoteNormalizationInput("tt00000002", 2021, 0),
+            new MovieVoteNormalizationInput("tt00000003", 2022, long.MaxValue)
+        };
+
+        var results = MovieVoteNormalizer.Normalize(movies, 5).ToDictionary(result => result.ImdbId);
+
+        Assert.Equal(1000m, results["tt00000001"].PeriodMedianVotes);
+        Assert.True(results["tt00000003"].UsedFallbackMedian);
+        Assert.Equal(10d, results["tt00000003"].NormalizedVoteWeight);
     }
 
     [Fact]
@@ -94,4 +114,7 @@ public sealed class MovieVoteNormalizerTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             MovieVoteNormalizer.Normalize([], 0));
     }
+
+    private static double Popularity(long votes, decimal medianVotes) =>
+        Math.Min(10d, Math.Log10((double)votes / (double)medianVotes + 1d) * 3.33d);
 }

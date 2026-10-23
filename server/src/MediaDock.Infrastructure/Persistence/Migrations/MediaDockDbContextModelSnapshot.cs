@@ -404,6 +404,30 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<decimal>("BayesianDefaultC")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric")
+                        .HasDefaultValue(5.5m)
+                        .HasColumnName("bayesian_default_c");
+
+                    b.Property<decimal>("BayesianMRatio")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric")
+                        .HasDefaultValue(0.25m)
+                        .HasColumnName("bayesian_m_ratio");
+
+                    b.Property<decimal>("GgNomPoints")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric")
+                        .HasDefaultValue(0.5m)
+                        .HasColumnName("gg_nom_points");
+
+                    b.Property<decimal>("GgWinPoints")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric")
+                        .HasDefaultValue(2m)
+                        .HasColumnName("gg_win_points");
+
                     b.Property<DateTimeOffset?>("LastVoteRecalculationAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_vote_recalculation_at");
@@ -418,6 +442,18 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(5)
                         .HasColumnName("median_period_years");
 
+                    b.Property<decimal>("OscarNomPoints")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric")
+                        .HasDefaultValue(1m)
+                        .HasColumnName("oscar_nom_points");
+
+                    b.Property<decimal>("OscarWinPoints")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("numeric")
+                        .HasDefaultValue(3m)
+                        .HasColumnName("oscar_win_points");
+
                     b.Property<bool>("RequiresVoteRecalculation")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -429,9 +465,21 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.ToTable("general_recommendation_settings", null, t =>
                         {
+                            t.HasCheckConstraint("ck_general_recommendation_settings_bayesian_default_c", "bayesian_default_c >= 0 AND bayesian_default_c <= 10");
+
+                            t.HasCheckConstraint("ck_general_recommendation_settings_bayesian_m_ratio", "bayesian_m_ratio > 0 AND bayesian_m_ratio <= 1");
+
+                            t.HasCheckConstraint("ck_general_recommendation_settings_gg_nom_points", "gg_nom_points >= 0");
+
+                            t.HasCheckConstraint("ck_general_recommendation_settings_gg_win_points", "gg_win_points >= 0");
+
                             t.HasCheckConstraint("ck_general_recommendation_settings_last_vote_recalculation_period_years", "last_vote_recalculation_period_years IS NULL OR last_vote_recalculation_period_years > 0");
 
                             t.HasCheckConstraint("ck_general_recommendation_settings_median_period_years", "median_period_years > 0");
+
+                            t.HasCheckConstraint("ck_general_recommendation_settings_oscar_nom_points", "oscar_nom_points >= 0");
+
+                            t.HasCheckConstraint("ck_general_recommendation_settings_oscar_win_points", "oscar_win_points >= 0");
 
                             t.HasCheckConstraint("ck_general_recommendation_settings_requires_vote_recalculation", "requires_vote_recalculation IN (TRUE, FALSE)");
 
@@ -1322,6 +1370,12 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
                         .HasColumnName("category_key");
+
+                    b.Property<bool>("IsOverride")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_override");
 
                     b.Property<decimal>("NominationPoints")
                         .HasColumnType("numeric")

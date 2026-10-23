@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+
 interface CategoryMultiSelectProps {
   label: string
   optionsLabel?: string
@@ -17,6 +19,20 @@ export function CategoryMultiSelect({
   error = null,
   onChange,
 }: CategoryMultiSelectProps) {
+  const menuRef = useRef<HTMLDetailsElement>(null)
+
+  useEffect(() => {
+    function closeOnOutsidePointer(event: PointerEvent) {
+      const menu = menuRef.current
+      if (menu?.open && event.target instanceof Node && !menu.contains(event.target)) {
+        menu.open = false
+      }
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer)
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer)
+  }, [])
+
   const allSelected = selectedValues === null
   const selectedCount = allSelected ? options.length : selectedValues.length
 
@@ -46,24 +62,35 @@ export function CategoryMultiSelect({
           {error ? `Could not load ${optionsLabel}. ${error}` : summary}
         </p>
       ) : (
-        <details className="category-multiselect-menu">
+        <details className="category-multiselect-menu" ref={menuRef}>
           <summary aria-label={`${label}: ${summary}`}>{summary}</summary>
           <div className="category-multiselect-options">
-            {!allSelected && (
-              <button className="category-multiselect-select-all" onClick={() => onChange(null)} type="button">
-                Select all
-              </button>
-            )}
-            {options.map((option) => (
-              <label className="category-multiselect-option" key={option}>
-                <input
-                  checked={allSelected || selectedValues.includes(option)}
-                  onChange={() => toggleOption(option)}
-                  type="checkbox"
-                />
-                <span>{option}</span>
-              </label>
-            ))}
+            <div className="category-multiselect-actions">
+              <button
+                className="category-multiselect-action"
+                disabled={selectedValues === null || selectedValues.length === options.length}
+                onClick={() => onChange(null)}
+                type="button"
+              >Select all</button>
+              <button
+                className="category-multiselect-action"
+                disabled={selectedValues !== null && selectedValues.length === 0}
+                onClick={() => onChange([])}
+                type="button"
+              >Select none</button>
+            </div>
+            <div className="category-multiselect-items">
+              {options.map((option) => (
+                <label className="category-multiselect-option" key={option}>
+                  <input
+                    checked={allSelected || selectedValues.includes(option)}
+                    onChange={() => toggleOption(option)}
+                    type="checkbox"
+                  />
+                  <span>{option}</span>
+                </label>
+              ))}
+            </div>
           </div>
         </details>
       )}

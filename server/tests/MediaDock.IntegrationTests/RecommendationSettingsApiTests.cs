@@ -24,6 +24,12 @@ public sealed class RecommendationSettingsApiTests
         var initialSettings = await initialResponse.Content.ReadFromJsonAsync<RecommendationSettingsResponse>();
         Assert.NotNull(initialSettings);
         Assert.Equal(5, initialSettings.MedianPeriodYears);
+        Assert.Equal(5.5m, initialSettings.BayesianDefaultC);
+        Assert.Equal(0.25m, initialSettings.BayesianMRatio);
+        Assert.Equal(3m, initialSettings.OscarWinPoints);
+        Assert.Equal(1m, initialSettings.OscarNomPoints);
+        Assert.Equal(2m, initialSettings.GgWinPoints);
+        Assert.Equal(0.5m, initialSettings.GgNomPoints);
         Assert.False(initialSettings.RequiresVoteRecalculation);
         Assert.Null(initialSettings.LastVoteRecalculationAt);
         Assert.Contains(initialSettings.AwardWeights, weight =>
@@ -42,6 +48,7 @@ public sealed class RecommendationSettingsApiTests
             new UpdateRecommendationSettingsRequest
             {
                 MedianPeriodYears = 5,
+                BayesianMRatio = 0m,
                 AwardWeights =
                 [
                     new UpdateRecommendationAwardWeightRequest
@@ -60,6 +67,12 @@ public sealed class RecommendationSettingsApiTests
             new UpdateRecommendationSettingsRequest
             {
                 MedianPeriodYears = 4,
+                BayesianDefaultC = 6.25m,
+                BayesianMRatio = 0.5m,
+                OscarWinPoints = 5m,
+                OscarNomPoints = 2m,
+                GgWinPoints = 3m,
+                GgNomPoints = 0.75m,
                 AwardWeights =
                 [
                     new UpdateRecommendationAwardWeightRequest
@@ -67,14 +80,16 @@ public sealed class RecommendationSettingsApiTests
                         AwardSource = "golden_globes",
                         CategoryKey = "best_motion_picture_drama",
                         WinPoints = 7m,
-                        NominationPoints = 3m
+                        NominationPoints = 3m,
+                        IsOverride = true
                     },
                     new UpdateRecommendationAwardWeightRequest
                     {
                         AwardSource = "oscar",
                         CategoryKey = "BEST PICTURE",
                         WinPoints = 5m,
-                        NominationPoints = 2m
+                        NominationPoints = 2m,
+                        IsOverride = true
                     }
                 ]
             });
@@ -84,12 +99,19 @@ public sealed class RecommendationSettingsApiTests
         var updatedSettings = await updateResponse.Content.ReadFromJsonAsync<RecommendationSettingsResponse>();
         Assert.NotNull(updatedSettings);
         Assert.Equal(4, updatedSettings.MedianPeriodYears);
+        Assert.Equal(6.25m, updatedSettings.BayesianDefaultC);
+        Assert.Equal(0.5m, updatedSettings.BayesianMRatio);
+        Assert.Equal(5m, updatedSettings.OscarWinPoints);
+        Assert.Equal(2m, updatedSettings.OscarNomPoints);
+        Assert.Equal(3m, updatedSettings.GgWinPoints);
+        Assert.Equal(0.75m, updatedSettings.GgNomPoints);
         Assert.True(updatedSettings.RequiresVoteRecalculation);
         Assert.Contains(updatedSettings.AwardWeights, weight =>
             weight.AwardSource == "golden_globes"
             && weight.CategoryKey == "best_motion_picture_drama"
             && weight.WinPoints == 7m
-            && weight.NominationPoints == 3m);
+            && weight.NominationPoints == 3m
+            && weight.IsOverride);
 
         db.ImdbTitles.AddRange(
             new ImdbTitle
@@ -135,7 +157,7 @@ public sealed class RecommendationSettingsApiTests
         Assert.Equal(4, recalculation.MovieCount);
         Assert.Equal(3, recalculation.MoviesWithVotesCount);
         Assert.Equal(2, recalculation.PeriodCount);
-        Assert.Equal(1, recalculation.GlobalFallbackCount);
+        Assert.Equal(2, recalculation.FallbackMedianCount);
         Assert.Equal(1, recalculation.MissingVoteCount);
         Assert.True(recalculation.DurationMilliseconds >= 0);
 
@@ -143,9 +165,9 @@ public sealed class RecommendationSettingsApiTests
         var storedWeights = await db.ImdbTitles.AsNoTracking()
             .Where(title => title.ImdbId.StartsWith("tt9988776"))
             .ToDictionaryAsync(title => title.ImdbId, title => title.NormalizedVoteWeight);
-        Assert.Equal(Math.Log10(1.5d), storedWeights["tt99887761"], 12);
-        Assert.Equal(Math.Log10(2.5d), storedWeights["tt99887762"], 12);
-        Assert.Equal(Math.Log10(2d), storedWeights["tt99887763"], 12);
+        Assert.Equal(Math.Min(10d, Math.Log10(1.5d) * 3.33d), storedWeights["tt99887761"], 12);
+        Assert.Equal(Math.Min(10d, Math.Log10(2.5d) * 3.33d), storedWeights["tt99887762"], 12);
+        Assert.Equal(Math.Min(10d, Math.Log10(1.2d) * 3.33d), storedWeights["tt99887763"], 12);
         Assert.Equal(0d, storedWeights["tt99887764"]);
         var savedSettings = await db.GeneralRecommendationSettings.AsNoTracking().SingleAsync();
         Assert.False(savedSettings.RequiresVoteRecalculation);

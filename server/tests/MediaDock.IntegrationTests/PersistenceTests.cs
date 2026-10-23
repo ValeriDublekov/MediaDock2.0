@@ -62,6 +62,12 @@ public sealed class PersistenceTests
         var recommendationSettings = await db.GeneralRecommendationSettings.AsNoTracking().SingleAsync();
         Assert.Equal(1, recommendationSettings.Id);
         Assert.Equal(5, recommendationSettings.MedianPeriodYears);
+        Assert.Equal(5.5m, recommendationSettings.BayesianDefaultC);
+        Assert.Equal(0.25m, recommendationSettings.BayesianMRatio);
+        Assert.Equal(3m, recommendationSettings.OscarWinPoints);
+        Assert.Equal(1m, recommendationSettings.OscarNomPoints);
+        Assert.Equal(2m, recommendationSettings.GgWinPoints);
+        Assert.Equal(0.5m, recommendationSettings.GgNomPoints);
         Assert.True(recommendationSettings.RequiresVoteRecalculation);
         Assert.Null(recommendationSettings.LastVoteRecalculationAt);
         Assert.Null(recommendationSettings.LastVoteRecalculationPeriodYears);
@@ -87,10 +93,12 @@ public sealed class PersistenceTests
             .SingleAsync(weight => weight.AwardSource == "oscar" && weight.CategoryKey == "BEST PICTURE");
         Assert.Equal(3m, oscarWeight.WinPoints);
         Assert.Equal(1m, oscarWeight.NominationPoints);
+        Assert.False(oscarWeight.IsOverride);
         var goldenGlobesWeight = await db.RecommendationAwardWeights.AsNoTracking()
             .SingleAsync(weight => weight.AwardSource == "golden_globes" && weight.CategoryKey == "best_motion_picture_drama");
         Assert.Equal(2m, goldenGlobesWeight.WinPoints);
         Assert.Equal(0.5m, goldenGlobesWeight.NominationPoints);
+        Assert.False(goldenGlobesWeight.IsOverride);
         Assert.All(
             await db.RecommendationAwardWeights.AsNoTracking()
                 .Where(weight => weight.CategoryKey == "award_other")

@@ -27,7 +27,7 @@ const voteRecalculation: VoteWeightRecalculationResponse = {
   movieCount: 120,
   moviesWithVotesCount: 112,
   periodCount: 8,
-  globalFallbackCount: 2,
+  fallbackMedianCount: 2,
   missingVoteCount: 8,
 }
 
@@ -76,12 +76,18 @@ function recommendationPage(
 function recommendationSettings(overrides: Partial<RecommendationSettings> = {}): RecommendationSettings {
   return {
     medianPeriodYears: 5,
+    bayesianDefaultC: 5.5,
+    bayesianMRatio: 0.25,
+    oscarWinPoints: 3,
+    oscarNomPoints: 1,
+    ggWinPoints: 2,
+    ggNomPoints: 0.5,
     requiresVoteRecalculation: false,
     lastVoteRecalculationAt: null,
     lastVoteRecalculationPeriodYears: null,
     awardWeights: [
-      { awardSource: 'oscar', categoryKey: 'best_picture', winPoints: 3, nominationPoints: 1 },
-      { awardSource: 'golden_globes', categoryKey: 'award_other', winPoints: 0, nominationPoints: 0 },
+      { awardSource: 'oscar', categoryKey: 'best_picture', winPoints: 3, nominationPoints: 1, isOverride: false },
+      { awardSource: 'golden_globes', categoryKey: 'award_other', winPoints: 2, nominationPoints: 0.5, isOverride: false },
     ],
     ...overrides,
   }
@@ -104,10 +110,14 @@ describe('RecommendationSettingsView', () => {
     const dirtySettings = recommendationSettings({ requiresVoteRecalculation: true })
     const savedSettings = recommendationSettings({
       medianPeriodYears: 7,
+      bayesianDefaultC: 6.25,
+      bayesianMRatio: 0.5,
+      oscarWinPoints: 5,
+      oscarNomPoints: 2,
       requiresVoteRecalculation: true,
       awardWeights: [
-        { awardSource: 'oscar', categoryKey: 'best_picture', winPoints: 4.5, nominationPoints: 1.25 },
-        { awardSource: 'golden_globes', categoryKey: 'award_other', winPoints: 0, nominationPoints: 0 },
+        { awardSource: 'oscar', categoryKey: 'best_picture', winPoints: 4.5, nominationPoints: 1.25, isOverride: true },
+        { awardSource: 'golden_globes', categoryKey: 'award_other', winPoints: 2, nominationPoints: 0.5, isOverride: false },
       ],
     })
     const cleanSettings = recommendationSettings({
@@ -127,6 +137,11 @@ describe('RecommendationSettingsView', () => {
     expect(await screen.findByRole('heading', { name: 'Recommendation settings' })).toBeTruthy()
     expect(screen.getByRole('alert').textContent).toContain(dirtyWarning)
     fireEvent.change(screen.getByLabelText('Vote median period (years)'), { target: { value: '7' } })
+    fireEvent.change(screen.getByLabelText('Bayesian default C'), { target: { value: '6.25' } })
+    fireEvent.change(screen.getByLabelText('Bayesian m ratio'), { target: { value: '0.5' } })
+    fireEvent.change(screen.getByLabelText('Oscar win points'), { target: { value: '5' } })
+    fireEvent.change(screen.getByLabelText('Oscar nomination points'), { target: { value: '2' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: /oscar best picture use category override/i }))
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Oscar best picture win points' }), { target: { value: '4.5' } })
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Oscar best picture nomination points' }), { target: { value: '1.25' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save recommendation settings' }))
@@ -134,9 +149,15 @@ describe('RecommendationSettingsView', () => {
     expect(await screen.findByText('Recommendation settings saved.')).toBeTruthy()
     expect(updateRecommendationSettings).toHaveBeenCalledWith({
       medianPeriodYears: 7,
+      bayesianDefaultC: 6.25,
+      bayesianMRatio: 0.5,
+      oscarWinPoints: 5,
+      oscarNomPoints: 2,
+      ggWinPoints: 2,
+      ggNomPoints: 0.5,
       awardWeights: [
-        { awardSource: 'oscar', categoryKey: 'best_picture', winPoints: 4.5, nominationPoints: 1.25 },
-        { awardSource: 'golden_globes', categoryKey: 'award_other', winPoints: 0, nominationPoints: 0 },
+        { awardSource: 'oscar', categoryKey: 'best_picture', winPoints: 4.5, nominationPoints: 1.25, isOverride: true },
+        { awardSource: 'golden_globes', categoryKey: 'award_other', winPoints: 2, nominationPoints: 0.5, isOverride: false },
       ],
     })
 
@@ -277,6 +298,54 @@ describe('RecommendationsView', () => {
       yearFrom: 2010,
       genres: ['Comedy'],
     }))
+  })
+
+  it('selects or clears all genres and closes the menu on outside pointer', async () => {
+    vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()]))
+
+    render(<RecommendationsView />)
+
+    const trigger = await screen.findByText('All genres (2)')
+    const menu = trigger.closest('details')
+    fireEvent.click(trigger)
+    expect(menu?.open).toBe(true)
+
+    const checkboxes = screen.getAllByRole('checkbox') as HTMLInputElement[]
+    expect(checkboxes.map((checkbox) => checkbox.checked)).toEqual([true, true])
+    let requestCount = vi.mocked(getRecommendations).mock.calls.length
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select none' }))
+    await waitFor(() => expect(getRecommendations).toHaveBeenCalledTimes(requestCount + 1))
+    requestCount += 1
+    expect(screen.getByText('0 of 2 selected')).toBeTruthy()
+    expect(checkboxes.map((checkbox) => checkbox.checked)).toEqual([false, false])
+    expect(getRecommendations).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 25,
+      ratingWeight: 0.5,
+      votesWeight: 0.25,
+      awardsWeight: 0.25,
+    })
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Comedy' }))
+    await waitFor(() => expect(getRecommendations).toHaveBeenCalledTimes(requestCount + 1))
+    requestCount += 1
+    expect(getRecommendations).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 25,
+      ratingWeight: 0.5,
+      votesWeight: 0.25,
+      awardsWeight: 0.25,
+      genres: ['Comedy'],
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Select all' }))
+    await waitFor(() => expect(getRecommendations).toHaveBeenCalledTimes(requestCount + 1))
+    expect(screen.getByText('All genres (2)')).toBeTruthy()
+    expect(checkboxes.map((checkbox) => checkbox.checked)).toEqual([true, true])
+
+    fireEvent.pointerDown(document.body)
+    expect(menu?.open).toBe(false)
   })
 
   it('shows an empty state when the server returns no candidates', async () => {

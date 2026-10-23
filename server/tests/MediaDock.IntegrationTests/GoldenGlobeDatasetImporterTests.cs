@@ -39,6 +39,7 @@ public sealed class GoldenGlobeDatasetImporterTests
             weight.AwardSource == "golden_globes" && weight.CategoryKey == "best_motion_picture_drama");
         configuredAwardWeight.WinPoints = 8.5m;
         configuredAwardWeight.NominationPoints = 1.25m;
+        configuredAwardWeight.IsOverride = true;
         await db.SaveChangesAsync();
 
         var firstImport = await importer.ImportAsync(Encoding.UTF8.GetBytes(csv));

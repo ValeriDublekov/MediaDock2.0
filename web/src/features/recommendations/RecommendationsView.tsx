@@ -107,7 +107,7 @@ export function RecommendationsView() {
       ...toCoefficients(sliderPercentages),
       ...(appliedYearFilter.from ? { yearFrom: Number(appliedYearFilter.from) } : {}),
       ...(appliedYearFilter.to ? { yearTo: Number(appliedYearFilter.to) } : {}),
-      ...(selectedGenres ? { genres: selectedGenres } : {}),
+      ...(selectedGenres?.length ? { genres: selectedGenres } : {}),
     }
     getRecommendations(query)
       .then((response) => { if (active) setResult(response) })
@@ -148,7 +148,7 @@ export function RecommendationsView() {
   }
 
   function updateGenres(values: string[] | null) {
-    setSelectedGenres(values?.length ? values : null)
+    setSelectedGenres(values)
     setPageNumber(1)
     setLoading(true)
     setError(null)
@@ -192,7 +192,7 @@ export function RecommendationsView() {
         optionsLabel="genres"
         selectedValues={selectedGenres}
       />
-      <button className="button button-secondary" disabled={!appliedYearFilter.from && !appliedYearFilter.to && selectedGenres === null} onClick={clearFilters} type="button">Clear filters</button>
+      <button className="button button-secondary" disabled={!appliedYearFilter.from && !appliedYearFilter.to && (selectedGenres === null || selectedGenres.length === 0)} onClick={clearFilters} type="button">Clear filters</button>
     </div>
 
     <fieldset aria-label="Recommendation score weights" className="recommendation-controls">

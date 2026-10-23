@@ -13,6 +13,16 @@ internal sealed class GeneralRecommendationSettingsConfiguration : IEntityTypeCo
             table.HasCheckConstraint("ck_general_recommendation_settings_singleton_id", "id = 1");
             table.HasCheckConstraint("ck_general_recommendation_settings_median_period_years", "median_period_years > 0");
             table.HasCheckConstraint(
+                "ck_general_recommendation_settings_bayesian_default_c",
+                "bayesian_default_c >= 0 AND bayesian_default_c <= 10");
+            table.HasCheckConstraint(
+                "ck_general_recommendation_settings_bayesian_m_ratio",
+                "bayesian_m_ratio > 0 AND bayesian_m_ratio <= 1");
+            table.HasCheckConstraint("ck_general_recommendation_settings_oscar_win_points", "oscar_win_points >= 0");
+            table.HasCheckConstraint("ck_general_recommendation_settings_oscar_nom_points", "oscar_nom_points >= 0");
+            table.HasCheckConstraint("ck_general_recommendation_settings_gg_win_points", "gg_win_points >= 0");
+            table.HasCheckConstraint("ck_general_recommendation_settings_gg_nom_points", "gg_nom_points >= 0");
+            table.HasCheckConstraint(
                 "ck_general_recommendation_settings_requires_vote_recalculation",
                 "requires_vote_recalculation IN (TRUE, FALSE)");
             table.HasCheckConstraint(
@@ -24,6 +34,30 @@ internal sealed class GeneralRecommendationSettingsConfiguration : IEntityTypeCo
         builder.Property(entity => entity.MedianPeriodYears)
             .HasColumnName("median_period_years")
             .HasDefaultValue(5);
+        builder.Property(entity => entity.BayesianDefaultC)
+            .HasColumnName("bayesian_default_c")
+            .HasColumnType("numeric")
+            .HasDefaultValue(5.5m);
+        builder.Property(entity => entity.BayesianMRatio)
+            .HasColumnName("bayesian_m_ratio")
+            .HasColumnType("numeric")
+            .HasDefaultValue(0.25m);
+        builder.Property(entity => entity.OscarWinPoints)
+            .HasColumnName("oscar_win_points")
+            .HasColumnType("numeric")
+            .HasDefaultValue(3m);
+        builder.Property(entity => entity.OscarNomPoints)
+            .HasColumnName("oscar_nom_points")
+            .HasColumnType("numeric")
+            .HasDefaultValue(1m);
+        builder.Property(entity => entity.GgWinPoints)
+            .HasColumnName("gg_win_points")
+            .HasColumnType("numeric")
+            .HasDefaultValue(2m);
+        builder.Property(entity => entity.GgNomPoints)
+            .HasColumnName("gg_nom_points")
+            .HasColumnType("numeric")
+            .HasDefaultValue(0.5m);
         builder.Property(entity => entity.RequiresVoteRecalculation)
             .HasColumnName("requires_vote_recalculation")
             .HasDefaultValue(false);

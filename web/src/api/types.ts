@@ -213,10 +213,17 @@ export interface RecommendationAwardWeight {
   categoryKey: string
   winPoints: number
   nominationPoints: number
+  isOverride: boolean
 }
 
 export interface RecommendationSettings {
   medianPeriodYears: number
+  bayesianDefaultC: number
+  bayesianMRatio: number
+  oscarWinPoints: number
+  oscarNomPoints: number
+  ggWinPoints: number
+  ggNomPoints: number
   requiresVoteRecalculation: boolean
   lastVoteRecalculationAt: string | null
   lastVoteRecalculationPeriodYears: number | null
@@ -225,6 +232,12 @@ export interface RecommendationSettings {
 
 export interface RecommendationSettingsInput {
   medianPeriodYears: number
+  bayesianDefaultC: number
+  bayesianMRatio: number
+  oscarWinPoints: number
+  oscarNomPoints: number
+  ggWinPoints: number
+  ggNomPoints: number
   awardWeights: RecommendationAwardWeight[]
 }
 
@@ -235,7 +248,7 @@ export interface VoteWeightRecalculationResponse {
   movieCount: number
   moviesWithVotesCount: number
   periodCount: number
-  globalFallbackCount: number
+  fallbackMedianCount: number
   missingVoteCount: number
 }
 

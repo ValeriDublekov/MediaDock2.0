@@ -68,6 +68,9 @@ internal sealed class RecommendationAwardWeightConfiguration : IEntityTypeConfig
         builder.Property(entity => entity.NominationPoints)
             .HasColumnName("nomination_points")
             .HasColumnType("numeric");
+        builder.Property(entity => entity.IsOverride)
+            .HasColumnName("is_override")
+            .HasDefaultValue(false);
         builder.HasIndex(entity => new { entity.AwardSource, entity.CategoryKey })
             .IsUnique()
             .HasDatabaseName("ux_recommendation_award_weights_source_category");

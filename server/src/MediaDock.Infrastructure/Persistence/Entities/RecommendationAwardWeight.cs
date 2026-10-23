@@ -7,4 +7,5 @@ public sealed class RecommendationAwardWeight
     public string CategoryKey { get; set; } = string.Empty;
     public decimal WinPoints { get; set; }
     public decimal NominationPoints { get; set; }
+    public bool IsOverride { get; set; }
 }

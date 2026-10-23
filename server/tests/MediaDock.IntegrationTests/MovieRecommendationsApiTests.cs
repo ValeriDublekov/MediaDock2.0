@@ -290,9 +290,9 @@ public sealed class MovieRecommendationsApiTests
         Assert.Equal("Candidate A", candidate.Title);
         Assert.Equal("movie", candidate.MediaType);
         Assert.Equal(0.5m, candidate.PopularityComponent);
-        Assert.InRange(Math.Abs(candidate.RatingComponent - ((7m + 80m / 11m) / 2m)), 0m, 0.000001m);
-        Assert.Equal(1.5m, candidate.AwardComponent);
-        Assert.Equal(1.5m, candidate.AwardEvents.Single().AdjustedPoints);
+        Assert.Equal(6.7m, candidate.RatingComponent);
+        Assert.Equal(1.2109375m, candidate.AwardComponent);
+        Assert.Equal(1.2109375m, candidate.AwardEvents.Single().AdjustedPoints);
         Assert.Equal("nomination", candidate.AwardEvents.Single().Outcome);
         Assert.Equal<int?>(97, candidate.AwardEvents.Single().Ceremony);
         Assert.Null(candidate.AwardEvents.Single().CeremonyYear);
@@ -309,7 +309,7 @@ public sealed class MovieRecommendationsApiTests
         Assert.Equal(0.5m, downloadOnly.AwardComponent);
         var unknownCategory = firstPage.Items.Single(item => item.ImdbId == "tt3000015");
         Assert.Equal("award_other", unknownCategory.AwardEvents.Single().CategoryKey);
-        Assert.Equal(0m, unknownCategory.AwardComponent);
+        Assert.Equal(0.5m, unknownCategory.AwardComponent);
 
         using var firstSortedPageResponse = await firstClient.GetAsync(
             $"/api/recommendations?{weights}&page=1&pageSize=1");

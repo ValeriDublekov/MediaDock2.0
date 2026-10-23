@@ -176,14 +176,26 @@ describe('typed API client', () => {
   it('loads and updates global recommendation settings', async () => {
     const settings: RecommendationSettings = {
       medianPeriodYears: 5,
+      bayesianDefaultC: 5.5,
+      bayesianMRatio: 0.25,
+      oscarWinPoints: 3,
+      oscarNomPoints: 1,
+      ggWinPoints: 2,
+      ggNomPoints: 0.5,
       requiresVoteRecalculation: true,
       lastVoteRecalculationAt: null,
       lastVoteRecalculationPeriodYears: null,
-      awardWeights: [{ awardSource: 'oscar', categoryKey: 'best_picture', winPoints: 3, nominationPoints: 1 }],
+      awardWeights: [{ awardSource: 'oscar', categoryKey: 'best_picture', winPoints: 3, nominationPoints: 1, isOverride: false }],
     }
     const input: RecommendationSettingsInput = {
       medianPeriodYears: 7,
-      awardWeights: [{ awardSource: 'oscar', categoryKey: 'best_picture', winPoints: 4, nominationPoints: 1.5 }],
+      bayesianDefaultC: 6,
+      bayesianMRatio: 0.5,
+      oscarWinPoints: 4,
+      oscarNomPoints: 1.5,
+      ggWinPoints: 2,
+      ggNomPoints: 0.5,
+      awardWeights: [{ awardSource: 'oscar', categoryKey: 'best_picture', winPoints: 4, nominationPoints: 1.5, isOverride: true }],
     }
     const stub = fetchStub(response(200, settings))
 
@@ -204,7 +216,7 @@ describe('typed API client', () => {
       movieCount: 100,
       moviesWithVotesCount: 92,
       periodCount: 8,
-      globalFallbackCount: 2,
+      fallbackMedianCount: 2,
       missingVoteCount: 8,
     }
     const completedStub = fetchStub(response(200, completed))

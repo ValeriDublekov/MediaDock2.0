@@ -104,10 +104,9 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             .Select(rating => new UserRating(rating.ImdbId, rating.Rating))
             .ToListAsync(cancellationToken);
         var ratingsByImdbId = ratingRows.ToDictionary(rating => rating.ImdbId);
-        var oscarWinners = await dbContext.OscarNominations
+        var ratedOscarMovies = await dbContext.OscarNominations
             .AsNoTracking()
-            .Where(nomination => nomination.IsWinner
-                && nomination.OscarMovie != null
+            .Where(nomination => nomination.OscarMovie != null
                 && nomination.OscarMovie.ImdbId != null
                 && nomination.OscarMovie.ImdbTitle != null
                 && nomination.OscarMovie.ImdbTitle.MediaType == "movie"
@@ -118,10 +117,9 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                 "oscar",
                 nomination.CanonicalCategory))
             .ToListAsync(cancellationToken);
-        var goldenGlobeWinners = await dbContext.GoldenGlobeNominations
+        var ratedGoldenGlobeMovies = await dbContext.GoldenGlobeNominations
             .AsNoTracking()
-            .Where(nomination => nomination.Winner
-                && nomination.GoldenGlobeTitle != null
+            .Where(nomination => nomination.GoldenGlobeTitle != null
                 && nomination.GoldenGlobeTitle.NomineeType == "movie"
                 && nomination.GoldenGlobeTitle.ImdbId != null
                 && nomination.GoldenGlobeTitle.ImdbTitle != null
@@ -135,24 +133,31 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             .ToListAsync(cancellationToken);
         var tasteProfile = MovieRecommendationScorer.BuildTasteProfile(
             ratingRows.Select(rating => rating.Rating).ToArray(),
-            oscarWinners.Concat(goldenGlobeWinners)
-                .Select(winner => new MovieRecommendationRatedWinner(
-                    winner.ImdbId,
-                    winner.AwardSource,
-                    winner.CategoryKey,
-                    ratingsByImdbId[winner.ImdbId].Rating))
+            ratedOscarMovies.Concat(ratedGoldenGlobeMovies)
+                .Select(awardMovie => new MovieRecommendationRatedAwardMovie(
+                    awardMovie.ImdbId,
+                    awardMovie.AwardSource,
+                    awardMovie.CategoryKey,
+                    ratingsByImdbId[awardMovie.ImdbId].Rating))
                 .ToArray());
 
-        var ratingPriorMean = await dbContext.ImdbTitles
+        var recommendationSettings = await dbContext.GeneralRecommendationSettings
             .AsNoTracking()
-            .Where(title => title.MetadataStatus == "enriched"
-                && title.MediaType == "movie"
-                && title.ImdbRating.HasValue)
-            .AverageAsync(title => title.ImdbRating, cancellationToken);
-        if (ratingPriorMean is not decimal priorMean)
-        {
-            throw new InvalidOperationException("An IMDb rating prior is required when recommendation candidates exist.");
-        }
+            .SingleAsync(settings => settings.Id == 1, cancellationToken);
+        var voteInputs = await dbContext.ImdbTitles
+            .AsNoTracking()
+            .Where(title => title.MediaType == "movie")
+            .Select(title => new MovieVoteNormalizationInput(title.ImdbId, title.Year, title.ImdbVotes))
+            .ToListAsync(cancellationToken);
+        var periodDataByImdbId = MovieVoteNormalizer.Normalize(voteInputs, recommendationSettings.MedianPeriodYears)
+            .ToDictionary(result => result.ImdbId, StringComparer.Ordinal);
+        var scoringSettings = new MovieRecommendationScoringSettings(
+            recommendationSettings.BayesianDefaultC,
+            recommendationSettings.BayesianMRatio,
+            recommendationSettings.OscarWinPoints,
+            recommendationSettings.OscarNomPoints,
+            recommendationSettings.GgWinPoints,
+            recommendationSettings.GgNomPoints);
 
         var candidateIds = candidates.Select(candidate => candidate.ImdbId).ToArray();
         var oscarEvents = await dbContext.OscarNominations
@@ -202,7 +207,8 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                 weight.AwardSource,
                 weight.CategoryKey,
                 weight.WinPoints,
-                weight.NominationPoints))
+                weight.NominationPoints,
+                weight.IsOverride))
             .ToListAsync(cancellationToken);
 
         var scoredCandidates = candidates
@@ -210,6 +216,9 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             {
                 var awardEvents = awardEventsByImdbId.GetValueOrDefault(candidate.ImdbId)
                     ?? Array.Empty<MovieRecommendationAwardEvent>();
+                var periodMedianVotes = periodDataByImdbId.TryGetValue(candidate.ImdbId, out var periodData)
+                    ? periodData.PeriodMedianVotes
+                    : MovieRecommendationScorer.FallbackPeriodMedianVotes;
                 var scoringCandidate = new MovieRecommendationCandidate(
                     candidate.ImdbId,
                     candidate.Title,
@@ -219,10 +228,11 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                     candidate.NormalizedVoteWeight,
                     candidate.PosterUrl,
                     candidate.Genres,
-                    awardEvents);
+                    awardEvents,
+                    periodMedianVotes);
                 var score = MovieRecommendationScorer.Score(
                     scoringCandidate,
-                    priorMean,
+                    scoringSettings,
                     tasteProfile,
                     awardWeights,
                     coefficients);
