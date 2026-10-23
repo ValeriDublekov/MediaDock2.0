@@ -47,6 +47,7 @@ vi.mock('./features/catalog/CatalogView', () => ({
 vi.mock('./features/oscar/OscarCatalogView', () => ({ OscarCatalogView: () => <div>Oscar route content</div> }))
 vi.mock('./features/golden-globes/GoldenGlobeCatalogView', () => ({ GoldenGlobeCatalogView: () => <div>Golden Globes route content</div> }))
 vi.mock('./features/favorites/FavoritesView', () => ({ FavoritesView: () => <div>Favorites route content</div> }))
+vi.mock('./features/ignored-movies/IgnoredMoviesView', () => ({ IgnoredMoviesView: () => <div>Ignored movies route content</div> }))
 vi.mock('./features/recommendations/RecommendationSettingsView', () => ({
   RecommendationSettingsView: () => <div>Recommendation settings route content</div>,
 }))
@@ -55,6 +56,9 @@ vi.mock('./features/recommendations/RecommendationsView', () => ({
 }))
 vi.mock('./features/favorites/FavoriteContext', () => ({
   FavoriteProvider: ({ children }: { children: ReactNode }) => children,
+}))
+vi.mock('./features/ignored-movies/IgnoredMoviesContext', () => ({
+  IgnoredMoviesProvider: ({ children }: { children: ReactNode }) => children,
 }))
 vi.mock('./features/sources/SourceSettingsView', () => ({
   SourceSettingsView: ({ onOpenHistory }: { onOpenHistory: (scanRunId: number) => void }) => (
@@ -157,6 +161,13 @@ describe('App routes', () => {
     expect(screen.queryByText('Favorites route content')).toBeNull()
   })
 
+  it('blocks anonymous visitors from opening the ignore list directly', async () => {
+    renderAt('/account/ignored-movies')
+
+    expect(await screen.findByRole('heading', { name: 'Ignore list unavailable' })).toBeTruthy()
+    expect(screen.queryByText('Ignored movies route content')).toBeNull()
+  })
+
   it('blocks anonymous visitors from opening recommendations directly', async () => {
     renderAt('/account/recommendations')
 
@@ -182,6 +193,7 @@ describe('App routes', () => {
     expect(await screen.findByText('Ratings route content')).toBeTruthy()
     expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Personal IMDb ratings')
     expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Favorites')
+    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Ignored movies')
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Users' })).toBeNull()
   })
@@ -195,6 +207,15 @@ describe('App routes', () => {
     expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Recommendations')
     expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Personal IMDb ratings')
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
+  })
+
+  it('shows the ignore list to active users', async () => {
+    authMock.session = activeUserSession
+
+    renderAt('/account/ignored-movies')
+
+    expect(await screen.findByText('Ignored movies route content')).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Ignored movies')
   })
 
   it('shows catalog delete permission only to active administrators', async () => {

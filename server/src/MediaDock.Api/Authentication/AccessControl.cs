@@ -10,6 +10,7 @@ public static class AccessPolicies
 {
     public const string Administrator = "Administrator";
     public const string OwnerScopedFavorites = "OwnerScopedFavorites";
+    public const string OwnerScopedIgnoredMovies = "OwnerScopedIgnoredMovies";
     public const string OwnerScopedPersonalRatings = "OwnerScopedPersonalRatings";
     public const string OwnerScopedRecommendations = "OwnerScopedRecommendations";
 }
@@ -97,6 +98,9 @@ public static class AccessControlServiceCollectionExtensions
                 policy => policy.AddRequirements(new CurrentUserRequirement("admin")));
             options.AddPolicy(
                 AccessPolicies.OwnerScopedFavorites,
+                policy => policy.AddRequirements(new CurrentUserRequirement(RequireActiveUserInOpenMode: true)));
+            options.AddPolicy(
+                AccessPolicies.OwnerScopedIgnoredMovies,
                 policy => policy.AddRequirements(new CurrentUserRequirement(RequireActiveUserInOpenMode: true)));
             options.AddPolicy(
                 AccessPolicies.OwnerScopedPersonalRatings,

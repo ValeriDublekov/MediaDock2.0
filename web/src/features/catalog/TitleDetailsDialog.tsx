@@ -6,6 +6,7 @@ import { MovieAwardsList, MovieDetailsIntro } from '../../components/MoviePresen
 import { formatDate, formatWords } from '../../shared/format'
 import { combineMovieAwards, getOscarRecognitions } from '../../shared/movieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
+import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 
 interface TitleDetailsDialogProps {
   titleId: number
@@ -134,6 +135,7 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
                 )}
               </div>}
               <FavoriteControls from={oscars.length ? 'oscar' : 'catalog'} imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} />
+              <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} />
               {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
               <MovieAwardsList awards={awards} />
               <section ref={torrentSectionRef}>

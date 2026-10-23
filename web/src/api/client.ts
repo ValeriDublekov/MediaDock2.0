@@ -12,6 +12,7 @@ import type {
   DeploymentActionResult,
   DeploymentStatus,
   FavoriteMovie,
+  IgnoredMovie,
   AppliedImdbCandidate,
   ImdbCandidateSearch,
   OmdbDiagnostic,
@@ -167,6 +168,18 @@ export function getTitleOscars(id: number, fetcher?: typeof fetch) {
 
 export function getFavorites(query: { status?: 'all' | 'to_watch' | 'to_download'; page: number; pageSize: number }, fetcher?: typeof fetch) {
   return requestJson<PageResponse<FavoriteMovie>>(withQuery('/favorites', query), {}, fetcher)
+}
+
+export function getIgnoredMovies(query: { page: number; pageSize: number }, fetcher?: typeof fetch) {
+  return requestJson<PageResponse<IgnoredMovie>>(withQuery('/ignored-movies', query), {}, fetcher)
+}
+
+export function addIgnoredMovie(imdbId: string, fetcher?: typeof fetch) {
+  return requestJson<IgnoredMovie>('/ignored-movies', { method: 'POST', body: JSON.stringify({ imdbId }) }, fetcher)
+}
+
+export function removeIgnoredMovie(imdbId: string, fetcher?: typeof fetch) {
+  return requestJson<void>(`/ignored-movies/${encodeURIComponent(imdbId)}`, { method: 'DELETE' }, fetcher)
 }
 
 export function getPersonalRatings(

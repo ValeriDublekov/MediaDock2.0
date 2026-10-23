@@ -17,6 +17,8 @@ import { formatWords } from '../../shared/format'
 import { combineMovieAwards, getOscarRecognitions, movieAwardsRequestKey } from '../../shared/movieAwards'
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
+import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
+import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
 import { OscarFilmDetailsDialog } from './OscarFilmDetailsDialog'
 
 interface OscarFilters {
@@ -108,7 +110,10 @@ function OscarRow({ film, onSelect, awards }: { film: OscarFilm; onSelect: (id: 
           {film.enrichmentAttemptCount} {film.enrichmentAttemptCount === 1 ? 'attempt' : 'attempts'}
         </span>
       </td>
-      <td><FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} /></td>
+      <td>
+        <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} />
+        <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} />
+      </td>
     </tr>
   )
 }
@@ -126,11 +131,16 @@ export function OscarCatalogView() {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selectedFilmId, setSelectedFilmId] = useState<number | null>(null)
+  const { revision: ignoredMoviesRevision } = useIgnoredMovies()
   const awardsRequestKey = movieAwardsRequestKey(result?.items.map((film) => film.imdbId) ?? [])
   const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
   const activeFilterCount = Object.entries(draftFilters)
     .filter(([key, value]) => key !== 'search' && key !== 'categories' && value !== '')
     .length + (draftFilters.categories === null ? 0 : 1)
+
+  useEffect(() => {
+    setPage(1)
+  }, [ignoredMoviesRevision])
 
   useEffect(() => {
     let current = true
@@ -145,6 +155,8 @@ export function OscarCatalogView() {
 
   useEffect(() => {
     let current = true
+    setLoading(true)
+    setError(null)
     getOscarFilms(buildQuery(page, appliedFilters))
       .then((response) => { if (current) setResult(response) })
       .catch((requestError: unknown) => {
@@ -152,7 +164,7 @@ export function OscarCatalogView() {
       })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
-  }, [page, appliedFilters, attempt])
+  }, [page, appliedFilters, attempt, ignoredMoviesRevision])
 
   useEffect(() => {
     if (draftFilters.search === appliedFilters.search) return
@@ -321,7 +333,10 @@ export function OscarCatalogView() {
             {result.items.map((film) => {
               return <MoviePosterCard
                 awards={combineMovieAwards(getOscarRecognitions(film), pageAwards, film.imdbId)}
-                footer={<FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} />}
+                footer={<>
+                  <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} />
+                  <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} />
+                </>}
                 genres={film.genres}
                 imdbId={film.imdbId}
                 imdbRating={film.imdbRating}
@@ -341,7 +356,7 @@ export function OscarCatalogView() {
             })}
           </div> : <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th>FILM</th><th>CATEGORIES</th><th>RESULT</th><th>IMDB</th><th>AWARDS</th><th>OMDB</th><th>FAVORITES</th></tr></thead>
+              <thead><tr><th>FILM</th><th>CATEGORIES</th><th>RESULT</th><th>IMDB</th><th>AWARDS</th><th>OMDB</th><th>ACTIONS</th></tr></thead>
               <tbody>
                 {result.items.map((film) => (
                   <OscarRow awards={combineMovieAwards(getOscarRecognitions(film), pageAwards, film.imdbId)} film={film} key={film.id} onSelect={setSelectedFilmId} />

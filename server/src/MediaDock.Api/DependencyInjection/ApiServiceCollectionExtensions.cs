@@ -7,6 +7,7 @@ using MediaDock.Api.Catalog;
 using MediaDock.Api.Favorites;
 using MediaDock.Api.GoldenGlobes;
 using MediaDock.Api.Health;
+using MediaDock.Api.IgnoredMovies;
 using MediaDock.Api.Middleware;
 using MediaDock.Api.Operations;
 using MediaDock.Api.OscarAwards;
@@ -54,6 +55,7 @@ public static class ApiServiceCollectionExtensions
 		services.AddScoped<ITorrentTitleMatchApiService, TorrentTitleMatchApiService>();
 		services.AddScoped<IMovieAwardsApiService, MovieAwardsApiService>();
 		services.AddScoped<FavoriteApiService>();
+		services.AddScoped<IgnoredMoviesApiService>();
 		services.AddScoped<PersonalRatingsApiService>();
 		services.AddScoped<MovieRecommendationsApiService>();
 		services.AddScoped<IOscarApiService, OscarApiService>();

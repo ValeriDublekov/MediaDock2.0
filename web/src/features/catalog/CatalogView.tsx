@@ -13,6 +13,8 @@ import { combineMovieAwards, movieAwardsRequestKey } from '../../shared/movieAwa
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { TitleDetailsDialog } from './TitleDetailsDialog'
 import { FavoriteControls } from '../favorites/FavoriteControls'
+import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
+import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
 
 interface CatalogFilters {
   search: string
@@ -81,7 +83,10 @@ function CatalogRow({ title, onSelect, awards }: { title: CatalogTitle; onSelect
       <td><MovieAwardsSummary awards={awards} compact /></td>
       <td>{title.genres.slice(0, 2).join(', ') || 'Not tagged'}</td>
       <td>{formatDate(title.lastSeenAt)}</td>
-      <td><FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} /></td>
+      <td>
+        <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} />
+        <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} />
+      </td>
     </tr>
   )
 }
@@ -100,9 +105,14 @@ export function CatalogView({ canDeleteTitles = false }: { canDeleteTitles?: boo
   const [selectedTitleId, setSelectedTitleId] = useState<number | null>(null)
   const [imdbMatchTarget, setImdbMatchTarget] = useState<ImdbCandidateTarget | null>(null)
   const [detailsSection, setDetailsSection] = useState<'details' | 'torrents'>('details')
+  const { revision: ignoredMoviesRevision } = useIgnoredMovies()
   const awardsRequestKey = movieAwardsRequestKey(result?.items.map((title) => title.imdbId) ?? [])
   const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
   const activeFilterCount = Object.entries(draftFilters).filter(([key, value]) => key !== 'search' && value !== '').length
+
+  useEffect(() => {
+    setPage(1)
+  }, [ignoredMoviesRevision])
 
   function openTitle(titleId: number, section: 'details' | 'torrents') {
     setDeleteNotice(null)
@@ -121,7 +131,7 @@ export function CatalogView({ canDeleteTitles = false }: { canDeleteTitles?: boo
       })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
-  }, [page, appliedFilters, category, attempt])
+  }, [page, appliedFilters, category, attempt, ignoredMoviesRevision])
 
   useEffect(() => {
     if (draftFilters.search === appliedFilters.search) return
@@ -279,7 +289,10 @@ export function CatalogView({ canDeleteTitles = false }: { canDeleteTitles?: boo
                 </button>
               </>}
               awards={combineMovieAwards([], pageAwards, title.imdbId)}
-              footer={<FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} />}
+              footer={<>
+                <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} />
+                <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} />
+              </>}
               genres={title.genres}
               imdbId={title.imdbId}
               imdbRating={title.imdbRating}
@@ -299,7 +312,7 @@ export function CatalogView({ canDeleteTitles = false }: { canDeleteTitles?: boo
             </MoviePosterCard>)}
           </div> : <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th>TITLE</th><th>TYPE</th><th>IMDB</th><th>AWARDS</th><th>GENRES</th><th>LAST SEEN</th><th>FAVORITES</th></tr></thead>
+              <thead><tr><th>TITLE</th><th>TYPE</th><th>IMDB</th><th>AWARDS</th><th>GENRES</th><th>LAST SEEN</th><th>ACTIONS</th></tr></thead>
               <tbody>{result.items.map((title) => <CatalogRow awards={combineMovieAwards([], pageAwards, title.imdbId)} key={title.id} onSelect={(id) => openTitle(id, 'details')} title={title} />)}</tbody>
             </table>
           </div>}

@@ -1893,6 +1893,32 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.UserIgnoredMovie", b =>
+                {
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("ImdbId")
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)")
+                        .HasColumnName("imdb_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.HasKey("UserId", "ImdbId")
+                        .HasName("pk_user_ignored_movies");
+
+                    b.HasIndex("ImdbId");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("ix_user_ignored_movies_user_id_created_at");
+
+                    b.ToTable("user_ignored_movies", (string)null);
+                });
+
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.BackgroundJob", b =>
                 {
                     b.HasOne("MediaDock.Infrastructure.Persistence.Entities.User", null)
@@ -2098,6 +2124,27 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.Navigation("Source");
 
                     b.Navigation("TorrentMovie");
+                });
+
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.UserIgnoredMovie", b =>
+                {
+                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.ImdbTitle", "ImdbTitle")
+                        .WithMany()
+                        .HasForeignKey("ImdbId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_ignored_movies_imdb_titles_imdb_id");
+
+                    b.HasOne("MediaDock.Infrastructure.Persistence.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_ignored_movies_users_user_id");
+
+                    b.Navigation("ImdbTitle");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.BackgroundJob", b =>

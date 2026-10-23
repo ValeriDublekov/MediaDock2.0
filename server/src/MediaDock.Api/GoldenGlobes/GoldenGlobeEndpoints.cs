@@ -3,6 +3,7 @@ using MediaDock.Api.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace MediaDock.Api.GoldenGlobes;
 
@@ -10,8 +11,16 @@ internal static class GoldenGlobeEndpoints
 {
     public static WebApplication MapGoldenGlobeEndpoints(this WebApplication app)
     {
-        app.MapGet("/api/golden-globes", async Task<Ok<PageResponse<GoldenGlobeFilmResponse>>>([AsParameters] GoldenGlobeCatalogQuery query, IGoldenGlobeApiService service, CancellationToken cancellationToken) =>
-            TypedResults.Ok(await service.GetFilmsAsync(query, cancellationToken)))
+        app.MapGet("/api/golden-globes", async Task<Ok<PageResponse<GoldenGlobeFilmResponse>>>(
+            [AsParameters] GoldenGlobeCatalogQuery query,
+            ClaimsPrincipal principal,
+            CurrentUserContext currentUserContext,
+            IGoldenGlobeApiService service,
+            CancellationToken cancellationToken) =>
+        {
+            var currentUser = await currentUserContext.ResolveAsync(principal, cancellationToken);
+            return TypedResults.Ok(await service.GetFilmsAsync(query, currentUser?.Id, cancellationToken));
+        })
             .WithName("GetGoldenGlobeFilms")
             .WithSummary("Search and filter Golden Globes films.")
             .Produces<PageResponse<GoldenGlobeFilmResponse>>(StatusCodes.Status200OK)

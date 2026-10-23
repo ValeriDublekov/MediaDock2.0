@@ -320,6 +320,8 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                 && title.ImdbRating.HasValue
                 && !dbContext.PersonalRatings.Any(rating =>
                     rating.UserId == userId && rating.ImdbId == title.ImdbId)
+                && !dbContext.UserIgnoredMovies.Any(ignored =>
+                    ignored.UserId == userId && ignored.ImdbId == title.ImdbId)
                 && !dbContext.ImdbFavoriteMovies.Any(favorite =>
                     favorite.UserId == userId && favorite.ImdbId == title.ImdbId && favorite.ToWatch)
                 && (dbContext.OscarNominations.Any(nomination =>

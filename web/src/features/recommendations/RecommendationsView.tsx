@@ -7,6 +7,8 @@ import { Pagination } from '../../components/Pagination'
 import { Poster } from '../../components/Poster'
 import { YearRangeFilter } from '../../components/YearRangeFilter'
 import { formatWords } from '../../shared/format'
+import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
+import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
 
 type CoefficientKey = keyof RecommendationCoefficients
 type SliderPercentages = Record<CoefficientKey, number>
@@ -90,6 +92,11 @@ export function RecommendationsView() {
   const [watchRating, setWatchRating] = useState('')
   const [savingWatched, setSavingWatched] = useState(false)
   const [watchError, setWatchError] = useState<string | null>(null)
+  const { revision: ignoredMoviesRevision } = useIgnoredMovies()
+
+  useEffect(() => {
+    setPageNumber(1)
+  }, [ignoredMoviesRevision])
 
   useEffect(() => {
     let active = true
@@ -105,6 +112,8 @@ export function RecommendationsView() {
 
   useEffect(() => {
     let active = true
+    setLoading(true)
+    setError(null)
     const query: RecommendationQuery = {
       page: pageNumber,
       pageSize: recommendationsPageSize,
@@ -121,7 +130,7 @@ export function RecommendationsView() {
       .finally(() => { if (active) setLoading(false) })
 
     return () => { active = false }
-  }, [appliedYearFilter, attempt, pageNumber, selectedGenres, sliderPercentages])
+  }, [appliedYearFilter, attempt, ignoredMoviesRevision, pageNumber, selectedGenres, sliderPercentages])
 
   function updateSlider(key: CoefficientKey, value: string) {
     setSliderPercentages((current) => changeSliderPercentages(current, key, value))
@@ -296,7 +305,10 @@ export function RecommendationsView() {
                 </ul>}
               </details>
             </td>
-            <td><button aria-label={`Mark ${item.title} as watched`} className="button button-secondary" onClick={() => openWatchDialog(item)} type="button">Mark watched</button></td>
+            <td><div className="recommendation-actions">
+              <button aria-label={`Mark ${item.title} as watched`} className="button button-secondary" onClick={() => openWatchDialog(item)} type="button">Mark watched</button>
+              <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} />
+            </div></td>
           </tr>)}</tbody>
         </table>
       </div>

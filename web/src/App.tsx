@@ -8,6 +8,8 @@ import { OscarCatalogView } from './features/oscar/OscarCatalogView'
 import { GoldenGlobeCatalogView } from './features/golden-globes/GoldenGlobeCatalogView'
 import { FavoriteProvider } from './features/favorites/FavoriteContext'
 import { FavoritesView } from './features/favorites/FavoritesView'
+import { IgnoredMoviesProvider } from './features/ignored-movies/IgnoredMoviesContext'
+import { IgnoredMoviesView } from './features/ignored-movies/IgnoredMoviesView'
 import { SourceSettingsView } from './features/sources/SourceSettingsView'
 import { IngestionSettingsView, OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './features/sources/ConfigurationSettingsViews'
 import { AuthStatus } from './features/auth/AuthStatus'
@@ -191,13 +193,17 @@ function AppContent() {
     ? requestedScanRunId
     : null
   const content = sectionContent[section]
-  const title = administrationPage?.label ?? content.title
-  const description = administrationPage?.description ?? content.description
+  const pageContent = location.pathname === '/account/ignored-movies'
+    ? { eyebrow: 'PERSONAL', title: 'Ignored movies', description: '' }
+    : content
+  const title = administrationPage?.label ?? pageContent.title
+  const description = administrationPage?.description ?? pageContent.description
   const registrationSession = session?.authenticated && session.accountState === 'unmatched' ? session : null
   const recoveryDiagnostic = session === null ? authDiagnostic : null
   const isAccessGated = !authChecked || registrationSession !== null || recoveryDiagnostic !== null
 
   return (
+    <IgnoredMoviesProvider accountKey={accountKey} key={accountKey ?? 'no-active-owner'}>
     <FavoriteProvider accountKey={accountKey} key={accountKey ?? 'no-active-owner'}>
     <div className={`app-shell${isAccessGated ? ' is-gated' : ''}`}>
       {!isAccessGated && <aside className="sidebar">
@@ -232,6 +238,13 @@ function AppContent() {
                 to="/favorites"
               >
                 Favorites
+              </NavLink>
+              <NavLink
+                className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
+                end
+                to="/account/ignored-movies"
+              >
+                Ignored movies
               </NavLink>
               <NavLink
                 className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
@@ -297,7 +310,7 @@ function AppContent() {
 
         {(!authChecked || session?.authorizationEnforced !== true) && (
           <aside className="open-mode-warning" role="note">
-            Access control is disabled: shared, system, and administration APIs are not authorization-protected. Keep the API within its configured network boundary. Favorites and personal ratings still require an active linked account and remain owner-scoped.
+            Access control is disabled: shared, system, and administration APIs are not authorization-protected. Keep the API within its configured network boundary. Favorites, ignored movies, and personal ratings still require an active linked account and remain owner-scoped.
           </aside>
         )}
 
@@ -318,7 +331,7 @@ function AppContent() {
             <div>
               <p className="eyebrow">{content.eyebrow}</p>
               <h1>{title}</h1>
-              <p className="page-description">{description}</p>
+              {description && <p className="page-description">{description}</p>}
             </div>
           </div>
 
@@ -330,6 +343,15 @@ function AppContent() {
             <Route path="/favorites" element={isActiveAccount
               ? <FavoritesView />
               : <RouteAccessRequired message="Sign in with an active linked account to view favorites." title="Favorites unavailable" />} />
+            <Route path="/account/ignored-movies" element={(
+              <ActiveAccountArea
+                isActiveAccount={isActiveAccount}
+                message="Sign in with an active linked account to manage ignored movies."
+                title="Ignore list unavailable"
+              >
+                <IgnoredMoviesView />
+              </ActiveAccountArea>
+            )} />
             <Route path="/configuration/personal-ratings" element={<Navigate replace to="/account/personal-ratings" />} />
             <Route path="/account" element={<Navigate replace to="/account/personal-ratings" />} />
             <Route path="/account/recommendations" element={(
@@ -372,6 +394,7 @@ function AppContent() {
       </main>
     </div>
     </FavoriteProvider>
+    </IgnoredMoviesProvider>
   )
 }
 

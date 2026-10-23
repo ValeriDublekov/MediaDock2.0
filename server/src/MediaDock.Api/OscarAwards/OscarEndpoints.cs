@@ -1,5 +1,7 @@
 using MediaDock.Api.Common;
 using Microsoft.AspNetCore.Http.HttpResults;
+using MediaDock.Api.Authentication;
+using System.Security.Claims;
 
 namespace MediaDock.Api.OscarAwards;
 
@@ -9,10 +11,13 @@ internal static class OscarEndpoints
     {
         app.MapGet("/api/oscars", async Task<Ok<PageResponse<OscarFilmResponse>>> (
             [AsParameters] OscarCatalogQuery query,
+            ClaimsPrincipal principal,
+            CurrentUserContext currentUserContext,
             IOscarApiService oscarService,
             CancellationToken cancellationToken) =>
         {
-            var result = await oscarService.GetOscarFilmsAsync(query, cancellationToken);
+            var currentUser = await currentUserContext.ResolveAsync(principal, cancellationToken);
+            var result = await oscarService.GetOscarFilmsAsync(query, currentUser?.Id, cancellationToken);
             return TypedResults.Ok(result);
         })
             .WithName("GetOscarFilms")

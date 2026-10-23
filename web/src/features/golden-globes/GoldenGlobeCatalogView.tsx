@@ -12,6 +12,8 @@ import { formatWords } from '../../shared/format'
 import { combineMovieAwards, getGoldenGlobeRecognitions, movieAwardsRequestKey } from '../../shared/movieAwards'
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
+import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
+import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
 import { GoldenGlobeFilmDetailsDialog } from './GoldenGlobeFilmDetailsDialog'
 
 interface Filters { search: string; yearFrom: string; yearTo: string; imdbRatingFrom: string; imdbRatingTo: string; categories: string[] | null; result: string; enrichmentStatus: string }
@@ -72,8 +74,13 @@ export function GoldenGlobeCatalogView() {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selectedFilm, setSelectedFilm] = useState<GoldenGlobeFilm | null>(null)
+  const { revision: ignoredMoviesRevision } = useIgnoredMovies()
   const awardsRequestKey = movieAwardsRequestKey(result?.items.map((film) => film.imdbId) ?? [])
   const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
+
+  useEffect(() => {
+    setPage(1)
+  }, [ignoredMoviesRevision])
 
   useEffect(() => {
     let current = true
@@ -88,11 +95,13 @@ export function GoldenGlobeCatalogView() {
 
   useEffect(() => {
     let current = true
+    setLoading(true)
+    setError(null)
     getGoldenGlobeFilms(queryFor(page, applied)).then((response) => { if (current) setResult(response) }).catch((requestError: unknown) => {
       if (current) setError(requestError instanceof Error ? requestError.message : 'The Golden Globes catalog request failed.')
     }).finally(() => { if (current) setLoading(false) })
     return () => { current = false }
-  }, [page, applied, attempt])
+  }, [page, applied, attempt, ignoredMoviesRevision])
 
   useEffect(() => {
     if (draft.search === applied.search) return
@@ -179,23 +188,46 @@ export function GoldenGlobeCatalogView() {
     {!loading && !error && result && result.items.length === 0 && <EmptyState title="No Golden Globes films found" message="Try changing the search or filters, or import the Golden Globes dataset." />}
     {!loading && !error && result && result.items.length > 0 && <>
       {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
-      {viewMode === 'posters' ? <div className="poster-grid">{result.items.map((film) => <MoviePosterCard
-        awards={combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId)}
-        imdbId={film.imdbId}
-        imdbRating={film.imdbRating}
-        key={film.filmId}
-        mediaType={null}
-        onOpen={() => setSelectedFilm(film)}
-        posterLabel="GLO"
-        posterUrl={film.posterUrl}
-        title={film.title}
-        year={film.year}
-        yearLabel="Ceremony year"
-      >
-        <span className="state-pill is-muted">{formatWords(film.nomineeType)}</span>
-        <EnrichmentStatus film={film} />
-        <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} />
-      </MoviePosterCard>)}</div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>FILM</th><th>IMDB</th><th>AWARDS</th><th>RESULT</th><th>OMDb status</th></tr></thead><tbody>{result.items.map((film) => { const wins = film.nominations.filter((nomination) => nomination.isWinner).length; const awards = combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId); return <tr key={film.filmId}><td><MovieTableTitle onOpen={() => setSelectedFilm(film)} openLabel={`View ${film.title} Golden Globes details`} posterLabel="GLO" posterUrl={film.posterUrl} subtitle={`Ceremony year ${film.year} - ${formatWords(film.nomineeType)}`} title={film.title} /></td><td><MovieImdbLink imdbId={film.imdbId} rating={film.imdbRating} title={film.title} /></td><td><MovieAwardsSummary awards={awards} compact /></td><td><span className={`state-pill ${wins > 0 ? 'is-winner' : 'is-muted'}`}>{wins > 0 ? 'Winner' : 'Nominee'}</span></td><td><EnrichmentStatus film={film} /></td></tr> })}</tbody></table></div>}
+      {viewMode === 'posters' ? (
+        <div className="poster-grid">
+          {result.items.map((film) => <MoviePosterCard
+            awards={combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId)}
+            imdbId={film.imdbId}
+            imdbRating={film.imdbRating}
+            key={film.filmId}
+            mediaType={null}
+            onOpen={() => setSelectedFilm(film)}
+            posterLabel="GLO"
+            posterUrl={film.posterUrl}
+            title={film.title}
+            year={film.year}
+            yearLabel="Ceremony year"
+          >
+            <span className="state-pill is-muted">{formatWords(film.nomineeType)}</span>
+            <EnrichmentStatus film={film} />
+            <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} />
+            <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.nomineeType} />
+          </MoviePosterCard>)}
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead><tr><th>FILM</th><th>IMDB</th><th>AWARDS</th><th>RESULT</th><th>OMDb status</th><th>ACTIONS</th></tr></thead>
+            <tbody>{result.items.map((film) => {
+              const wins = film.nominations.filter((nomination) => nomination.isWinner).length
+              const awards = combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId)
+              return <tr key={film.filmId}>
+                <td><MovieTableTitle onOpen={() => setSelectedFilm(film)} openLabel={`View ${film.title} Golden Globes details`} posterLabel="GLO" posterUrl={film.posterUrl} subtitle={`Ceremony year ${film.year} - ${formatWords(film.nomineeType)}`} title={film.title} /></td>
+                <td><MovieImdbLink imdbId={film.imdbId} rating={film.imdbRating} title={film.title} /></td>
+                <td><MovieAwardsSummary awards={awards} compact /></td>
+                <td><span className={`state-pill ${wins > 0 ? 'is-winner' : 'is-muted'}`}>{wins > 0 ? 'Winner' : 'Nominee'}</span></td>
+                <td><EnrichmentStatus film={film} /></td>
+                <td><IgnoredMovieControl imdbId={film.imdbId} mediaType={film.nomineeType} /></td>
+              </tr>
+            })}</tbody>
+          </table>
+        </div>
+      )}
       <Pagination onPageChange={(nextPage) => { setLoading(true); setError(null); setPage(nextPage) }} page={result} />
     </>}
     {selectedFilm && <GoldenGlobeFilmDetailsDialog

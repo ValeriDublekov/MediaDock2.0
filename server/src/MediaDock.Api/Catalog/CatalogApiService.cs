@@ -10,6 +10,7 @@ internal interface ICatalogApiService
 {
     Task<PageResponse<CatalogTitleResponse>> GetCatalogAsync(
         CatalogQuery query,
+        long? userId,
         CancellationToken cancellationToken);
 
     Task<TitleDetailsResponse> GetTitleAsync(long id, CancellationToken cancellationToken);
@@ -29,6 +30,7 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
 {
     public async Task<PageResponse<CatalogTitleResponse>> GetCatalogAsync(
         CatalogQuery query,
+        long? userId,
         CancellationToken cancellationToken)
     {
         var page = query.Page ?? 1;
@@ -48,18 +50,16 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
             });
         }
 
-        var yearBounds = await dbContext.TorrentMovies
-            .AsNoTracking()
-            .Where(movie => movie.Releases.Any() && movie.Year.HasValue)
+        var visibleMovies = GetVisibleMovies(userId);
+        var yearBounds = await visibleMovies
+            .Where(movie => movie.Year.HasValue)
             .GroupBy(_ => 1)
             .Select(group => new YearBounds(
                 group.Min(movie => movie.Year!.Value),
                 group.Max(movie => movie.Year!.Value)))
             .FirstOrDefaultAsync(cancellationToken);
-        var imdbRatingBounds = await dbContext.TorrentMovies
-            .AsNoTracking()
-            .Where(movie => movie.Releases.Any()
-                && movie.ImdbTitle != null
+        var imdbRatingBounds = await visibleMovies
+            .Where(movie => movie.ImdbTitle != null
                 && movie.ImdbTitle.ImdbRating.HasValue)
             .GroupBy(_ => 1)
             .Select(group => new ImdbRatingBounds(
@@ -67,9 +67,7 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
                 group.Max(movie => movie.ImdbTitle!.ImdbRating!.Value)))
             .FirstOrDefaultAsync(cancellationToken);
 
-        IQueryable<TorrentMovie> movies = dbContext.TorrentMovies
-            .AsNoTracking()
-            .Where(movie => movie.Releases.Any());
+        IQueryable<TorrentMovie> movies = visibleMovies;
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
@@ -165,6 +163,19 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
         return CreatePage(items, page, pageSize, totalCount, yearBounds, imdbRatingBounds);
     }
 
+    private IQueryable<TorrentMovie> GetVisibleMovies(long? userId)
+    {
+        var movies = dbContext.TorrentMovies.AsNoTracking()
+            .Where(movie => movie.Releases.Any());
+        if (userId is not { } ownerId)
+        {
+            return movies;
+        }
+
+        return movies.Where(movie => movie.ImdbId == null
+            || !dbContext.UserIgnoredMovies.Any(ignored => ignored.UserId == ownerId && ignored.ImdbId == movie.ImdbId));
+    }
+
     public async Task<TitleDetailsResponse> GetTitleAsync(long id, CancellationToken cancellationToken)
     {
         var title = await dbContext.TorrentMovies
@@ -240,6 +251,7 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
                 || await dbContext.OscarMovies.AnyAsync(movie => movie.ImdbId == imdbId, cancellationToken)
                 || await dbContext.GoldenGlobeTitles.AnyAsync(movie => movie.ImdbId == imdbId, cancellationToken)
                 || await dbContext.ImdbFavoriteMovies.AnyAsync(movie => movie.ImdbId == imdbId, cancellationToken)
+                || await dbContext.UserIgnoredMovies.AnyAsync(movie => movie.ImdbId == imdbId, cancellationToken)
                 || await dbContext.PersonalRatings.AnyAsync(rating => rating.ImdbId == imdbId, cancellationToken);
 
             if (!imdbInfoIsShared)

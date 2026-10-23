@@ -1,6 +1,7 @@
 using MediaDock.Api.Common;
 using MediaDock.Api.Authentication;
 using Microsoft.AspNetCore.Http.HttpResults;
+using System.Security.Claims;
 
 namespace MediaDock.Api.Catalog;
 
@@ -10,10 +11,13 @@ internal static class CatalogEndpoints
     {
         app.MapGet("/api/catalog", async Task<Ok<PageResponse<CatalogTitleResponse>>> (
             [AsParameters] CatalogQuery query,
+            ClaimsPrincipal principal,
+            CurrentUserContext currentUserContext,
             ICatalogApiService catalogService,
             CancellationToken cancellationToken) =>
         {
-            var result = await catalogService.GetCatalogAsync(query, cancellationToken);
+            var currentUser = await currentUserContext.ResolveAsync(principal, cancellationToken);
+            var result = await catalogService.GetCatalogAsync(query, currentUser?.Id, cancellationToken);
             return TypedResults.Ok(result);
         })
             .WithName("GetCatalog")

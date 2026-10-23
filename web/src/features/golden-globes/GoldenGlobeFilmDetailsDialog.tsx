@@ -4,6 +4,7 @@ import type { BackgroundJobStatus, GoldenGlobeFilm, MovieAwardRecognition } from
 import { MovieAwardsList, MovieDetailsIntro } from '../../components/MoviePresentation'
 import { formatWords } from '../../shared/format'
 import { FavoriteControls } from '../favorites/FavoriteControls'
+import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 
 interface GoldenGlobeFilmDetailsDialogProps {
   film: GoldenGlobeFilm
@@ -126,6 +127,7 @@ export function GoldenGlobeFilmDetailsDialog({ film, awards, onClose, onUpdated 
           <div><dt>OMDb status</dt><dd>{formatWords(currentFilm.enrichmentStatus)}</dd></div>
         </dl>
         <FavoriteControls from="catalog" imdbId={currentFilm.imdbId} metadataStatus={currentFilm.metadataStatus} mediaType={currentFilm.nomineeType} occurrenceCount={0} />
+        <IgnoredMovieControl imdbId={currentFilm.imdbId} mediaType={currentFilm.nomineeType} />
         <form className="golden-globe-imdb-link" onSubmit={(event) => { void saveImdbId(event) }}>
           <div className="field">
             <label htmlFor="golden-globe-imdb-id">IMDb ID</label>

@@ -13,14 +13,20 @@ namespace MediaDock.Api.GoldenGlobes;
 
 internal interface IGoldenGlobeApiService
 {
-    Task<PageResponse<GoldenGlobeFilmResponse>> GetFilmsAsync(GoldenGlobeCatalogQuery query, CancellationToken cancellationToken);
+    Task<PageResponse<GoldenGlobeFilmResponse>> GetFilmsAsync(
+        GoldenGlobeCatalogQuery query,
+        long? userId,
+        CancellationToken cancellationToken);
     Task<IReadOnlyList<string>> GetCategoriesAsync(CancellationToken cancellationToken);
     Task<GoldenGlobeImdbLinkResponse> SetImdbIdAsync(GoldenGlobeImdbLinkRequest request, CancellationToken cancellationToken);
 }
 
 internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimeProvider timeProvider) : IGoldenGlobeApiService
 {
-    public async Task<PageResponse<GoldenGlobeFilmResponse>> GetFilmsAsync(GoldenGlobeCatalogQuery query, CancellationToken cancellationToken)
+    public async Task<PageResponse<GoldenGlobeFilmResponse>> GetFilmsAsync(
+        GoldenGlobeCatalogQuery query,
+        long? userId,
+        CancellationToken cancellationToken)
     {
         var page = query.Page ?? 1;
         var pageSize = query.PageSize ?? 25;
@@ -29,19 +35,23 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
         if (query.ImdbRatingFrom is { } ratingFrom && query.ImdbRatingTo is { } ratingTo && ratingFrom > ratingTo)
             throw new ApiValidationException(new Dictionary<string, string[]> { [nameof(query.ImdbRatingTo)] = ["ImdbRatingTo must be greater than or equal to ImdbRatingFrom."] });
 
-        var yearBounds = await dbContext.GoldenGlobeTitles
-            .AsNoTracking()
-            .Where(group => group.Nominations.Any())
+        var yearBounds = await GetVisibleGroups(userId)
             .GroupBy(_ => 1)
             .Select(group => new YearBounds(group.Min(film => film.Year), group.Max(film => film.Year)))
             .FirstOrDefaultAsync(cancellationToken);
-        var (metadataByFilmId, imdbRatingBounds) = await GetRatingMetadataAsync(cancellationToken);
+        var (metadataByFilmId, imdbRatingBounds) = await GetRatingMetadataAsync(userId, cancellationToken);
 
         IQueryable<GoldenGlobeNomination> nominations = dbContext.GoldenGlobeNominations
             .AsNoTracking()
             .Include(x => x.Award)
             .Include(x => x.GoldenGlobeTitle)
             .Where(x => x.GoldenGlobeTitleId != null);
+        if (userId is { } ownerId)
+        {
+            nominations = nominations.Where(x => x.GoldenGlobeTitle!.ImdbId == null
+                || !dbContext.UserIgnoredMovies.Any(ignored =>
+                    ignored.UserId == ownerId && ignored.ImdbId == x.GoldenGlobeTitle.ImdbId));
+        }
         if (!string.IsNullOrWhiteSpace(query.Search))
             nominations = nominations.Where(x => EF.Functions.ILike(x.GoldenGlobeTitle!.Title, $"%{query.Search.Trim()}%"));
         if (query.YearFrom is { } yearFrom) nominations = nominations.Where(x => x.GoldenGlobeTitle!.Year >= yearFrom);
@@ -131,11 +141,10 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
     }
 
     private async Task<(Dictionary<string, ImdbTitle?> MetadataByFilmId, ImdbRatingBounds? Bounds)> GetRatingMetadataAsync(
+        long? userId,
         CancellationToken cancellationToken)
     {
-        var groups = await dbContext.GoldenGlobeTitles
-            .AsNoTracking()
-            .Where(group => group.Nominations.Any())
+        var groups = await GetVisibleGroups(userId)
             .Select(group => new
             {
                 group.Title,
@@ -184,6 +193,19 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
             .ToArray();
         var bounds = ratings.Length == 0 ? null : new ImdbRatingBounds(ratings.Min(), ratings.Max());
         return (metadataByFilmId, bounds);
+    }
+
+    private IQueryable<GoldenGlobeTitle> GetVisibleGroups(long? userId)
+    {
+        var groups = dbContext.GoldenGlobeTitles.AsNoTracking()
+            .Where(group => group.Nominations.Any());
+        if (userId is not { } ownerId)
+        {
+            return groups;
+        }
+
+        return groups.Where(group => group.ImdbId == null
+            || !dbContext.UserIgnoredMovies.Any(ignored => ignored.UserId == ownerId && ignored.ImdbId == group.ImdbId));
     }
 
     public async Task<IReadOnlyList<string>> GetCategoriesAsync(CancellationToken cancellationToken) =>

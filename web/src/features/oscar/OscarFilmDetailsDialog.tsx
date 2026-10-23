@@ -6,6 +6,7 @@ import { MovieAwardsList, MovieDetailsIntro } from '../../components/MoviePresen
 import { formatDate, formatWords } from '../../shared/format'
 import { combineMovieAwards, getOscarRecognitions } from '../../shared/movieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
+import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 
 interface OscarFilmDetailsDialogProps {
   filmId: number
@@ -84,6 +85,7 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
                 {film.lastEnrichmentError && <div><dt>Last error</dt><dd>{film.lastEnrichmentError}</dd></div>}
               </dl>
               <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} />
+              <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} />
 
               <MovieAwardsList awards={awards} />
             </>

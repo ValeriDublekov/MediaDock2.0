@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ApiError,
   addFavorite,
+  addIgnoredMovie,
   applyCatalogTitleImdbCandidate,
   applyParseLogImdbCandidate,
   enqueueFailedEntryRecheck,
@@ -13,6 +14,7 @@ import {
   getBackgroundJobEvents,
   getCatalog,
   getCurrentSession,
+  getIgnoredMovies,
   getAdminUsers,
   decideRegistrationRequest,
   setAdminUserStatus,
@@ -38,6 +40,7 @@ import {
   importPersonalRatings,
   requestJson,
   requestRegistration,
+  removeIgnoredMovie,
   recalculateRecommendationVoteWeights,
   searchCatalogTitleImdbCandidates,
   searchParseLogImdbCandidates,
@@ -129,6 +132,21 @@ describe('typed API client', () => {
     expect(String(stub.calls[0]?.input)).toBe('/api/favorites')
     expect(JSON.parse(String(stub.calls[0]?.init?.body))).toEqual({ imdbId: 'tt12345678', from: 'oscar' })
     expect(String(stub.calls[1]?.input)).toBe('/api/favorites/tt12345678')
+  })
+
+  it('lists, adds, and removes ignored movies by IMDb ID', async () => {
+    const stub = fetchStub(response(200, {}))
+
+    await getIgnoredMovies({ page: 2, pageSize: 100 }, stub.fetcher)
+    await addIgnoredMovie('tt12345678', stub.fetcher)
+    await removeIgnoredMovie('tt12345678', stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/ignored-movies?page=2&pageSize=100')
+    expect(String(stub.calls[1]?.input)).toBe('/api/ignored-movies')
+    expect(stub.calls[1]?.init?.method).toBe('POST')
+    expect(JSON.parse(String(stub.calls[1]?.init?.body))).toEqual({ imdbId: 'tt12345678' })
+    expect(String(stub.calls[2]?.input)).toBe('/api/ignored-movies/tt12345678')
+    expect(stub.calls[2]?.init?.method).toBe('DELETE')
   })
 
   it('serializes IMDb IDs for the bounded combined-awards lookup', async () => {

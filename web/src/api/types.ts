@@ -511,6 +511,16 @@ export interface FavoriteMovie {
   lastSeenAt: string | null
 }
 
+export interface IgnoredMovie {
+  imdbId: string
+  title: string
+  year: number | null
+  mediaType: MediaType | null
+  imdbRating: number | null
+  posterUrl: string | null
+  createdAt: string
+}
+
 export interface SystemVersion {
   version: string
   commitSha: string

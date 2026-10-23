@@ -10,6 +10,7 @@ internal interface IOscarApiService
 {
     Task<PageResponse<OscarFilmResponse>> GetOscarFilmsAsync(
         OscarCatalogQuery query,
+        long? userId,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<string>> GetCategoriesAsync(CancellationToken cancellationToken);
@@ -21,6 +22,7 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
 {
     public async Task<PageResponse<OscarFilmResponse>> GetOscarFilmsAsync(
         OscarCatalogQuery query,
+        long? userId,
         CancellationToken cancellationToken)
     {
         var page = query.Page ?? 1;
@@ -40,15 +42,20 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
             });
         }
 
-        var yearBounds = await dbContext.OscarMovies
-            .AsNoTracking()
+        IQueryable<OscarMovie> visibleFilms = dbContext.OscarMovies.AsNoTracking();
+        if (userId is { } ownerId)
+        {
+            visibleFilms = visibleFilms.Where(film => film.ImdbId == null
+                || !dbContext.UserIgnoredMovies.Any(ignored => ignored.UserId == ownerId && ignored.ImdbId == film.ImdbId));
+        }
+
+        var yearBounds = await visibleFilms
             .GroupBy(_ => 1)
             .Select(group => new YearBounds(
                 group.Min(film => film.FilmYear),
                 group.Max(film => film.FilmYear)))
             .FirstOrDefaultAsync(cancellationToken);
-        var imdbRatingBounds = await dbContext.OscarMovies
-            .AsNoTracking()
+        var imdbRatingBounds = await visibleFilms
             .Where(film => film.ImdbTitle != null && film.ImdbTitle.ImdbRating.HasValue)
             .GroupBy(_ => 1)
             .Select(group => new ImdbRatingBounds(
@@ -56,7 +63,7 @@ internal sealed class OscarApiService(MediaDockDbContext dbContext) : IOscarApiS
                 group.Max(film => film.ImdbTitle!.ImdbRating!.Value)))
             .FirstOrDefaultAsync(cancellationToken);
 
-        IQueryable<OscarMovie> films = dbContext.OscarMovies.AsNoTracking();
+        IQueryable<OscarMovie> films = visibleFilms;
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var pattern = $"%{query.Search.Trim()}%";
