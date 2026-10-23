@@ -40,6 +40,7 @@ public sealed record RecommendationResponse(
     string Title,
     int? Year,
     string MediaType,
+    bool IsWatched,
     decimal ImdbRating,
     long? ImdbVotes,
     string? PosterUrl,

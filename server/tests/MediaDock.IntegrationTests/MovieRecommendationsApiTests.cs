@@ -402,6 +402,8 @@ public sealed class MovieRecommendationsApiTests
         Assert.Contains(includeWatchedPage.Items, item => item.ImdbId == "tt3000003");
         Assert.Contains(includeWatchedPage.Items, item => item.ImdbId == "tt3000005");
         Assert.Contains(includeWatchedPage.Items, item => item.ImdbId == "tt3000008");
+        Assert.True(includeWatchedPage.Items.Single(item => item.ImdbId == "tt3000005").IsWatched);
+        Assert.True(includeWatchedPage.Items.Single(item => item.ImdbId == "tt3000008").IsWatched);
         Assert.DoesNotContain(includeWatchedPage.Items, item => item.ImdbId == "tt3000007");
 
         using var secondUserAfterWriteResponse = await secondClient.GetAsync($"/api/recommendations?{weights}");

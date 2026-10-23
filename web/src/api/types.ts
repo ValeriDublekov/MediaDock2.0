@@ -286,6 +286,7 @@ export interface MovieRecommendation {
   title: string
   year: number | null
   mediaType: 'movie'
+  isWatched: boolean
   imdbRating: number
   imdbVotes: number | null
   posterUrl: string | null

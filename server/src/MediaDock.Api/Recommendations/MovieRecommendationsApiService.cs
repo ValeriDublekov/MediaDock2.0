@@ -224,6 +224,7 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                     candidate.Title,
                     candidate.Year,
                     "movie",
+                    ratingsByImdbId.ContainsKey(candidate.ImdbId),
                     candidate.ImdbRating,
                     candidate.ImdbVotes,
                     candidate.PosterUrl,

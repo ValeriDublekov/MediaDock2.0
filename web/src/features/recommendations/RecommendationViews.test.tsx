@@ -39,6 +39,7 @@ function recommendation(overrides: Partial<MovieRecommendation> = {}): MovieReco
     title: 'Quiet River',
     year: 2004,
     mediaType: 'movie',
+    isWatched: false,
     imdbRating: 8.1,
     imdbVotes: 2500,
     posterUrl: null,
@@ -351,8 +352,11 @@ describe('RecommendationsView', () => {
     expect(menu?.open).toBe(false)
   })
 
-  it('can include already watched movies and clear that filter', async () => {
-    vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()]))
+  it('includes already watched movies without actions and can clear that filter', async () => {
+    vi.mocked(getRecommendations)
+      .mockResolvedValueOnce(recommendationPage([recommendation()]))
+      .mockResolvedValueOnce(recommendationPage([recommendation({ isWatched: true })]))
+      .mockResolvedValue(recommendationPage([recommendation()]))
 
     render(<RecommendationsView />)
 
@@ -368,6 +372,11 @@ describe('RecommendationsView', () => {
       excludeWatched: false,
     }))
     expect(watchedCheckbox.checked).toBe(false)
+    const watchedMovieLink = await screen.findByRole('link', { name: 'Quiet River' })
+    const watchedMovieRow = watchedMovieLink.closest('tr')
+    expect(watchedMovieRow).not.toBeNull()
+    expect(within(watchedMovieRow as HTMLElement).queryByRole('button', { name: 'Mark Quiet River as watched' })).toBeNull()
+    expect(within(watchedMovieRow as HTMLElement).queryByRole('button', { name: 'Ignore movie' })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({

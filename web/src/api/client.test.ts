@@ -257,6 +257,7 @@ describe('typed API client', () => {
       title: 'Quiet River',
       year: 2004,
       mediaType: 'movie',
+      isWatched: false,
       imdbRating: 8.1,
       imdbVotes: 2500,
       posterUrl: null,

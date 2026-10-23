@@ -319,10 +319,10 @@ export function RecommendationsView() {
                 </ul>}
               </details>
             </td>
-            <td><div className="recommendation-actions">
+            <td>{!item.isWatched && <div className="recommendation-actions">
               <button aria-label={`Mark ${item.title} as watched`} className="button button-secondary" onClick={() => openWatchDialog(item)} type="button">Mark watched</button>
               <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} />
-            </div></td>
+            </div>}</td>
           </tr>)}</tbody>
         </table>
       </div>
