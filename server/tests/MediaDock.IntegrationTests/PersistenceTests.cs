@@ -17,6 +17,10 @@ public sealed class PersistenceTests
             .UseNpgsql(postgres.GetConnectionString())
             .Options;
         await using var db = new MediaDockDbContext(options);
+        var legacyOptions = new DbContextOptionsBuilder<LegacyPersistenceTestContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var legacyDb = new LegacyPersistenceTestContext(legacyOptions);
         await db.Database.MigrateAsync("20261021130541_DeduplicateTorrentUrls");
 
         await db.Database.ExecuteSqlRawAsync(
@@ -34,14 +38,14 @@ public sealed class PersistenceTests
         var user = CreateUser("movie-recommendation-migration@example.com", now);
         db.Users.Add(user);
         await db.SaveChangesAsync();
-        db.PersonalRatings.Add(new PersonalRating
+        legacyDb.PersonalRatings.Add(new LegacyPersonalRatingRow
         {
             UserId = user.Id,
             ImdbId = "tt12345678",
             Rating = 8,
             UpdatedAt = now
         });
-        await db.SaveChangesAsync();
+        await legacyDb.SaveChangesAsync();
 
         await db.Database.MigrateAsync();
         db.ChangeTracker.Clear();
@@ -1158,22 +1162,22 @@ public sealed class PersistenceTests
         legacyDb.Titles.AddRange(firstTitle, duplicateTitle, localTitle);
         await legacyDb.SaveChangesAsync();
 
-        db.PersonalRatings.AddRange(
-            new PersonalRating
+        legacyDb.PersonalRatings.AddRange(
+            new LegacyPersonalRatingRow
             {
                 UserId = firstUser.Id,
                 ImdbId = " TT87654321 ",
                 Rating = 5,
                 UpdatedAt = now.AddDays(-1)
             },
-            new PersonalRating
+            new LegacyPersonalRatingRow
             {
                 UserId = firstUser.Id,
                 ImdbId = "tt87654321",
                 Rating = 8,
                 UpdatedAt = now
             },
-            new PersonalRating
+            new LegacyPersonalRatingRow
             {
                 UserId = secondUser.Id,
                 ImdbId = "TT87654321",
@@ -1195,7 +1199,6 @@ public sealed class PersistenceTests
         var award = new LegacyGoldenGlobeAwardRow { Name = "Legacy award" };
         legacyDb.GoldenGlobeAwards.Add(award);
         await legacyDb.SaveChangesAsync();
-        await db.SaveChangesAsync();
         await db.Database.ExecuteSqlInterpolatedAsync(
             $"""
             INSERT INTO golden_globe_nominations (
@@ -1262,7 +1265,7 @@ public sealed class PersistenceTests
         await Assert.ThrowsAsync<DbUpdateException>(() => legacyDb.SaveChangesAsync());
         legacyDb.ChangeTracker.Clear();
 
-        var ratings = await db.PersonalRatings.AsNoTracking().OrderBy(rating => rating.UserId).ToListAsync();
+        var ratings = await legacyDb.PersonalRatings.AsNoTracking().OrderBy(rating => rating.UserId).ToListAsync();
         Assert.Equal(2, ratings.Count);
         Assert.All(ratings, rating => Assert.Equal("tt87654321", rating.ImdbId));
         Assert.Equal(8, ratings.Single(rating => rating.UserId == firstUser.Id).Rating);
@@ -1301,15 +1304,15 @@ public sealed class PersistenceTests
         await db.Database.ExecuteSqlInterpolatedAsync(
             $"INSERT INTO golden_globe_nominations (import_key, winner, award_id, group_id) VALUES ({"nullable-imdb-nomination"}, {false}, {award.Id}, {noIdGroup.Id})");
 
-        db.PersonalRatings.Add(new PersonalRating
+        legacyDb.PersonalRatings.Add(new LegacyPersonalRatingRow
         {
             UserId = firstUser.Id,
             ImdbId = "tt99999999",
             Rating = 7,
             UpdatedAt = now
         });
-        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
-        db.ChangeTracker.Clear();
+        await Assert.ThrowsAsync<DbUpdateException>(() => legacyDb.SaveChangesAsync());
+        legacyDb.ChangeTracker.Clear();
 
         var referencedImdbTitle = await legacyDb.ImdbTitles.SingleAsync(title => title.ImdbId == "tt12345678");
         legacyDb.ImdbTitles.Remove(referencedImdbTitle);

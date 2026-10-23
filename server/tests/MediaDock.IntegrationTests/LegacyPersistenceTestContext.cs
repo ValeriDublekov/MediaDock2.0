@@ -12,6 +12,7 @@ internal sealed class LegacyPersistenceTestContext(DbContextOptions<LegacyPersis
     public DbSet<LegacyGoldenGlobeGroupRow> GoldenGlobeGroups => Set<LegacyGoldenGlobeGroupRow>();
     public DbSet<LegacyOccurrenceRow> Occurrences => Set<LegacyOccurrenceRow>();
     public DbSet<LegacyFavoriteMovieRow> FavoriteMovies => Set<LegacyFavoriteMovieRow>();
+    public DbSet<LegacyPersonalRatingRow> PersonalRatings => Set<LegacyPersonalRatingRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -141,6 +142,16 @@ internal sealed class LegacyPersistenceTestContext(DbContextOptions<LegacyPersis
             builder.Property(entity => entity.CreatedAt).HasColumnName("created_at");
             builder.Property(entity => entity.UpdatedAt).HasColumnName("updated_at");
         });
+
+        modelBuilder.Entity<LegacyPersonalRatingRow>(builder =>
+        {
+            builder.ToTable("personal_ratings");
+            builder.HasKey(entity => new { entity.UserId, entity.ImdbId });
+            builder.Property(entity => entity.UserId).HasColumnName("user_id");
+            builder.Property(entity => entity.ImdbId).HasColumnName("imdb_id");
+            builder.Property(entity => entity.Rating).HasColumnName("rating");
+            builder.Property(entity => entity.UpdatedAt).HasColumnName("updated_at");
+        });
     }
 }
 
@@ -254,5 +265,13 @@ internal sealed class LegacyFavoriteMovieRow
     public bool AddedFromOscar { get; set; }
     public bool AddedFromCatalog { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+internal sealed class LegacyPersonalRatingRow
+{
+    public long UserId { get; set; }
+    public string ImdbId { get; set; } = string.Empty;
+    public int Rating { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 }

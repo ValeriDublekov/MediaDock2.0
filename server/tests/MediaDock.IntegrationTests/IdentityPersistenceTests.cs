@@ -31,7 +31,7 @@ public sealed class IdentityPersistenceTests
         db.ChangeTracker.Clear();
 
         Assert.Empty(await legacyDb.FavoriteMovies.AsNoTracking().ToListAsync());
-        Assert.Empty(await db.PersonalRatings.AsNoTracking().ToListAsync());
+        Assert.Empty(await legacyDb.PersonalRatings.AsNoTracking().ToListAsync());
         Assert.Empty(await db.Users.ToListAsync());
     }
 
@@ -73,7 +73,7 @@ public sealed class IdentityPersistenceTests
         Assert.Equal(now.AddDays(-1), favorite.CreatedAt);
         Assert.Equal(now, favorite.UpdatedAt);
 
-        var rating = await db.PersonalRatings.AsNoTracking().SingleAsync();
+        var rating = await legacyDb.PersonalRatings.AsNoTracking().SingleAsync();
         Assert.Equal(user.Id, rating.UserId);
         Assert.Equal("tt12345678", rating.ImdbId);
         Assert.Equal(8, rating.Rating);
@@ -126,7 +126,7 @@ public sealed class IdentityPersistenceTests
             Assert.Equal(now, favorite.UpdatedAt);
         });
 
-        var ratings = await db.PersonalRatings.AsNoTracking().OrderBy(rating => rating.UserId).ToListAsync();
+        var ratings = await legacyDb.PersonalRatings.AsNoTracking().OrderBy(rating => rating.UserId).ToListAsync();
         Assert.Equal(new[] { firstUser.Id, secondUser.Id }.OrderBy(id => id), ratings.Select(rating => rating.UserId));
         Assert.All(ratings, rating =>
         {
@@ -147,15 +147,15 @@ public sealed class IdentityPersistenceTests
         await Assert.ThrowsAsync<DbUpdateException>(() => legacyDb.SaveChangesAsync());
         legacyDb.ChangeTracker.Clear();
 
-        db.PersonalRatings.Add(new PersonalRating
+        legacyDb.PersonalRatings.Add(new LegacyPersonalRatingRow
         {
             UserId = firstUser.Id,
             ImdbId = "tt12345678",
             Rating = 9,
             UpdatedAt = now
         });
-        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
-        db.ChangeTracker.Clear();
+        await Assert.ThrowsAsync<DbUpdateException>(() => legacyDb.SaveChangesAsync());
+        legacyDb.ChangeTracker.Clear();
     }
 
     [Fact]
