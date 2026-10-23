@@ -47,7 +47,7 @@ const title: CatalogTitle = {
 }
 
 describe('CatalogView', () => {
-  beforeEach(() => { catalogRequest.mockReset() })
+  beforeEach(() => { catalogRequest.mockReset(); window.localStorage.clear() })
   afterEach(() => cleanup())
 
   it('switches between posters and table without refetching and replaces broken images', async () => {
@@ -319,6 +319,60 @@ describe('CatalogView', () => {
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
       page: 1, pageSize: 20, feedTypes: ['movie'], imdbRatingFrom: 8.1, imdbRatingTo: 8.5,
     }))
+  })
+
+  it('persists separate movie and shared series IMDb rating ranges', async () => {
+    catalogRequest.mockResolvedValue(page([title], 1, 1, undefined, { minRating: 5, maxRating: 9 }))
+    const firstRender = render(<CatalogView />)
+
+    expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
+    fireEvent.change(screen.getByRole('slider', { name: 'IMDb rating minimum' }), { target: { value: '8.1' } })
+    const movieMaximum = screen.getByRole('slider', { name: 'IMDb rating maximum' })
+    fireEvent.change(movieMaximum, { target: { value: '8.5' } })
+    fireEvent.pointerUp(movieMaximum)
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, feedTypes: ['movie'], imdbRatingFrom: 8.1, imdbRatingTo: 8.5,
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Series' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, feedTypes: ['series_complete'],
+    }))
+    expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('5 – 9')
+    fireEvent.change(screen.getByRole('slider', { name: 'IMDb rating minimum' }), { target: { value: '6.5' } })
+    const seriesMaximum = screen.getByRole('slider', { name: 'IMDb rating maximum' })
+    fireEvent.change(seriesMaximum, { target: { value: '7.5' } })
+    fireEvent.pointerUp(seriesMaximum)
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, feedTypes: ['series_complete'], imdbRatingFrom: 6.5, imdbRatingTo: 7.5,
+    }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Series in progress' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, feedTypes: ['series_ongoing'], imdbRatingFrom: 6.5, imdbRatingTo: 7.5,
+    }))
+    expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('6.5 – 7.5')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Movies' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, feedTypes: ['movie'], imdbRatingFrom: 8.1, imdbRatingTo: 8.5,
+    }))
+    expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('8.1 – 8.5')
+
+    firstRender.unmount()
+    catalogRequest.mockClear()
+    render(<CatalogView />)
+    expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, feedTypes: ['movie'], imdbRatingFrom: 8.1, imdbRatingTo: 8.5,
+    }))
+    expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('8.1 – 8.5')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Series' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: 20, feedTypes: ['series_complete'], imdbRatingFrom: 6.5, imdbRatingTo: 7.5,
+    }))
+    expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('6.5 – 7.5')
   })
 
   it('omits both year parameters for the full range so yearless titles remain included', async () => {

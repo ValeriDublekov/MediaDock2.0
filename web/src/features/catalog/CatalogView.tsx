@@ -29,6 +29,9 @@ interface CatalogFilters {
 }
 
 type CatalogCategory = 'movie' | 'series' | 'series_ongoing' | 'all'
+type CatalogRatingScope = 'movie' | 'series' | 'all'
+type ImdbRatingRange = Pick<CatalogFilters, 'imdbRatingFrom' | 'imdbRatingTo'>
+type CatalogRatingRanges = Record<CatalogRatingScope, ImdbRatingRange>
 
 const categoryFeedTypes: Record<Exclude<CatalogCategory, 'all'>, FeedType[]> = {
   movie: ['movie'],
@@ -46,7 +49,55 @@ const categories: Array<{ id: CatalogCategory; label: string }> = [
 const emptyFilters: CatalogFilters = {
   search: '', mediaType: '', sourceType: '', contentKind: '', yearFrom: '', yearTo: '', imdbRatingFrom: '', imdbRatingTo: '', genre: '',
 }
+const emptyImdbRatingRange: ImdbRatingRange = { imdbRatingFrom: '', imdbRatingTo: '' }
+const emptyImdbRatingRanges: CatalogRatingRanges = {
+  movie: emptyImdbRatingRange,
+  series: emptyImdbRatingRange,
+  all: emptyImdbRatingRange,
+}
+const imdbRatingStorageKey = 'mediadock.catalog.imdbRatingRanges'
 const searchDebounceMs = 350
+
+function ratingScopeForCategory(category: CatalogCategory): CatalogRatingScope {
+  if (category === 'series' || category === 'series_ongoing') return 'series'
+  return category
+}
+
+function parseStoredImdbRatingRange(value: unknown): ImdbRatingRange {
+  if (typeof value !== 'object' || value === null) return { ...emptyImdbRatingRange }
+  const range = value as Record<string, unknown>
+  const isRating = (candidate: unknown): candidate is string =>
+    typeof candidate === 'string' && (candidate === '' || Number.isFinite(Number(candidate)))
+  if (!isRating(range.imdbRatingFrom) || !isRating(range.imdbRatingTo)) return { ...emptyImdbRatingRange }
+  return { imdbRatingFrom: range.imdbRatingFrom, imdbRatingTo: range.imdbRatingTo }
+}
+
+function readSavedImdbRatingRanges(): CatalogRatingRanges {
+  if (typeof window === 'undefined') return emptyImdbRatingRanges
+  try {
+    const saved = window.localStorage.getItem(imdbRatingStorageKey)
+    if (saved === null) return emptyImdbRatingRanges
+    const parsed: unknown = JSON.parse(saved)
+    if (typeof parsed !== 'object' || parsed === null) return emptyImdbRatingRanges
+    const ranges = parsed as Partial<Record<CatalogRatingScope, unknown>>
+    return {
+      movie: parseStoredImdbRatingRange(ranges.movie),
+      series: parseStoredImdbRatingRange(ranges.series),
+      all: parseStoredImdbRatingRange(ranges.all),
+    }
+  } catch {
+    return emptyImdbRatingRanges
+  }
+}
+
+function saveImdbRatingRanges(ranges: CatalogRatingRanges) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(imdbRatingStorageKey, JSON.stringify(ranges))
+  } catch {
+    return
+  }
+}
 
 function buildQuery(page: number, filters: CatalogFilters, category: CatalogCategory): CatalogQuery {
   return {
@@ -94,9 +145,10 @@ function CatalogRow({ title, onSelect, awards }: { title: CatalogTitle; onSelect
 export function CatalogView({ canDeleteTitles = false }: { canDeleteTitles?: boolean } = {}) {
   const [viewMode, setViewMode] = useState<ViewMode>('posters')
   const [category, setCategory] = useState<CatalogCategory>('movie')
+  const [ratingRanges, setRatingRanges] = useState(readSavedImdbRatingRanges)
   const [page, setPage] = useState(1)
-  const [draftFilters, setDraftFilters] = useState<CatalogFilters>(emptyFilters)
-  const [appliedFilters, setAppliedFilters] = useState<CatalogFilters>(emptyFilters)
+  const [draftFilters, setDraftFilters] = useState<CatalogFilters>(() => ({ ...emptyFilters, ...ratingRanges.movie }))
+  const [appliedFilters, setAppliedFilters] = useState<CatalogFilters>(() => ({ ...emptyFilters, ...ratingRanges.movie }))
   const [result, setResult] = useState<PageResponse<CatalogTitle> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -183,7 +235,20 @@ export function CatalogView({ canDeleteTitles = false }: { canDeleteTitles?: boo
       imdbRatingTo: to === bounds.maxRating ? '' : String(to),
     }
     setDraftFilters((current) => ({ ...current, ...ratings }))
-    if (apply) commitFilterChanges(ratings)
+    if (apply) {
+      const nextRanges = { ...ratingRanges, [ratingScopeForCategory(category)]: ratings }
+      setRatingRanges(nextRanges)
+      saveImdbRatingRanges(nextRanges)
+      commitFilterChanges(ratings)
+    }
+  }
+
+  function selectCategory(nextCategory: CatalogCategory) {
+    const nextRatingRange = ratingRanges[ratingScopeForCategory(nextCategory)]
+    setCategory(nextCategory)
+    setPage(1)
+    setDraftFilters((current) => ({ ...current, ...nextRatingRange }))
+    setAppliedFilters((current) => ({ ...current, ...nextRatingRange }))
   }
 
   return (
@@ -194,7 +259,7 @@ export function CatalogView({ canDeleteTitles = false }: { canDeleteTitles?: boo
           aria-pressed={category === item.id}
           className={category === item.id ? 'is-active' : ''}
           key={item.id}
-          onClick={() => { setCategory(item.id); setPage(1) }}
+          onClick={() => selectCategory(item.id)}
           type="button"
         >{item.label}</button>)}
       </nav>
@@ -257,6 +322,9 @@ export function CatalogView({ canDeleteTitles = false }: { canDeleteTitles?: boo
         </details>
         <div className="filter-actions">
           <button className="button button-secondary" onClick={() => {
+            const nextRanges = { ...ratingRanges, [ratingScopeForCategory(category)]: { ...emptyImdbRatingRange } }
+            setRatingRanges(nextRanges)
+            saveImdbRatingRanges(nextRanges)
             setDraftFilters({ ...emptyFilters })
             setAppliedFilters({ ...emptyFilters })
             setPage(1)
