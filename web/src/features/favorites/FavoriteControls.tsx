@@ -45,7 +45,7 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, occu
         {!selectedFromHere && canAddFromHere && <button className="text-button" disabled={disabled} onClick={() => void add(imdbId, from)} type="button">
           Add from {from === 'oscar' ? 'Oscar' : 'catalog'}
         </button>}
-        <button className="text-button" disabled={disabled} onClick={() => void remove(imdbId)} type="button">Remove from favorites</button>
+        {!selectedFromHere && canAddFromHere && <button className="text-button" disabled={disabled} onClick={() => void remove(imdbId)} type="button">Remove from favorites</button>}
       </>}
       {error && <span role="alert">{error} <button className="text-button" onClick={retry} type="button">Retry</button></span>}
     </div>
