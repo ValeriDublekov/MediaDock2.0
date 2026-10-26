@@ -88,9 +88,9 @@ public sealed class PostgresImdbTitleEnrichmentRepository(MediaDockDbContext dbC
             throw new ArgumentException("A valid IMDb ID is required.", nameof(imdbId));
         }
 
-        if (update.Status is not (ImdbTitleEnrichmentStatuses.Enriched
-            or ImdbTitleEnrichmentStatuses.NotFound
-            or ImdbTitleEnrichmentStatuses.TemporaryError))
+        if (update.Status is not (ImdbTitleEnrichmentStatus.Enriched
+            or ImdbTitleEnrichmentStatus.NotFound
+            or ImdbTitleEnrichmentStatus.TemporaryError))
         {
             throw new ArgumentOutOfRangeException(nameof(update), "The enrichment outcome status is invalid.");
         }
@@ -110,7 +110,7 @@ public sealed class PostgresImdbTitleEnrichmentRepository(MediaDockDbContext dbC
 
         if (update.Metadata is not null)
         {
-            if (update.Status != ImdbTitleEnrichmentStatuses.Enriched)
+            if (update.Status != ImdbTitleEnrichmentStatus.Enriched)
             {
                 throw new InvalidOperationException("Only successful outcomes may include IMDb metadata.");
             }
@@ -118,7 +118,7 @@ public sealed class PostgresImdbTitleEnrichmentRepository(MediaDockDbContext dbC
             ImdbTitleMetadataMapper.Apply(title, update.Metadata, update.AttemptedAt);
         }
 
-        title.MetadataStatus = update.Status;
+        title.MetadataStatus = update.Status.ToDatabaseValue();
         title.EnrichmentAttemptCount = update.AttemptCount;
         title.LastEnrichmentAttemptAt = update.AttemptedAt;
         title.NextEnrichmentAttemptAt = update.NextAttemptAt;
@@ -128,8 +128,8 @@ public sealed class PostgresImdbTitleEnrichmentRepository(MediaDockDbContext dbC
     }
 
     private static Expression<Func<ImdbTitle, bool>> EligibleAt(DateTimeOffset now) =>
-        title => title.MetadataStatus == ImdbTitleEnrichmentStatuses.Pending
-            || ((title.MetadataStatus == ImdbTitleEnrichmentStatuses.TemporaryError
-                    || title.MetadataStatus == ImdbTitleEnrichmentStatuses.NotFound)
+        title => title.MetadataStatus == ImdbTitleEnrichmentStatusValues.Pending
+            || ((title.MetadataStatus == ImdbTitleEnrichmentStatusValues.TemporaryError
+                || title.MetadataStatus == ImdbTitleEnrichmentStatusValues.NotFound)
                 && (title.NextEnrichmentAttemptAt == null || title.NextEnrichmentAttemptAt <= now));
 }

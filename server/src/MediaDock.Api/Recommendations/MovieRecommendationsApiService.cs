@@ -1,6 +1,7 @@
 using System.Data;
 using MediaDock.Api.Common;
 using MediaDock.Api.Middleware;
+using MediaDock.Application.PersonalRatings;
 using MediaDock.Application.Recommendations;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
@@ -346,7 +347,7 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
         bool excludeWatched = true) =>
         dbContext.ImdbTitles
             .AsNoTracking()
-            .Where(title => title.MetadataStatus == "enriched"
+            .Where(title => title.MetadataStatus == ImdbTitleEnrichmentStatusValues.Enriched
                 && title.MediaType == mediaType
                 && title.TitleText != null
                 && title.TitleText.Trim() != string.Empty

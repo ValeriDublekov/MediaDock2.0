@@ -86,6 +86,7 @@ vi.mock('./features/history/HistoryView', () => ({
   ),
 }))
 vi.mock('./features/users/UsersView', () => ({ UsersView: () => <div>Users route content</div> }))
+vi.mock('./features/dashboard/MovieTablesDashboardView', () => ({ MovieTablesDashboardView: () => <div>Dashboard route content</div> }))
 
 function LocationProbe() {
   const location = useLocation()
@@ -270,7 +271,17 @@ describe('App routes', () => {
     expect(screen.getByRole('navigation', { name: 'Administration navigation' }).textContent).toContain('Recommendation settings')
   })
 
+  it('opens movie tables dashboard for administrators', async () => {
+    authMock.session = activeAdminSession
+
+    renderAt('/configuration/dashboard')
+
+    expect(await screen.findByText('Dashboard route content')).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Administration navigation' }).textContent).toContain('Dashboard')
+  })
+
   it.each([
+    '/configuration/dashboard',
     '/configuration/torrent',
     '/configuration/ingestion',
     '/configuration/recommendations',

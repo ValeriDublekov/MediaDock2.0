@@ -660,3 +660,35 @@ export interface BackgroundJobEvents {
   items: BackgroundJobEvent[]
   nextAfterId: number
 }
+
+export interface MovieTablesDashboard {
+  imdb: ImdbTitlesSummary
+  goldenGlobes: GoldenGlobeTitlesSummary
+  oscar: OscarMoviesSummary
+  generatedAtUtc: string
+}
+
+export interface ImdbTitlesSummary {
+  totalCount: number
+  byMediaType: Record<string, number>
+  byMetadataStatus: Record<string, number>
+  enrichedCount: number
+  pendingCount: number
+}
+
+export interface GoldenGlobeTitlesSummary {
+  totalCount: number
+  byNomineeType: Record<string, number>
+  byEnrichmentStatus: Record<string, number>
+  withImdbLinkCount: number
+  withoutImdbLinkCount: number
+  totalNominationsCount: number
+}
+
+export interface OscarMoviesSummary {
+  totalCount: number
+  byEnrichmentStatus: Record<string, number>
+  withImdbLinkCount: number
+  withoutImdbLinkCount: number
+  totalNominationsCount: number
+}

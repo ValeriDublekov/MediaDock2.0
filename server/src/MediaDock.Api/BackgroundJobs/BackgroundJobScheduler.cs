@@ -1,4 +1,5 @@
 using MediaDock.Infrastructure.Persistence;
+using MediaDock.Application.PersonalRatings;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -65,8 +66,9 @@ public sealed class BackgroundJobScheduler(MediaDockDbContext dbContext, TimePro
             .AnyAsync(item => item.JobType == "imdb_catalog_enrichment"
                 && (item.Status == "queued" || item.Status == "running"), cancellationToken);
         var hasEligibleImdbTitles = await dbContext.ImdbTitles.AsNoTracking().AnyAsync(title =>
-            title.MetadataStatus == "pending"
-            || ((title.MetadataStatus == "temporary_error" || title.MetadataStatus == "not_found")
+                title.MetadataStatus == ImdbTitleEnrichmentStatusValues.Pending
+                || ((title.MetadataStatus == ImdbTitleEnrichmentStatusValues.TemporaryError
+                    || title.MetadataStatus == ImdbTitleEnrichmentStatusValues.NotFound)
                 && (title.NextEnrichmentAttemptAt == null || title.NextEnrichmentAttemptAt <= now)),
             cancellationToken);
         if (!activeImdbCatalogEnrichment && hasEligibleImdbTitles)

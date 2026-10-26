@@ -1,0 +1,2365 @@
+tconst	averageRating	numVotes	titleType	primaryTitle	startYear	genres
+tt0010323	8.0	77299	movie	The Cabinet of Dr. Caligari	1920	Horror,Mystery,Thriller
+tt0012349	8.2	147572	movie	The Kid	1921	Comedy,Drama,Family
+tt0013442	7.8	124918	movie	Nosferatu	1922	Fantasy,Horror
+tt0015324	8.1	67378	movie	Sherlock Jr.	1924	Action,Comedy,Romance
+tt0015648	7.9	65891	movie	Battleship Potemkin	1925	Drama,History,Thriller
+tt0015864	8.1	129516	movie	The Gold Rush	1925	Adventure,Comedy,Drama
+tt0017136	8.2	203765	movie	Metropolis	1927	Drama,Sci-Fi
+tt0017925	8.1	106577	movie	The General	1926	Action,Adventure,Comedy
+tt0019254	8.1	69590	movie	The Passion of Joan of Arc	1928	Biography,Drama,History
+tt0020629	8.1	72983	movie	All Quiet on the Western Front	1930	Drama,War
+tt0021749	8.5	218885	movie	City Lights	1931	Comedy,Drama,Romance
+tt0021814	7.3	66018	movie	Dracula	1931	Drama,Fantasy,Horror
+tt0021884	7.7	89306	movie	Frankenstein	1931	Drama,Horror,Sci-Fi
+tt0022100	8.3	184976	movie	M	1931	Crime,Mystery,Thriller
+tt0023969	7.7	64589	movie	Duck Soup	1933	Comedy,Musical
+tt0024216	7.9	96877	movie	King Kong	1933	Adventure,Horror
+tt0025316	8.1	120903	movie	It Happened One Night	1934	Comedy,Romance
+tt0026029	7.6	67188	movie	The 39 Steps	1935	Crime,Mystery,Thriller
+tt0027977	8.5	288685	movie	Modern Times	1936	Comedy,Drama,Romance
+tt0029583	7.6	241133	movie	Snow White and the Seven Dwarfs	1937	Adventure,Animation,Family
+tt0029947	7.8	70055	movie	Bringing Up Baby	1938	Comedy
+tt0030341	7.7	62292	movie	The Lady Vanishes	1938	Crime,Drama,Mystery
+tt0031381	8.2	359783	movie	Gone with the Wind	1939	Drama,Romance,War
+tt0031679	8.1	130808	movie	Mr. Smith Goes to Washington	1939	Comedy,Drama
+tt0032138	8.1	474132	movie	The Wizard of Oz	1939	Adventure,Family,Fantasy
+tt0032455	7.7	112672	movie	Fantasia	1940	Animation,Family,Fantasy
+tt0032551	8.1	107860	movie	The Grapes of Wrath	1940	Drama
+tt0032553	8.4	261056	movie	The Great Dictator	1940	Comedy,Drama,War
+tt0032599	7.8	68842	movie	His Girl Friday	1940	Comedy,Drama,Romance
+tt0032904	7.8	79498	movie	The Philadelphia Story	1940	Comedy,Romance
+tt0032910	7.4	175112	movie	Pinocchio	1940	Adventure,Animation,Comedy
+tt0032976	8.0	162628	movie	Rebecca	1940	Drama,Mystery,Romance
+tt0033467	8.2	497995	movie	Citizen Kane	1941	Drama,Mystery
+tt0033563	7.2	152171	movie	Dumbo	1941	Adventure,Animation,Drama
+tt0033870	7.9	176017	movie	The Maltese Falcon	1941	Crime,Drama,Film-Noir
+tt0034492	7.3	167466	movie	Bambi	1942	Adventure,Animation,Drama
+tt0034583	8.5	663224	movie	Casablanca	1942	Drama,Romance,War
+tt0036342	7.7	76322	movie	Shadow of a Doubt	1943	Drama,Film-Noir,Mystery
+tt0036613	7.9	78386	movie	Arsenic and Old Lace	1944	Comedy,Crime,Thriller
+tt0036775	8.3	183812	movie	Double Indemnity	1944	Crime,Drama,Film-Noir
+tt0036868	8.1	77420	movie	The Best Years of Our Lives	1946	Drama,Romance,War
+tt0038355	7.9	95277	movie	The Big Sleep	1946	Crime,Drama,Film-Noir
+tt0038650	8.6	562111	movie	It's a Wonderful Life	1946	Drama,Family,Fantasy
+tt0038787	7.9	113819	movie	Notorious	1946	Drama,Film-Noir,Mystery
+tt0039628	7.9	60223	movie	Miracle on 34th Street	1947	Comedy,Drama,Family
+tt0040522	8.2	193935	movie	Bicycle Thieves	1948	Drama
+tt0040746	7.9	167089	movie	Rope	1948	Crime,Drama,Mystery
+tt0040897	8.2	143117	movie	The Treasure of the Sierra Madre	1948	Adventure,Drama,Western
+tt0041959	8.1	197955	movie	The Third Man	1949	Drama,Film-Noir,Mystery
+tt0042192	8.2	151004	movie	All About Eve	1950	Drama
+tt0042332	7.3	189974	movie	Cinderella	1950	Animation,Family,Fantasy
+tt0042546	7.9	61503	movie	Harvey	1950	Comedy,Drama,Fantasy
+tt0042876	8.1	199351	movie	Rashomon	1950	Crime,Drama,Mystery
+tt0043014	8.4	264648	movie	Sunset Boulevard	1950	Drama,Film-Noir
+tt0043265	7.7	88359	movie	The African Queen	1951	Adventure,Drama,Romance
+tt0043274	7.3	169329	movie	Alice in Wonderland	1951	Adventure,Animation,Comedy
+tt0043456	7.7	89588	movie	The Day the Earth Stood Still	1951	Drama,Sci-Fi
+tt0044079	7.9	149588	movie	Strangers on a Train	1951	Crime,Drama,Film-Noir
+tt0044081	7.9	120026	movie	A Streetcar Named Desire	1951	Drama
+tt0044706	7.9	117627	movie	High Noon	1952	Drama,Thriller,Western
+tt0044741	8.3	104447	movie	Ikiru	1952	Drama
+tt0045152	8.3	286776	movie	Singin' in the Rain	1952	Comedy,Musical,Romance
+tt0046183	7.2	168198	movie	Peter Pan	1953	Adventure,Animation,Family
+tt0046250	8.0	159328	movie	Roman Holiday	1953	Comedy,Drama,Romance
+tt0046268	8.1	74682	movie	The Wages of Fear	1953	Adventure,Drama,Thriller
+tt0046359	7.9	60677	movie	Stalag 17	1953	Comedy,Drama,War
+tt0046438	8.1	79181	movie	Tokyo Story	1953	Drama
+tt0046911	8.1	74159	movie	Diabolique	1955	Crime,Drama,Horror
+tt0046912	8.1	207800	movie	Dial M for Murder	1954	Crime,Drama,Mystery
+tt0047296	8.1	181966	movie	On the Waterfront	1954	Crime,Drama,Thriller
+tt0047396	8.4	575890	movie	Rear Window	1954	Drama,Mystery,Thriller
+tt0047437	7.6	76944	movie	Sabrina	1954	Comedy,Drama,Romance
+tt0047478	8.6	407180	movie	Seven Samurai	1954	Action,Drama
+tt0047528	8.0	70665	movie	La Strada	1954	Drama
+tt0048280	7.3	164517	movie	Lady and the Tramp	1955	Adventure,Animation,Comedy
+tt0048424	7.9	110005	movie	The Night of the Hunter	1955	Crime,Drama,Thriller
+tt0048545	7.6	104529	movie	Rebel Without a Cause	1955	Drama
+tt0048728	7.4	87943	movie	To Catch a Thief	1955	Drama,Mystery,Romance
+tt0049366	7.7	61002	movie	Invasion of the Body Snatchers	1956	Drama,Horror,Sci-Fi
+tt0049406	7.9	107802	movie	The Killing	1956	Crime,Drama,Film-Noir
+tt0049470	7.4	77202	movie	The Man Who Knew Too Much	1956	Crime,Drama,Mystery
+tt0049730	7.8	104220	movie	The Searchers	1956	Adventure,Western
+tt0049833	7.9	85929	movie	The Ten Commandments	1956	Adventure,Drama,Family
+tt0050083	9.0	1009027	movie	12 Angry Men	1957	Crime,Drama
+tt0050212	8.1	252259	movie	The Bridge on the River Kwai	1957	Adventure,Drama,War
+tt0050613	8.0	61194	movie	Throne of Blood	1957	Drama
+tt0050825	8.4	243546	movie	Paths of Glory	1957	Drama,War
+tt0050976	8.1	218595	movie	The Seventh Seal	1957	Drama,Fantasy
+tt0050986	8.1	126200	movie	Wild Strawberries	1957	Drama,Romance
+tt0051201	8.4	165379	movie	Witness for the Prosecution	1957	Crime,Drama,Mystery
+tt0052311	7.9	115972	movie	Touch of Evil	1958	Crime,Drama,Film-Noir
+tt0052357	8.2	464278	movie	Vertigo	1958	Mystery,Romance,Thriller
+tt0052520	9.0	111242	tvSeries	The Twilight Zone	1959	Drama,Fantasy,Horror
+tt0052561	8.0	79168	movie	Anatomy of a Murder	1959	Drama,Mystery
+tt0052618	8.1	274299	movie	Ben-Hur	1959	Adventure,Drama
+tt0053125	8.2	372803	movie	North by Northwest	1959	Action,Adventure,Drama
+tt0053198	8.0	135819	movie	The 400 Blows	1959	Crime,Drama
+tt0053221	7.9	74686	movie	Rio Bravo	1959	Western
+tt0053285	7.2	173317	movie	Sleeping Beauty	1959	Adventure,Animation,Family
+tt0053291	8.2	308244	movie	Some Like It Hot	1959	Comedy,Music,Romance
+tt0053472	7.6	96794	movie	Breathless	1960	Crime,Drama
+tt0053604	8.3	223900	movie	The Apartment	1960	Comedy,Drama,Romance
+tt0053779	8.0	86867	movie	La Dolce Vita	1960	Comedy,Drama
+tt0054047	7.7	112124	movie	The Magnificent Seven	1960	Action,Adventure,Drama
+tt0054215	8.5	797933	movie	Psycho	1960	Drama,Horror,Mystery
+tt0054331	7.9	152794	movie	Spartacus	1960	Adventure,Biography,Drama
+tt0054698	7.5	206904	movie	Breakfast at Tiffany's	1961	Comedy,Drama,Romance
+tt0054953	7.5	61319	movie	The Guns of Navarone	1961	Action,Adventure,Drama
+tt0054997	7.9	90728	movie	The Hustler	1961	Drama,Sport
+tt0055031	8.3	98893	movie	Judgment at Nuremberg	1961	Drama,History,War
+tt0055254	7.3	199495	movie	One Hundred and One Dalmatians	1961	Adventure,Animation,Comedy
+tt0055614	7.6	129092	movie	West Side Story	1961	Crime,Drama,Musical
+tt0055630	8.2	145207	movie	Yojimbo	1961	Action,Drama,Thriller
+tt0055928	7.2	198783	movie	Dr. No	1962	Action,Adventure,Thriller
+tt0056058	8.6	95055	movie	Harakiri	1962	Drama,Mystery
+tt0056172	8.3	347538	movie	Lawrence of Arabia	1962	Adventure,Biography,Drama
+tt0056193	7.5	117608	movie	Lolita	1962	Crime,Drama,Romance
+tt0056197	7.7	63806	movie	The Longest Day	1962	Action,Drama,History
+tt0056217	8.1	90086	movie	The Man Who Shot Liberty Valance	1962	Drama,Western
+tt0056218	7.9	85438	movie	The Manchurian Candidate	1962	Drama,Thriller
+tt0056592	8.2	354084	movie	To Kill a Mockingbird	1962	Crime,Drama
+tt0056687	8.0	68671	movie	What Ever Happened to Baby Jane?	1962	Drama,Horror,Thriller
+tt0056801	8.0	134127	movie	8½	1963	Drama
+tt0056869	7.6	222971	movie	The Birds	1963	Drama,Horror,Mystery
+tt0056923	7.8	95129	movie	Charade	1963	Comedy,Mystery,Romance
+tt0057012	8.3	556182	movie	Dr. Strangelove or: How I Learned to Stop Worrying and Love the Bomb	1964	Comedy,War
+tt0057076	7.3	161435	movie	From Russia with Love	1963	Action,Adventure,Thriller
+tt0057115	8.2	281011	movie	The Great Escape	1963	Adventure,Drama,Thriller
+tt0057546	7.1	116120	movie	The Sword in the Stone	1963	Adventure,Animation,Comedy
+tt0057565	8.4	74162	movie	High and Low	1963	Crime,Drama,Mystery
+tt0058150	7.7	220660	movie	Goldfinger	1964	Action,Adventure,Thriller
+tt0058331	7.8	200997	movie	Mary Poppins	1964	Comedy,Family,Fantasy
+tt0058385	7.7	108883	movie	My Fair Lady	1964	Drama,Musical,Romance
+tt0058461	7.9	257650	movie	A Fistful of Dollars	1964	Drama,Western
+tt0058946	8.1	77382	movie	The Battle of Algiers	1966	Drama,War
+tt0059113	7.9	88263	movie	Doctor Zhivago	1965	Drama,Romance,War
+tt0059578	8.2	305030	movie	For a Few Dollars More	1965	Drama,Western
+tt0059646	7.5	62052	movie	Repulsion	1965	Drama,Horror,Thriller
+tt0059742	8.1	296462	movie	The Sound of Music	1965	Biography,Drama,Family
+tt0060028	8.4	102496	tvSeries	Star Trek	1966	Action,Adventure,Sci-Fi
+tt0060107	8.0	61396	movie	Andrei Rublev	1966	Biography,Drama,History
+tt0060176	7.4	73630	movie	Blow-Up	1966	Drama,Mystery,Thriller
+tt0060196	8.8	905043	movie	The Good, the Bad and the Ugly	1966	Adventure,Drama,Western
+tt0060345	8.3	66813	tvMovie	How the Grinch Stole Christmas!	1966	Animation,Comedy,Family
+tt0060827	8.0	142656	movie	Persona	1966	Drama,Thriller
+tt0061184	8.0	83980	movie	Who's Afraid of Virginia Woolf?	1966	Drama
+tt0061418	7.7	128083	movie	Bonnie and Clyde	1967	Action,Biography,Crime
+tt0061512	8.0	197701	movie	Cool Hand Luke	1967	Crime,Drama
+tt0061578	7.7	85025	movie	The Dirty Dozen	1967	Action,Adventure,War
+tt0061722	8.0	304812	movie	The Graduate	1967	Comedy,Drama,Romance
+tt0061811	7.9	92761	movie	In the Heat of the Night	1967	Drama,Mystery,Thriller
+tt0061852	7.6	216255	movie	The Jungle Book	1967	Adventure,Animation,Comedy
+tt0062229	8.0	67598	movie	Le Samouraï	1967	Crime,Drama,Thriller
+tt0062622	8.3	795683	movie	2001: A Space Odyssey	1968	Adventure,Sci-Fi
+tt0062765	7.4	82164	movie	Bullitt	1968	Action,Crime,Thriller
+tt0063350	7.8	153271	movie	Night of the Living Dead	1968	Horror,Thriller
+tt0063442	8.0	211819	movie	Planet of the Apes	1968	Adventure,Sci-Fi
+tt0063462	7.5	64728	movie	The Producers	1967	Comedy,Music
+tt0063522	8.0	262271	movie	Rosemary's Baby	1968	Drama,Horror
+tt0063929	8.8	87999	tvSeries	Monty Python's Flying Circus	1969	Comedy
+tt0064115	8.0	240257	movie	Butch Cassidy and the Sundance Kid	1969	Adventure,Biography,Crime
+tt0064116	8.5	388806	movie	Once Upon a Time in the West	1968	Drama,Western
+tt0064276	7.2	123904	movie	Easy Rider	1969	Adventure,Drama
+tt0064665	7.8	133237	movie	Midnight Cowboy	1969	Drama
+tt0065207	7.6	67597	movie	Where Eagles Dare	1968	Action,Adventure,War
+tt0065214	7.9	94990	movie	The Wild Bunch	1969	Action,Adventure,Drama
+tt0065421	7.1	127351	movie	The Aristocats	1970	Adventure,Animation,Comedy
+tt0066026	7.3	84007	movie	M*A*S*H	1970	Comedy,Drama,War
+tt0066206	7.9	114474	movie	Patton	1970	Biography,Drama,War
+tt0066921	8.2	948002	movie	A Clockwork Orange	1971	Crime,Sci-Fi
+tt0066999	7.7	183280	movie	Dirty Harry	1971	Action,Crime,Thriller
+tt0067023	7.6	87369	tvMovie	Duel	1971	Action,Thriller
+tt0067116	7.6	153030	movie	The French Connection	1971	Action,Crime,Drama
+tt0067185	7.8	85904	movie	Harold and Maude	1971	Comedy,Drama,Romance
+tt0067800	7.4	68990	movie	Straw Dogs	1971	Crime,Drama,Thriller
+tt0067992	7.8	247849	movie	Willy Wonka & the Chocolate Factory	1971	Adventure,Comedy,Family
+tt0068098	8.5	70291	tvSeries	M*A*S*H	1972	Comedy,Drama,War
+tt0068182	7.7	69406	movie	Aguirre, the Wrath of God	1972	Action,Adventure,Biography
+tt0068327	7.8	64601	movie	Cabaret	1972	Drama,Music,Musical
+tt0068473	7.6	130569	movie	Deliverance	1972	Adventure,Drama,Thriller
+tt0068646	9.2	2267137	movie	The Godfather	1972	Crime,Drama
+tt0068699	7.4	74520	movie	High Plains Drifter	1973	Drama,Western
+tt0069293	7.9	105574	movie	Solaris	1972	Adventure,Drama,Mystery
+tt0069704	7.4	106992	movie	American Graffiti	1973	Comedy,Drama
+tt0069762	7.7	85828	movie	Badlands	1973	Action,Crime,Drama
+tt0069995	7.1	69709	movie	Don't Look Now	1973	Drama,Horror,Mystery
+tt0070034	7.6	121836	movie	Enter the Dragon	1973	Action,Crime,Thriller
+tt0070047	8.1	507692	movie	The Exorcist	1973	Horror
+tt0070355	7.2	72657	movie	Magnum Force	1973	Action,Crime,Mystery
+tt0070379	7.1	130240	movie	Mean Streets	1973	Crime,Drama,Thriller
+tt0070511	8.0	147325	movie	Papillon	1973	Biography,Crime,Drama
+tt0070608	7.5	152449	movie	Robin Hood	1973	Adventure,Animation,Comedy
+tt0070666	7.7	149312	movie	Serpico	1973	Biography,Crime,Drama
+tt0070735	8.2	307643	movie	The Sting	1973	Comedy,Crime,Drama
+tt0070917	7.5	107633	movie	The Wicker Man	1973	Horror,Mystery,Thriller
+tt0071230	7.7	167104	movie	Blazing Saddles	1974	Comedy,Western
+tt0071315	8.1	381447	movie	Chinatown	1974	Drama,Mystery,Thriller
+tt0071360	7.7	138243	movie	The Conversation	1974	Drama,Mystery,Thriller
+tt0071562	9.0	1520415	movie	The Godfather Part II	1974	Crime,Drama
+tt0071853	8.1	609434	movie	Monty Python and the Holy Grail	1975	Adventure,Comedy,Fantasy
+tt0071877	7.2	75726	movie	Murder on the Orient Express	1974	Crime,Drama,Mystery
+tt0072271	7.4	218091	movie	The Texas Chain Saw Massacre	1974	Horror
+tt0072431	8.0	182345	movie	Young Frankenstein	1974	Comedy
+tt0072500	8.8	112670	tvSeries	Fawlty Towers	1975	Comedy
+tt0072684	8.1	209513	movie	Barry Lyndon	1975	Adventure,Drama,War
+tt0072890	8.0	295597	movie	Dog Day Afternoon	1975	Biography,Crime,Drama
+tt0073195	8.1	752769	movie	Jaws	1975	Adventure,Drama,Horror
+tt0073486	8.6	1171614	movie	One Flew Over the Cuckoo's Nest	1975	Drama
+tt0073629	7.4	189182	movie	The Rocky Horror Picture Show	1975	Comedy,Horror,Musical
+tt0073707	8.1	64146	movie	Sholay	1975	Action,Adventure,Comedy
+tt0073802	7.4	70405	movie	Three Days of the Condor	1975	Crime,Mystery,Thriller
+tt0074119	7.9	139882	movie	All the President's Men	1976	Drama,History,Thriller
+tt0074156	7.3	62061	movie	Assault on Precinct 13	1976	Action,Crime,Thriller
+tt0074285	7.4	235678	movie	Carrie	1976	Horror
+tt0074486	7.2	146336	movie	Eraserhead	1977	Fantasy,Horror
+tt0074860	7.4	76814	movie	Marathon Man	1976	Crime,Drama,Thriller
+tt0074958	8.0	188529	movie	Network	1976	Drama
+tt0075005	7.5	148638	movie	The Omen	1976	Horror,Mystery
+tt0075029	7.8	88265	movie	The Outlaw Josey Wales	1976	Drama,Western
+tt0075148	8.1	705014	movie	Rocky	1976	Drama,Sport
+tt0075314	8.2	1046279	movie	Taxi Driver	1976	Crime,Drama
+tt0075686	7.9	293249	movie	Annie Hall	1977	Comedy,Romance
+tt0075784	7.4	68857	movie	A Bridge Too Far	1977	Drama,History,War
+tt0075860	7.6	239515	movie	Close Encounters of the Third Kind	1977	Drama,Sci-Fi
+tt0076759	8.6	1594910	movie	Star Wars: Episode IV - A New Hope	1977	Action,Adventure,Fantasy
+tt0076786	7.3	117260	movie	Suspiria	1977	Horror
+tt0077402	7.8	138075	movie	Dawn of the Dead	1978	Horror,Thriller
+tt0077405	7.7	70269	movie	Days of Heaven	1978	Drama,Romance
+tt0077416	8.1	390812	movie	The Deer Hunter	1978	Drama,War
+tt0077631	7.2	331159	movie	Grease	1978	Comedy,Musical,Romance
+tt0077651	7.7	345978	movie	Halloween	1978	Horror,Thriller
+tt0077745	7.4	83814	movie	Invasion of the Body Snatchers	1978	Horror,Sci-Fi
+tt0077928	7.5	96129	movie	Midnight Express	1978	Biography,Crime,Drama
+tt0077975	7.4	137129	movie	National Lampoon's Animal House	1978	Comedy
+tt0078346	7.4	209523	movie	Superman	1978	Action,Adventure,Sci-Fi
+tt0078748	8.4	1080822	movie	Alien	1979	Horror,Sci-Fi
+tt0078788	8.4	780605	movie	Apocalypse Now	1979	Drama,Mystery,War
+tt0078841	7.9	82882	movie	Being There	1979	Comedy,Drama
+tt0079116	7.5	167397	movie	Escape from Alcatraz	1979	Biography,Crime,Drama
+tt0079367	7.1	69562	movie	The Jerk	1979	Comedy
+tt0079417	7.8	168827	movie	Kramer vs. Kramer	1979	Drama
+tt0079470	8.0	436530	movie	Monty Python's Life of Brian	1979	Comedy
+tt0079522	7.8	153799	movie	Manhattan	1979	Comedy,Drama,Romance
+tt0079817	7.3	255543	movie	Rocky II	1979	Drama,Sport
+tt0079944	8.0	158699	movie	Stalker	1979	Drama,Sci-Fi
+tt0080120	7.5	121612	movie	The Warriors	1979	Action,Crime,Thriller
+tt0080339	7.7	293704	movie	Airplane!	1980	Comedy
+tt0080455	7.9	232566	movie	The Blues Brothers	1980	Adventure,Comedy,Crime
+tt0080487	7.2	134768	movie	Caddyshack	1980	Comedy,Sport
+tt0080678	8.2	285545	movie	The Elephant Man	1980	Biography,Drama
+tt0080684	8.7	1530034	movie	Star Wars: Episode V - The Empire Strikes Back	1980	Adventure,Fantasy,Sci-Fi
+tt0080801	7.3	63820	movie	The Gods Must Be Crazy	1980	Adventure,Comedy
+tt0081283	7.7	62857	movie	Ordinary People	1980	Drama
+tt0081398	8.1	415578	movie	Raging Bull	1980	Biography,Drama,Sport
+tt0081505	8.4	1249515	movie	The Shining	1980	Drama,Horror
+tt0081912	9.0	67166	tvSeries	Only Fools and Horses	1981	Comedy
+tt0082010	7.5	137291	movie	An American Werewolf in London	1981	Comedy,Horror
+tt0082085	7.4	79176	movie	Blow Out	1981	Crime,Drama,Mystery
+tt0082096	8.3	291299	movie	Das Boot	1981	Drama,War
+tt0082158	7.1	71929	movie	Chariots of Fire	1981	Biography,Drama,Sport
+tt0082340	7.1	176208	movie	Escape from New York	1981	Action,Adventure,Sci-Fi
+tt0082348	7.3	75197	movie	Excalibur	1981	Adventure,Drama,Fantasy
+tt0082406	7.2	112142	movie	The Fox and the Hound	1981	Adventure,Animation,Drama
+tt0082694	7.6	215687	movie	The Road Warrior	1981	Action,Adventure,Sci-Fi
+tt0082933	7.2	61372	movie	Possession	1981	Drama,Horror
+tt0082971	8.4	1124069	movie	Raiders of the Lost Ark	1981	Adventure
+tt0083399	8.0	69209	tvSeries	Cheers	1982	Comedy,Drama
+tt0083658	8.1	894695	movie	Blade Runner	1982	Action,Drama,Sci-Fi
+tt0083791	7.1	78248	movie	The Dark Crystal	1982	Adventure,Family,Fantasy
+tt0083866	7.9	478379	movie	E.T. the Extra-Terrestrial	1982	Adventure,Family,Sci-Fi
+tt0083907	7.3	258608	movie	The Evil Dead	1981	Horror
+tt0083922	8.1	72002	movie	Fanny and Alexander	1982	Drama
+tt0083929	7.1	126636	movie	Fast Times at Ridgemont High	1982	Comedy,Drama
+tt0083944	7.7	307142	movie	First Blood	1982	Action,Adventure,Thriller
+tt0083987	8.0	247450	movie	Gandhi	1982	Biography,Drama,History
+tt0084434	7.1	67276	movie	An Officer and a Gentleman	1982	Drama,Romance
+tt0084503	8.0	90850	movie	Pink Floyd: The Wall	1982	Drama,Fantasy,Music
+tt0084516	7.3	198232	movie	Poltergeist	1982	Horror,Thriller
+tt0084726	7.7	137414	movie	Star Trek II: The Wrath of Khan	1982	Action,Adventure,Sci-Fi
+tt0084787	8.2	539660	movie	The Thing	1982	Horror,Mystery,Sci-Fi
+tt0084805	7.4	124223	movie	Tootsie	1982	Comedy,Drama,Romance
+tt0085334	7.9	180507	movie	A Christmas Story	1983	Comedy,Family
+tt0085407	7.1	86018	movie	The Dead Zone	1983	Drama,Fantasy,Thriller
+tt0085794	7.8	136287	movie	The King of Comedy	1982	Comedy,Crime,Drama
+tt0085959	7.5	131120	movie	Monty Python's the Meaning of Life	1983	Comedy,Musical
+tt0085995	7.3	130033	movie	National Lampoon's Vacation	1983	Adventure,Comedy
+tt0086190	8.3	1227525	movie	Star Wars: Episode VI - Return of the Jedi	1983	Action,Adventure,Fantasy
+tt0086197	7.8	68670	movie	The Right Stuff	1983	Adventure,Biography,Drama
+tt0086250	8.3	1039465	movie	Scarface	1983	Crime,Drama
+tt0086425	7.4	71635	movie	Terms of Endearment	1983	Comedy,Drama
+tt0086465	7.5	185173	movie	Trading Places	1983	Comedy
+tt0086541	7.1	115986	movie	Videodrome	1983	Drama,Horror,Sci-Fi
+tt0086567	7.1	123510	movie	WarGames	1983	Action,Drama,Sci-Fi
+tt0086879	8.4	474936	movie	Amadeus	1984	Biography,Drama,Music
+tt0086960	7.4	235244	movie	Beverly Hills Cop	1984	Action,Comedy,Crime
+tt0086979	7.5	115519	movie	Blood Simple	1984	Crime,Drama,Thriller
+tt0087332	7.8	492641	movie	Ghostbusters	1984	Action,Comedy,Fantasy
+tt0087363	7.3	278873	movie	Gremlins	1984	Fantasy,Horror
+tt0087469	7.5	575411	movie	Indiana Jones and the Temple of Doom	1984	Action,Adventure
+tt0087538	7.4	275706	movie	The Karate Kid	1984	Action,Drama,Family
+tt0087544	8.0	199970	movie	Nausicaä of the Valley of the Wind	1984	Adventure,Animation,Sci-Fi
+tt0087553	7.8	64488	movie	The Killing Fields	1984	Biography,Drama,History
+tt0087800	7.4	296958	movie	A Nightmare on Elm Street	1984	Horror
+tt0087843	8.3	413485	movie	Once Upon a Time in America	1984	Crime,Drama
+tt0087884	8.1	145870	movie	Paris, Texas	1984	Drama
+tt0088247	8.1	1022276	movie	The Terminator	1984	Action,Adventure,Sci-Fi
+tt0088258	7.9	162031	movie	This Is Spinal Tap	1984	Comedy,Music
+tt0088286	7.2	83955	movie	Top Secret!	1984	Comedy,Crime,Music
+tt0088323	7.3	173221	movie	The NeverEnding Story	1984	Adventure,Drama,Family
+tt0088509	8.5	77862	tvSeries	Dragon Ball	1986	Action,Adventure,Animation
+tt0088680	7.6	101527	movie	After Hours	1985	Comedy,Crime,Drama
+tt0088763	8.5	1483606	movie	Back to the Future	1985	Adventure,Comedy,Sci-Fi
+tt0088846	7.8	223885	movie	Brazil	1985	Drama,Sci-Fi,Thriller
+tt0088847	7.8	478601	movie	The Breakfast Club	1985	Comedy,Drama
+tt0088930	7.3	128657	movie	Clue	1985	Comedy,Crime,Mystery
+tt0088939	7.7	105681	movie	The Color Purple	1985	Drama
+tt0088993	7.1	80919	movie	Day of the Dead	1985	Horror,Thriller
+tt0089175	7.1	89870	movie	Fright Night	1985	Horror
+tt0089218	7.7	331647	movie	The Goonies	1985	Adventure,Comedy,Family
+tt0089755	7.2	94493	movie	Out of Africa	1985	Biography,Drama,Romance
+tt0089767	7.3	71983	movie	Pale Rider	1985	Drama,Western
+tt0089791	7.1	64321	movie	Pee-wee's Big Adventure	1985	Adventure,Comedy,Family
+tt0089881	8.2	155467	movie	Ran	1985	Action,Drama,War
+tt0089885	7.1	80082	movie	Re-Animator	1985	Comedy,Horror,Sci-Fi
+tt0089907	7.3	79077	movie	The Return of the Living Dead	1985	Comedy,Horror,Sci-Fi
+tt0090329	7.3	115934	movie	Witness	1985	Crime,Drama,Romance
+tt0090605	8.4	850990	movie	Aliens	1986	Action,Adventure,Horror
+tt0090728	7.2	170078	movie	Big Trouble in Little China	1986	Action,Adventure,Comedy
+tt0090756	7.7	250443	movie	Blue Velvet	1986	Crime,Drama,Mystery
+tt0091042	7.8	421752	movie	Ferris Bueller's Day Off	1986	Comedy
+tt0091064	7.6	228737	movie	The Fly	1986	Drama,Horror,Sci-Fi
+tt0091167	7.8	82356	movie	Hannah and Her Sisters	1986	Comedy,Drama
+tt0091209	7.2	60389	movie	The Hitcher	1986	Mystery,Thriller
+tt0091251	8.3	127501	movie	Come and See	1985	Drama,Thriller,War
+tt0091369	7.3	167691	movie	Labyrinth	1986	Adventure,Family,Fantasy
+tt0091419	7.1	96713	movie	Little Shop of Horrors	1986	Comedy,Horror,Musical
+tt0091474	7.2	94212	movie	Manhunter	1986	Crime,Mystery,Thriller
+tt0091530	7.4	70665	movie	The Mission	1986	Adventure,Drama,History
+tt0091605	7.7	129166	movie	The Name of the Rose	1986	Drama,Mystery,Thriller
+tt0091763	8.0	478774	movie	Platoon	1986	Drama,War
+tt0092005	8.1	497015	movie	Stand by Me	1986	Adventure,Drama
+tt0092007	7.3	97952	movie	Star Trek IV: The Voyage Home	1986	Adventure,Comedy,Sci-Fi
+tt0092067	8.0	201378	movie	Castle in the Sky	1986	Adventure,Animation,Family
+tt0092400	8.1	119308	tvSeries	Married... with Children	1987	Comedy
+tt0092455	8.7	152079	tvSeries	Star Trek: The Next Generation	1987	Action,Adventure,Drama
+tt0092563	7.2	106083	movie	Angel Heart	1987	Horror,Mystery,Thriller
+tt0092890	7.1	285616	movie	Dirty Dancing	1987	Drama,Music,Romance
+tt0092965	7.7	145326	movie	Empire of the Sun	1987	Drama,War
+tt0092991	7.6	201604	movie	Evil Dead II	1987	Comedy,Horror
+tt0093058	8.2	862649	movie	Full Metal Jacket	1987	Drama,War
+tt0093105	7.3	167959	movie	Good Morning, Vietnam	1987	Biography,Comedy,Drama
+tt0093191	7.9	85172	movie	Wings of Desire	1987	Drama,Fantasy,Romance
+tt0093389	7.7	121349	movie	The Last Emperor	1987	Biography,Drama,History
+tt0093409	7.6	299725	movie	Lethal Weapon	1987	Action,Crime,Thriller
+tt0093437	7.2	181494	movie	The Lost Boys	1987	Comedy,Horror
+tt0093565	7.2	79856	movie	Moonstruck	1987	Comedy,Drama,Romance
+tt0093748	7.6	182730	movie	Planes, Trains & Automobiles	1987	Comedy,Drama
+tt0093773	7.8	508190	movie	Predator	1987	Action,Adventure,Horror
+tt0093779	8.0	492538	movie	The Princess Bride	1987	Adventure,Comedy,Family
+tt0093822	7.3	162680	movie	Raising Arizona	1987	Comedy,Crime
+tt0093870	7.6	313709	movie	RoboCop	1987	Action,Crime,Sci-Fi
+tt0094012	7.1	229549	movie	Spaceballs	1987	Adventure,Comedy,Sci-Fi
+tt0094226	7.8	358109	movie	The Untouchables	1987	Crime,Drama,Thriller
+tt0094291	7.3	176475	movie	Wall Street	1987	Crime,Drama
+tt0094525	8.6	60361	tvSeries	Poirot	1989	Crime,Drama,Mystery
+tt0094625	8.0	233344	movie	Akira	1988	Action,Animation,Drama
+tt0094721	7.4	424488	movie	Beetlejuice	1988	Comedy,Fantasy
+tt0094737	7.3	264396	movie	Big	1988	Comedy,Drama,Fantasy
+tt0094898	7.1	243205	movie	Coming to America	1988	Comedy,Romance
+tt0094947	7.5	81024	movie	Dangerous Liaisons	1988	Drama,Romance
+tt0095016	8.2	1042956	movie	Die Hard	1988	Action,Thriller
+tt0095031	7.4	87843	movie	Dirty Rotten Scoundrels	1988	Comedy,Crime
+tt0095159	7.5	167739	movie	A Fish Called Wanda	1988	Comedy,Crime
+tt0095327	8.5	399479	movie	Grave of the Fireflies	1988	Animation,Drama,War
+tt0095489	7.4	108899	movie	The Land Before Time	1988	Adventure,Animation,Drama
+tt0095497	7.5	69233	movie	The Last Temptation of Christ	1988	Drama
+tt0095631	7.5	105702	movie	Midnight Run	1988	Action,Comedy,Crime
+tt0095647	7.8	129364	movie	Mississippi Burning	1988	Crime,Drama,Mystery
+tt0095705	7.6	226512	movie	The Naked Gun: From the Files of Police Squad!	1988	Comedy,Crime
+tt0095765	8.5	322163	movie	Cinema Paradiso	1988	Drama,Romance
+tt0095953	8.0	592040	movie	Rain Man	1988	Drama
+tt0096256	7.2	168807	movie	They Live	1988	Action,Horror,Sci-Fi
+tt0096283	8.1	441976	movie	My Neighbor Totoro	1988	Adventure,Animation,Comedy
+tt0096438	7.7	236218	movie	Who Framed Roger Rabbit	1988	Adventure,Animation,Comedy
+tt0096446	7.2	139818	movie	Willow	1988	Action,Adventure,Drama
+tt0096548	8.8	65877	tvSeries	Blackadder Goes Forth	1989	Comedy,War
+tt0096657	8.6	154728	tvSeries	Mr. Bean	1990	Comedy,Family
+tt0096697	8.6	474383	tvSeries	The Simpsons	1989	Animation,Comedy
+tt0096754	7.5	211421	movie	The Abyss	1989	Adventure,Drama,Mystery
+tt0096764	7.1	60470	movie	The Adventures of Baron Munchausen	1988	Adventure,Comedy,Fantasy
+tt0096874	7.8	631767	movie	Back to the Future Part II	1989	Adventure,Comedy,Sci-Fi
+tt0096895	7.5	437529	movie	Batman	1989	Crime
+tt0096969	7.2	126576	movie	Born on the Fourth of July	1989	Biography,Drama,War
+tt0097123	7.8	63961	movie	Crimes and Misdemeanors	1989	Comedy,Drama
+tt0097165	8.1	673606	movie	Dead Poets Society	1989	Comedy,Drama
+tt0097216	7.9	126734	movie	Do the Right Thing	1989	Comedy,Drama
+tt0097239	7.3	125020	movie	Driving Miss Daisy	1989	Comedy,Drama
+tt0097351	7.5	143064	movie	Field of Dreams	1989	Drama,Family,Fantasy
+tt0097441	7.8	154675	movie	Glory	1989	Biography,Drama,History
+tt0097493	7.1	127944	movie	Heathers	1989	Comedy,Crime
+tt0097576	8.2	873960	movie	Indiana Jones and the Last Crusade	1989	Adventure
+tt0097733	7.3	203792	movie	Lethal Weapon 2	1989	Action,Crime,Thriller
+tt0097757	7.6	316398	movie	The Little Mermaid	1989	Adventure,Animation,Family
+tt0097814	7.8	193046	movie	Kiki's Delivery Service	1989	Animation,Family,Fantasy
+tt0097815	7.3	84423	movie	Major League	1989	Comedy,Sport
+tt0097937	7.8	86243	movie	My Left Foot	1989	Biography,Drama
+tt0097958	7.5	249590	movie	National Lampoon's Christmas Vacation	1989	Comedy
+tt0098258	7.3	104889	movie	Say Anything	1989	Comedy,Drama,Romance
+tt0098384	7.3	72936	movie	Steel Magnolias	1989	Comedy,Drama,Romance
+tt0098554	7.1	123548	movie	Uncle Buck	1989	Comedy
+tt0098635	7.7	276928	movie	When Harry Met Sally...	1989	Comedy,Drama,Romance
+tt0098724	7.2	65502	movie	Sex, Lies, and Videotape	1989	Drama
+tt0098800	7.9	154714	tvSeries	The Fresh Prince of Bel-Air	1990	Comedy
+tt0098904	8.8	390002	tvSeries	Seinfeld	1989	Comedy
+tt0098936	8.7	252094	tvSeries	Twin Peaks	1990	Crime,Drama,Mystery
+tt0099077	7.8	179480	movie	Awakenings	1990	Biography,Drama
+tt0099088	7.5	528129	movie	Back to the Future Part III	1990	Adventure,Comedy,Sci-Fi
+tt0099348	8.0	314023	movie	Dances with Wolves	1990	Adventure,Drama,Western
+tt0099423	7.2	410966	movie	Die Hard 2	1990	Action,Thriller
+tt0099487	7.8	572571	movie	Edward Scissorhands	1990	Drama,Fantasy,Romance
+tt0099653	7.1	260382	movie	Ghost	1990	Drama,Fantasy,Romance
+tt0099674	7.5	462271	movie	The Godfather Part III	1990	Crime,Drama
+tt0099685	8.7	1420206	movie	GoodFellas	1990	Biography,Crime,Drama
+tt0099785	7.8	757478	movie	Home Alone	1990	Comedy,Family
+tt0099810	7.5	235080	movie	The Hunt for Red October	1990	Action,Adventure,Drama
+tt0099871	7.4	131650	movie	Jacob's Ladder	1990	Drama,Horror,Mystery
+tt0100150	7.7	149595	movie	Miller's Crossing	1990	Crime,Drama,Thriller
+tt0100157	7.8	270864	movie	Misery	1990	Drama,Thriller
+tt0100263	7.2	82651	movie	La Femme Nikita	1990	Action,Crime,Drama
+tt0100405	7.1	413634	movie	Pretty Woman	1990	Comedy,Romance
+tt0100802	7.5	385988	movie	Total Recall	1990	Action,Adventure,Sci-Fi
+tt0100814	7.2	169596	movie	Tremors	1990	Comedy,Horror
+tt0100935	7.2	113730	movie	Wild at Heart	1990	Crime,Drama,Thriller
+tt0101410	7.6	136795	movie	Barton Fink	1991	Comedy,Drama,Thriller
+tt0101414	8.0	510794	movie	Beauty and the Beast	1991	Animation,Family,Fantasy
+tt0101507	7.7	171130	movie	Boyz n the Hood	1991	Crime,Drama
+tt0101540	7.3	251382	movie	Cape Fear	1991	Crime,Drama,Thriller
+tt0101700	7.5	95092	movie	Delicatessen	1991	Comedy,Crime
+tt0101761	7.2	108421	movie	The Doors	1991	Biography,Drama,Music
+tt0101889	7.5	97870	movie	The Fisher King	1991	Comedy,Drama,Fantasy
+tt0101921	7.7	93797	movie	Fried Green Tomatoes	1991	Drama
+tt0102138	8.0	184016	movie	JFK	1991	Drama,History,Thriller
+tt0102536	7.6	71943	movie	Night on Earth	1991	Comedy,Drama
+tt0102685	7.3	230938	movie	Point Break	1991	Action,Crime,Thriller
+tt0102926	8.6	1760778	movie	The Silence of the Lambs	1991	Crime,Drama,Horror
+tt0102975	7.3	86169	movie	Star Trek VI: The Undiscovered Country	1991	Action,Adventure,Sci-Fi
+tt0103064	8.6	1307580	movie	Terminator 2: Judgment Day	1991	Action,Adventure,Sci-Fi
+tt0103074	7.6	197825	movie	Thelma & Louise	1991	Adventure,Crime,Drama
+tt0103359	9.0	140804	tvSeries	Batman: The Animated Series	1992	Action,Adventure,Animation
+tt0103639	8.0	507125	movie	Aladdin	1992	Adventure,Animation,Comedy
+tt0103772	7.1	248249	movie	Basic Instinct	1992	Drama,Mystery,Romance
+tt0103776	7.1	354102	movie	Batman Returns	1992	Action,Crime,Fantasy
+tt0103873	7.4	111109	movie	Braindead	1992	Comedy,Fantasy,Horror
+tt0103874	7.4	272339	movie	Dracula	1992	Fantasy,Horror,Romance
+tt0103939	7.5	66324	movie	Chaplin	1992	Biography,Comedy,Drama
+tt0104036	7.2	64063	movie	The Crying Game	1992	Crime,Drama,Romance
+tt0104257	7.8	323757	movie	A Few Good Men	1992	Drama,Thriller
+tt0104348	7.6	127742	movie	Glengarry Glen Ross	1992	Crime,Drama,Mystery
+tt0104652	7.7	119334	movie	Porco Rosso	1992	Adventure,Animation,Comedy
+tt0104684	7.7	61012	movie	Hard Boiled	1992	Action,Crime,Thriller
+tt0104691	7.6	210545	movie	The Last of the Mohicans	1992	Action,Adventure,Drama
+tt0104694	7.4	132973	movie	A League of Their Own	1992	Comedy,Drama,Sport
+tt0104797	7.7	112922	movie	Malcolm X	1992	Biography,Drama,History
+tt0104940	7.8	82918	movie	The Muppet Christmas Carol	1992	Comedy,Drama,Family
+tt0104952	7.6	162651	movie	My Cousin Vinny	1992	Comedy,Crime
+tt0105151	7.5	73338	movie	The Player	1992	Comedy,Crime,Drama
+tt0105236	8.2	1185326	movie	Reservoir Dogs	1992	Crime,Drama,Thriller
+tt0105265	7.2	72434	movie	A River Runs Through It	1992	Drama
+tt0105323	8.0	377442	movie	Scent of a Woman	1992	Drama
+tt0105435	7.1	68346	movie	Sneakers	1992	Comedy,Crime,Drama
+tt0105665	7.3	120597	movie	Twin Peaks: Fire Walk with Me	1992	Drama,Horror,Mystery
+tt0105695	8.2	474202	movie	Unforgiven	1992	Drama,Western
+tt0106004	8.2	104447	tvSeries	Frasier	1993	Comedy
+tt0106145	8.1	78686	tvSeries	Star Trek: Deep Space Nine	1993	Action,Adventure,Drama
+tt0106179	8.6	278367	tvSeries	The X-Files	1993	Adventure,Crime,Drama
+tt0106226	7.2	75985	movie	The Age of Innocence	1993	Drama,Romance
+tt0106246	7.1	69501	movie	Alive	1993	Biography,Drama,Thriller
+tt0106308	7.4	213847	movie	Army of Darkness	1992	Comedy,Horror
+tt0106364	7.8	65392	movie	Batman: Mask of the Phantasm	1993	Action,Adventure,Animation
+tt0106387	7.1	65999	movie	Benny & Joon	1993	Comedy,Drama,Romance
+tt0106489	7.8	191598	movie	A Bronx Tale	1993	Crime,Drama
+tt0106519	7.9	251886	movie	Carlito's Way	1993	Crime,Drama,Thriller
+tt0106677	7.6	219609	movie	Dazed and Confused	1993	Comedy
+tt0106856	7.5	230292	movie	Falling Down	1993	Crime,Drama,Thriller
+tt0106977	7.8	351600	movie	The Fugitive	1993	Action,Crime,Drama
+tt0107048	8.0	742524	movie	Groundhog Day	1993	Comedy,Drama,Fantasy
+tt0107206	7.2	124944	movie	In the Line of Fire	1993	Action,Crime,Drama
+tt0107207	8.1	205369	movie	In the Name of the Father	1993	Biography,Crime,Drama
+tt0107290	8.2	1203828	movie	Jurassic Park	1993	Adventure,Sci-Fi
+tt0107554	7.5	71327	movie	Menace II Society	1993	Crime,Drama,Thriller
+tt0107614	7.1	321278	movie	Mrs. Doubtfire	1993	Comedy,Drama,Family
+tt0107688	7.9	418044	movie	The Nightmare Before Christmas	1993	Adventure,Animation,Family
+tt0107808	7.5	95133	movie	A Perfect World	1993	Crime,Drama,Thriller
+tt0107818	7.7	277652	movie	Philadelphia	1993	Drama
+tt0107822	7.5	102804	movie	The Piano	1993	Drama,Music,Romance
+tt0107943	7.8	94568	movie	The Remains of the Day	1993	Drama,Romance
+tt0108002	7.5	75902	movie	Rudy	1993	Biography,Drama,Sport
+tt0108037	7.8	118066	movie	The Sandlot	1993	Comedy,Drama,Family
+tt0108052	9.0	1610251	movie	Schindler's List	1993	Biography,Drama,History
+tt0108330	7.2	63294	movie	This Boy's Life	1993	Biography,Drama
+tt0108358	7.8	196285	movie	Tombstone	1993	Biography,Drama,History
+tt0108394	7.8	119799	movie	Three Colors: Blue	1993	Drama,Music,Mystery
+tt0108399	7.9	265213	movie	True Romance	1993	Crime,Drama,Romance
+tt0108550	7.7	272102	movie	What's Eating Gilbert Grape	1993	Drama
+tt0108757	7.9	81053	tvSeries	ER	1994	Drama,Romance
+tt0108778	8.8	1212445	tvSeries	Friends	1994	Comedy,Romance
+tt0109045	7.5	62762	movie	The Adventures of Priscilla, Queen of the Desert	1994	Comedy,Music
+tt0109424	7.9	114678	movie	Chungking Express	1994	Comedy,Crime,Drama
+tt0109445	7.7	242114	movie	Clerks	1994	Comedy
+tt0109506	7.5	234512	movie	The Crow	1994	Action,Crime,Drama
+tt0109686	7.3	449153	movie	Dumb and Dumber	1994	Comedy
+tt0109707	7.8	191377	movie	Ed Wood	1994	Biography,Comedy,Drama
+tt0109830	8.8	2547178	movie	Forrest Gump	1994	Drama,Romance
+tt0109831	7.1	185138	movie	Four Weddings and a Funeral	1994	Comedy,Drama,Romance
+tt0110005	7.2	70465	movie	Heavenly Creatures	1994	Biography,Crime,Drama
+tt0110074	7.2	91123	movie	The Hudsucker Proxy	1994	Comedy,Drama,Fantasy
+tt0110148	7.5	382692	movie	Interview with the Vampire: The Vampire Chronicles	1994	Drama,Fantasy,Horror
+tt0110322	7.5	202859	movie	Legends of the Fall	1994	Drama,Romance,War
+tt0110357	8.5	1282827	movie	The Lion King	1994	Adventure,Animation,Drama
+tt0110367	7.3	70128	movie	Little Women	1994	Drama,Family,Romance
+tt0110413	8.5	1370714	movie	Léon: The Professional	1994	Action,Crime,Drama
+tt0110632	7.2	270746	movie	Natural Born Killers	1994	Crime,Romance
+tt0110912	8.8	2478098	movie	Pulp Fiction	1994	Crime,Drama
+tt0110932	7.5	78610	movie	Quiz Show	1994	Biography,Drama,History
+tt0111149	7.2	71851	movie	Shallow Grave	1994	Crime,Drama,Thriller
+tt0111161	9.3	3256153	movie	The Shawshank Redemption	1994	Drama
+tt0111257	7.3	429294	movie	Speed	1994	Action,Adventure,Thriller
+tt0111495	8.0	117284	movie	Three Colors: Red	1994	Drama,Mystery,Romance
+tt0111503	7.3	304355	movie	True Lies	1994	Action,Comedy,Thriller
+tt0111507	7.6	85842	movie	Three Colors: White	1994	Comedy,Drama,Romance
+tt0112130	8.8	105482	tvMiniSeries	Pride and Prejudice	1995	Drama,Romance
+tt0112159	8.5	116336	tvSeries	Neon Genesis Evangelion	1995	Action,Animation,Drama
+tt0112178	7.9	85667	tvSeries	Star Trek: Voyager	1995	Action,Adventure,Drama
+tt0112384	7.7	344267	movie	Apollo 13	1995	Adventure,Drama,History
+tt0112461	7.3	134995	movie	The Basketball Diaries	1995	Biography,Crime,Drama
+tt0112471	8.1	385841	movie	Before Sunrise	1995	Comedy,Drama,Romance
+tt0112573	8.3	1175343	movie	Braveheart	1995	Drama,War
+tt0112579	7.6	98415	movie	The Bridges of Madison County	1995	Drama,Romance
+tt0112641	8.2	630394	movie	Casino	1995	Crime,Drama
+tt0112682	7.4	75480	movie	The City of Lost Children	1995	Adventure,Drama,Fantasy
+tt0112740	7.4	138763	movie	Crimson Tide	1995	Action,Drama,Thriller
+tt0112817	7.5	110131	movie	Dead Man	1995	Adventure,Drama,Western
+tt0112818	7.5	109996	movie	Dead Man Walking	1995	Crime,Drama
+tt0112851	7.1	211436	movie	Desperado	1995	Action,Crime,Drama
+tt0112864	7.6	434284	movie	Die Hard with a Vengeance	1995	Action,Adventure,Thriller
+tt0112870	8.0	87127	movie	Dilwale Dulhania Le Jayenge	1995	Drama,Romance
+tt0112913	7.5	61726	movie	Fallen Angels	1995	Comedy,Crime,Drama
+tt0113118	7.2	139467	movie	Friday	1995	Comedy,Drama
+tt0113189	7.2	289674	movie	GoldenEye	1995	Action,Adventure,Thriller
+tt0113247	8.1	233113	movie	La haine	1995	Crime,Drama
+tt0113277	8.3	822082	movie	Heat	1995	Action,Crime,Drama
+tt0113409	7.1	92494	movie	In the Mouth of Madness	1994	Drama,Fantasy,Horror
+tt0113497	7.1	421130	movie	Jumanji	1995	Adventure,Comedy,Family
+tt0113568	7.9	177864	movie	Ghost in the Shell	1995	Action,Animation,Crime
+tt0113627	7.5	147441	movie	Leaving Las Vegas	1995	Drama,Romance
+tt0113824	7.8	85298	movie	Whisper of the Heart	1995	Animation,Drama,Family
+tt0114369	8.6	2070980	movie	Seven	1995	Crime,Drama,Mystery
+tt0114388	7.7	138864	movie	Sense and Sensibility	1995	Drama,Romance
+tt0114558	7.2	87042	movie	Strange Days	1995	Crime,Drama,Sci-Fi
+tt0114694	7.1	106109	movie	Tommy Boy	1995	Adventure,Comedy
+tt0114709	8.3	1204162	movie	Toy Story	1995	Adventure,Animation,Comedy
+tt0114746	8.0	686117	movie	12 Monkeys	1995	Mystery,Sci-Fi,Thriller
+tt0114787	8.0	64696	movie	Underground	1995	Comedy,Drama,Fantasy
+tt0114814	8.5	1259634	movie	The Usual Suspects	1995	Crime,Drama,Mystery
+tt0115167	7.3	84270	tvSeries	Everybody Loves Raymond	1996	Comedy
+tt0115685	7.3	119057	movie	The Birdcage	1996	Comedy
+tt0115736	7.3	68628	movie	Bound	1996	Crime,Thriller
+tt0115751	7.8	76904	movie	Breaking the Waves	1996	Drama
+tt0116209	7.4	215835	movie	The English Patient	1996	Drama,Romance,War
+tt0116231	8.1	76082	movie	The Bandit	1996	Crime,Drama
+tt0116282	8.1	800640	movie	Fargo	1996	Crime,Drama,Thriller
+tt0116365	7.1	103832	movie	The Frighteners	1996	Comedy,Drama,Fantasy
+tt0116367	7.2	376599	movie	From Dusk Till Dawn	1996	Action,Crime,Horror
+tt0116695	7.3	317534	movie	Jerry Maguire	1996	Comedy,Drama,Romance
+tt0116922	7.6	174129	movie	Lost Highway	1997	Drama,Mystery,Thriller
+tt0117060	7.2	525118	movie	Mission: Impossible	1996	Action,Adventure,Thriller
+tt0117318	7.3	107123	movie	The People vs. Larry Flynt	1996	Biography,Drama
+tt0117381	7.7	300493	movie	Primal Fear	1996	Crime,Drama,Mystery
+tt0117500	7.4	385562	movie	The Rock	1996	Action,Adventure,Thriller
+tt0117571	7.5	456624	movie	Scream	1996	Horror,Mystery
+tt0117665	7.5	259615	movie	Sleepers	1996	Crime,Drama,Thriller
+tt0117666	8.0	105058	movie	Sling Blade	1996	Drama
+tt0117731	7.6	139259	movie	Star Trek: First Contact	1996	Action,Adventure,Drama
+tt0117802	7.2	92038	movie	Swingers	1996	Comedy,Drama
+tt0117913	7.5	213792	movie	A Time to Kill	1996	Crime,Drama,Thriller
+tt0117951	8.1	776805	movie	Trainspotting	1996	Crime,Drama
+tt0118276	8.3	177556	tvSeries	Buffy the Vampire Slayer	1997	Action,Adventure,Drama
+tt0118375	7.6	67141	tvSeries	King of the Hill	1997	Animation,Comedy,Drama
+tt0118421	8.7	118330	tvSeries	Oz	1997	Crime,Drama,Thriller
+tt0118480	8.4	111095	tvSeries	Stargate SG-1	1997	Action,Adventure,Drama
+tt0118607	7.3	88953	movie	Amistad	1997	Biography,Drama,History
+tt0118617	7.2	149091	movie	Anastasia	1997	Adventure,Animation,Drama
+tt0118694	8.0	192448	movie	In the Mood for Love	2000	Drama,Romance
+tt0118715	8.1	926784	movie	The Big Lebowski	1998	Comedy,Crime
+tt0118749	7.9	310910	movie	Boogie Nights	1997	Drama
+tt0118789	7.4	67882	movie	Buffalo '66	1998	Comedy,Drama,Romance
+tt0118799	8.6	826272	movie	Life Is Beautiful	1997	Comedy,Drama,Romance
+tt0118842	7.2	149371	movie	Chasing Amy	1997	Comedy,Drama,Romance
+tt0118849	8.2	91705	movie	Children of Heaven	1997	Drama,Family,Sport
+tt0118884	7.5	318151	movie	Contact	1997	Drama,Mystery,Sci-Fi
+tt0118929	7.5	229382	movie	Dark City	1998	Fantasy,Mystery,Sci-Fi
+tt0118971	7.5	454144	movie	The Devil's Advocate	1997	Drama,Fantasy,Mystery
+tt0119008	7.7	361957	movie	Donnie Brasco	1997	Biography,Crime,Drama
+tt0119094	7.3	432498	movie	Face/Off	1997	Action,Crime,Sci-Fi
+tt0119116	7.6	553577	movie	The Fifth Element	1997	Action,Adventure,Sci-Fi
+tt0119164	7.2	121152	movie	The Full Monty	1997	Comedy,Drama
+tt0119167	7.5	100195	movie	Funny Games	1997	Crime,Drama,Horror
+tt0119174	7.7	479373	movie	The Game	1997	Drama,Mystery,Thriller
+tt0119177	7.7	352114	movie	Gattaca	1997	Drama,Sci-Fi,Thriller
+tt0119217	8.4	1249508	movie	Good Will Hunting	1997	Drama,Romance
+tt0119229	7.3	106309	movie	Grosse Pointe Blank	1997	Action,Comedy,Crime
+tt0119256	7.1	60740	movie	Hard Eight	1996	Crime,Drama
+tt0119282	7.3	285113	movie	Hercules	1997	Action,Adventure,Animation
+tt0119349	7.3	64267	movie	The Ice Storm	1997	Drama
+tt0119396	7.5	409352	movie	Jackie Brown	1997	Crime,Drama,Thriller
+tt0119488	8.2	665662	movie	L.A. Confidential	1997	Crime,Drama,Mystery
+tt0119643	7.2	304954	movie	Meet Joe Black	1998	Drama,Fantasy,Romance
+tt0119654	7.3	674408	movie	Men in Black	1997	Action,Adventure,Comedy
+tt0119698	8.3	493211	movie	Princess Mononoke	1997	Adventure,Animation,Fantasy
+tt0119822	7.7	341119	movie	As Good as It Gets	1997	Comedy,Drama,Romance
+tt0119978	7.2	94141	movie	The Rainmaker	1997	Crime,Drama,Thriller
+tt0120102	7.1	170900	movie	Seven Years in Tibet	1997	Adventure,Biography,Drama
+tt0120188	7.1	187633	movie	Three Kings	1999	Action,Adventure,Comedy
+tt0120201	7.3	351055	movie	Starship Troopers	1997	Action,Adventure,Sci-Fi
+tt0120324	7.5	85419	movie	A Simple Plan	1998	Crime,Drama,Thriller
+tt0120338	8.0	1417904	movie	Titanic	1997	Drama,Romance
+tt0120363	7.9	687174	movie	Toy Story 2	1999	Adventure,Animation,Comedy
+tt0120382	8.2	1414531	movie	The Truman Show	1998	Comedy,Drama
+tt0120586	8.5	1290769	movie	American History X	1998	Crime,Drama
+tt0120601	7.7	372110	movie	Being John Malkovich	1999	Comedy,Drama,Fantasy
+tt0120611	7.1	337661	movie	Blade	1998	Action,Horror,Sci-Fi
+tt0120616	7.1	511070	movie	The Mummy	1999	Action,Adventure,Fantasy
+tt0120623	7.2	342550	movie	A Bug's Life	1998	Adventure,Animation,Comedy
+tt0120630	7.1	227441	movie	Chicken Run	2000	Adventure,Animation,Comedy
+tt0120631	7.1	87312	movie	Ever After: A Cinderella Story	1998	Drama,Romance
+tt0120655	7.3	243641	movie	Dogma	1999	Adventure,Comedy,Drama
+tt0120660	7.3	277701	movie	Enemy of the State	1998	Action,Thriller
+tt0120663	7.5	442562	movie	Eyes Wide Shut	1999	Drama,Mystery,Thriller
+tt0120669	7.4	322455	movie	Fear and Loathing in Las Vegas	1998	Adventure,Comedy,Drama
+tt0120679	7.3	102275	movie	Frida	2002	Biography,Drama,Romance
+tt0120689	8.6	1593292	movie	The Green Mile	1999	Crime,Drama,Fantasy
+tt0120731	8.0	74502	movie	The Legend of 1900	1998	Drama,Music,Romance
+tt0120735	8.1	655979	movie	Lock, Stock and Two Smoking Barrels	1998	Comedy,Crime
+tt0120737	8.9	2246908	movie	The Lord of the Rings: The Fellowship of the Ring	2001	Adventure,Drama,Fantasy
+tt0120762	7.7	352284	movie	Mulan	1998	Adventure,Animation,Comedy
+tt0120768	7.3	171316	movie	The Negotiator	1998	Action,Crime,Drama
+tt0120789	7.5	146323	movie	Pleasantville	1998	Comedy,Drama,Fantasy
+tt0120794	7.3	165382	movie	The Prince of Egypt	1998	Adventure,Animation,Drama
+tt0120812	7.1	336773	movie	Rush Hour	1998	Action,Comedy,Crime
+tt0120815	8.6	1669385	movie	Saving Private Ryan	1998	Drama,War
+tt0120855	7.3	273151	movie	Tarzan	1999	Adventure,Animation,Comedy
+tt0120863	7.6	214415	movie	The Thin Red Line	1998	Drama,History,War
+tt0120885	7.1	94415	movie	Wag the Dog	1997	Comedy,Drama
+tt0120903	7.3	708225	movie	X-Men	2000	Action,Adventure,Sci-Fi
+tt0120917	7.4	253959	movie	The Emperor's New Groove	2000	Adventure,Animation,Comedy
+tt0121164	7.4	334367	movie	Corpse Bride	2005	Animation,Comedy,Drama
+tt0121220	8.8	105971	tvSeries	Dragon Ball Z	1989	Action,Adventure,Animation
+tt0121766	7.7	936914	movie	Star Wars: Episode III - Revenge of the Sith	2005	Action,Adventure,Fantasy
+tt0121955	8.7	452045	tvSeries	South Park	1997	Animation,Comedy
+tt0122690	7.2	210810	movie	Ronin	1998	Action,Crime,Thriller
+tt0123755	7.1	264582	movie	Cube	1997	Horror,Mystery,Sci-Fi
+tt0124315	7.4	110465	movie	The Cider House Rules	1999	Drama,Romance
+tt0125439	7.2	391983	movie	Notting Hill	1999	Comedy,Drama,Romance
+tt0125659	7.7	76727	movie	Open Your Eyes	1997	Drama,Mystery,Sci-Fi
+tt0125664	7.4	144538	movie	Man on the Moon	1999	Biography,Comedy,Drama
+tt0126029	7.9	824531	movie	Shrek	2001	Adventure,Animation,Comedy
+tt0126886	7.2	112493	movie	Election	1999	Comedy,Romance
+tt0127536	7.4	111210	movie	Elizabeth	1998	Biography,Drama,History
+tt0128442	7.3	174279	movie	Rounders	1998	Crime,Drama
+tt0128445	7.6	210076	movie	Rushmore	1998	Comedy,Drama,Romance
+tt0129167	8.1	266937	movie	The Iron Giant	1999	Action,Adventure,Animation
+tt0129387	7.1	352013	movie	There's Something About Mary	1998	Comedy,Romance
+tt0130827	7.6	218829	movie	Run Lola Run	1998	Action,Crime,Thriller
+tt0132477	7.8	113595	movie	October Sky	1999	Biography,Drama,Family
+tt0133093	8.7	2288743	movie	The Matrix	1999	Action,Sci-Fi
+tt0133240	7.2	151274	movie	Treasure Planet	2002	Action,Adventure,Animation
+tt0134119	7.4	276933	movie	The Talented Mr. Ripley	1999	Crime,Drama,Thriller
+tt0137363	7.2	100941	movie	Arlington Road	1999	Action,Crime,Drama
+tt0137523	8.8	2675712	movie	Fight Club	1999	Crime,Drama,Thriller
+tt0138097	7.1	244787	movie	Shakespeare in Love	1998	Comedy,Drama,History
+tt0138704	7.3	194150	movie	Pi	1998	Drama,Horror,Mystery
+tt0139239	7.2	81431	movie	Go	1999	Comedy,Crime
+tt0139654	7.8	528146	movie	Training Day	2001	Crime,Drama,Thriller
+tt0140352	7.8	193950	movie	The Insider	1999	Biography,Drama,History
+tt0141842	9.2	603116	tvSeries	The Sopranos	1999	Crime,Drama
+tt0144084	7.6	861904	movie	American Psycho	2000	Crime,Drama,Horror
+tt0144117	7.6	264711	movie	The Boondock Saints	1999	Action,Crime,Thriller
+tt0145487	7.5	1001875	movie	Spider-Man	2002	Action,Adventure,Sci-Fi
+tt0146309	7.3	66078	movie	Thirteen Days	2000	Drama,History,Thriller
+tt0146882	7.4	201640	movie	High Fidelity	2000	Comedy,Drama,Music
+tt0147612	7.7	81071	movie	Happiness	1998	Comedy,Drama
+tt0147800	7.4	464860	movie	10 Things I Hate About You	1999	Comedy,Drama,Romance
+tt0149460	8.5	281191	tvSeries	Futurama	1999	Adventure,Animation,Comedy
+tt0151804	7.6	312687	movie	Office Space	1999	Comedy
+tt0154420	8.0	101125	movie	The Celebration	1998	Drama
+tt0154506	7.4	114994	movie	Following	1998	Crime,Mystery,Thriller
+tt0156887	8.0	128483	movie	Perfect Blue	1997	Animation,Crime,Drama
+tt0157246	7.4	64940	tvSeries	Will & Grace	1998	Comedy,Romance
+tt0158552	7.2	100072	tvSeries	Charmed	1998	Drama,Fantasy,Mystery
+tt0158983	7.7	224980	movie	South Park: Bigger, Longer & Uncut	1999	Animation,Comedy,Fantasy
+tt0159097	7.2	189114	movie	The Virgin Suicides	1999	Drama,Romance
+tt0159206	7.4	163172	tvSeries	Sex and the City	1998	Comedy,Drama,Romance
+tt0159365	7.2	165705	movie	Cold Mountain	2003	Adventure,Drama,Romance
+tt0162065	7.9	81559	tvSeries	Angel	1999	Action,Adventure,Drama
+tt0162222	7.8	698845	movie	Cast Away	2000	Adventure,Drama,Romance
+tt0162346	7.3	132079	movie	Ghost World	2001	Comedy,Drama
+tt0162661	7.3	418694	movie	Sleepy Hollow	1999	Fantasy,Horror,Mystery
+tt0165581	7.4	96580	tvSeries	The King of Queens	1998	Comedy
+tt0165598	8.1	200466	tvSeries	That '70s Show	1998	Comedy,Drama,Romance
+tt0165798	7.5	104060	movie	Ghost Dog: The Way of the Samurai	1999	Crime,Drama
+tt0166813	7.2	95941	movie	Spirit: Stallion of the Cimarron	2002	Adventure,Animation,Drama
+tt0166896	8.0	110352	movie	The Straight Story	1999	Biography,Drama
+tt0166924	7.9	436245	movie	Mulholland Drive	2001	Drama,Mystery,Thriller
+tt0167260	9.0	2202906	movie	The Lord of the Rings: The Return of the King	2003	Adventure,Drama,Fantasy
+tt0167261	8.8	1992584	movie	The Lord of the Rings: The Two Towers	2002	Adventure,Drama,Fantasy
+tt0167404	8.2	1171896	movie	The Sixth Sense	1999	Drama,Mystery,Thriller
+tt0168629	7.9	125559	movie	Dancer in the Dark	2000	Crime,Drama,Musical
+tt0169102	8.1	130857	movie	Lagaan: Once Upon a Time in India	2001	Drama,Musical,Sport
+tt0169547	8.3	1291096	movie	American Beauty	1999	Drama
+tt0169858	8.1	79658	movie	Neon Genesis Evangelion: The End of Evangelion	1997	Action,Animation,Drama
+tt0171804	7.5	108464	movie	Boys Don't Cry	1999	Biography,Crime,Drama
+tt0172493	7.3	237755	movie	Girl, Interrupted	1999	Biography,Drama
+tt0172495	8.5	1890415	movie	Gladiator	2000	Action,Adventure,Drama
+tt0172684	7.5	63664	movie	Kuch Kuch Hota Hai	1998	Comedy,Drama,Musical
+tt0174856	7.6	109381	movie	The Hurricane	1999	Biography,Drama,Sport
+tt0175880	8.0	354963	movie	Magnolia	1999	Drama
+tt0177789	7.4	193918	movie	Galaxy Quest	1999	Adventure,Comedy,Sci-Fi
+tt0178868	7.2	87754	movie	The Ring	1998	Horror,Mystery
+tt0180093	8.3	988127	movie	Requiem for a Dream	2000	Drama
+tt0181536	7.3	96216	movie	Finding Forrester	2000	Drama,Sport
+tt0181689	7.6	629083	movie	Minority Report	2002	Action,Crime,Mystery
+tt0181865	7.5	232511	movie	Traffic	2000	Crime,Drama,Thriller
+tt0181875	7.9	318640	movie	Almost Famous	2000	Adventure,Comedy,Drama
+tt0182576	8.1	393300	tvSeries	Family Guy	1999	Animation,Comedy
+tt0183649	7.1	304818	movie	Phone Booth	2002	Crime,Thriller
+tt0185014	7.2	69537	movie	Wonder Boys	2000	Comedy,Drama
+tt0185125	7.8	110979	movie	All About My Mother	1999	Comedy,Drama,Romance
+tt0185906	9.4	610437	tvMiniSeries	Band of Brothers	2001	Action,Drama,History
+tt0186151	7.4	125537	movie	Frequency	2000	Crime,Drama,Mystery
+tt0187393	7.2	317364	movie	The Patriot	2000	Action,Drama,War
+tt0187664	8.5	61215	tvSeries	Spaced	1999	Comedy
+tt0190332	7.8	298390	movie	Crouching Tiger, Hidden Dragon	2000	Action,Adventure,Drama
+tt0190590	7.7	356607	movie	O Brother, Where Art Thou?	2000	Adventure,Comedy,Crime
+tt0193676	8.7	166174	tvSeries	Freaks and Geeks	1999	Comedy,Drama
+tt0195685	7.5	250732	movie	Erin Brockovich	2000	Biography,Drama
+tt0198781	8.1	1095611	movie	Monsters, Inc.	2001	Adventure,Animation,Comedy
+tt0200276	8.9	101754	tvSeries	The West Wing	1999	Drama
+tt0200465	7.2	198781	movie	The Bank Job	2008	Crime,Thriller
+tt0203009	7.5	317735	movie	Moulin Rouge!	2001	Drama,Musical,Romance
+tt0203019	7.2	131946	movie	Men of Honor	2000	Biography,Drama
+tt0203119	7.3	77396	movie	Sexy Beast	2000	Crime,Drama,Thriller
+tt0203259	8.1	148568	tvSeries	Law & Order: Special Victims Unit	1999	Crime,Drama,Mystery
+tt0206512	8.2	128752	tvSeries	SpongeBob SquarePants	1999	Animation,Comedy,Family
+tt0206634	7.9	573958	movie	Children of Men	2006	Drama,Sci-Fi,Thriller
+tt0208092	8.2	988841	movie	Snatch	2000	Comedy,Crime
+tt0209144	8.4	1464216	movie	Memento	2000	Mystery,Thriller
+tt0210945	7.8	254728	movie	Remember the Titans	2000	Biography,Comedy,Drama
+tt0211915	8.2	849188	movie	Amélie	2001	Comedy,Romance
+tt0212671	8.2	163572	tvSeries	Malcolm in the Middle	2000	Comedy,Drama,Family
+tt0212712	7.4	65140	movie	2046	2004	Drama,Romance,Sci-Fi
+tt0212720	7.2	344112	movie	A.I. Artificial Intelligence	2001	Adventure,Drama,Sci-Fi
+tt0213338	8.9	174623	tvSeries	Cowboy Bebop	1998	Action,Adventure,Animation
+tt0213847	7.4	126716	movie	Malena	2000	Drama,Romance,War
+tt0214341	8.8	182280	tvSeries	Dragon Ball Z	1996	Action,Adventure,Animation
+tt0215750	7.5	296556	movie	Enemy at the Gates	2001	Action,Drama,War
+tt0217505	7.5	512170	movie	Gangs of New York	2002	Crime,Drama
+tt0217869	7.3	472769	movie	Unbreakable	2000	Drama,Mystery,Sci-Fi
+tt0218839	7.5	76744	movie	Best in Show	2000	Comedy
+tt0221027	7.5	289628	movie	Blow	2001	Biography,Crime,Drama
+tt0223897	7.2	128725	movie	Pay It Forward	2000	Drama
+tt0230600	7.6	434450	movie	The Others	2001	Horror,Mystery,Thriller
+tt0234215	7.2	678552	movie	The Matrix Reloaded	2003	Action,Sci-Fi
+tt0235198	7.1	101062	movie	Audition	1999	Drama,Horror,Mystery
+tt0238380	7.3	366106	movie	Equilibrium	2002	Action,Drama,Sci-Fi
+tt0238784	8.2	179117	tvSeries	Gilmore Girls	2000	Comedy,Drama
+tt0240772	7.7	686840	movie	Ocean's Eleven	2001	Crime,Thriller
+tt0241303	7.2	212039	movie	Chocolat	2000	Drama,Romance
+tt0241527	7.7	971354	movie	Harry Potter and the Sorcerer's Stone	2001	Adventure,Family,Fantasy
+tt0242519	8.2	82334	movie	Hera Pheri	2000	Action,Comedy,Crime
+tt0243017	7.6	70059	movie	Waking Life	2001	Animation,Drama,Fantasy
+tt0243133	7.5	121512	movie	The Man Who Wasn't There	2001	Crime,Drama
+tt0244365	7.6	65354	tvSeries	Star Trek: Enterprise	2001	Action,Adventure,Drama
+tt0245429	8.6	990530	movie	Spirited Away	2001	Adventure,Animation,Family
+tt0245574	7.7	143505	movie	Y tu mamá también	2001	Drama
+tt0245712	8.0	273770	movie	Amores Perros	2000	Drama,Thriller
+tt0245844	7.7	162269	movie	The Count of Monte Cristo	2002	Action,Adventure,Drama
+tt0246578	8.0	923503	movie	Donnie Darko	2001	Drama,Mystery,Sci-Fi
+tt0247082	7.7	95064	tvSeries	CSI: Crime Scene Investigation	2000	Crime,Drama,Mystery
+tt0247586	7.9	64153	movie	Nine Queens	2000	Crime,Drama,Thriller
+tt0248126	7.5	64106	movie	Kabhi Khushi Kabhie Gham...	2001	Drama,Musical,Romance
+tt0248654	8.7	171453	tvSeries	Six Feet Under	2001	Comedy,Drama
+tt0249462	7.7	154306	movie	Billy Elliot	2000	Drama,Music
+tt0250258	7.7	99430	movie	The Experiment	2001	Drama,Thriller
+tt0251160	7.1	157174	movie	John Q	2002	Crime,Drama,Thriller
+tt0253474	8.5	1029462	movie	The Pianist	2002	Biography,Drama,Music
+tt0254686	7.5	83428	movie	The Piano Teacher	2001	Drama,Music,Romance
+tt0256009	7.3	76497	movie	The Devil's Backbone	2001	Drama,Horror,Thriller
+tt0257044	7.6	303649	movie	Road to Perdition	2002	Crime,Drama,Thriller
+tt0257360	7.2	137766	movie	About Schmidt	2002	Comedy,Drama
+tt0258463	7.8	623166	movie	The Bourne Identity	2002	Action,Mystery,Thriller
+tt0262150	8.4	64918	tvSeries	Black Books	2000	Comedy
+tt0264235	8.8	169706	tvSeries	Curb Your Enthusiasm	2000	Comedy
+tt0264464	8.1	1270679	movie	Catch Me If You Can	2002	Biography,Crime,Drama
+tt0264616	7.2	102674	movie	Frailty	2001	Crime,Drama,Thriller
+tt0265086	7.7	461256	movie	Black Hawk Down	2001	Action,Drama,History
+tt0265666	7.6	339738	movie	The Royal Tenenbaums	2001	Comedy,Drama
+tt0266308	7.5	209323	movie	Battle Royale	2000	Action,Drama,Thriller
+tt0266543	8.2	1229303	movie	Finding Nemo	2003	Adventure,Animation,Comedy
+tt0266697	8.2	1329900	movie	Kill Bill: Vol. 1	2003	Action,Crime,Thriller
+tt0266987	7.1	179139	movie	Spy Game	2001	Action,Crime,Thriller
+tt0268126	7.6	215123	movie	Adaptation.	2002	Comedy,Drama
+tt0268380	7.5	574550	movie	Ice Age	2002	Adventure,Animation,Comedy
+tt0268978	8.2	1066721	movie	A Beautiful Mind	2001	Biography,Drama,Mystery
+tt0272152	7.4	204633	movie	K-PAX	2001	Drama,Mystery,Sci-Fi
+tt0272338	7.3	200336	movie	Punch-Drunk Love	2002	Comedy,Drama,Romance
+tt0274558	7.5	148333	movie	The Hours	2002	Drama,Romance
+tt0275491	7.4	66532	movie	Bad Education	2004	Crime,Drama
+tt0275847	7.4	248023	movie	Lilo & Stitch	2002	Adventure,Animation,Comedy
+tt0276751	7.1	200243	movie	About a Boy	2002	Comedy,Drama,Romance
+tt0276919	8.0	169417	movie	Dogville	2003	Crime,Drama
+tt0277027	7.6	163978	movie	I Am Sam	2001	Drama
+tt0277434	7.2	161562	movie	We Were Soldiers	2002	Action,Drama,History
+tt0278238	8.5	67956	tvSeries	Samurai Jack	2001	Action,Adventure,Animation
+tt0278504	7.2	353429	movie	Insomnia	2002	Drama,Mystery,Thriller
+tt0279600	7.5	157815	tvSeries	Smallville	2001	Action,Adventure,Drama
+tt0280249	8.5	78168	tvSeries	Dragon Ball	1995	Action,Adventure,Animation
+tt0280707	7.2	103781	movie	Gosford Park	2001	Comedy,Drama,Mystery
+tt0281358	7.3	233496	movie	A Walk to Remember	2002	Drama,Romance
+tt0285331	8.4	208651	tvSeries	24	2001	Action,Crime,Drama
+tt0285403	8.4	288314	tvSeries	Scrubs	2001	Comedy,Drama
+tt0286112	7.3	99145	movie	Shaolin Soccer	2001	Action,Comedy,Fantasy
+tt0286486	8.7	99021	tvSeries	The Shield	2002	Crime,Drama,Thriller
+tt0287467	7.9	121377	movie	Talk to Her	2002	Drama,Mystery,Romance
+tt0289043	7.5	558514	movie	28 Days Later	2002	Drama,Horror,Sci-Fi
+tt0289765	7.2	315203	movie	Red Dragon	2002	Crime,Drama,Thriller
+tt0289879	7.6	563102	movie	The Butterfly Effect	2004	Drama,Sci-Fi,Thriller
+tt0289992	7.5	133777	movie	The Life of David Gale	2003	Crime,Drama,Mystery
+tt0290334	7.4	622859	movie	X2: X-Men United	2003	Action,Sci-Fi,Thriller
+tt0290673	7.3	166146	movie	Irreversible	2002	Crime,Drama,Mystery
+tt0290978	8.5	134353	tvSeries	The Office	2001	Comedy,Drama
+tt0292490	8.0	80744	movie	Dil Chahta Hai	2001	Comedy,Drama,Romance
+tt0292963	7.3	124503	movie	Before the Devil Knows You're Dead	2007	Crime,Drama,Thriller
+tt0293508	7.2	140454	movie	The Phantom of the Opera	2004	Drama,Musical,Romance
+tt0295297	7.5	781197	movie	Harry Potter and the Chamber of Secrets	2002	Adventure,Family,Fantasy
+tt0298130	7.1	408346	movie	The Ring	2002	Horror,Mystery
+tt0298148	7.4	565889	movie	Shrek 2	2004	Adventure,Animation,Comedy
+tt0298203	7.2	356411	movie	8 Mile	2002	Drama,Music
+tt0299658	7.2	259206	movie	Chicago	2002	Comedy,Crime,Musical
+tt0299977	7.9	195741	movie	Hero	2002	Action,Adventure,Drama
+tt0301357	7.7	161257	movie	Good Bye Lenin!	2003	Comedy,Drama,Romance
+tt0303461	8.9	305237	tvSeries	Firefly	2002	Adventure,Sci-Fi
+tt0304141	8.0	782268	movie	Harry Potter and the Prisoner of Azkaban	2004	Adventure,Family,Fantasy
+tt0306414	9.3	442737	tvSeries	The Wire	2002	Crime,Drama,Thriller
+tt0307901	7.6	191990	movie	25th Hour	2002	Drama
+tt0308644	7.6	218440	movie	Finding Neverland	2004	Biography,Drama,Family
+tt0309698	7.3	299191	movie	Identity	2003	Mystery,Thriller
+tt0309987	7.1	142697	movie	The Dreamers	2003	Drama,Romance
+tt0310775	7.5	83118	movie	Sympathy for Mr. Vengeance	2002	Crime,Drama,Thriller
+tt0310793	7.9	152889	movie	Bowling for Columbine	2002	Crime,Documentary,Drama
+tt0311113	7.5	260587	movie	Master and Commander: The Far Side of the World	2003	Action,Adventure,Drama
+tt0311289	7.1	112179	movie	Holes	2003	Adventure,Comedy,Drama
+tt0312004	7.5	159195	movie	Wallace & Gromit: The Curse of the Were-Rabbit	2005	Adventure,Animation,Comedy
+tt0312172	8.1	103311	tvSeries	Monk	2002	Comedy,Crime,Drama
+tt0313542	7.1	122963	movie	Runaway Jury	2003	Crime,Drama,Thriller
+tt0314331	7.5	585681	movie	Love Actually	2003	Comedy,Drama,Romance
+tt0314979	8.5	85970	tvMiniSeries	Battlestar Galactica	2003	Action,Adventure,Drama
+tt0315733	7.6	254264	movie	21 Grams	2003	Crime,Drama,Thriller
+tt0315983	7.5	76460	movie	House of Sand and Fog	2003	Crime,Drama
+tt0316356	7.4	85694	movie	Open Range	2003	Action,Drama,Romance
+tt0316654	7.5	812369	movie	Spider-Man 2	2004	Action,Adventure,Sci-Fi
+tt0317219	7.3	552595	movie	Cars	2006	Adventure,Animation,Comedy
+tt0317248	8.6	885515	movie	City of God	2002	Crime,Drama
+tt0317705	8.0	921056	movie	The Incredibles	2004	Action,Adventure,Animation
+tt0318462	7.7	110178	movie	The Motorcycle Diaries	2004	Adventure,Biography,Drama
+tt0318871	8.8	84341	tvSeries	Berserk	1997	Action,Adventure,Animation
+tt0319061	7.9	481037	movie	Big Fish	2003	Adventure,Drama,Fantasy
+tt0319343	7.1	350179	movie	Elf	2003	Adventure,Comedy,Family
+tt0320661	7.3	363441	movie	Kingdom of Heaven	2005	Action,Adventure,Drama
+tt0325710	7.8	512674	movie	The Last Samurai	2003	Action,Drama
+tt0325805	7.2	147014	movie	Matchstick Men	2003	Comedy,Crime,Drama
+tt0325980	8.1	1350449	movie	Pirates of the Caribbean: The Curse of the Black Pearl	2003	Action,Adventure,Fantasy
+tt0327056	7.9	534467	movie	Mystic River	2003	Crime,Drama,Mystery
+tt0327137	7.5	66981	movie	Secondhand Lions	2003	Comedy,Drama,Family
+tt0327597	7.8	309865	movie	Coraline	2009	Animation,Drama,Family
+tt0328107	7.7	427703	movie	Man on Fire	2004	Action,Crime,Drama
+tt0329575	7.3	79621	movie	Seabiscuit	2003	Drama,History,Sport
+tt0330373	7.7	768081	movie	Harry Potter and the Goblet of Fire	2005	Adventure,Family,Fantasy
+tt0332280	7.8	705284	movie	The Notebook	2004	Drama,Romance
+tt0332379	7.2	363256	movie	School of Rock	2003	Comedy,Music
+tt0332452	7.3	652454	movie	Troy	2004	Action,Adventure
+tt0333766	7.4	228802	movie	Garden State	2004	Comedy,Drama,Romance
+tt0335266	7.7	536194	movie	Lost in Translation	2003	Comedy,Drama
+tt0335345	7.3	277974	movie	The Passion of the Christ	2004	Drama
+tt0337978	7.1	438464	movie	Live Free or Die Hard	2007	Action,Thriller
+tt0338013	8.3	1200329	movie	Eternal Sunshine of the Spotless Mind	2004	Drama,Romance,Sci-Fi
+tt0338564	8.0	139712	movie	Infernal Affairs	2002	Crime,Drama,Mystery
+tt0338751	7.5	414334	movie	The Aviator	2004	Biography,Drama
+tt0340377	7.6	82257	movie	The Station Agent	2003	Comedy,Drama
+tt0340855	7.3	174390	movie	Monster	2003	Biography,Crime,Drama
+tt0343818	7.1	623936	movie	I, Robot	2004	Action,Mystery,Sci-Fi
+tt0344510	7.6	78402	movie	A Very Long Engagement	2004	Drama,Mystery,Romance
+tt0345950	7.2	113514	movie	The SpongeBob SquarePants Movie	2004	Adventure,Animation,Comedy
+tt0347048	7.8	61467	movie	Head-On	2004	Drama,Romance
+tt0347149	8.2	524236	movie	Howl's Moving Castle	2004	Adventure,Animation,Family
+tt0347304	7.9	82885	movie	Kal Ho Naa Ho	2003	Comedy,Drama,Musical
+tt0347618	7.1	74052	movie	The Cat Returns	2002	Adventure,Animation,Comedy
+tt0348914	8.6	130765	tvSeries	Deadwood	2004	Crime,Drama,History
+tt0349825	7.5	64618	movie	Miracle	2004	Biography,Drama,History
+tt0350258	7.7	167672	movie	Ray	2004	Biography,Drama,Music
+tt0352248	8.0	211622	movie	Cinderella Man	2005	Biography,Drama,Romance
+tt0353049	8.8	79777	tvSeries	Chappelle's Show	2003	Comedy,Music
+tt0353969	8.1	277419	movie	Memories of Murder	2003	Crime,Drama,Mystery
+tt0354899	7.2	72472	movie	The Science of Sleep	2006	Comedy,Drama,Fantasy
+tt0355702	7.1	62437	movie	Lords of Dogtown	2005	Biography,Drama,Sport
+tt0357413	7.1	405896	movie	Anchorman: The Legend of Ron Burgundy	2004	Comedy
+tt0358273	7.8	283187	movie	Walk the Line	2005	Biography,Drama,Music
+tt0359950	7.3	379333	movie	The Secret Life of Walter Mitty	2013	Adventure,Comedy,Drama
+tt0360717	7.2	476022	movie	King Kong	2005	Action,Adventure,Romance
+tt0361217	7.7	62439	tvSeries	Nip/Tuck	2003	Drama
+tt0361596	7.5	135620	movie	Fahrenheit 9/11	2004	Documentary,Drama,War
+tt0361748	8.4	1825657	movie	Inglourious Basterds	2009	Drama,War
+tt0361862	7.6	447932	movie	The Machinist	2004	Drama,Thriller
+tt0362225	7.5	62202	movie	Tell No One	2006	Crime,Drama,Mystery
+tt0362227	7.4	543967	movie	The Terminal	2004	Comedy,Drama,Romance
+tt0362270	7.2	222726	movie	The Life Aquatic with Steve Zissou	2004	Action,Adventure,Comedy
+tt0362359	7.6	105686	tvSeries	The O.C.	2003	Comedy,Drama,Romance
+tt0363163	8.2	405047	movie	Downfall	2004	Biography,Drama,History
+tt0363547	7.2	291698	movie	Dawn of the Dead	2004	Action,Horror
+tt0363589	7.1	105975	movie	Elephant	2003	Crime,Drama,Thriller
+tt0364517	7.5	74757	movie	Love Me If You Dare	2003	Comedy,Drama,Romance
+tt0364569	8.3	736296	movie	Oldboy	2003	Action,Drama,Mystery
+tt0364845	7.8	178928	tvSeries	NCIS	2003	Action,Crime,Drama
+tt0365376	7.1	75611	movie	A Tale of Two Sisters	2003	Drama,Horror,Mystery
+tt0365748	7.8	646822	movie	Shaun of the Dead	2004	Comedy,Horror
+tt0366627	7.1	125877	movie	The Jacket	2005	Drama,Fantasy,Mystery
+tt0367089	7.3	95279	movie	The Squid and the Whale	2005	Comedy,Drama
+tt0367110	8.2	107628	movie	Swades	2004	Drama,Musical
+tt0367279	8.6	347645	tvSeries	Arrested Development	2003	Comedy
+tt0368530	7.8	96488	tvSeries	One Tree Hill	2003	Drama,Romance,Sport
+tt0368909	7.2	82330	movie	Ong-Bak: The Thai Warrior	2003	Action,Crime,Thriller
+tt0369179	7.1	301722	tvSeries	Two and a Half Men	2003	Comedy,Romance
+tt0369339	7.5	476078	movie	Collateral	2004	Action,Crime,Drama
+tt0369702	7.9	89625	movie	The Sea Inside	2004	Biography,Drama
+tt0370986	7.6	87353	movie	Mysterious Skin	2004	Drama
+tt0371746	7.9	1255761	movie	Iron Man	2008	Action,Adventure,Sci-Fi
+tt0372183	7.7	519752	movie	The Bourne Supremacy	2004	Action,Mystery,Thriller
+tt0372588	7.2	186458	movie	Team America: World Police	2004	Action,Comedy
+tt0372784	8.2	1750637	movie	Batman Begins	2005	Crime
+tt0372824	7.9	73164	movie	The Chorus	2004	Drama,Music
+tt0373074	7.7	167073	movie	Kung Fu Hustle	2004	Action,Comedy,Fantasy
+tt0373469	7.4	251911	movie	Kiss Kiss Bang Bang	2005	Comedy,Crime,Mystery
+tt0373889	7.5	714404	movie	Harry Potter and the Order of the Phoenix	2007	Adventure,Family,Fantasy
+tt0374455	8.2	76732	tvSeries	Stargate: Atlantis	2004	Action,Adventure,Drama
+tt0374463	8.3	146550	tvMiniSeries	The Pacific	2010	Action,Adventure,Drama
+tt0374546	8.0	91766	movie	Spring, Summer, Fall, Winter... and Spring	2003	Drama,Romance
+tt0374887	8.2	100065	movie	Munna Bhai M.B.B.S.	2003	Comedy,Drama
+tt0375063	7.5	219180	movie	Sideways	2004	Comedy,Drama,Romance
+tt0375679	7.7	465103	movie	Crash	2004	Crime,Drama,Thriller
+tt0375912	7.2	209915	movie	Layer Cake	2004	Crime,Drama,Thriller
+tt0376541	7.1	253129	movie	Closer	2004	Drama,Romance
+tt0377092	7.1	495702	movie	Mean Girls	2004	Comedy
+tt0378194	8.0	883306	movie	Kill Bill: Vol. 2	2004	Action,Crime,Thriller
+tt0379725	7.3	150919	movie	Capote	2005	Biography,Crime,Drama
+tt0379786	7.8	317692	movie	Serenity	2005	Action,Adventure,Sci-Fi
+tt0381061	8.0	757015	movie	Casino Royale	2006	Action,Adventure,Thriller
+tt0381681	8.1	320851	movie	Before Sunset	2004	Drama,Romance
+tt0381849	7.6	354627	movie	3:10 to Yuma	2007	Action,Crime,Drama
+tt0382932	8.1	970785	movie	Ratatouille	2007	Adventure,Animation,Comedy
+tt0383028	7.5	106212	movie	Synecdoche, New York	2008	Drama
+tt0383574	7.4	839460	movie	Pirates of the Caribbean: Dead Man's Chest	2006	Action,Adventure,Fantasy
+tt0384116	8.0	72721	movie	G.O.R.A.	2004	Adventure,Comedy,Sci-Fi
+tt0384766	8.7	208083	tvSeries	Rome	2005	Action,Drama,Romance
+tt0385002	7.4	173786	movie	Green Street Hooligans	2005	Crime,Drama,Sport
+tt0385004	7.5	120603	movie	House of Flying Daggers	2004	Action,Adventure,Drama
+tt0385700	7.1	60027	movie	Final Fantasy VII: Advent Children	2005	Action,Adventure,Animation
+tt0386032	8.0	78349	movie	Sicko	2007	Documentary,Drama
+tt0386676	9.0	856468	tvSeries	The Office	2005	Comedy
+tt0387131	7.3	156881	movie	The Constant Gardener	2005	Drama,Mystery,Romance
+tt0387199	8.4	185853	tvSeries	Entourage	2004	Comedy,Drama
+tt0387564	7.6	519021	movie	Saw	2004	Horror,Mystery,Thriller
+tt0387764	8.7	74948	tvSeries	Peep Show	2003	Comedy
+tt0387898	7.3	91335	movie	Caché	2005	Drama,Mystery,Thriller
+tt0388629	9.0	370890	tvSeries	One Piece	1999	Action,Adventure,Animation
+tt0388795	7.7	423235	movie	Brokeback Mountain	2005	Drama,Romance
+tt0389557	7.7	84585	movie	Black Book	2006	Drama,Thriller,War
+tt0390022	7.2	71667	movie	Friday Night Lights	2004	Action,Drama,Sport
+tt0390521	7.2	115718	movie	Super Size Me	2004	Documentary
+tt0393109	7.1	114769	movie	Brick	2005	Crime,Drama,Mystery
+tt0393162	7.4	196440	movie	Coach Carter	2005	Biography,Drama,Sport
+tt0395169	8.1	395678	movie	Hotel Rwanda	2004	Biography,Drama,History
+tt0396171	7.5	281643	movie	Perfume: The Story of a Murderer	2006	Crime,Drama,Fantasy
+tt0397306	7.4	146049	tvSeries	American Dad!	2005	Animation,Comedy
+tt0397313	7.3	72370	movie	Eight Below	2006	Adventure,Drama,Family
+tt0397442	7.5	218287	tvSeries	Gossip Girl	2007	Drama,Romance
+tt0397535	7.3	174544	movie	Memoirs of a Geisha	2005	Drama,Romance
+tt0398286	7.7	556014	movie	Tangled	2010	Adventure,Animation,Comedy
+tt0398808	7.2	195487	movie	Bridge to Terabithia	2007	Drama,Family,Fantasy
+tt0399146	7.4	278238	movie	A History of Violence	2005	Crime,Drama,Thriller
+tt0399295	7.6	363791	movie	Lord of War	2005	Crime,Drama
+tt0401383	8.0	113373	movie	The Diving Bell and the Butterfly	2007	Biography,Drama
+tt0401711	7.2	76765	movie	Paris, Je T'aime	2006	Comedy,Drama,Romance
+tt0401792	8.0	825154	movie	Sin City	2005	Crime,Thriller
+tt0404030	7.4	61715	movie	Everything Is Illuminated	2005	Comedy,Drama
+tt0404203	7.5	122909	movie	Little Children	2006	Drama,Romance
+tt0404390	7.3	107559	movie	Running Scared	2006	Action,Crime,Drama
+tt0405094	8.4	448371	movie	The Lives of Others	2006	Drama,Mystery,Thriller
+tt0405159	8.1	775819	movie	Million Dollar Baby	2004	Drama,Sport
+tt0405422	7.1	509702	movie	The 40-Year-Old Virgin	2005	Comedy,Romance
+tt0405508	8.1	127626	movie	Rang De Basanti	2006	Comedy,Crime,Drama
+tt0407362	8.7	189050	tvSeries	Battlestar Galactica	2004	Action,Adventure,Drama
+tt0407887	8.5	1586262	movie	The Departed	2006	Crime,Drama,Thriller
+tt0408236	7.3	410444	movie	Sweeney Todd: The Demon Barber of Fleet Street	2007	Drama,Horror,Musical
+tt0408306	7.5	256635	movie	Munich	2005	Drama,History,Thriller
+tt0409459	7.6	617878	movie	Watchmen	2009	Action,Drama,Mystery
+tt0409591	8.4	176221	tvSeries	Naruto	2002	Action,Adventure,Animation
+tt0410975	7.7	157158	tvSeries	Desperate Housewives	2004	Comedy,Drama,Mystery
+tt0411008	8.3	684894	tvSeries	Lost	2004	Adventure,Drama,Fantasy
+tt0412019	7.1	110879	movie	Broken Flowers	2005	Comedy,Drama,Mystery
+tt0412080	7.7	64770	movie	The World's Fastest Indian	2005	Biography,Drama,Sport
+tt0412142	8.7	602805	tvSeries	House	2004	Drama
+tt0412253	8.3	84397	tvSeries	Veronica Mars	2004	Crime,Drama,Mystery
+tt0413573	7.6	379269	tvSeries	Grey's Anatomy	2005	Drama,Romance
+tt0414387	7.8	384728	movie	Pride & Prejudice	2005	Drama,Romance
+tt0414852	7.1	78420	movie	District B13	2004	Action,Crime,Sci-Fi
+tt0414993	7.1	260031	movie	The Fountain	2006	Drama,Mystery,Romance
+tt0416320	7.6	241094	movie	Match Point	2005	Drama,Romance,Thriller
+tt0416449	7.6	923736	movie	300	2006	Action,Drama
+tt0417299	9.3	459140	tvSeries	Avatar: The Last Airbender	2005	Action,Adventure,Animation
+tt0417741	7.6	673561	movie	Harry Potter and the Half-Blood Prince	2009	Adventure,Family,Fantasy
+tt0418279	7.1	729005	movie	Transformers	2007	Action,Adventure,Sci-Fi
+tt0418455	7.7	60232	movie	Adam's Apples	2005	Comedy,Crime,Drama
+tt0418689	7.1	135400	movie	Flags of Our Fathers	2006	Action,Adventure,Drama
+tt0419677	7.5	64271	movie	Dead Man's Shoes	2004	Crime,Drama,Thriller
+tt0419887	7.5	85692	movie	The Kite Runner	2007	Drama
+tt0420223	7.5	247340	movie	Stranger Than Fiction	2006	Comedy,Drama,Fantasy
+tt0420332	7.8	67555	movie	Veer Zaara	2004	Drama,Family,Musical
+tt0421082	7.6	72356	movie	Control	2007	Biography,Drama,Music
+tt0421357	8.5	87540	tvSeries	Fullmetal Alchemist	2003	Action,Adventure,Animation
+tt0421715	7.8	756859	movie	The Curious Case of Benjamin Button	2008	Drama,Fantasy,Romance
+tt0423731	8.5	65365	tvSeries	Samurai Champloo	2004	Action,Adventure,Animation
+tt0423866	7.9	61947	movie	3-Iron	2004	Crime,Drama,Romance
+tt0424345	7.3	145336	movie	Clerks II	2006	Comedy
+tt0425112	7.8	574450	movie	Hot Fuzz	2007	Action,Comedy,Mystery
+tt0425210	7.7	342368	movie	Lucky Number Slevin	2006	Crime,Drama,Thriller
+tt0426931	7.4	115448	movie	August Rush	2007	Drama,Music
+tt0427309	7.5	67010	movie	The Great Debaters	2007	Biography,Drama,Romance
+tt0427312	7.7	68727	movie	Grizzly Man	2005	Biography,Documentary
+tt0427944	7.5	237193	movie	Thank You for Smoking	2005	Comedy,Drama
+tt0428803	7.5	62722	movie	March of the Penguins	2005	Documentary,Family
+tt0432283	7.9	312412	movie	Fantastic Mr. Fox	2009	Adventure,Animation,Comedy
+tt0433035	7.1	385869	movie	Real Steel	2011	Action,Drama,Sci-Fi
+tt0433383	7.4	105948	movie	Good Night, and Good Luck.	2005	Biography,Drama,History
+tt0434409	8.1	1259293	movie	V for Vendetta	2005	Action,Drama,Sci-Fi
+tt0434665	8.3	100661	tvSeries	Bleach	2004	Action,Adventure,Animation
+tt0434706	8.8	76718	tvSeries	Monster	2004	Animation,Crime,Drama
+tt0435625	7.2	278915	movie	The Descent	2005	Adventure,Horror,Thriller
+tt0435761	8.3	994528	movie	Toy Story 3	2010	Adventure,Animation,Comedy
+tt0436697	7.3	120412	movie	The Queen	2006	Biography,Drama
+tt0436992	8.5	264612	tvSeries	Doctor Who	2005	Adventure,Drama,Sci-Fi
+tt0437086	7.3	328353	movie	Alita: Battle Angel	2019	Action,Adventure,Sci-Fi
+tt0439100	7.9	123967	tvSeries	Weeds	2005	Comedy,Crime,Drama
+tt0440963	8.0	690266	movie	The Bourne Ultimatum	2007	Action,Mystery,Thriller
+tt0441773	7.6	592525	movie	Kung Fu Panda	2008	Action,Adventure,Animation
+tt0441909	7.6	113988	movie	Volver	2006	Comedy,Drama
+tt0443272	7.3	287747	movie	Lincoln	2012	Biography,Drama,History
+tt0443453	7.4	484720	movie	Borat	2006	Comedy
+tt0443543	7.5	407685	movie	The Illusionist	2006	Drama,Fantasy,Mystery
+tt0443680	7.5	206968	movie	The Assassination of Jesse James by the Coward Robert Ford	2007	Biography,Crime,Drama
+tt0443706	7.7	694864	movie	Zodiac	2007	Crime,Drama,Mystery
+tt0445114	8.3	64159	tvSeries	Extras	2005	Comedy,Drama
+tt0445922	7.3	118404	movie	Across the Universe	2007	Drama,Fantasy,History
+tt0446029	7.5	502228	movie	Scott Pilgrim vs. the World	2010	Action,Comedy,Fantasy
+tt0446059	7.5	81912	movie	Fearless	2006	Action,Biography,Drama
+tt0446755	7.4	100903	movie	The Painted Veil	2006	Drama,Romance
+tt0448134	7.2	291569	movie	Sunshine	2007	Sci-Fi,Thriller
+tt0449059	7.8	567830	movie	Little Miss Sunshine	2006	Comedy,Drama
+tt0449088	7.2	755208	movie	Pirates of the Caribbean: At World's End	2007	Action,Adventure,Fantasy
+tt0449467	7.4	331828	movie	Babel	2006	Drama
+tt0450188	7.5	94807	movie	La Vie En Rose	2007	Biography,Drama,Music
+tt0450259	8.0	633212	movie	Blood Diamond	2006	Adventure,Drama,Thriller
+tt0451094	7.5	94889	movie	Sympathy for Lady Vengeance	2005	Crime,Drama,Thriller
+tt0451279	7.3	743495	movie	Wonder Woman	2017	Action,Adventure,Fantasy
+tt0452046	8.1	244137	tvSeries	Criminal Minds	2005	Crime,Drama,Mystery
+tt0452623	7.6	314333	movie	Gone Baby Gone	2007	Crime,Drama,Mystery
+tt0452694	7.1	168997	movie	The Time Traveler's Wife	2009	Drama,Fantasy,Romance
+tt0453467	7.1	349030	movie	Deja Vu	2006	Action,Crime,Sci-Fi
+tt0453562	7.5	110223	movie	42	2013	Biography,Drama,Sport
+tt0454848	7.6	430861	movie	Inside Man	2006	Crime,Drama,Mystery
+tt0454876	7.9	707452	movie	Life of Pi	2012	Adventure,Drama,Family
+tt0454921	8.0	633946	movie	The Pursuit of Happyness	2006	Biography,Drama
+tt0455275	8.3	683220	tvSeries	Prison Break	2005	Action,Crime,Drama
+tt0455590	7.6	207733	movie	The Last King of Scotland	2006	Biography,Drama,History
+tt0455944	7.3	474177	movie	The Equalizer	2014	Action,Crime,Thriller
+tt0457430	8.2	755669	movie	Pan's Labyrinth	2006	Drama,Fantasy,War
+tt0458290	8.5	149230	tvSeries	Star Wars: The Clone Wars	2008	Action,Adventure,Animation
+tt0460091	7.8	117503	tvSeries	My Name Is Earl	2005	Comedy
+tt0460627	7.8	193462	tvSeries	Bones	2005	Crime,Drama,Mystery
+tt0460649	8.3	791946	tvSeries	How I Met Your Mother	2005	Comedy,Drama,Romance
+tt0460681	8.4	551622	tvSeries	Supernatural	2005	Drama,Fantasy,Horror
+tt0460740	7.1	95480	movie	Cashback	2006	Comedy,Drama,Romance
+tt0460791	7.8	132400	movie	The Fall	2006	Adventure,Drama,Fantasy
+tt0461770	7.1	227513	movie	Enchanted	2007	Adventure,Animation,Comedy
+tt0462322	7.5	198119	movie	Grindhouse	2007	Horror,Thriller
+tt0462504	7.2	117714	movie	Rescue Dawn	2006	Adventure,Biography,War
+tt0462538	7.3	366140	movie	The Simpsons Movie	2007	Adventure,Animation,Comedy
+tt0463998	7.6	94127	movie	Freedom Writers	2007	Biography,Crime,Drama
+tt0464141	7.4	172219	movie	The Orphanage	2007	Drama,Horror,Mystery
+tt0465538	7.2	185647	movie	Michael Clayton	2007	Crime,Drama,Mystery
+tt0465551	7.4	90111	movie	Notes on a Scandal	2006	Crime,Drama,Romance
+tt0467406	7.4	576294	movie	Juno	2007	Comedy,Drama
+tt0468489	7.1	96715	movie	Half Nelson	2006	Drama
+tt0468492	7.1	145183	movie	The Host	2006	Drama,Horror,Sci-Fi
+tt0468569	9.1	3242393	movie	The Dark Knight	2008	Crime,Thriller
+tt0469494	8.2	722224	movie	There Will Be Blood	2007	Drama
+tt0470752	7.7	647802	movie	Ex Machina	2014	Drama,Sci-Fi,Thriller
+tt0472043	7.9	365715	movie	Apocalypto	2006	Action,Adventure,Drama
+tt0472954	8.8	286872	tvSeries	It's Always Sunny in Philadelphia	2005	Comedy
+tt0473705	7.1	167770	movie	State of Play	2009	Crime,Drama,Mystery
+tt0475276	7.6	117562	movie	United 93	2006	Action,Drama,History
+tt0475784	8.4	562513	tvSeries	Westworld	2016	Drama,Mystery,Sci-Fi
+tt0476735	8.2	102618	movie	My Father and My Son	2005	Drama
+tt0477139	7.2	60152	movie	Wristcutters: A Love Story	2006	Comedy,Drama,Fantasy
+tt0477348	8.2	1219311	movie	No Country for Old Men	2007	Crime,Drama,Thriller
+tt0478134	7.1	77901	movie	In the Valley of Elah	2007	Crime,Drama,Mystery
+tt0478970	7.2	798577	movie	Ant-Man	2015	Action,Comedy,Sci-Fi
+tt0479143	7.1	246502	movie	Rocky Balboa	2006	Drama,Sport
+tt0480025	7.7	136441	movie	This Is England	2006	Crime,Drama
+tt0480249	7.2	891300	movie	I Am Legend	2007	Drama,Horror,Sci-Fi
+tt0480669	7.1	77003	movie	Timecrimes	2007	Horror,Mystery,Sci-Fi
+tt0481499	7.1	256002	movie	The Croods	2013	Adventure,Animation,Comedy
+tt0482571	8.5	1635927	movie	The Prestige	2006	Drama,Mystery,Sci-Fi
+tt0485947	7.7	259835	movie	Mr. Nobody	2009	Drama,Fantasy,Romance
+tt0486655	7.6	301464	movie	Stardust	2007	Adventure,Fantasy,Romance
+tt0487831	8.5	178326	tvSeries	The IT Crowd	2006	Comedy
+tt0488120	7.2	239508	movie	Fracture	2007	Crime,Drama,Thriller
+tt0489974	7.6	89838	tvSeries	Carnival Row	2019	Crime,Drama,Fantasy
+tt0490204	7.4	106512	movie	Reign Over Me	2007	Drama
+tt0490215	7.2	136663	movie	Silence	2016	Drama,History
+tt0491738	8.4	122280	tvSeries	Psych	2006	Comedy,Crime,Mystery
+tt0496424	8.3	140521	tvSeries	30 Rock	2006	Comedy
+tt0497116	7.4	87334	movie	An Inconvenient Truth	2006	Documentary
+tt0497465	7.1	283156	movie	Vicky Cristina Barcelona	2008	Comedy,Drama,Romance
+tt0498380	7.8	178595	movie	Letters from Iwo Jima	2006	Action,Adventure,Drama
+tt0499549	7.9	1519448	movie	Avatar	2009	Action,Adventure,Fantasy
+tt0756683	7.8	222050	movie	The Man from Earth	2007	Drama,Fantasy,Mystery
+tt0758745	8.7	80916	tvSeries	Friday Night Lights	2006	Drama,Sport
+tt0758758	8.0	700910	movie	Into the Wild	2007	Adventure,Biography,Drama
+tt0758790	8.1	88907	tvSeries	The Tudors	2007	Drama,History,Romance
+tt0758794	7.1	68453	movie	We Are Marshall	2006	Drama,Sport
+tt0765010	7.1	178316	movie	Brothers	2009	Drama,Thriller,War
+tt0765429	7.8	495800	movie	American Gangster	2007	Biography,Crime,Drama
+tt0765443	7.6	280928	movie	Eastern Promises	2007	Crime,Drama,Thriller
+tt0770828	7.1	879272	movie	Man of Steel	2013	Action,Adventure,Sci-Fi
+tt0773262	8.6	960653	tvSeries	Dexter	2006	Crime,Drama,Mystery
+tt0780504	7.8	777068	movie	Drive	2011	Action,Drama
+tt0780511	7.1	68196	movie	Everybody's Fine	2009	Adventure,Drama
+tt0780521	7.2	191229	movie	The Princess and the Frog	2009	Adventure,Animation,Comedy
+tt0780536	7.9	499538	movie	In Bruges	2008	Comedy,Crime,Drama
+tt0780571	7.2	164758	movie	Mr. Brooks	2007	Crime,Drama,Mystery
+tt0783233	7.8	334850	movie	Atonement	2007	Drama,Mystery,Romance
+tt0787524	7.2	67808	movie	The Man Who Knew Infinity	2015	Biography,Drama
+tt0790636	7.9	554040	movie	Dallas Buyers Club	2013	Biography,Drama
+tt0795176	9.4	237620	tvMiniSeries	Planet Earth	2006	Documentary,Family
+tt0795368	7.3	129381	movie	Death at a Funeral	2007	Comedy
+tt0796264	7.9	62411	tvSeries	Eureka	2006	Adventure,Comedy,Drama
+tt0796366	7.9	642263	movie	Star Trek	2009	Action,Adventure,Sci-Fi
+tt0800039	7.1	323192	movie	Forgetting Sarah Marshall	2008	Comedy,Drama,Romance
+tt0804484	7.6	129966	tvSeries	Foundation	2021	Drama,Sci-Fi
+tt0804497	7.1	152502	movie	It's Kind of a Funny Story	2010	Comedy,Drama,Romance
+tt0804503	8.7	295760	tvSeries	Mad Men	2007	Drama
+tt0805564	7.3	171605	movie	Lars and the Real Girl	2007	Comedy,Drama,Romance
+tt0805663	7.9	61625	tvSeries	Jericho	2006	Action,Drama,Mystery
+tt0808417	8.0	107344	movie	Persepolis	2007	Animation,Biography,Drama
+tt0808506	7.6	76940	movie	The Girl Who Leapt Through Time	2006	Adventure,Animation,Comedy
+tt0810788	8.0	83907	tvSeries	Burn Notice	2007	Action,Crime,Drama
+tt0810819	7.1	207804	movie	The Danish Girl	2015	Biography,Drama
+tt0813715	7.5	267330	tvSeries	Heroes	2006	Crime,Drama,Fantasy
+tt0814314	7.6	328851	movie	Seven Pounds	2008	Drama,Mystery,Thriller
+tt0815241	7.6	60882	movie	Religulous	2008	Comedy,Documentary,War
+tt0816442	7.5	148725	movie	The Book Thief	2013	Drama,War
+tt0816692	8.7	2624268	movie	Interstellar	2014	Adventure,Sci-Fi
+tt0817177	7.6	110079	movie	Flipped	2010	Comedy,Drama,Romance
+tt0822854	7.2	380333	movie	Shooter	2007	Action,Drama,Thriller
+tt0824747	7.7	277088	movie	Changeling	2008	Biography,Crime,Drama
+tt0825232	7.3	275931	movie	The Bucket List	2007	Adventure,Comedy,Drama
+tt0829482	7.6	706497	movie	Superbad	2007	Comedy
+tt0832266	7.1	183075	movie	Definitely, Maybe	2008	Comedy,Drama,Romance
+tt0837562	7.1	321405	movie	Hotel Transylvania	2012	Animation,Comedy,Family
+tt0838221	7.2	239274	movie	The Darjeeling Limited	2007	Adventure,Comedy,Drama
+tt0840196	8.2	101996	tvSeries	Skins	2007	Drama
+tt0840361	7.5	456456	movie	The Town	2010	Crime,Drama,Thriller
+tt0844441	7.9	273845	tvSeries	True Blood	2008	Drama,Fantasy,Mystery
+tt0848228	8.0	1589076	movie	The Avengers	2012	Action,Sci-Fi
+tt0851578	7.7	116537	movie	Paprika	2006	Animation,Drama,Fantasy
+tt0851851	7.6	66048	tvSeries	Terminator: The Sarah Connor Chronicles	2008	Action,Drama,Fantasy
+tt0852863	8.1	69900	tvSeries	Phineas and Ferb	2007	Action,Adventure,Animation
+tt0861739	8.0	121699	movie	Elite Squad	2007	Action,Crime,Drama
+tt0863046	8.5	70465	tvSeries	Flight of the Conchords	2007	Comedy,Music,Musical
+tt0866442	8.2	71491	tvSeries	Eastbound & Down	2009	Comedy,Drama,Sport
+tt0870111	7.6	116569	movie	Frost/Nixon	2008	Biography,Drama,History
+tt0871510	8.1	92999	movie	Chak De! India	2007	Drama,Family,Sport
+tt0876563	7.6	190022	movie	Ponyo	2008	Adventure,Animation,Comedy
+tt0877057	8.9	504139	tvSeries	Death Note	2006	Animation,Crime,Drama
+tt0878804	7.6	393892	movie	The Blind Side	2009	Biography,Drama,Sport
+tt0884328	7.1	382374	movie	The Mist	2007	Horror,Sci-Fi,Thriller
+tt0887912	7.5	500923	movie	The Hurt Locker	2008	Drama,Thriller,War
+tt0892769	8.1	912247	movie	How to Train Your Dragon	2010	Action,Adventure,Animation
+tt0898266	8.1	949152	tvSeries	The Big Bang Theory	2007	Comedy,Romance
+tt0898367	7.2	274377	movie	The Road	2009	Drama,Thriller
+tt0903624	7.8	939732	movie	The Hobbit: An Unexpected Journey	2012	Adventure,Fantasy
+tt0903747	9.5	2695283	tvSeries	Breaking Bad	2008	Crime,Drama,Thriller
+tt0904208	8.3	196503	tvSeries	Californication	2007	Comedy,Drama
+tt0907657	7.8	126789	movie	Once	2006	Drama,Music,Musical
+tt0910970	8.4	1346896	movie	WALL·E	2008	Adventure,Animation,Family
+tt0914798	7.7	279196	movie	The Boy in the Striped Pajamas	2008	Drama,War
+tt0918927	7.5	148967	movie	Doubt	2008	Drama,Mystery
+tt0925266	8.4	62713	tvSeries	Pushing Daisies	2007	Comedy,Drama,Fantasy
+tt0926084	7.7	677803	movie	Harry Potter and the Deathly Hallows: Part 1	2010	Adventure,Family,Fantasy
+tt0929632	7.3	122163	movie	Precious	2009	Drama
+tt0934814	8.2	154974	tvSeries	Chuck	2007	Action,Comedy,Drama
+tt0936501	7.7	680152	movie	Taken	2008	Action,Crime,Thriller
+tt0942385	7.1	499552	movie	Tropic Thunder	2008	Action,Comedy,War
+tt0944947	9.2	2676742	tvSeries	Game of Thrones	2011	Drama,Fantasy
+tt0945513	7.5	589907	movie	Source Code	2011	Action,Drama,Mystery
+tt0947798	8.0	900219	movie	Black Swan	2010	Drama,Thriller
+tt0959337	7.3	239129	movie	Revolutionary Road	2008	Drama,Romance
+tt0962736	7.2	69648	movie	The Young Victoria	2009	Biography,Drama,History
+tt0964517	7.8	412134	movie	The Fighter	2010	Action,Biography,Drama
+tt0970179	7.5	352042	movie	Hugo	2011	Adventure,Drama,Family
+tt0976051	7.6	276101	movie	The Reader	2008	Drama,Mystery,Romance
+tt0978762	8.1	203953	movie	Mary and Max	2009	Animation,Comedy,Drama
+tt0979432	8.5	220913	tvSeries	Boardwalk Empire	2010	Crime,Drama
+tt0983193	7.3	258100	movie	The Adventures of Tintin	2011	Action,Adventure,Animation
+tt0983213	7.4	72321	movie	5 Centimeters per Second	2007	Animation,Drama,Family
+tt0985699	7.1	278033	movie	Valkyrie	2008	Drama,History,Thriller
+tt0986233	7.5	77105	movie	Hunger	2008	Biography,Crime,Drama
+tt0986264	8.3	237203	movie	Like Stars on Earth	2007	Drama,Family
+tt0988045	7.5	713131	movie	Sherlock Holmes	2009	Action,Adventure,Mystery
+tt0988824	8.7	233382	tvSeries	Naruto: Shippuden	2007	Action,Adventure,Animation
+tt0993846	8.2	1834013	movie	The Wolf of Wall Street	2013	Biography,Comedy,Crime
+tt0994314	8.7	110715	tvSeries	Code Geass: Lelouch of the Rebellion	2006	Action,Animation,Drama
+tt0995832	8.4	65949	tvMiniSeries	Generation Kill	2008	Drama,War
+tt1001526	7.3	331937	movie	Megamind	2010	Action,Adventure,Animation
+tt10048342	8.5	682580	tvMiniSeries	The Queen's Gambit	2020	Drama
+tt10062292	7.8	98642	tvSeries	Never Have I Ever	2020	Comedy,Drama
+tt10083340	7.8	68104	movie	Gangubai Kathiawadi	2022	Biography,Crime,Drama
+tt1010048	8.0	917317	movie	Slumdog Millionaire	2008	Crime,Drama,Romance
+tt1013753	7.5	187239	movie	Milk	2008	Biography,Drama,History
+tt10155688	8.4	229292	tvMiniSeries	Mare of Easttown	2021	Crime,Drama,Mystery
+tt10160804	7.4	250654	tvMiniSeries	Hawkeye	2021	Action,Adventure,Crime
+tt1016150	7.8	348721	movie	All Quiet on the Western Front	2022	Drama,War
+tt10168312	7.3	163966	tvSeries	What If...?	2021	Action,Adventure,Animation
+tt10189514	8.6	133296	movie	Soorarai Pottru	2020	Drama
+tt1020072	7.5	99911	movie	Selma	2014	Biography,Drama,History
+tt1022603	7.6	629683	movie	500 Days of Summer	2009	Comedy,Drama,Romance
+tt1023114	7.3	128548	movie	The Way Back	2010	Adventure,Drama,History
+tt10233448	8.9	153886	tvSeries	Vinland Saga	2019	Action,Adventure,Animation
+tt10234724	7.3	321935	tvMiniSeries	Moon Knight	2022	Action,Adventure,Fantasy
+tt1024648	7.7	674936	movie	Argo	2012	Biography,Drama,History
+tt10272386	8.2	251226	movie	The Father	2020	Drama,Mystery
+tt1028532	8.1	349776	movie	Hachi: A Dog's Tale	2009	Biography,Drama,Family
+tt10288566	7.7	232074	movie	Another Round	2020	Comedy,Drama
+tt10293938	7.5	116009	tvSeries	Outer Banks	2020	Action,Adventure,Crime
+tt10295212	8.3	137837	movie	Shershaah	2021	Action,Biography,Drama
+tt1032755	7.2	277583	movie	RocknRolla	2008	Action,Crime,Thriller
+tt1032846	7.9	66730	movie	4 Months, 3 Weeks and 2 Days	2007	Drama
+tt1033575	7.3	261220	movie	The Descendants	2011	Comedy,Drama
+tt1034303	7.1	162041	movie	Defiance	2008	Action,Drama,History
+tt10366206	7.6	421721	movie	John Wick: Chapter 4	2023	Action,Crime,Thriller
+tt10366460	8.0	233978	movie	CODA	2021	Comedy,Drama,Music
+tt10370710	7.7	133576	movie	The Worst Person in the World	2021	Comedy,Drama,Romance
+tt1038988	7.4	221458	movie	REC	2007	Horror,Mystery,Thriller
+tt10431500	8.2	64645	movie	Miracle in Cell No. 7	2019	Drama
+tt1043813	7.4	121322	tvSeries	Titans	2018	Action,Adventure,Crime
+tt1045658	7.7	779700	movie	Silver Linings Playbook	2012	Drama,Romance
+tt10466872	7.3	71110	tvSeries	Dune: Prophecy	2024	Action,Adventure,Drama
+tt1049413	8.3	1260773	movie	Up	2009	Adventure,Animation,Comedy
+tt1051220	7.1	66686	tvSeries	The Shannara Chronicles	2016	Adventure,Drama,Fantasy
+tt1051906	7.1	292348	movie	The Invisible Man	2020	Drama,Horror,Mystery
+tt10541088	9.0	91401	tvSeries	Clarkson's Farm	2021	Comedy,Documentary,Reality-TV
+tt10554232	8.0	82497	movie	Dara of Jasenovac	2020	Drama,War
+tt10574558	7.7	176392	tvMiniSeries	Midnight Mass	2021	Drama,Fantasy,Horror
+tt1057500	7.3	175927	movie	Invictus	2009	Biography,Drama,History
+tt10579952	7.4	91975	movie	Master	2021	Action,Crime,Drama
+tt10633456	7.4	127851	movie	Minari	2020	Drama
+tt1063669	7.6	123215	movie	The Wave	2008	Drama,Thriller
+tt10638036	8.5	96058	tvSeries	Heartstopper	2022	Drama,Romance
+tt10638522	7.1	228418	movie	Talk to Me	2022	Horror,Thriller
+tt10640346	7.1	211072	movie	Babylon	2022	Comedy,Drama
+tt1065073	7.9	384459	movie	Boyhood	2014	Comedy,Drama
+tt10698680	8.2	173556	movie	K.G.F: Chapter 2	2022	Action,Crime,Drama
+tt1070874	7.7	207877	movie	The Trial of the Chicago 7	2020	Drama,History,Thriller
+tt1074638	7.8	782446	movie	Skyfall	2012	Action,Adventure,Thriller
+tt1078588	7.3	103698	movie	My Sister's Keeper	2009	Drama,Family
+tt10795658	7.8	153635	tvSeries	Alice in Borderland	2020	Action,Drama,Horror
+tt10811166	8.4	580131	movie	The Kashmir Files	2022	Drama
+tt10813940	7.5	111641	tvSeries	Ginny & Georgia	2021	Comedy,Drama
+tt10834220	7.6	70527	tvSeries	The Chestnut Man	2021	Crime,Drama,Mystery
+tt1083452	7.3	108906	movie	Eddie the Eagle	2015	Adventure,Biography,Comedy
+tt10850932	8.7	61768	tvMiniSeries	Crash Landing on You	2019	Adventure,Comedy,Drama
+tt10855768	7.1	73365	movie	Missing	2023	Drama,Mystery,Thriller
+tt10872600	8.1	1083605	movie	Spider-Man: No Way Home	2021	Action,Adventure,Fantasy
+tt10888878	7.2	68666	tvMiniSeries	Clickbait	2021	Crime,Drama,Mystery
+tt1091191	7.5	327275	movie	Lone Survivor	2013	Action,Biography,Drama
+tt10919420	7.9	780924	tvSeries	Squid Game	2021	Action,Crime,Drama
+tt1093370	7.9	66703	movie	Jab We Met	2007	Comedy,Drama,Romance
+tt10970552	7.4	148596	tvMiniSeries	The Haunting of Bly Manor	2020	Drama,Horror,Mystery
+tt10986410	8.7	476214	tvSeries	Ted Lasso	2020	Comedy,Sport
+tt11016042	8.1	70395	tvMiniSeries	Ripley	2024	Crime,Drama,Thriller
+tt11032374	8.2	103944	movie	Demon Slayer: Kimetsu no Yaiba - The Movie: Mugen Train	2020	Action,Adventure,Animation
+tt11041332	7.7	117948	tvSeries	Yellowjackets	2021	Drama,Horror,Mystery
+tt11083552	7.1	244456	movie	Wrath of Man	2021	Action,Crime,Thriller
+tt1109624	7.3	159714	movie	Paddington	2014	Adventure,Comedy,Family
+tt11126994	9.0	460050	tvSeries	Arcane	2021	Action,Adventure,Animation
+tt1117385	7.4	88634	movie	Felon	2008	Action,Drama,Thriller
+tt1119644	8.4	273289	tvSeries	Fringe	2008	Drama,Mystery,Sci-Fi
+tt1119646	7.7	948359	movie	The Hangover	2009	Comedy
+tt11198330	8.2	575882	tvSeries	House of the Dragon	2022	Action,Adventure,Drama
+tt1120985	7.3	229137	movie	Blue Valentine	2010	Drama,Romance
+tt11233960	7.2	130370	movie	The Unforgivable	2021	Crime,Drama,Mystery
+tt1124035	7.1	241178	movie	The Ides of March	2011	Drama,Thriller
+tt1124373	8.5	361644	tvSeries	Sons of Anarchy	2008	Crime,Drama,Thriller
+tt1125849	7.9	333257	movie	The Wrestler	2008	Drama,Sport
+tt11271038	7.1	164438	movie	Licorice Pizza	2021	Comedy,Drama,Romance
+tt11280740	8.6	412942	tvSeries	Severance	2022	Drama,Mystery,Sci-Fi
+tt11286314	7.1	684195	movie	Don't Look Up	2021	Comedy,Drama,Sci-Fi
+tt1130884	8.2	1692853	movie	Shutter Island	2010	Mystery,Thriller
+tt11311302	7.4	72907	tvSeries	Vikings: Valhalla	2022	Action,Adventure,Drama
+tt1131729	7.3	121527	movie	Pirate Radio	2009	Comedy,Drama,Music
+tt11318602	8.0	71115	tvMiniSeries	Don't F**k with Cats: Hunting an Internet Killer	2019	Crime,Documentary,Mystery
+tt1132290	7.6	61885	tvSeries	Warehouse 13	2009	Adventure,Drama,Mystery
+tt1132620	7.8	232661	movie	The Girl with the Dragon Tattoo	2009	Crime,Drama,Mystery
+tt11337908	8.3	123498	tvMiniSeries	Maid	2021	Drama
+tt1136608	7.9	759297	movie	District 9	2009	Action,Sci-Fi,Thriller
+tt11378946	7.3	194896	movie	Michael	2026	Biography,Drama,History
+tt1139328	7.2	177922	movie	The Ghost Writer	2010	Crime,Drama,Mystery
+tt1139797	7.8	242342	movie	Let the Right One In	2008	Drama,Fantasy,Horror
+tt11464826	7.6	95422	movie	The Social Dilemma	2020	Documentary,Drama
+tt1149362	7.8	82315	movie	The White Ribbon	2009	Drama,Mystery,Thriller
+tt11555492	8.0	91158	movie	Farha	2021	Drama
+tt1155592	7.7	61511	movie	Man on Wire	2008	Biography,Crime,Documentary
+tt11563598	7.3	123355	movie	A Complete Unknown	2024	Biography,Drama,Music
+tt1156398	7.5	676194	movie	Zombieland	2009	Action,Comedy,Horror
+tt11564570	7.1	535896	movie	Glass Onion	2022	Comedy,Crime,Drama
+tt1160419	8.0	1097142	movie	Dune	2021	Action,Adventure,Drama
+tt1164999	7.4	98916	movie	Biutiful	2010	Drama,Romance
+tt11655202	7.5	78336	movie	Riders of Justice	2020	Action,Comedy,Drama
+tt1166100	7.4	73027	movie	Ghajini	2008	Action,Mystery,Thriller
+tt11691774	8.0	208047	tvSeries	Only Murders in the Building	2021	Comedy,Crime,Drama
+tt1170358	7.8	763649	movie	The Hobbit: The Desolation of Smaug	2013	Adventure,Fantasy
+tt11712058	8.1	76343	tvSeries	Mayor of Kingstown	2021	Crime,Drama,Thriller
+tt11737520	8.3	211947	tvSeries	One Piece	2023	Action,Adventure,Comedy
+tt11743610	7.9	131698	tvSeries	The Terminal List	2022	Action,Drama,Thriller
+tt1174732	7.2	141624	movie	An Education	2009	Drama
+tt1178663	7.1	79779	movie	Whatever Works	2009	Comedy,Romance
+tt1179933	7.2	390944	movie	10 Cloverfield Lane	2016	Drama,Horror,Sci-Fi
+tt11813216	7.6	301637	movie	The Banshees of Inisherin	2022	Comedy,Drama
+tt11815682	8.3	71243	tvSeries	Hacks	2021	Comedy,Drama
+tt11823076	7.5	91808	tvSeries	Tiger King	2020	Biography,Crime,Documentary
+tt1182345	7.8	399388	movie	Moon	2009	Drama,Mystery,Sci-Fi
+tt1182937	7.2	60579	movie	Rab Ne Bana Di Jodi	2008	Comedy,Drama,Music
+tt1185616	8.0	63012	movie	Waltz with Bashir	2008	Animation,Biography,Documentary
+tt11866324	7.1	278891	movie	Prey	2022	Action,Adventure,Horror
+tt1186830	7.1	77217	movie	Agora	2009	Adventure,Biography,Drama
+tt1187043	8.4	491554	movie	3 Idiots	2009	Comedy,Drama
+tt1188996	7.9	124641	movie	My Name Is Khan	2010	Drama,Romance
+tt1189073	7.6	182916	movie	The Skin I Live In	2011	Drama,Mystery,Thriller
+tt1189340	7.3	273667	movie	The Lincoln Lawyer	2011	Crime,Drama,Mystery
+tt1190539	7.8	83129	movie	The Chaser	2008	Action,Crime,Drama
+tt1190634	8.5	1032500	tvSeries	The Boys	2019	Action,Comedy,Crime
+tt1191111	7.2	95917	movie	Enter the Void	2009	Drama,Fantasy
+tt11912196	8.4	72315	tvSeries	Asur: Welcome to Your Dark Side	2020	Crime,Drama,Mystery
+tt1192628	7.3	325547	movie	Rango	2011	Action,Adventure,Animation
+tt1193138	7.4	363476	movie	Up in the Air	2009	Comedy,Drama,Romance
+tt1196946	8.2	258532	tvSeries	The Mentalist	2008	Crime,Drama,Mystery
+tt1197624	7.4	350631	movie	Law Abiding Citizen	2009	Action,Crime,Drama
+tt1199099	7.9	94973	tvSeries	Merlin	2008	Adventure,Drama,Fantasy
+tt12004706	9.0	120399	tvSeries	Panchayat	2020	Comedy,Drama
+tt1201607	8.1	1067077	movie	Harry Potter and the Deathly Hallows: Part 2	2011	Adventure,Family,Fantasy
+tt12037194	7.4	329333	movie	Furiosa: A Mad Max Saga	2024	Action,Adventure,Sci-Fi
+tt12042730	8.2	583510	movie	Project Hail Mary	2026	Adventure,Comedy,Sci-Fi
+tt1204342	7.1	101808	movie	The Muppets	2011	Adventure,Comedy,Family
+tt1205489	8.1	872607	movie	Gran Torino	2008	Drama
+tt1210166	7.6	519142	movie	Moneyball	2011	Biography,Drama,Sport
+tt1211837	7.5	902064	movie	Doctor Strange	2016	Action,Adventure,Fantasy
+tt1212450	7.2	264754	movie	Lawless	2012	Biography,Crime,Drama
+tt1213641	7.3	220313	movie	First Man	2018	Biography,Drama,History
+tt1216487	7.1	102966	movie	The Girl Who Played with Fire	2009	Action,Crime,Drama
+tt1216496	7.7	82146	movie	Mother	2009	Crime,Drama,Mystery
+tt1217209	7.1	487266	movie	Brave	2012	Action,Adventure,Animation
+tt1219024	8.1	189329	tvSeries	Castle	2009	Comedy,Crime,Drama
+tt1219289	7.4	656518	movie	Limitless	2011	Sci-Fi,Thriller
+tt1220617	8.4	102315	tvSeries	The Inbetweeners	2008	Comedy
+tt1220719	8.0	245726	movie	Ip Man	2008	Action,Biography,Drama
+tt12262116	7.8	81889	movie	Thirteen Lives	2022	Biography,Drama,Thriller
+tt1226774	7.4	64662	movie	In the Loop	2009	Comedy
+tt1226837	7.4	133786	movie	Beautiful Boy	2018	Biography,Drama
+tt1228987	7.1	134438	movie	Let Me In	2010	Drama,Fantasy,Horror
+tt1229238	7.4	570853	movie	Mission: Impossible - Ghost Protocol	2011	Action,Adventure,Thriller
+tt1229822	7.3	98685	movie	Jane Eyre	2011	Drama,Mystery,Romance
+tt12300742	7.4	231007	movie	Bugonia	2025	Comedy,Crime,Sci-Fi
+tt12327578	8.1	81420	tvSeries	Star Trek: Strange New Worlds	2022	Action,Adventure,Sci-Fi
+tt1232776	7.3	68830	movie	Fish Tank	2009	Drama
+tt1232829	7.2	657798	movie	21 Jump Street	2012	Action,Comedy,Crime
+tt12343534	8.5	224706	tvSeries	Jujutsu Kaisen	2020	Action,Adventure,Animation
+tt1235099	8.0	136641	tvSeries	Lie to Me	2009	Crime,Drama,Mystery
+tt1235166	7.8	108594	movie	A Prophet	2009	Crime,Drama
+tt12361974	7.9	482014	movie	Zack Snyder's Justice League	2021	Adventure,Fantasy,Sci-Fi
+tt12392504	9.2	175746	tvMiniSeries	Scam 1992: The Harshad Mehta Story	2020	Biography,Crime,Drama
+tt12411074	7.9	76207	tvSeries	Paranormal	2020	Drama,Fantasy,Horror
+tt1242422	7.6	74722	movie	Cell 211	2009	Action,Crime,Drama
+tt1242460	7.4	184254	movie	We Need to Talk About Kevin	2011	Drama,Mystery,Thriller
+tt12477480	7.2	71896	movie	Decision to Leave	2022	Crime,Drama,Mystery
+tt1250777	7.6	625827	movie	Kick-Ass	2010	Action,Comedy,Crime
+tt1255953	8.3	261749	movie	Incendies	2010	Drama,Mystery,War
+tt12590266	8.3	138603	tvSeries	Cyberpunk: Edgerunners	2022	Action,Adventure,Animation
+tt12593682	7.3	550694	movie	Bullet Train	2022	Action,Comedy,Thriller
+tt1262426	7.3	259132	movie	Wicked	2024	Fantasy,Musical,Romance
+tt1263670	7.2	99904	movie	Crazy Heart	2009	Drama,Music,Romance
+tt12637874	8.3	406276	tvSeries	Fallout	2024	Action,Adventure,Drama
+tt1266020	8.6	320592	tvSeries	Parks and Recreation	2009	Comedy
+tt1270798	7.7	776174	movie	X-Men: First Class	2011	Action,Sci-Fi
+tt12708542	7.8	69133	tvSeries	Star Wars: The Bad Batch	2021	Action,Adventure,Animation
+tt12758060	7.4	111805	movie	Tetris	2023	Biography,Drama,History
+tt1276104	7.4	634172	movie	Looper	2012	Action,Drama,Sci-Fi
+tt12789558	7.2	139736	movie	Belfast	2021	Biography,Drama
+tt12801262	7.4	229273	movie	Luca	2021	Adventure,Animation,Comedy
+tt1280558	8.1	86837	movie	A Wednesday	2008	Action,Crime,Drama
+tt12809988	7.7	79986	tvSeries	Sweet Tooth	2021	Action,Adventure,Drama
+tt1285016	7.8	833283	movie	The Social Network	2010	Biography,Drama
+tt1285241	7.1	62574	movie	Don 2	2011	Action,Crime,Thriller
+tt12888462	8.1	72984	movie	My Octopus Teacher	2020	Documentary,Drama
+tt1289406	7.2	95444	movie	Harry Brown	2009	Action,Crime,Drama
+tt12908150	7.3	80703	movie	The Life of Chuck	2024	Drama,Fantasy,Sci-Fi
+tt1291584	8.1	534939	movie	Warrior	2011	Action,Drama,Sport
+tt1300854	7.1	988390	movie	Iron Man 3	2013	Action,Adventure
+tt13016388	7.5	186468	tvSeries	3 Body Problem	2024	Adventure,Drama,Fantasy
+tt1302006	7.8	481692	movie	The Irishman	2019	Biography,Crime,Drama
+tt1302011	7.3	365358	movie	Kung Fu Panda 2	2011	Action,Adventure,Animation
+tt1305806	8.2	246323	movie	The Secret in Their Eyes	2009	Drama,Mystery,Romance
+tt1305826	8.7	137275	tvSeries	Adventure Time	2010	Action,Adventure,Animation
+tt1306980	7.6	357437	movie	50/50	2011	Comedy,Drama,Romance
+tt13111078	7.8	106582	tvSeries	Lioness	2023	Action,Thriller
+tt1312171	7.8	319152	tvSeries	The Umbrella Academy	2019	Action,Adventure,Comedy
+tt1312221	7.4	343015	movie	Frankenstein	2025	Drama,Fantasy,Horror
+tt1313092	7.2	63987	movie	Animal Kingdom	2010	Crime,Drama,Thriller
+tt13146488	8.2	201403	tvSeries	Peacemaker	2022	Action,Adventure,Comedy
+tt1315981	7.5	122911	movie	A Single Man	2009	Drama,Romance,Thriller
+tt13159924	7.6	157946	tvSeries	Gen V	2023	Action,Adventure,Comedy
+tt1318514	7.6	611414	movie	Rise of the Planet of the Apes	2011	Action,Drama,Sci-Fi
+tt13207736	7.7	237128	tvSeries	Monster	2022	Biography,Crime,Drama
+tt13210838	8.1	211914	tvSeries	The Gentlemen	2024	Crime,Drama
+tt1322269	7.2	100696	movie	August: Osage County	2013	Comedy,Drama
+tt1323594	7.6	642540	movie	Despicable Me	2010	Adventure,Animation,Comedy
+tt13238346	7.8	179347	movie	Past Lives	2023	Drama,Romance
+tt1327773	7.2	124606	movie	The Butler	2013	Biography,Drama
+tt13293588	8.2	66800	tvSeries	Mushoku Tensei: Jobless Reincarnation	2021	Action,Adventure,Animation
+tt13309742	8.7	108182	tvSeries	Blue Eye Samurai	2023	Action,Adventure,Animation
+tt1334260	7.1	161657	movie	Never Let Me Go	2010	Drama,Romance,Sci-Fi
+tt13365348	7.3	69456	tvSeries	Archive 81	2022	Drama,Horror,Mystery
+tt13406094	8.0	337230	tvSeries	The White Lotus	2021	Comedy,Drama,Mystery
+tt1341167	7.2	92283	movie	Four Lions	2010	Comedy,Crime,Drama
+tt1343092	7.2	651697	movie	The Great Gatsby	2013	Drama,Romance
+tt1343097	7.3	78408	movie	The Girl Who Kicked the Hornet's Nest	2009	Crime,Drama,Mystery
+tt1343727	7.1	315614	movie	Dredd	2012	Action,Crime,Sci-Fi
+tt1344204	8.3	65081	tvSeries	Blue Mountain State	2010	Comedy,Sport
+tt13443470	8.0	512755	tvSeries	Wednesday	2022	Comedy,Crime,Fantasy
+tt1345836	8.4	2034457	movie	The Dark Knight Rises	2012	Crime,Thriller
+tt1355642	9.1	260477	tvSeries	Fullmetal Alchemist: Brotherhood	2009	Action,Adventure,Animation
+tt1358522	8.2	155352	tvSeries	White Collar	2009	Comedy,Crime,Drama
+tt1360860	7.9	61789	movie	About Elly	2009	Drama,Mystery
+tt13616990	8.3	113735	tvSeries	Chainsaw Man	2022	Action,Animation,Fantasy
+tt13622776	7.4	145773	tvSeries	Ahsoka	2023	Action,Adventure,Fantasy
+tt13623632	7.1	111159	tvSeries	Alien: Earth	2025	Drama,Horror,Sci-Fi
+tt13649112	7.7	198052	tvMiniSeries	Baby Reindeer	2024	Biography,Comedy,Drama
+tt1365050	7.7	92512	movie	Beasts of No Nation	2015	Drama,War
+tt13664684	7.8	65395	movie	Karthikeya 2	2022	Action,Adventure,Fantasy
+tt13668894	7.1	214122	tvMiniSeries	The Book of Boba Fett	2021	Action,Adventure,Sci-Fi
+tt13706018	8.2	65949	tvSeries	Spy x Family	2022	Action,Animation,Comedy
+tt1371111	7.3	389019	movie	Cloud Atlas	2012	Drama,Mystery,Sci-Fi
+tt1375666	8.8	2882270	movie	Inception	2010	Adventure,Sci-Fi,Thriller
+tt1379182	7.1	125521	movie	Dogtooth	2009	Drama,Thriller
+tt13833688	7.6	311957	movie	The Whale	2022	Drama
+tt13833978	7.8	101751	tvSeries	The Lincoln Lawyer	2022	Crime,Drama,Mystery
+tt1386932	7.5	118094	movie	Ip Man 2	2010	Action,Biography,Drama
+tt13918776	7.4	166040	tvSeries	The Night Agent	2023	Action,Drama,Thriller
+tt1392170	7.2	1099100	movie	The Hunger Games	2012	Action,Adventure,Sci-Fi
+tt1392190	8.1	1225074	movie	Mad Max: Fury Road	2015	Action,Adventure,Sci-Fi
+tt1392214	8.2	964702	movie	Prisoners	2013	Crime,Drama,Mystery
+tt1396484	7.3	713648	movie	It	2017	Horror
+tt1398426	7.8	236825	movie	Straight Outta Compton	2015	Biography,Drama,History
+tt13991232	8.6	172830	tvMiniSeries	1883	2021	Drama,Western
+tt1399664	8.0	143726	tvSeries	The Night Manager	2016	Crime,Drama,Mystery
+tt1399683	7.1	159417	movie	Winter's Bone	2010	Crime,Drama,Mystery
+tt14016500	7.2	79101	tvSeries	The Summer I Turned Pretty	2022	Drama,Romance
+tt1403865	7.6	380154	movie	True Grit	2010	Drama,Western
+tt14039582	7.5	78466	movie	Drive My Car	2021	Drama
+tt1403981	7.1	167032	movie	Remember Me	2010	Drama,Romance
+tt1405406	7.7	390816	tvSeries	The Vampire Diaries	2009	Drama,Fantasy,Horror
+tt1408101	7.7	513324	movie	Star Trek Into Darkness	2013	Action,Adventure,Sci-Fi
+tt14107554	7.3	62867	movie	Dasvi	2022	Comedy,Drama
+tt14114802	7.2	88645	movie	The Outfit	2022	Crime,Drama,Mystery
+tt1412386	7.2	104672	movie	The Best Exotic Marigold Hotel	2011	Comedy,Drama,Romance
+tt14142060	7.5	68525	movie	Rental Family	2025	Comedy,Drama
+tt14164730	8.0	163829	tvMiniSeries	Dexter: New Blood	2021	Crime,Drama,Mystery
+tt14169960	7.6	95884	tvSeries	All of Us Are Dead	2022	Action,Drama,Fantasy
+tt14173636	7.4	88334	movie	The Invite	2026	Comedy,Drama
+tt14186672	8.2	118864	tvSeries	Landman	2024	Crime,Drama,Western
+tt14205554	7.4	144886	movie	KPop Demon Hunters	2025	Action,Adventure,Animation
+tt14208870	7.5	137629	movie	The Fabelmans	2022	Biography,Drama
+tt14230458	7.7	426193	movie	Poor Things	2023	Comedy,Drama,Romance
+tt1424432	8.4	84540	movie	Senna	2010	Biography,Documentary,Sport
+tt14269590	7.7	69788	tvSeries	Poker Face	2023	Comedy,Crime,Drama
+tt1430607	7.1	74356	movie	Arthur Christmas	2011	Adventure,Animation,Comedy
+tt1431045	8.0	1276537	movie	Deadpool	2016	Action,Comedy,Sci-Fi
+tt14331144	7.8	67979	movie	Jujutsu Kaisen 0	2021	Action,Animation,Fantasy
+tt1433811	7.5	80895	movie	Disconnect	2012	Crime,Drama,Mystery
+tt1436045	7.5	72433	movie	13 Assassins	2010	Action,Adventure,Drama
+tt14364480	7.3	263525	movie	Wake Up Dead Man	2025	Comedy,Crime,Drama
+tt14392248	9.1	320213	tvSeries	Aspirants	2021	Drama
+tt1439629	8.5	315659	tvSeries	Community	2009	Comedy
+tt1440292	7.3	101951	movie	Submarine	2010	Comedy,Drama,Romance
+tt14403178	8.0	181758	tvSeries	Beef	2023	Comedy,Drama
+tt1441135	7.6	63657	tvSeries	Flashforward	2009	Drama,Mystery,Sci-Fi
+tt1442437	8.5	549960	tvSeries	Modern Family	2009	Comedy,Drama,Romance
+tt1442449	8.4	298753	tvSeries	Spartacus	2010	Action,Adventure,Biography
+tt1442462	8.3	90369	tvSeries	The Good Wife	2009	Crime,Drama,Mystery
+tt1442464	7.7	63750	tvSeries	The Middle	2009	Comedy,Family
+tt14444726	7.4	111462	movie	Tár	2022	Drama,Music
+tt14452776	8.5	328900	tvSeries	The Bear	2022	Comedy,Drama
+tt1446192	7.2	212310	movie	Rise of the Guardians	2012	Action,Adventure,Animation
+tt1453405	7.2	432701	movie	Monsters University	2013	Adventure,Animation,Comedy
+tt1454029	8.1	534380	movie	The Help	2011	Drama
+tt1454468	7.7	908388	movie	Gravity	2013	Drama,Sci-Fi,Thriller
+tt1457767	7.5	636069	movie	The Conjuring	2013	Horror,Mystery,Thriller
+tt1458175	7.3	217227	movie	The Next Three Days	2010	Action,Crime,Drama
+tt1462059	7.1	99990	tvSeries	Falling Skies	2011	Action,Adventure,Drama
+tt14650074	8.8	127129	tvSeries	Dhindora	2021	Comedy,Drama
+tt1465522	7.5	212081	movie	Tucker and Dale vs Evil	2010	Comedy,Horror
+tt14661396	7.6	80462	tvMiniSeries	Queen Charlotte: A Bridgerton Story	2023	Drama,History,Romance
+tt14688458	8.1	251264	tvSeries	Silo	2023	Adventure,Drama,Mystery
+tt1474684	8.4	165639	tvSeries	Luther	2010	Crime,Drama,Mystery
+tt1475582	9.0	1103697	tvSeries	Sherlock	2010	Crime,Drama,Mystery
+tt14849194	7.9	275412	movie	The Holdovers	2023	Comedy,Drama
+tt1485796	7.5	355017	movie	The Greatest Showman	2017	Biography,Drama,Musical
+tt1486217	8.6	177251	tvSeries	Archer	2009	Action,Animation,Comedy
+tt1488589	7.6	167687	movie	Guillermo del Toro's Pinocchio	2022	Adventure,Animation,Drama
+tt1489428	8.6	133179	tvSeries	Justified	2010	Action,Crime,Drama
+tt1489887	7.1	142386	movie	Booksmart	2019	Comedy
+tt1490017	7.7	422614	movie	The Lego Movie	2014	Action,Adventure,Animation
+tt14905854	7.8	139840	movie	Hamnet	2025	Biography,Drama,History
+tt1492966	8.5	85826	tvSeries	Louie	2010	Comedy,Drama
+tt14961016	8.1	172579	movie	I'm Still Here	2024	Biography,Drama,History
+tt14986406	9.0	116835	tvSeries	Bleach: Thousand-Year Blood War	2022	Action,Adventure,Animation
+tt14992922	7.1	78633	movie	The Tinder Swindler	2022	Crime,Documentary
+tt1504320	8.0	738129	movie	The King's Speech	2010	Biography,Drama,History
+tt15097216	8.6	237047	movie	Jai Bhim	2021	Crime,Drama
+tt1515091	7.4	506539	movie	Sherlock Holmes: A Game of Shadows	2011	Action,Adventure,Mystery
+tt1517451	7.6	454089	movie	A Star Is Born	2018	Drama,Music,Romance
+tt1520211	8.1	1219802	tvSeries	The Walking Dead	2010	Drama,Horror,Thriller
+tt15239678	8.4	800918	movie	Dune: Part Two	2024	Action,Adventure,Drama
+tt1527186	7.1	210553	movie	Melancholia	2011	Drama,Sci-Fi
+tt1527788	7.7	81839	movie	The Man from Nowhere	2010	Action,Crime,Drama
+tt1527793	7.5	77806	movie	No Other Choice	2025	Comedy,Crime,Drama
+tt15318872	7.1	82114	tvMovie	Werewolf by Night	2022	Action,Drama,Fantasy
+tt1532503	7.2	98070	movie	Beginners	2010	Comedy,Drama,Romance
+tt15327088	8.1	119014	movie	Kantara	2022	Action,Adventure,Drama
+tt1535109	7.8	524066	movie	Captain Phillips	2013	Action,Biography,Crime
+tt15398776	8.2	1107348	movie	Oppenheimer	2023	Biography,Drama,History
+tt1540133	7.3	102724	movie	The Guard	2011	Comedy,Crime,Thriller
+tt1542344	7.5	429143	movie	127 Hours	2010	Biography,Drama
+tt15435876	8.6	252533	tvMiniSeries	The Penguin	2024	Crime,Drama
+tt1548850	8.1	113791	tvSeries	Misfits	2009	Comedy,Drama,Fantasy
+tt1555149	8.0	93492	movie	Elite Squad 2: The Enemy Within	2010	Crime,Drama,Thriller
+tt15567174	7.9	139406	tvMiniSeries	The Fall of the House of Usher	2023	Drama,Horror,Mystery
+tt15571732	7.2	94308	tvMiniSeries	Agatha All Along	2024	Action,Adventure,Comedy
+tt1560747	7.1	204143	movie	The Master	2012	Drama
+tt1561755	8.2	104155	tvSeries	Bob's Burgers	2011	Animation,Comedy
+tt1562872	8.2	97977	movie	Zindagi Na Milegi Dobara	2011	Adventure,Comedy,Drama
+tt15654328	7.2	75393	movie	Leo	2023	Action,Crime,Drama
+tt1567432	7.7	182493	tvSeries	Teen Wolf	2011	Action,Drama,Fantasy
+tt15677150	8.2	132989	tvSeries	Shrinking	2023	Comedy,Drama
+tt1568346	7.8	535416	movie	The Girl with the Dragon Tattoo	2011	Crime,Drama,Mystery
+tt1568911	7.2	175056	movie	War Horse	2011	Adventure,Drama,History
+tt1568921	7.6	119705	movie	The Secret World of Arrietty	2010	Adventure,Animation,Drama
+tt1570728	7.4	632072	movie	Crazy, Stupid, Love.	2011	Comedy,Drama,Romance
+tt1578873	7.3	190810	tvSeries	Pretty Little Liars	2010	Drama,Mystery,Romance
+tt1586680	8.5	340657	tvSeries	Shameless	2011	Comedy,Drama
+tt1587707	7.9	70747	movie	Exit Through the Gift Shop	2010	Comedy,Crime,Documentary
+tt1588170	7.8	169698	movie	I Saw the Devil	2010	Action,Thriller
+tt1596343	7.3	439902	movie	Fast Five	2011	Action,Crime,Thriller
+tt1596363	7.8	550111	movie	The Big Short	2015	Biography,Comedy,Drama
+tt1600194	7.4	84471	tvSeries	Hawaii Five-0	2010	Action,Adventure,Comedy
+tt1602620	7.9	111559	movie	Amour	2012	Drama
+tt16026746	8.7	60798	tvSeries	X-Men '97	2024	Action,Adventure,Animation
+tt16030542	7.4	65584	tvSeries	The Recruit	2022	Action,Adventure,Crime
+tt1605783	7.6	475055	movie	Midnight in Paris	2011	Comedy,Fantasy,Romance
+tt1606375	8.7	250067	tvSeries	Downton Abbey	2010	Drama,Romance
+tt1614989	7.5	112629	movie	Headhunters	2011	Action,Crime,Thriller
+tt1615147	7.1	166057	movie	Margin Call	2011	Drama,Thriller
+tt16277242	7.8	179010	movie	Society of the Snow	2023	Adventure,Biography,Drama
+tt1628033	8.7	138555	tvSeries	Top Gear	2002	Adventure,Comedy,Sport
+tt16283804	8.0	68085	tvMiniSeries	One Day	2024	Comedy,Drama,Romance
+tt1630029	7.5	650527	movie	Avatar: The Way of Water	2022	Action,Adventure,Fantasy
+tt16311594	7.6	398232	movie	F1: The Movie	2025	Drama,Sport
+tt1631867	7.9	819296	movie	Edge of Tomorrow	2014	Action,Adventure,Sci-Fi
+tt1632701	8.4	551930	tvSeries	Suits	2011	Comedy,Drama
+tt16358384	7.9	122655	tvSeries	Tulsa King	2022	Action,Crime,Drama
+tt1637727	8.3	136186	tvSeries	The Killing	2011	Crime,Drama,Mystery
+tt1638002	7.1	171167	movie	Love, Rosie	2014	Comedy,Romance
+tt1638355	7.2	361858	movie	The Man from U.N.C.L.E.	2015	Action,Adventure,Comedy
+tt16419074	7.4	200015	movie	Air	2023	Drama,Sport
+tt16428256	7.6	66804	movie	Suzume	2022	Adventure,Animation,Drama
+tt1645089	8.2	83050	movie	Inside Job	2010	Crime,Documentary
+tt1646971	7.8	408626	movie	How to Train Your Dragon 2	2014	Action,Adventure,Animation
+tt1649419	7.5	268670	movie	The Impossible	2012	Drama,History,Thriller
+tt1655441	7.2	232961	movie	The Age of Adaline	2015	Drama,Fantasy,Romance
+tt1655442	7.8	256773	movie	The Artist	2011	Comedy,Drama,Romance
+tt1659337	7.9	608642	movie	The Perks of Being a Wallflower	2012	Drama
+tt1663202	8.0	966053	movie	The Revenant	2015	Action,Drama,Western
+tt1670345	7.2	780801	movie	Now You See Me	2013	Crime,Mystery,Thriller
+tt1675192	7.3	118044	movie	Take Shelter	2011	Drama,Thriller
+tt1675434	8.5	1046434	movie	The Intouchables	2011	Comedy,Drama
+tt1677720	7.4	553719	movie	Ready Player One	2018	Action,Adventure,Sci-Fi
+tt1683526	7.7	114586	movie	Detachment	2011	Drama
+tt1690953	7.3	466809	movie	Despicable Me 2	2013	Adventure,Animation,Comedy
+tt1692486	7.1	139658	movie	Carnage	2011	Comedy,Drama
+tt1695360	8.3	155721	tvSeries	The Legend of Korra	2012	Action,Adventure,Animation
+tt1699748	8.3	60545	tvSeries	Hell on Wheels	2011	Drama,Western
+tt17009710	7.6	239384	movie	Anatomy of a Fall	2023	Crime,Drama,Mystery
+tt17041964	7.8	69827	movie	Navalny	2022	Biography,Documentary
+tt1706620	7.1	426841	movie	Snowpiercer	2013	Action,Drama,Sci-Fi
+tt1707386	7.5	365757	movie	Les Misérables	2012	Drama,Musical,Romance
+tt1710308	8.6	77357	tvSeries	Regular Show	2010	Action,Adventure,Animation
+tt1714915	7.2	117076	movie	Only Lovers Left Alive	2013	Comedy,Drama,Fantasy
+tt1723811	7.2	219269	movie	Shame	2011	Drama
+tt1723816	7.4	84517	tvSeries	Girls	2012	Comedy,Drama
+tt1727388	7.4	165281	movie	The Way Way Back	2013	Comedy,Drama
+tt1727824	7.9	656505	movie	Bohemian Rhapsody	2018	Biography,Drama,Music
+tt1733785	8.6	85866	tvSeries	The Bridge	2011	Crime,Mystery,Thriller
+tt1740299	7.9	127061	tvSeries	The Man in the High Castle	2015	Drama,Sci-Fi,Thriller
+tt1745960	8.2	910437	movie	Top Gun: Maverick	2022	Action,Drama
+tt1748122	7.7	385692	movie	Moonrise Kingdom	2012	Adventure,Comedy,Drama
+tt17491088	8.1	104909	tvSeries	The Diplomat	2023	Drama,Thriller
+tt1751634	7.6	212953	tvSeries	The Sandman	2022	Drama,Fantasy,Horror
+tt17526714	7.2	470996	movie	The Substance	2024	Drama,Horror,Sci-Fi
+tt1753383	7.3	88351	movie	A Dog's Purpose	2017	Adventure,Comedy,Drama
+tt1754656	7.6	72603	movie	The Little Prince	2015	Adventure,Animation,Comedy
+tt1757678	7.2	215937	movie	Avatar: Fire and Ash	2025	Action,Adventure,Drama
+tt1759761	8.4	73163	tvSeries	Veep	2012	Comedy
+tt17677860	7.7	99772	tvSeries	Presumed Innocent	2024	Crime,Drama,Mystery
+tt1772341	7.7	507287	movie	Wreck-It Ralph	2012	Adventure,Animation,Comedy
+tt1790885	7.4	345694	movie	Zero Dark Thirty	2012	Drama,History,Thriller
+tt1796960	8.3	389605	tvSeries	Homeland	2011	Crime,Drama,Mystery
+tt1798188	7.4	60726	movie	From Up on Poppy Hill	2011	Animation,Comedy,Drama
+tt1798684	7.3	283372	movie	Southpaw	2015	Action,Drama,Sport
+tt1798709	7.9	736350	movie	Her	2013	Drama,Romance,Sci-Fi
+tt1800241	7.2	522686	movie	American Hustle	2013	Crime,Drama
+tt1809398	7.2	200905	movie	Unbroken	2014	Biography,Drama,Sport
+tt1817273	7.3	313851	movie	The Place Beyond the Pines	2012	Crime,Drama,Thriller
+tt1821480	8.1	70718	movie	Kahaani	2012	Mystery,Thriller
+tt1821549	7.7	129730	movie	Nebraska	2013	Drama
+tt1825683	7.3	930725	movie	Black Panther	2018	Action,Adventure,Sci-Fi
+tt1826940	7.8	266926	tvSeries	New Girl	2011	Comedy,Romance
+tt1830617	7.9	142828	tvSeries	Grimm	2011	Action,Adventure,Crime
+tt1831164	9.0	104106	tvSeries	Leyla and Mecnun	2011	Adventure,Comedy,Drama
+tt1832382	8.3	281283	movie	A Separation	2011	Drama
+tt1832979	7.7	60513	tvSeries	Hart of Dixie	2011	Comedy,Drama,Romance
+tt18335752	8.3	108120	tvSeries	1923	2022	Drama,Western
+tt18347622	7.3	70334	tvMiniSeries	Bodies	2023	Crime,Drama,Mystery
+tt1837492	7.4	344298	tvSeries	13 Reasons Why	2017	Drama,Mystery,Thriller
+tt1837576	7.7	85335	tvSeries	Scandal	2012	Drama,Thriller
+tt1837642	7.8	130496	tvSeries	Revenge	2011	Drama,Mystery,Thriller
+tt1839492	7.2	110075	movie	Ruby Sparks	2012	Comedy,Drama,Fantasy
+tt1839578	8.5	217965	tvSeries	Person of Interest	2011	Action,Crime,Drama
+tt18412256	7.1	297005	movie	Alien: Romulus	2024	Horror,Sci-Fi,Thriller
+tt1843230	7.6	249883	tvSeries	Once Upon a Time	2011	Adventure,Fantasy,Romance
+tt1843866	7.7	994165	movie	Captain America: The Winter Soldier	2014	Action,Adventure,Sci-Fi
+tt1844624	7.9	367870	tvSeries	American Horror Story	2011	Drama,Horror,Sci-Fi
+tt1853728	8.5	1922074	movie	Django Unchained	2012	Drama,Western
+tt1855199	7.6	297465	movie	End of Watch	2012	Action,Crime,Drama
+tt1856010	8.6	564688	tvSeries	House of Cards	2013	Drama,Thriller
+tt1856101	8.0	773276	movie	Blade Runner 2049	2017	Action,Drama,Mystery
+tt1860357	7.1	202787	movie	Deepwater Horizon	2016	Action,Drama,History
+tt1865505	8.0	69209	movie	Song of the Sea	2014	Adventure,Animation,Drama
+tt1865718	8.9	186649	tvSeries	Gravity Falls	2012	Adventure,Animation,Comedy
+tt1869454	8.0	128022	tvSeries	Good Omens	2019	Comedy,Drama,Fantasy
+tt1870479	8.6	136998	tvSeries	The Newsroom	2012	Drama
+tt1872194	7.4	223567	movie	The Judge	2014	Crime,Drama,Mystery
+tt1877830	7.8	954471	movie	The Batman	2022	Action,Crime,Mystery
+tt1877832	7.9	800370	movie	X-Men: Days of Future Past	2014	Action,Adventure,Sci-Fi
+tt1878870	7.3	153728	movie	The Edge of Seventeen	2016	Comedy,Drama,Romance
+tt18923754	8.1	118467	tvSeries	Daredevil: Born Again	2025	Action,Crime,Drama
+tt1895587	8.1	542590	movie	Spotlight	2015	Biography,Crime,Drama
+tt1898069	7.6	99352	tvSeries	American Gods	2017	Drama,Fantasy,Mystery
+tt1899353	7.6	233889	movie	The Raid: Redemption	2011	Action,Crime,Thriller
+tt1907668	7.3	402165	movie	Flight	2012	Drama,Thriller
+tt1910272	8.8	97766	tvSeries	Steins; Gate	2011	Animation,Comedy,Drama
+tt1912398	7.1	74900	movie	God Bless America	2011	Comedy,Crime,Drama
+tt19231492	7.6	84508	tvSeries	Dark Matter	2024	Drama,Sci-Fi,Thriller
+tt1924396	7.7	139056	movie	The Best Offer	2013	Crime,Drama,Mystery
+tt19244304	7.9	122224	tvSeries	It: Welcome to Derry	2025	Fantasy,Horror
+tt1931533	7.1	291477	movie	Seven Psychopaths	2012	Comedy,Crime,Drama
+tt1935179	7.3	202209	movie	Mud	2012	Adventure,Drama
+tt1937149	7.6	81073	movie	The Body	2012	Crime,Drama,Mystery
+tt19500164	7.5	63900	movie	Nimona	2023	Action,Adventure,Animation
+tt1950186	8.1	590380	movie	Ford v Ferrari	2019	Action,Biography,Drama
+tt1951264	7.5	785884	movie	The Hunger Games: Catching Fire	2013	Action,Adventure,Romance
+tt1954347	7.6	67216	tvSeries	Continuum	2012	Action,Sci-Fi,Thriller
+tt1954470	8.2	116039	movie	Gangs of Wasseypur	2012	Action,Comedy,Crime
+tt19770238	7.6	134461	movie	Aftersun	2022	Drama
+tt1979320	8.1	568759	movie	Rush	2013	Biography,Drama,Sport
+tt1979376	7.6	332377	movie	Toy Story 4	2019	Adventure,Animation,Comedy
+tt1980929	7.4	178781	movie	Begin Again	2013	Comedy,Drama,Music
+tt1981677	7.1	354763	movie	Pitch Perfect	2012	Comedy,Music,Romance
+tt19854762	7.3	95571	tvSeries	Hijack	2023	Drama,Thriller
+tt1987680	7.1	71234	movie	The Upside	2017	Comedy,Drama
+tt2005151	7.1	310857	movie	War Dogs	2016	Biography,Comedy,Crime
+tt2013293	7.8	115817	movie	The Wind Rises	2013	Animation,Biography,Drama
+tt2015381	8.0	1389903	movie	Guardians of the Galaxy	2014	Action,Adventure,Comedy
+tt2017109	8.4	152944	tvSeries	Banshee	2013	Action,Crime,Drama
+tt20215234	7.4	289992	movie	Conclave	2024	Drama,Thriller
+tt2024544	8.1	796973	movie	12 Years a Slave	2013	Biography,Drama,History
+tt2042568	7.4	173669	movie	Inside Llewyn Davis	2013	Drama,Music
+tt2053425	7.4	73408	movie	Rust and Bone	2012	Drama,Romance
+tt2057392	7.3	96985	movie	Eye in the Sky	2015	Drama,Thriller,War
+tt2066051	7.3	212781	movie	Rocketman	2019	Biography,Drama,Music
+tt2071645	7.4	97536	tvSeries	The Following	2013	Crime,Drama,Horror
+tt2080374	7.2	188893	movie	Steve Jobs	2015	Biography,Drama
+tt2082197	8.1	95236	movie	Barfi!	2012	Comedy,Drama,Romance
+tt2084970	8.0	887632	movie	The Imitation Game	2014	Biography,Drama,Thriller
+tt20850406	8.5	86305	movie	Sita Ramam	2022	Action,Drama,Musical
+tt2085059	8.7	752505	tvSeries	Black Mirror	2011	Crime,Drama,Mystery
+tt2094262	7.9	81791	tvSeries	Da Vinci's Demons	2013	Adventure,Biography,Drama
+tt2096673	8.1	936739	movie	Inside Out	2015	Adventure,Animation,Comedy
+tt20969586	7.1	310155	movie	Thunderbolts*	2025	Action,Adventure,Crime
+tt2098220	9.0	207552	tvSeries	Hunter X Hunter	2011	Action,Adventure,Animation
+tt2103281	7.6	516393	movie	Dawn of the Planet of the Apes	2014	Action,Adventure,Drama
+tt21064584	7.5	122989	movie	The Iron Claw	2023	Biography,Drama,Sport
+tt2106476	8.3	421112	movie	The Hunt	2012	Drama
+tt21192142	7.6	81680	movie	All of Us Strangers	2023	Drama,Romance
+tt2119532	8.1	700652	movie	Hacksaw Ridge	2016	Biography,Drama,History
+tt21209876	8.5	123352	tvSeries	Solo Leveling	2024	Action,Adventure,Animation
+tt2121382	7.2	73795	movie	Force Majeure	2014	Comedy,Drama
+tt2125435	7.2	87157	movie	Beasts of the Southern Wild	2012	Adventure,Drama,Fantasy
+tt2125608	8.2	77073	movie	Searching for Sugar Man	2012	Biography,Documentary,Music
+tt2140373	7.5	176963	movie	Saving Mr. Banks	2013	Biography,Comedy,Drama
+tt2140479	7.3	405043	movie	The Accountant	2016	Action,Crime,Drama
+tt2149175	8.4	127491	tvSeries	The Americans	2013	Crime,Drama,Mystery
+tt21626284	8.3	62626	movie	Lost Ladies	2023	Comedy,Drama
+tt2170593	7.2	114733	movie	St. Vincent	2014	Comedy,Drama
+tt2177461	7.7	76239	tvSeries	A Discovery of Witches	2018	Drama,Fantasy,Romance
+tt2179116	7.1	88234	movie	The Kings of Summer	2013	Adventure,Comedy,Drama
+tt2179136	7.3	578005	movie	American Sniper	2014	Action,Biography,Drama
+tt21867434	7.3	73699	movie	BlackBerry	2023	Biography,Comedy,Drama
+tt2188671	8.1	127616	tvSeries	Bates Motel	2013	Drama,Horror,Mystery
+tt2189461	7.9	85081	tvSeries	Marco Polo	2014	Action,Adventure,Drama
+tt2191671	7.9	128257	tvSeries	Elementary	2012	Action,Adventure,Crime
+tt2193021	7.5	463965	tvSeries	Arrow	2012	Action,Adventure,Crime
+tt2194499	7.8	444908	movie	About Time	2013	Comedy,Drama,Fantasy
+tt22022452	7.5	262566	movie	Inside Out 2	2024	Adventure,Animation,Comedy
+tt2205697	7.2	96353	movie	Stuck in Love.	2012	Comedy,Drama,Romance
+tt22084616	7.9	361853	movie	Spider-Man: Brand New Day	2026	Action,Adventure
+tt2209418	7.9	188956	movie	Before Midnight	2013	Drama,Romance
+tt22202452	7.9	181265	tvSeries	Pluribus	2025	Drama,Sci-Fi
+tt22248376	8.9	86406	tvSeries	Frieren: Beyond Journey's End	2023	Adventure,Animation,Comedy
+tt2234003	7.4	68863	movie	Calvary	2014	Crime,Drama,Mystery
+tt2234222	8.3	126314	tvSeries	Orphan Black	2013	Drama,Sci-Fi,Thriller
+tt2235759	8.1	66727	tvSeries	The Great	2020	Biography,Comedy,Drama
+tt2243973	8.5	315625	tvSeries	Hannibal	2013	Crime,Drama,Horror
+tt2245084	7.8	563930	movie	Big Hero 6	2014	Action,Adventure,Animation
+tt2249007	8.3	100612	tvSeries	Ray Donovan	2013	Crime,Drama
+tt2249364	8.3	145074	tvSeries	Broadchurch	2013	Crime,Drama,Mystery
+tt2250192	7.5	65458	tvSeries	Sword Art Online	2012	Action,Adventure,Animation
+tt2250912	7.4	843992	movie	Spider-Man: Homecoming	2017	Action,Adventure,Sci-Fi
+tt2261227	7.9	204897	tvSeries	Altered Carbon	2018	Action,Adventure,Drama
+tt2261391	8.0	72899	tvSeries	Chicago Fire	2012	Action,Drama
+tt2262227	7.2	86039	movie	The Book of Life	2014	Adventure,Animation,Comedy
+tt2265171	7.9	141008	movie	The Raid 2	2014	Action,Crime,Thriller
+tt2267968	7.1	224681	movie	Kung Fu Panda 3	2016	Action,Adventure,Animation
+tt2267998	8.1	1192837	movie	Gone Girl	2014	Drama,Mystery,Thriller
+tt2277860	7.2	341411	movie	Finding Dory	2016	Adventure,Animation,Comedy
+tt2278388	8.1	990148	movie	The Grand Budapest Hotel	2014	Comedy,Drama
+tt2278871	7.6	175118	movie	Blue Is the Warmest Colour	2013	Drama,Romance
+tt2283748	8.1	72318	movie	OMG: Oh My God!	2012	Comedy,Drama,Fantasy
+tt2294189	8.1	134304	tvSeries	The Fall	2013	Crime,Drama,Thriller
+tt2294629	7.4	723437	movie	Frozen	2013	Adventure,Animation,Comedy
+tt2303687	8.7	82942	tvSeries	Line of Duty	2012	Crime,Drama,Mystery
+tt2304589	7.7	81837	tvMiniSeries	Defending Jacob	2020	Crime,Drama,Mystery
+tt2305051	7.1	147772	movie	Wild	2014	Adventure,Biography,Drama
+tt2306299	8.5	652285	tvSeries	Vikings	2013	Action,Adventure,Drama
+tt2310332	7.4	627498	movie	The Hobbit: The Battle of the Five Armies	2014	Adventure,Fantasy
+tt23289160	7.6	233315	movie	Godzilla Minus One	2023	Action,Adventure,Drama
+tt2334649	7.5	93369	movie	Fruitvale Station	2013	Biography,Crime,Drama
+tt2334873	7.3	221359	movie	Blue Jasmine	2013	Comedy,Drama,Romance
+tt2338151	8.1	227060	movie	PK	2014	Comedy,Drama,Musical
+tt2347569	7.4	103759	movie	Frances Ha	2012	Comedy,Drama,Romance
+tt2350496	7.8	70372	movie	The Lunchbox	2013	Drama,Romance
+tt23561236	7.5	157797	movie	American Fiction	2023	Comedy,Drama
+tt2356180	8.2	80294	movie	Bhaag Milkha Bhaag	2013	Biography,Drama,Sport
+tt2356777	8.8	776456	tvSeries	True Detective	2014	Crime,Drama,Mystery
+tt2357547	7.8	242851	tvSeries	Jessica Jones	2015	Action,Crime,Drama
+tt2358891	7.7	107520	movie	The Great Beauty	2013	Drama
+tt2359024	7.1	88096	movie	Blue Ruin	2013	Crime,Drama,Thriller
+tt2359704	8.6	62717	tvSeries	JoJo's Bizarre Adventure	2012	Action,Adventure,Animation
+tt2361509	7.1	316333	movie	The Intern	2015	Comedy,Drama
+tt2364582	7.5	237710	tvSeries	Agents of S.H.I.E.L.D.	2013	Action,Adventure,Sci-Fi
+tt23649128	8.0	71250	tvSeries	The Studio	2025	Comedy,Drama
+tt2370248	7.9	96334	movie	Short Term 12	2013	Drama
+tt2372162	8.0	339251	tvSeries	Orange Is the New Black	2013	Comedy,Crime,Drama
+tt2375692	8.2	127684	tvSeries	Black Sails	2014	Action,Adventure,Drama
+tt2377938	8.0	63157	movie	Special 26	2013	Crime,Drama,History
+tt2380307	8.4	731679	movie	Coco	2017	Adventure,Animation,Drama
+tt2381111	7.5	159988	movie	Brooklyn	2015	Drama,Romance
+tt2381249	7.4	451230	movie	Mission: Impossible - Rogue Nation	2015	Action,Adventure,Thriller
+tt2382320	7.3	496391	movie	No Time to Die	2021	Action,Adventure,Thriller
+tt23849204	8.7	178962	movie	12th Fail	2023	Biography,Drama
+tt2386490	7.4	184264	movie	How to Train Your Dragon: The Hidden World	2019	Action,Adventure,Animation
+tt2395427	7.3	1027519	movie	Avengers: Age of Ultron	2015	Action,Adventure,Sci-Fi
+tt2395695	9.2	141421	tvMiniSeries	Cosmos: A Spacetime Odyssey	2014	Documentary,Family
+tt2397535	7.4	342436	movie	Predestination	2014	Action,Drama,Sci-Fi
+tt2401256	8.4	201829	tvMiniSeries	The Night Of	2016	Crime,Drama,Mystery
+tt2401878	7.2	79300	movie	Anomalisa	2015	Animation,Comedy,Drama
+tt2402207	7.4	71261	tvSeries	The Last Ship	2014	Action,Drama,Sci-Fi
+tt2402927	7.3	155421	movie	Carol	2015	Drama,Romance
+tt2403776	7.5	126503	tvSeries	Shadow and Bone	2021	Action,Adventure,Drama
+tt2404425	7.3	66597	movie	Woman in Gold	2015	Biography,Drama,History
+tt24053860	8.1	139004	tvSeries	The Day of the Jackal	2024	Action,Crime,Drama
+tt24069848	8.0	88282	tvMiniSeries	American Primeval	2025	Action,Drama,Thriller
+tt24082438	8.6	65970	movie	20 Days in Mariupol	2023	Documentary,War
+tt2431286	7.6	107929	movie	Philomena	2013	Biography,Comedy,Drama
+tt2431438	8.2	173241	tvSeries	Sense8	2015	Drama,Mystery,Sci-Fi
+tt2442560	8.7	797028	tvSeries	Peaky Blinders	2013	Crime,Drama
+tt2452386	7.3	88649	movie	The Fundamentals of Caring	2016	Comedy,Drama
+tt2467372	8.4	425910	tvSeries	Brooklyn Nine-Nine	2013	Comedy,Crime
+tt2488496	7.7	1037688	movie	Star Wars: Episode VII - The Force Awakens	2015	Action,Adventure,Sci-Fi
+tt2494362	7.1	143204	movie	Bone Tomahawk	2015	Drama,Horror,Western
+tt2531336	7.5	162767	tvSeries	Lupin	2021	Action,Crime,Drama
+tt2543164	7.9	884046	movie	Arrival	2016	Drama,Mystery,Sci-Fi
+tt2543472	7.9	200174	movie	Wonder	2017	Drama,Family
+tt2545118	8.1	77206	movie	Blackfish	2013	Documentary,Drama,Thriller
+tt2547584	7.2	63755	movie	The Light Between Oceans	2016	Drama,Romance
+tt2560140	9.1	755135	tvSeries	Attack on Titan	2013	Action,Adventure,Animation
+tt2562232	7.7	705388	movie	Birdman or (The Unexpected Virtue of Ignorance)	2014	Comedy,Drama
+tt2575988	8.5	185009	tvSeries	Silicon Valley	2014	Comedy
+tt2576852	8.0	63461	movie	The Tale of The Princess Kaguya	2013	Animation,Drama,Family
+tt2582496	7.7	145596	movie	Me and Earl and the Dying Girl	2015	Comedy,Drama
+tt2582782	7.6	282950	movie	Hell or High Water	2016	Crime,Drama,Thriller
+tt2582802	8.5	1188853	movie	Whiplash	2014	Drama,Music
+tt2582846	7.6	429101	movie	The Fault in Our Stars	2014	Drama,Romance
+tt2584384	7.9	496342	movie	Jojo Rabbit	2019	Comedy,Drama,War
+tt2591814	7.4	61829	movie	The Garden of Words	2013	Animation,Drama,Romance
+tt2614684	7.2	65467	movie	'71	2014	Action,Crime,Drama
+tt2618986	7.3	66001	tvSeries	Wayward Pines	2015	Drama,Horror,Mystery
+tt2628232	8.2	141254	tvSeries	Penny Dreadful	2014	Drama,Fantasy,Horror
+tt2631186	8.0	157406	movie	Baahubali: The Beginning	2015	Action,Drama
+tt2632424	8.2	163463	tvSeries	The Originals	2013	Drama,Fantasy,Horror
+tt2640044	7.8	72795	tvMiniSeries	Masters of the Air	2024	Action,Drama,History
+tt26443597	7.3	157900	movie	Zootopia 2	2025	Adventure,Animation,Comedy
+tt26443616	7.2	88959	movie	Hoppers	2026	Adventure,Animation,Comedy
+tt2647544	7.3	67390	tvSeries	Sleepy Hollow	2013	Action,Adventure,Crime
+tt2649356	8.0	142663	tvMiniSeries	Sharp Objects	2018	Crime,Drama,Mystery
+tt26545992	7.8	82285	tvSeries	Lanterns	2026	Action,Crime,Drama
+tt2654620	7.3	94633	tvSeries	The Strain	2014	Drama,Fantasy,Horror
+tt26548265	8.3	86674	movie	Maharaja	2024	Action,Crime,Drama
+tt26581740	7.4	414685	movie	Weapons	2025	Horror,Mystery
+tt2661044	7.5	309116	tvSeries	The 100	2014	Action,Drama,Mystery
+tt2671706	7.2	126802	movie	Fences	2016	Drama
+tt26743210	7.7	143113	movie	How to Train Your Dragon	2025	Action,Adventure,Comedy
+tt2674426	7.4	345771	movie	Me Before You	2016	Drama,Romance
+tt2692904	7.1	171204	movie	Locke	2013	Drama
+tt26933824	7.7	85851	tvSeries	Nobody Wants This	2024	Comedy,Drama,Romance
+tt2699128	8.3	135403	tvSeries	The Leftovers	2014	Drama,Fantasy,Mystery
+tt2707408	8.7	538539	tvSeries	Narcos	2015	Biography,Crime,Drama
+tt2708480	7.8	64130	tvSeries	The Terror	2018	Adventure,Drama,Horror
+tt2713180	7.6	621775	movie	Fury	2014	Action,Drama,War
+tt2718492	7.4	63737	movie	Ida	2013	Drama
+tt2719848	7.1	250217	movie	Everest	2015	Adventure,Biography,Drama
+tt2741602	7.9	305137	tvSeries	The Blacklist	2013	Crime,Drama,Mystery
+tt27444205	7.9	92598	tvSeries	Paradise	2025	Action,Drama,Mystery
+tt27497448	8.6	291213	tvSeries	A Knight of the Seven Kingdoms	2026	Adventure,Drama,Fantasy
+tt27503384	7.9	113805	movie	Perfect Days	2023	Drama
+tt2763304	7.1	143323	movie	T2 Trainspotting	2017	Comedy,Crime,Drama
+tt2771200	7.1	363852	movie	Beauty and the Beast	2017	Adventure,Family,Fantasy
+tt27714581	7.7	92226	movie	Sentimental Value	2025	Drama
+tt27719898	7.7	69667	movie	Kaiva	2023	Action,Drama,Romance
+tt27847051	7.2	64521	movie	The Secret Agent	2025	Crime,Drama,Mystery
+tt2788316	8.6	254435	tvSeries	Shōgun	2024	Action,Adventure,Drama
+tt2788432	8.4	103363	tvSeries	American Crime Story	2016	Biography,Crime,Drama
+tt27995113	7.2	76851	tvSeries	Black Doves	2024	Action,Drama,Mystery
+tt27995114	8.1	120472	tvSeries	Dept. Q	2025	Crime,Drama,Mystery
+tt28013708	7.9	82263	tvSeries	Task	2025	Crime,Drama,Thriller
+tt2802144	7.7	786412	movie	Kingsman: The Secret Service	2014	Action,Adventure,Comedy
+tt2802154	7.6	60802	movie	Leviathan	2014	Crime,Drama
+tt2802850	8.8	477312	tvSeries	Fargo	2014	Crime,Drama,Thriller
+tt28089784	8.8	106939	movie	Punjab '95	2026	Biography,Crime,Drama
+tt2820852	7.1	446246	movie	Furious 7	2015	Action,Adventure,Thriller
+tt28227737	9.0	77483	tvSeries	Sandeep Bhaiya	2023	Drama
+tt28607951	7.4	312085	movie	Anora	2024	Comedy,Drama,Romance
+tt2861424	9.0	716807	tvSeries	Rick and Morty	2013	Adventure,Animation,Comedy
+tt2866360	7.1	180492	movie	Coherence	2013	Mystery,Sci-Fi,Thriller
+tt2872718	7.8	685238	movie	Nightcrawler	2014	Crime,Drama,Thriller
+tt2879552	8.0	126740	tvMiniSeries	11.22.63	2016	Drama,Mystery,Romance
+tt2883512	7.3	254797	movie	Chef	2014	Adventure,Comedy,Drama
+tt2884206	7.3	142930	movie	I Origins	2014	Drama,Mystery,Romance
+tt2891574	7.6	78896	tvSeries	Ballers	2015	Comedy,Drama,Sport
+tt2906216	7.2	279604	movie	Dungeons & Dragons: Honor Among Thieves	2023	Action,Adventure,Comedy
+tt2911666	7.5	843898	movie	John Wick	2014	Action,Crime,Thriller
+tt2930604	8.1	72101	tvSeries	Star Wars: Rebels	2014	Action,Adventure,Animation
+tt2934286	7.3	111924	tvSeries	Halo	2022	Action,Adventure,Sci-Fi
+tt29355505	7.3	102500	movie	Toy Story 5	2026	Adventure,Animation,Comedy
+tt2948356	8.0	652165	movie	Zootopia	2016	Action,Adventure,Animation
+tt2948372	8.0	460147	movie	Soul	2020	Adventure,Animation,Comedy
+tt2953050	7.2	302907	movie	Encanto	2021	Animation,Comedy,Family
+tt29567915	7.3	122529	movie	Nuremberg	2025	Biography,Drama,History
+tt29623480	8.1	240743	movie	The Wild Robot	2024	Adventure,Animation,Family
+tt29768334	7.5	117892	movie	Train Dreams	2025	Drama
+tt2980516	7.7	511665	movie	The Theory of Everything	2014	Biography,Drama,Romance
+tt2980648	7.3	92192	movie	The Hundred-Foot Journey	2014	Comedy,Drama
+tt3006802	8.3	205566	tvSeries	Outlander	2014	Adventure,Drama,Fantasy
+tt3007572	7.3	109946	tvSeries	Locke & Key	2020	Drama,Fantasy,Horror
+tt3011894	8.1	242554	movie	Wild Tales	2014	Comedy,Drama,Thriller
+tt30144839	7.6	453290	movie	One Battle After Another	2025	Crime,Thriller
+tt30263074	9.2	88229	tvSeries	Sapne Vs Everyone	2023	Drama
+tt3032476	9.0	872696	tvSeries	Better Call Saul	2015	Crime,Drama
+tt3040964	7.3	308657	movie	The Jungle Book	2016	Action,Adventure,Animation
+tt3042408	7.4	67791	movie	Who Am I	2014	Crime,Drama,Mystery
+tt30459041	7.6	69020	tvSeries	Your Friends & Neighbors	2025	Crime,Drama
+tt30460310	7.6	76167	tvSeries	Spider-Noir	2026	Action,Adventure,Crime
+tt30472557	8.3	71511	movie	Chainsaw Man - The Movie: Reze Arc	2025	Action,Adventure,Animation
+tt3065204	7.3	351190	movie	The Conjuring 2	2016	Horror,Mystery,Thriller
+tt3076658	7.6	341354	movie	Creed	2015	Action,Drama,Sport
+tt3107288	7.4	389591	tvSeries	The Flash	2014	Action,Adventure,Drama
+tt31193180	7.5	535290	movie	Sinners	2025	Horror
+tt31227572	7.2	172315	movie	Predator: Badlands	2025	Action,Adventure,Sci-Fi
+tt31434639	7.1	118234	movie	Warfare	2025	Action,Drama,War
+tt31510819	8.3	135647	tvSeries	MobLand	2025	Crime,Drama
+tt31514146	8.3	70757	movie	I Swear	2025	Biography,Drama
+tt3169706	7.8	65952	movie	Pride	2014	Biography,Comedy,Drama
+tt3170832	8.1	486204	movie	Room	2015	Drama,Thriller
+tt31710822	7.1	75225	tvSeries	Untamed	2025	Crime,Drama,Mystery
+tt31806037	8.1	319647	tvMiniSeries	Adolescence	2025	Crime,Drama,Thriller
+tt3183660	7.2	547078	movie	Fantastic Beasts and Where to Find Them	2016	Adventure,Family,Fantasy
+tt31938062	8.9	177259	tvSeries	The Pitt	2025	Drama
+tt31974367	7.4	84127	tvSeries	The Beast in Me	2025	Crime,Drama,Mystery
+tt3203606	7.4	88180	movie	Trumbo	2015	Biography,Drama
+tt3205802	8.1	180830	tvSeries	How to Get Away with Murder	2014	Crime,Drama,Mystery
+tt32141377	7.2	132644	movie	28 Years Later: The Bone Temple	2026	Horror,Sci-Fi,Thriller
+tt3224458	7.2	96269	movie	A Beautiful Day in the Neighborhood	2019	Biography,Drama,Family
+tt32246771	7.1	144213	movie	Bring Her Back	2025	Horror,Mystery
+tt32252772	8.1	72290	tvSeries	Dexter: Original Sin	2024	Crime,Drama,Mystery
+tt3228774	7.3	302896	movie	Cruella	2021	Adventure,Comedy,Crime
+tt3230454	7.4	69374	tvSeries	The Last Man on Earth	2015	Action,Comedy,Drama
+tt3230854	8.5	195831	tvSeries	The Expanse	2015	Drama,Mystery,Sci-Fi
+tt32565993	7.4	122807	movie	The Sheep Detectives	2026	Comedy,Family,Mystery
+tt3262342	7.8	69151	movie	Loving Vincent	2017	Animation,Drama,Mystery
+tt3263904	7.4	327627	movie	Sully	2016	Biography,Drama,History
+tt3281548	7.7	290083	movie	Little Women	2019	Drama,Romance
+tt3281796	8.1	60130	tvSeries	Power	2014	Crime,Drama
+tt32820897	8.3	88488	movie	Demon Slayer: Kimetsu No Yaiba Infinity Castle	2025	Action,Adventure,Animation
+tt32916440	7.5	226091	movie	Marty Supreme	2025	Comedy,Drama,Sport
+tt33014583	8.2	152404	movie	Dhurandhar	2025	Action,Crime,Thriller
+tt33035373	7.1	96209	tvMiniSeries	His & Hers	2026	Crime,Drama,Mystery
+tt33043892	9.0	160705	tvSeries	Dexter: Resurrection	2025	Crime,Drama,Mystery
+tt33071426	7.1	138483	movie	The Drama	2026	Comedy,Drama,Romance
+tt3312830	7.3	89747	movie	Youth	2015	Comedy,Drama,Music
+tt3315342	8.1	944682	movie	Logan	2017	Action,Drama,Sci-Fi
+tt3316960	7.5	152117	movie	Still Alice	2014	Drama
+tt3322312	8.6	544623	tvSeries	Daredevil	2015	Action,Crime,Drama
+tt3322314	7.2	150925	tvSeries	Luke Cage	2016	Action,Crime,Drama
+tt3322364	7.1	106004	movie	Concussion	2015	Biography,Drama,Sport
+tt3322420	8.1	71948	movie	Queen	2013	Adventure,Comedy,Drama
+tt33332385	8.1	98385	tvSeries	Widow's Bay	2026	Comedy,Horror,Mystery
+tt3339966	7.5	84233	tvSeries	Unbreakable Kimmy Schmidt	2015	Comedy
+tt3358020	8.2	65867	tvSeries	Parasyte: The Maxim	2014	Action,Animation,Drama
+tt33764258	8.4	534907	movie	The Odyssey	2026	Action,Adventure,Fantasy
+tt3390572	8.0	61820	movie	Haider	2014	Action,Crime,Drama
+tt3397884	7.7	553136	movie	Sicario	2015	Action,Crime,Drama
+tt3398228	8.8	240508	tvSeries	BoJack Horseman	2014	Animation,Comedy,Drama
+tt3416532	7.4	100202	movie	A Monster Calls	2016	Adventure,Drama,Family
+tt3416742	7.6	216511	movie	What We Do in the Shadows	2014	Comedy,Horror,Thriller
+tt3428912	8.5	75387	tvSeries	Happy Valley	2014	Crime,Drama,Thriller
+tt3450958	7.4	331239	movie	War for the Planet of the Apes	2017	Action,Adventure,Drama
+tt3460252	7.8	733714	movie	The Hateful Eight	2015	Crime,Drama,Mystery
+tt3464902	7.1	339322	movie	The Lobster	2015	Drama,Romance,Sci-Fi
+tt3470600	7.1	217962	movie	Sing	2016	Animation,Comedy,Family
+tt3475734	7.8	97046	tvSeries	Agent Carter	2015	Action,Adventure,Crime
+tt34771210	7.1	68822	tvMiniSeries	I Will Find You	2026	Crime,Drama,Mystery
+tt3487382	8.2	67052	tvSeries	Forever	2014	Crime,Drama,Fantasy
+tt3488710	7.3	142617	movie	The Walk	2015	Adventure,Biography,Drama
+tt3498820	7.8	954490	movie	Captain America: Civil War	2016	Action,Sci-Fi
+tt3501584	7.8	79975	tvSeries	iZombie	2015	Comedy,Crime,Drama
+tt3501632	7.9	917875	movie	Thor: Ragnarok	2017	Action,Adventure,Comedy
+tt3502248	8.5	99674	tvSeries	Bosch	2014	Crime,Drama
+tt3513548	7.5	109177	movie	Richard Jewell	2019	Biography,Crime,Drama
+tt3514324	7.1	64653	tvSeries	Scorpion	2014	Action,Crime,Drama
+tt3520702	7.8	64495	tvSeries	Bloodline	2015	Drama,Mystery,Thriller
+tt3521126	7.3	173499	movie	The Disaster Artist	2017	Biography,Comedy,Drama
+tt3521164	7.6	452172	movie	Moana	2016	Adventure,Animation,Comedy
+tt3526078	8.5	178152	tvSeries	Schitt's Creek	2015	Comedy
+tt3530232	8.8	106195	tvSeries	Last Week Tonight with John Oliver	2014	Comedy,News,Talk-Show
+tt3532216	7.2	238246	movie	American Made	2017	Action,Comedy,Crime
+tt3544112	7.9	109396	movie	Sing Street	2016	Comedy,Drama,Music
+tt35495073	8.7	115834	tvSeries	Heated Rivalry	2025	Drama,Romance,Sport
+tt35538033	7.6	112521	movie	Resident Evil	2026	Horror
+tt3553976	7.8	254111	movie	Captain Fantastic	2016	Adventure,Comedy,Drama
+tt3566726	7.8	65323	tvSeries	Jane the Virgin	2014	Comedy,Drama
+tt3581652	7.1	145386	movie	West Side Story	2021	Crime,Drama,Musical
+tt3581920	8.4	754460	tvSeries	The Last of Us	2023	Action,Adventure,Drama
+tt3606756	7.5	379408	movie	Incredibles 2	2018	Action,Adventure,Animation
+tt3609352	8.2	62832	tvSeries	Grace and Frankie	2015	Comedy,Drama
+tt3612616	8.0	66329	movie	Mommy	2014	Drama
+tt3640424	7.1	182083	movie	Allied	2016	Action,Drama,Romance
+tt36463894	7.4	63815	movie	Predator: Killer of Killers	2025	Action,Adventure,Animation
+tt3647998	8.3	165580	tvSeries	Taboo	2017	Drama,Mystery,Thriller
+tt3659388	8.0	1034379	movie	The Martian	2015	Adventure,Drama,Sci-Fi
+tt3661210	7.1	90975	movie	The Dig	2021	Biography,Drama,History
+tt3682448	7.6	348044	movie	Bridge of Spies	2015	Drama,History,Thriller
+tt3704428	7.3	265650	movie	Elvis	2022	Biography,Drama,Music
+tt3716530	7.1	75150	movie	Elle	2016	Action,Crime,Drama
+tt3718778	8.7	93633	tvMiniSeries	Over the Garden Wall	2014	Adventure,Animation,Comedy
+tt37287335	7.8	407950	movie	Obsession	2025	Fantasy,Horror,Thriller
+tt3741634	7.7	86333	tvMiniSeries	Tokyo Ghoul	2014	Action,Animation,Drama
+tt3741834	8.0	269864	movie	Lion	2016	Biography,Drama
+tt3748528	7.8	768072	movie	Rogue One: A Star Wars Story	2016	Action,Adventure,Sci-Fi
+tt3749900	7.8	253820	tvSeries	Gotham	2014	Action,Crime,Drama
+tt3774114	7.3	175118	movie	Snowden	2016	Biography,Crime,Drama
+tt3783958	8.0	782526	movie	La La Land	2016	Comedy,Drama,Music
+tt3799694	7.4	426964	movie	The Nice Guys	2016	Action,Comedy,Crime
+tt3829920	7.6	94445	movie	Only the Brave	2017	Action,Biography,Drama
+tt3848892	7.9	63785	movie	Baby	2015	Action,Thriller
+tt3850214	7.2	92415	movie	Dope	2015	Adventure,Comedy,Crime
+tt3863552	8.1	114317	movie	Bajrangi Bhaijaan	2015	Adventure,Comedy,Drama
+tt3890160	7.5	698048	movie	Baby Driver	2017	Action,Crime,Drama
+tt3892172	7.1	71130	movie	Leave No Trace	2018	Adventure,Drama
+tt3896198	7.6	850974	movie	Guardians of the Galaxy: Vol. 2	2017	Action,Adventure,Comedy
+tt39139925	8.2	73983	movie	Dhurandhar: The Revenge	2026	Action,Crime,Thriller
+tt3915174	7.9	233232	movie	Puss in Boots: The Last Wish	2022	Action,Adventure,Animation
+tt3920596	8.4	249225	tvSeries	Big Little Lies	2017	Crime,Drama,Mystery
+tt3967856	7.3	143719	movie	Okja	2017	Action,Adventure,Drama
+tt4016934	8.1	209587	movie	The Handmaiden	2016	Drama,Romance,Thriller
+tt4034228	7.8	365161	movie	Manchester by the Sea	2016	Drama
+tt4044364	8.0	60469	movie	Citizenfour	2014	Biography,Documentary
+tt4047038	8.1	63755	tvSeries	Dirk Gently's Holistic Detective Agency	2016	Action,Adventure,Comedy
+tt4052886	8.0	399328	tvSeries	Lucifer	2016	Crime,Drama,Fantasy
+tt4080728	7.7	75961	movie	A Man Called Ove	2015	Comedy,Drama,Romance
+tt4093826	8.5	92388	tvSeries	Twin Peaks	2017	Crime,Drama,Horror
+tt4116284	7.3	198618	movie	The Lego Batman Movie	2017	Action,Adventure,Animation
+tt4154756	8.4	1419286	movie	Avengers: Infinity War	2018	Action,Adventure,Sci-Fi
+tt4154796	8.4	1502184	movie	Avengers: Endgame	2019	Action,Adventure,Sci-Fi
+tt4158110	8.5	476656	tvSeries	Mr. Robot	2015	Crime,Drama,Thriller
+tt4160708	7.1	336737	movie	Don't Breathe	2016	Crime,Horror,Thriller
+tt4169250	8.0	77738	movie	M.S. Dhoni: The Untold Story	2016	Biography,Drama,Sport
+tt4172430	7.3	183170	movie	13 Hours	2016	Action,Drama,History
+tt4179452	8.5	193941	tvSeries	The Last Kingdom	2015	Action,Drama,History
+tt4189022	8.4	87057	tvSeries	Ash vs Evil Dead	2015	Action,Comedy,Horror
+tt4190530	7.2	61047	movie	Anthropoid	2016	Action,Drama,History
+tt4209788	7.4	206787	movie	Molly's Game	2017	Biography,Crime,Drama
+tt4226388	7.5	68165	movie	Victoria	2015	Crime,Drama,Romance
+tt4230076	7.2	130220	tvMiniSeries	The Defenders	2017	Action,Adventure,Crime
+tt4236770	8.6	324268	tvSeries	Yellowstone	2018	Drama,Western
+tt4244994	7.3	211586	movie	The Last Duel	2021	Drama,History,Thriller
+tt4254242	7.6	60977	tvSeries	The Magicians	2015	Drama,Fantasy,Mystery
+tt4270492	8.3	119598	tvSeries	Billions	2016	Drama
+tt4276820	7.2	210498	movie	The Founder	2016	Biography,Drama
+tt4288182	8.6	100567	tvSeries	Atlanta	2016	Comedy,Drama,Music
+tt4301160	8.1	149640	tvMiniSeries	Black Bird	2022	Biography,Crime,Drama
+tt4302938	7.7	149037	movie	Kubo and the Two Strings	2016	Action,Adventure,Animation
+tt4364194	7.6	122015	movie	The Peanut Butter Falcon	2019	Adventure,Comedy,Drama
+tt4387040	7.9	61922	movie	Airlift	2016	Drama,History
+tt4422836	7.6	75588	tvSeries	Limitless	2015	Comedy,Crime,Drama
+tt4425200	7.4	581039	movie	John Wick: Chapter 2	2017	Action,Crime,Thriller
+tt4430212	8.2	112189	movie	Drishyam	2015	Crime,Drama,Mystery
+tt4468740	7.8	117014	movie	Paddington 2	2017	Adventure,Comedy,Family
+tt4474344	7.3	86705	tvSeries	Blindspot	2015	Action,Crime,Drama
+tt4477976	7.8	87254	tvSeries	Superstore	2015	Comedy
+tt4481414	7.6	162771	movie	Gifted	2017	Drama
+tt4495098	7.1	139972	movie	Gran Turismo	2023	Action,Adventure,Drama
+tt4508902	8.6	231854	tvSeries	One Punch Man	2015	Action,Animation,Comedy
+tt4540710	7.5	90172	movie	Miss Sloane	2016	Drama
+tt4550098	7.4	346774	movie	Nocturnal Animals	2016	Drama,Thriller
+tt4555426	7.4	246672	movie	Darkest Hour	2017	Biography,Drama,History
+tt4572514	7.3	123785	movie	Patriots Day	2016	Action,Crime,Drama
+tt4574334	8.6	1749171	tvSeries	Stranger Things	2016	Drama,Fantasy,Horror
+tt4575576	7.2	92069	movie	Christopher Robin	2018	Adventure,Comedy,Drama
+tt4604612	7.7	65325	tvSeries	The Alienist	2018	Crime,Drama,Mystery
+tt4633690	7.3	116151	movie	Shot Caller	2017	Crime,Drama,Thriller
+tt4633694	8.4	821747	movie	Spider-Man: Into the Spider-Verse	2018	Action,Adventure,Animation
+tt4635276	8.2	79248	tvSeries	Master of None	2015	Comedy,Drama
+tt4635282	7.8	129521	tvSeries	The OA	2016	Drama,Fantasy,Mystery
+tt4686844	7.3	128955	movie	The Death of Stalin	2017	Comedy,Drama,History
+tt4687880	8.1	65052	tvSeries	Goliath	2016	Drama
+tt4698684	7.8	156874	movie	Hunt for the Wilderpeople	2016	Adventure,Comedy,Drama
+tt4729430	8.2	244003	movie	Klaus	2019	Adventure,Animation,Comedy
+tt4742876	9.0	80333	tvSeries	TVF Pitchers	2015	Comedy,Drama
+tt4761112	7.5	73168	movie	The Mauritanian	2021	Biography,Drama,Thriller
+tt4772188	7.8	154811	movie	Flow	2024	Adventure,Animation,Family
+tt4786824	8.6	285889	tvSeries	The Crown	2016	Biography,Drama,History
+tt4832640	7.1	60494	movie	Sultan	2016	Action,Drama,Romance
+tt4834206	7.7	73807	tvSeries	A Series of Unfortunate Events	2017	Adventure,Comedy,Drama
+tt4846232	7.3	160388	movie	Good Time	2017	Crime,Drama,Thriller
+tt4846340	7.8	295341	movie	Hidden Figures	2016	Biography,Drama,History
+tt4849438	8.2	137386	movie	Baahubali 2: The Conclusion	2017	Action,Drama
+tt4857264	8.0	218504	movie	The Invisible Guest	2016	Crime,Drama,Mystery
+tt4873118	7.5	218633	movie	The Covenant	2023	Action,Drama,Thriller
+tt4901306	7.7	78553	movie	Perfect Strangers	2016	Comedy,Drama,Thriller
+tt4912910	7.7	426253	movie	Mission: Impossible - Fallout	2018	Action,Adventure,Thriller
+tt4916630	7.6	86232	movie	Just Mercy	2019	Biography,Crime,Drama
+tt4925292	7.4	370457	movie	Lady Bird	2017	Comedy,Drama
+tt4955642	8.2	226592	tvSeries	The Good Place	2016	Comedy,Drama,Fantasy
+tt4972582	7.3	633950	movie	Split	2016	Horror,Thriller
+tt4975722	7.4	357080	movie	Moonlight	2016	Drama
+tt4995790	7.1	83815	movie	The Square	2017	Comedy,Drama
+tt5013056	7.8	830841	movie	Dunkirk	2017	Action,Drama,History
+tt5016504	7.9	87820	tvSeries	Preacher	2016	Adventure,Comedy,Fantasy
+tt5027774	8.1	618485	movie	Three Billboards Outside Ebbing, Missouri	2017	Comedy,Crime,Drama
+tt5040012	7.1	280540	movie	Nosferatu	2024	Fantasy,Horror,Mystery
+tt5052448	7.8	842992	movie	Get Out	2017	Horror,Mystery,Thriller
+tt5052474	7.1	196470	movie	Sicario: Day of the Soldado	2018	Action,Crime,Drama
+tt5057054	8.0	197796	tvSeries	Jack Ryan	2018	Action,Crime,Drama
+tt5071412	8.4	401554	tvSeries	Ozark	2017	Crime,Drama,Thriller
+tt5074352	8.3	249421	movie	Dangal	2016	Action,Biography,Drama
+tt5083738	7.5	262118	movie	The Favourite	2018	Biography,Comedy,Drama
+tt5093026	7.2	97719	movie	Papillon	2017	Adventure,Biography,Crime
+tt5104604	7.8	215483	movie	Isle of Dogs	2018	Adventure,Animation,Comedy
+tt5109280	7.3	190767	movie	Raya and the Last Dragon	2021	Action,Adventure,Animation
+tt5114356	8.1	105036	tvSeries	Legion	2017	Action,Sci-Fi,Thriller
+tt5116302	7.9	63422	movie	Togo	2019	Adventure,Biography,Drama
+tt5164432	7.5	136430	movie	Love, Simon	2018	Comedy,Drama,Romance
+tt5168192	7.8	69001	movie	I, Daniel Blake	2016	Drama
+tt5180504	7.8	626788	tvSeries	The Witcher	2019	Action,Adventure,Drama
+tt5186714	7.7	69599	movie	The Salesman	2016	Drama,Thriller
+tt5189670	8.5	109331	tvSeries	Making a Murderer	2015	Crime,Documentary
+tt5215952	7.4	103595	movie	The Wailing	2016	Drama,Horror
+tt5232792	7.3	115035	tvSeries	Lost in Space	2018	Adventure,Drama,Family
+tt5247022	7.3	96839	movie	Paterson	2016	Comedy,Drama,Romance
+tt5249462	8.4	77804	tvMiniSeries	Erased	2016	Animation,Crime,Drama
+tt5290382	8.6	408507	tvSeries	Mindhunter	2017	Crime,Drama,Mystery
+tt5296406	7.4	117151	tvSeries	Designated Survivor	2016	Action,Drama,Mystery
+tt5311514	8.4	408357	movie	Your Name.	2016	Animation,Drama,Fantasy
+tt5323662	8.2	152111	movie	A Silent Voice: The Movie	2016	Animation,Drama
+tt5348176	8.3	146700	tvSeries	Barry	2018	Action,Comedy,Crime
+tt5362988	7.7	322037	movie	Wind River	2017	Crime,Drama,Mystery
+tt5363618	7.7	189920	movie	Sound of Metal	2019	Drama,Music
+tt5363918	7.2	81571	tvSeries	Disenchantment	2018	Action,Adventure,Animation
+tt5421602	8.6	84002	tvSeries	Anne with an E	2017	Drama,Family
+tt5431890	7.3	61814	movie	Official Secrets	2019	Biography,Crime,Drama
+tt5461944	7.6	80815	movie	Hotel Mumbai	2018	Action,Drama,History
+tt5462602	7.5	151984	movie	The Big Sick	2017	Comedy,Drama,Romance
+tt5463162	7.6	761358	movie	Deadpool 2	2018	Action,Adventure,Comedy
+tt5478478	7.2	109552	movie	Hostiles	2017	Drama,Western
+tt5491994	9.4	177717	tvMiniSeries	Planet Earth II	2016	Documentary,Family
+tt5516154	8.2	92987	tvMiniSeries	Godless	2017	Action,Drama,Western
+tt5537002	7.5	315450	movie	Killers of the Flower Moon	2023	Crime,Drama,History
+tt5555260	8.7	177288	tvSeries	This Is Us	2016	Comedy,Drama,Romance
+tt5574490	8.2	60651	tvSeries	Animal Kingdom	2016	Crime,Drama
+tt5580036	7.5	264577	movie	I, Tonya	2017	Biography,Comedy,Drama
+tt5580146	7.6	94341	tvMiniSeries	Maniac	2018	Comedy,Drama,Sci-Fi
+tt5580390	7.3	481667	movie	The Shape of Water	2017	Drama,Fantasy,Romance
+tt5580540	7.8	84459	tvSeries	Santa Clarita Diet	2017	Comedy,Horror
+tt5606664	7.3	250260	movie	Doctor Sleep	2019	Drama,Fantasy,Horror
+tt5607616	8.3	99662	tvSeries	Re: Zero - Starting Life in Another World	2016	Adventure,Animation,Drama
+tt5607976	7.7	96187	tvSeries	His Dark Materials	2019	Adventure,Drama,Fantasy
+tt5613484	7.4	90130	movie	Mid90s	2018	Comedy,Drama
+tt5618256	8.1	68090	tvSeries	Manhunt	2017	Biography,Crime,Drama
+tt5622316	9.1	72339	tvSeries	The Chosen	2017	Biography,Drama,History
+tt5626028	8.2	128519	tvSeries	My Hero Academia	2016	Action,Adventure,Animation
+tt5645432	7.5	63984	tvSeries	The Old Man	2022	Action,Drama,Thriller
+tt5649144	7.6	150055	movie	The Florida Project	2017	Drama
+tt5651844	8.0	73577	tvSeries	Travelers	2016	Drama,Mystery,Sci-Fi
+tt5657856	7.1	84346	movie	Brawl in Cell Block 99	2017	Crime,Drama,Thriller
+tt5675620	8.4	316551	tvSeries	The Punisher	2017	Action,Crime,Drama
+tt5687612	8.7	255218	tvSeries	Fleabag	2016	Comedy,Drama
+tt5691552	8.0	111205	tvSeries	The Orville	2017	Adventure,Comedy,Sci-Fi
+tt5700672	7.6	317492	movie	Train to Busan	2016	Action,Horror,Thriller
+tt5712554	8.7	96667	tvSeries	The Grand Tour	2016	Adventure,Comedy,Sport
+tt5726616	7.8	365960	movie	Call Me by Your Name	2017	Drama,Romance
+tt5727208	7.4	363647	movie	Uncut Gems	2019	Crime,Drama,Thriller
+tt5753856	8.7	566180	tvSeries	Dark	2017	Crime,Drama,Mystery
+tt5776858	7.4	164846	movie	Phantom Thread	2017	Drama,Romance
+tt5788792	8.6	161103	tvSeries	The Marvelous Mrs. Maisel	2017	Comedy,Drama
+tt5813916	8.1	113224	movie	The Mountain II	2016	Action,Drama,War
+tt5834204	8.3	306427	tvSeries	The Handmaid's Tale	2017	Drama,Sci-Fi,Thriller
+tt5875444	8.4	165423	tvSeries	Slow Horses	2022	Drama,Thriller
+tt5897304	8.5	72677	tvSeries	Mob Psycho 100	2016	Action,Animation,Comedy
+tt5971474	7.2	180795	movie	The Little Mermaid	2023	Adventure,Family,Fantasy
+tt6019206	8.7	65907	movie	Kill Bill: The Whole Bloody Affair	2004	Action,Crime,Thriller
+tt6048596	7.8	154843	tvSeries	The Sinner	2017	Crime,Drama,Mystery
+tt6053438	7.1	68749	movie	First Reformed	2017	Drama,Mystery,Thriller
+tt6077448	8.5	99292	tvSeries	Sacred Games	2018	Action,Crime,Drama
+tt6146586	7.4	490226	movie	John Wick: Chapter 3 - Parabellum	2019	Action,Crime,Thriller
+tt6155172	7.6	180192	movie	Roma	2018	Drama
+tt6226232	7.8	154054	tvSeries	Young Sheldon	2017	Comedy
+tt6257970	8.0	250867	tvSeries	The End of the F***ing World	2017	Adventure,Comedy,Crime
+tt6263850	7.5	599262	movie	Deadpool & Wolverine	2024	Action,Adventure,Comedy
+tt6264654	7.1	500052	movie	Free Guy	2021	Action,Adventure,Comedy
+tt6266538	7.2	177372	movie	Vice	2018	Biography,Comedy,Drama
+tt6294822	7.2	174402	movie	The Post	2017	Biography,Drama,History
+tt6315640	8.2	115559	tvSeries	Atypical	2017	Comedy,Drama
+tt6320628	7.3	681477	movie	Spider-Man: Far from Home	2019	Action,Adventure,Comedy
+tt6334354	7.2	468049	movie	The Suicide Squad	2021	Action,Adventure,Comedy
+tt6343314	7.1	175105	movie	Creed II	2018	Action,Drama,Sport
+tt6398184	7.4	72448	movie	Downton Abbey	2019	Drama,Romance
+tt6412452	7.2	187913	movie	The Ballad of Buster Scruggs	2018	Comedy,Drama,Musical
+tt6452574	7.6	68470	movie	Sanju	2018	Biography,Comedy,Drama
+tt6467266	7.3	104373	movie	Sing 2	2021	Adventure,Animation,Comedy
+tt6468322	8.2	622285	tvSeries	Money Heist	2017	Action,Crime,Drama
+tt6470478	8.0	132873	tvSeries	The Good Doctor	2017	Drama
+tt6472976	7.2	99606	movie	Five Feet Apart	2019	Drama,Romance
+tt6473300	8.4	95616	tvSeries	Mirzapur	2018	Action,Crime,Drama
+tt6474378	7.7	68837	tvSeries	Good Girls	2018	Comedy,Crime,Drama
+tt6499752	7.5	239561	movie	Upgrade	2018	Action,Sci-Fi,Thriller
+tt6517102	8.3	97070	tvSeries	Castlevania	2017	Action,Adventure,Animation
+tt6524350	7.8	100043	tvSeries	Big Mouth	2017	Animation,Comedy,Romance
+tt6543652	7.5	66270	movie	Cold War	2018	Drama,Music,Romance
+tt6571548	7.1	71136	movie	The White Tiger	2021	Crime,Drama
+tt6587046	7.3	152277	movie	The Boy and the Heron	2023	Adventure,Animation,Drama
+tt6611916	8.3	65518	tvSeries	Kingdom	2019	Action,Drama,Horror
+tt6628394	7.1	181462	movie	Bad Times at the El Royale	2018	Crime,Drama,Mystery
+tt6644200	7.5	672249	movie	A Quiet Place	2018	Drama,Horror,Sci-Fi
+tt6710474	7.7	664369	movie	Everything Everywhere All at Once	2022	Action,Adventure,Comedy
+tt6723592	7.3	714354	movie	Tenet	2020	Action,Sci-Fi,Thriller
+tt6741278	8.7	355383	tvSeries	Invincible	2021	Action,Adventure,Animation
+tt6742252	7.5	70237	movie	The Guilty	2018	Crime,Drama,Thriller
+tt6751668	8.5	1204507	movie	Parasite	2019	Drama,Thriller
+tt6763664	8.5	339588	tvMiniSeries	The Haunting of Hill House	2018	Drama,Horror,Mystery
+tt6791350	7.9	491593	movie	Guardians of the Galaxy Vol. 3	2023	Action,Adventure,Comedy
+tt6908274	7.4	73348	movie	Mirage	2018	Drama,Fantasy,Mystery
+tt6966692	8.2	708721	movie	Green Book	2018	Biography,Comedy,Drama
+tt7014006	7.3	87734	movie	Eighth Grade	2018	Comedy,Drama
+tt7016936	8.0	156531	tvSeries	Killing Eve	2018	Action,Adventure,Drama
+tt7049682	8.2	149077	tvMiniSeries	Watchmen	2019	Crime,Drama,Mystery
+tt7057496	7.4	65066	movie	Forgotten	2017	Crime,Mystery,Thriller
+tt7060344	8.3	61501	movie	Ratsasan	2018	Crime,Drama,Mystery
+tt7120662	8.5	80611	tvSeries	Derry Girls	2018	Comedy
+tt7131622	7.6	983615	movie	Once Upon a Time in... Hollywood	2019	Comedy,Drama
+tt7134908	7.1	103847	tvSeries	Elite	2018	Crime,Drama,Thriller
+tt7137906	8.8	162498	tvMiniSeries	When They See Us	2019	Biography,Crime,Drama
+tt7146812	7.3	190124	movie	Onward	2020	Adventure,Animation,Comedy
+tt7160372	7.3	193847	movie	The Zone of Interest	2023	Drama,History,War
+tt7203552	8.1	153147	tvSeries	The Morning Show	2019	Drama
+tt7221388	8.4	247738	tvSeries	Cobra Kai	2018	Action,Comedy,Drama
+tt7235466	7.8	65681	tvSeries	9-1-1	2018	Action,Drama,Thriller
+tt7282468	7.4	87960	movie	Burning	2018	Crime,Drama,Mystery
+tt7286456	8.3	1732634	movie	Joker	2019	Drama,Thriller
+tt7322224	7.2	221418	movie	Triangle of Sadness	2022	Comedy,Drama
+tt7335184	7.6	377798	tvSeries	You	2018	Crime,Drama,Romance
+tt7349662	7.5	318286	movie	BlacKkKlansman	2018	Biography,Comedy,Crime
+tt7366338	9.3	1072523	tvMiniSeries	Chernobyl	2019	Drama,History,Thriller
+tt7395114	7.1	175260	movie	The Devil All the Time	2020	Crime,Drama,Thriller
+tt7401588	7.3	138107	movie	Instant Family	2018	Comedy,Drama
+tt7405458	7.5	217346	movie	A Man Called Otto	2022	Comedy,Drama
+tt7423538	7.2	81255	tvSeries	Ratched	2020	Crime,Drama,History
+tt7440726	7.6	80960	tvSeries	Your Honor	2020	Crime,Drama,Thriller
+tt7462410	7.2	166379	tvSeries	The Wheel of Time	2021	Action,Adventure,Drama
+tt7493974	8.0	174231	tvMiniSeries	Bodyguard	2018	Crime,Drama,Mystery
+tt7520794	7.7	117523	tvSeries	Russian Doll	2019	Comedy,Drama,Mystery
+tt7569592	7.4	121005	tvSeries	Chilling Adventures of Sabrina	2018	Drama,Fantasy,Horror
+tt7587890	8.0	138570	tvSeries	The Rookie	2018	Action,Crime,Drama
+tt7599146	7.6	140184	movie	Sound of Freedom	2023	Biography,Crime,Drama
+tt7653254	7.9	376559	movie	Marriage Story	2019	Drama,Romance
+tt7657124	8.4	171493	tvSeries	The Heroes	2008	Animation,Drama,History
+tt7660850	8.8	371113	tvSeries	Succession	2018	Comedy,Drama
+tt7668870	7.6	195648	movie	Searching	2018	Drama,Mystery,Thriller
+tt7767422	8.2	405693	tvSeries	Sex Education	2019	Comedy,Drama,Romance
+tt7772588	8.1	94430	tvSeries	For All Mankind	2019	Drama,Sci-Fi
+tt7775622	8.1	89089	movie	Free Solo	2018	Adventure,Documentary,Sport
+tt7784604	7.3	474356	movie	Hereditary	2018	Drama,Horror,Mystery
+tt7826376	7.7	91773	tvSeries	Upload	2020	Comedy,Mystery,Sci-Fi
+tt7838252	8.1	114546	movie	K.G.F: Chapter 1	2018	Action,Crime,Drama
+tt7888964	7.4	407533	movie	Nobody	2021	Action,Crime,Drama
+tt7902072	7.2	63859	tvMiniSeries	Safe	2018	Crime,Drama,Mystery
+tt7908628	8.5	130025	tvSeries	What We Do in the Shadows	2019	Comedy,Fantasy,Horror
+tt7909970	8.3	140131	tvMiniSeries	Unbelievable	2019	Crime,Drama
+tt7949218	7.6	113081	tvSeries	See	2019	Action,Drama,Sci-Fi
+tt7979580	7.6	145577	movie	The Mitchells vs. the Machines	2021	Adventure,Animation,Comedy
+tt7984734	7.3	312085	movie	The Lighthouse	2019	Drama,Fantasy,Horror
+tt7984766	7.3	184015	movie	The King	2019	Biography,Drama,History
+tt8009428	7.3	168051	movie	Hustle	2022	Comedy,Drama,Sport
+tt8064302	7.9	112040	tvSeries	Dead to Me	2019	Comedy,Crime,Drama
+tt8075192	7.9	97054	movie	Shoplifters	2018	Crime,Drama,Thriller
+tt8089592	7.6	62775	tvMiniSeries	Little Fires Everywhere	2020	Drama,Mystery,Thriller
+tt8108198	8.2	118867	movie	Andhadhun	2018	Comedy,Crime,Mystery
+tt8110330	8.3	138947	movie	Dil Bechara	2020	Comedy,Drama,Romance
+tt8111088	8.6	668580	tvSeries	The Mandalorian	2019	Action,Adventure,Fantasy
+tt8134470	7.4	119948	tvMiniSeries	The Undoing	2020	Crime,Drama,Mystery
+tt8178634	7.8	228180	movie	RRR	2022	Action,Adventure,Drama
+tt8239946	8.2	78084	movie	Tumbbad	2018	Drama,Fantasy,Horror
+tt8267604	8.4	127652	movie	Capernaum	2018	Drama
+tt8289930	8.4	60994	tvSeries	Formula 1: Drive to Survive	2019	Documentary,Sport
+tt8291224	8.2	85871	movie	Uri: The Surgical Strike	2019	Action,Drama,History
+tt8291284	7.5	93207	tvSeries	The Peripheral	2022	Drama,Mystery,Sci-Fi
+tt8291806	7.5	67927	movie	Pain and Glory	2019	Drama
+tt8332922	7.2	330699	movie	A Quiet Place Part II	2020	Drama,Horror,Sci-Fi
+tt8367814	7.8	471022	movie	The Gentlemen	2019	Action,Comedy,Crime
+tt8368368	7.1	76388	movie	The Apprentice	2024	Biography,Drama,History
+tt8368512	7.2	83093	movie	The Courier	2020	Drama,History,Mystery
+tt8398600	8.4	172280	tvSeries	After Life	2019	Comedy,Drama
+tt8404614	7.6	148462	movie	The Two Popes	2019	Biography,Drama
+tt8416494	7.7	64339	tvSeries	Doom Patrol	2019	Action,Adventure,Comedy
+tt8420184	9.0	185439	tvMiniSeries	The Last Dance	2020	Biography,Documentary,History
+tt8503618	8.3	143666	movie	Hamilton	2020	Biography,Drama,History
+tt8526872	7.2	68746	movie	Dolemite Is My Name	2019	Biography,Comedy,Drama
+tt8550800	7.6	120481	tvMiniSeries	The Outsider	2020	Crime,Drama,Horror
+tt8579674	8.2	789975	movie	1917	2019	Drama,War
+tt8589698	7.2	79589	movie	Teenage Mutant Ninja Turtles: Mutant Mayhem	2023	Action,Adventure,Animation
+tt8613070	8.0	130950	movie	Portrait of a Lady on Fire	2019	Drama,Romance
+tt8634332	8.1	67761	tvSeries	The Righteous Gemstones	2019	Comedy,Drama
+tt8637428	7.5	76286	movie	The Farewell	2019	Comedy,Drama,Family
+tt8690918	8.0	92534	tvSeries	Resident Alien	2021	Comedy,Drama,Mystery
+tt8714904	8.3	103333	tvSeries	Narcos: Mexico	2018	Biography,Crime,Drama
+tt8721424	7.5	130702	movie	tick, tick... BOOM!	2021	Biography,Comedy,Drama
+tt8740614	7.7	66128	tvMiniSeries	The Residence	2025	Comedy,Crime,Drama
+tt8740790	7.5	234431	tvSeries	Bridgerton	2020	Drama,Romance
+tt8772262	7.1	502103	movie	Midsommar	2019	Drama,Horror,Mystery
+tt8772296	8.1	327075	tvSeries	Euphoria	2019	Drama
+tt8788458	8.1	60589	tvSeries	The Promised Neverland	2019	Action,Adventure,Animation
+tt8806524	7.5	102845	tvSeries	Star Trek: Picard	2020	Action,Adventure,Drama
+tt8847712	7.1	171132	movie	The French Dispatch	2021	Comedy,Drama,Romance
+tt8864596	7.6	70184	movie	Transformers One	2024	Action,Adventure,Animation
+tt8946378	7.9	894626	movie	Knives Out	2019	Comedy,Crime,Drama
+tt8999762	7.2	165419	movie	The Brutalist	2024	Drama
+tt9018736	7.1	94339	tvSeries	Avatar: The Last Airbender	2024	Action,Adventure,Comedy
+tt9052870	8.3	74935	movie	Chhichhore	2019	Comedy,Drama,Romance
+tt9059760	8.4	119946	tvMiniSeries	Normal People	2020	Drama,Romance
+tt9071322	7.6	123965	movie	Dark Waters	2019	Biography,Drama,History
+tt9077530	7.4	60846	tvSeries	Virgin River	2019	Drama,Romance
+tt9140554	8.2	492957	tvSeries	Loki	2021	Action,Adventure,Fantasy
+tt9140560	7.9	428459	tvMiniSeries	WandaVision	2021	Action,Comedy,Drama
+tt9170108	7.4	93919	tvSeries	Raised by Wolves	2020	Drama,Fantasy,Sci-Fi
+tt9174558	8.6	95383	tvMiniSeries	Dopesick	2021	Drama
+tt9179430	8.3	91577	movie	Vikram	2022	Action,Crime,Mystery
+tt9208876	7.1	288345	tvMiniSeries	The Falcon and the Winter Soldier	2021	Action,Adventure,Drama
+tt9243946	7.3	354751	movie	El Camino	2019	Crime,Drama,Thriller
+tt9253284	8.6	289097	tvSeries	Andor	2022	Adventure,Drama,Fantasy
+tt9253866	9.2	64163	tvSeries	Our Planet	2019	Documentary,Family
+tt9263550	8.6	62877	movie	Rocketry: The Nambi Effect	2022	Biography,Drama
+tt9288030	8.0	326047	tvSeries	Reacher	2022	Action,Crime,Drama
+tt9319668	7.3	126101	tvSeries	1899	2022	Adventure,Drama,Thriller
+tt9335498	8.5	239827	tvSeries	Demon Slayer: Kimetsu no Yaiba	2019	Action,Adventure,Animation
+tt9362722	8.5	559393	movie	Spider-Man: Across the Spider-Verse	2023	Action,Adventure,Animation
+tt9376612	7.3	505946	movie	Shang-Chi and the Legend of the Ten Rings	2021	Action,Adventure,Fantasy
+tt9389998	7.6	102023	movie	Pushpa: The Rise - Part 1	2021	Action,Crime,Drama
+tt9411972	7.2	161959	movie	Where the Crawdads Sing	2022	Drama,Mystery,Romance
+tt9426210	7.5	73110	movie	Weathering with You	2019	Animation,Drama,Fantasy
+tt9432978	9.0	93868	tvSeries	Kota Factory	2019	Comedy,Drama
+tt9446688	7.5	84424	tvSeries	I Am Not Okay with This	2020	Comedy,Drama,Fantasy
+tt9484998	7.4	220438	movie	Palm Springs	2020	Comedy,Fantasy,Mystery
+tt9495224	7.1	144207	movie	Black Mirror: Bandersnatch	2018	Drama,Fantasy,Mystery
+tt9544034	8.6	114638	tvSeries	The Family Man	2019	Action,Comedy,Crime
+tt9561862	8.4	233515	tvSeries	Love, Death & Robots	2019	Action,Adventure,Animation
+tt9603208	7.1	243172	movie	Mission: Impossible - The Final Reckoning	2025	Action,Adventure,Thriller
+tt9603212	7.6	334418	movie	Mission: Impossible - Dead Reckoning Part One	2023	Action,Adventure,Thriller
+tt9620288	7.5	194252	movie	King Richard	2021	Biography,Drama,Sport
+tt9620292	7.5	261036	movie	Promising Young Woman	2020	Crime,Drama,Mystery
+tt9680440	8.2	76685	tvSeries	Paatal Lok	2020	Action,Crime,Drama
+tt9686708	7.1	83294	movie	The King of Staten Island	2020	Comedy,Drama
+tt9698442	7.2	97869	tvMiniSeries	Behind Her Eyes	2021	Drama,Mystery,Thriller
+tt9698480	7.2	71384	tvMiniSeries	The Stranger	2020	Crime,Drama,Mystery
+tt9764362	7.1	520200	movie	The Menu	2022	Comedy,Horror,Thriller
+tt9770150	7.3	223038	movie	Nomadland	2020	Drama
+tt9784798	7.4	116486	movie	Judas and the Black Messiah	2021	Biography,Crime,Drama
+tt9813792	7.7	211272	tvSeries	From	2022	Drama,Fantasy,Horror
+tt9815454	8.0	100239	tvMiniSeries	Unorthodox	2020	Drama

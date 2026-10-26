@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using MediaDock.Api.Administration;
 using MediaDock.Api.Common;
 using MediaDock.Api.Operations;
 using MediaDock.Infrastructure.Persistence.Entities;
@@ -256,5 +257,105 @@ public sealed class CatalogOperationsApiTests
         using var response = await host.Client.DeleteAsync("/api/operation-history?olderThanDays=0");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MovieTablesDashboardReturnsAggregateCountsAndValidMetadataStatuses()
+    {
+        await using var host = await CatalogApiTestHost.CreateAsync("mediadock_movie_tables_dashboard_api_test");
+        var now = new DateTimeOffset(2026, 10, 26, 0, 0, 0, TimeSpan.Zero);
+        host.Db.ImdbTitles.AddRange(
+            new ImdbTitle
+            {
+                ImdbId = "tt70000001",
+                MediaType = "movie",
+                MetadataStatus = "temporary_error",
+                UpdatedAt = now
+            },
+            new ImdbTitle
+            {
+                ImdbId = "tt70000002",
+                MediaType = "series",
+                MetadataStatus = "enriched",
+                UpdatedAt = now
+            },
+            new ImdbTitle
+            {
+                ImdbId = "tt70000003",
+                MediaType = "movie",
+                MetadataStatus = "not_found",
+                UpdatedAt = now
+            });
+
+        var goldenGlobeTitle = new GoldenGlobeTitle
+        {
+            Title = "Dashboard Golden Globe Film",
+            Year = 2025,
+            NomineeType = "movie",
+            ImdbId = "tt70000002",
+            EnrichmentStatus = "enriched"
+        };
+        var goldenGlobeAward = new GoldenGlobeAward { Name = "Dashboard Test Award" };
+        host.Db.GoldenGlobeTitles.Add(goldenGlobeTitle);
+        host.Db.GoldenGlobeAwards.Add(goldenGlobeAward);
+        host.Db.GoldenGlobeNominations.Add(new GoldenGlobeNomination
+        {
+            ImportKey = "dashboard-golden-globe-nomination",
+            Winner = true,
+            Award = goldenGlobeAward,
+            GoldenGlobeTitle = goldenGlobeTitle
+        });
+
+        var oscarMovie = new OscarMovie
+        {
+            StableKey = "dashboard-oscar-film",
+            FilmTitle = "Dashboard Oscar Film",
+            NormalizedTitle = "dashboard oscar film",
+            FilmYear = 2025,
+            ImdbId = "tt70000002",
+            EnrichmentStatus = "not_found",
+            ImportedAt = now,
+            UpdatedAt = now
+        };
+        host.Db.OscarMovies.Add(oscarMovie);
+        host.Db.OscarNominations.Add(new OscarNomination
+        {
+            ImportKey = "dashboard-oscar-nomination",
+            OscarMovie = oscarMovie,
+            Ceremony = 97,
+            Class = "feature film",
+            CanonicalCategory = "BEST PICTURE",
+            Category = "Best Picture",
+            Name = "Dashboard Oscar Film",
+            Nominees = "Dashboard Oscar Film",
+            NomineeIds = string.Empty,
+            Detail = string.Empty,
+            IsWinner = true,
+            ImportedAt = now,
+            UpdatedAt = now
+        });
+        await host.Db.SaveChangesAsync();
+
+        using var response = await host.Client.GetAsync("/api/admin/movie-tables-dashboard");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var dashboard = await response.Content.ReadFromJsonAsync<MovieTablesDashboardResponse>();
+        Assert.NotNull(dashboard);
+        Assert.Equal(3, dashboard.Imdb.TotalCount);
+        Assert.Equal(2, dashboard.Imdb.ByMediaType["movie"]);
+        Assert.Equal(1, dashboard.Imdb.ByMediaType["series"]);
+        Assert.Equal(1, dashboard.Imdb.EnrichedCount);
+        Assert.Equal(1, dashboard.Imdb.NotFoundCount);
+        Assert.Equal(1, dashboard.Imdb.TemporaryErrorCount);
+        Assert.Equal(2, dashboard.Imdb.FailedCount);
+        Assert.Equal(1, dashboard.Imdb.ByMetadataStatus["not_found"]);
+        Assert.Equal(1, dashboard.Imdb.ByMetadataStatus["temporary_error"]);
+        Assert.Equal(1, dashboard.GoldenGlobes.TotalCount);
+        Assert.Equal(1, dashboard.GoldenGlobes.WithImdbLinkCount);
+        Assert.Equal(1, dashboard.GoldenGlobes.TotalNominationsCount);
+        Assert.Equal(1, dashboard.Oscar.TotalCount);
+        Assert.Equal(1, dashboard.Oscar.ByEnrichmentStatus["not_found"]);
+        Assert.Equal(1, dashboard.Oscar.WithImdbLinkCount);
+        Assert.Equal(1, dashboard.Oscar.TotalNominationsCount);
     }
 }

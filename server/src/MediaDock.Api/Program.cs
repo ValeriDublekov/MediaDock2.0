@@ -77,6 +77,7 @@ if (app.Environment.IsDevelopment())
 app.MapHealthEndpoints();
 app.MapAuthenticationEndpoints();
 app.MapUserAdministrationEndpoints();
+app.MapMovieTablesDashboardEndpoints();
 app.MapCatalogEndpoints();
 app.MapTorrentTitleMatchEndpoints();
 app.MapMovieAwardsEndpoints();

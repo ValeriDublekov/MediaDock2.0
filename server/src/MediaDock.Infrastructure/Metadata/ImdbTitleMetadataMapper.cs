@@ -1,4 +1,5 @@
 using MediaDock.Application.Metadata;
+using MediaDock.Application.PersonalRatings;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -32,7 +33,7 @@ public static class ImdbTitleMetadataMapper
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"""
             INSERT INTO imdb_titles (imdb_id, metadata_status, enrichment_attempt_count, updated_at)
-            SELECT requested.imdb_id, 'pending', 0, {updatedAt}
+            SELECT requested.imdb_id, {ImdbTitleEnrichmentStatusValues.Pending}, 0, {updatedAt}
             FROM unnest({idsToEnsure}) AS requested(imdb_id)
             ON CONFLICT (imdb_id) DO NOTHING
             """,
@@ -71,7 +72,7 @@ public static class ImdbTitleMetadataMapper
         if (!string.IsNullOrWhiteSpace(metadata.Runtime)) title.Runtime = metadata.Runtime;
         if (!string.IsNullOrWhiteSpace(metadata.Awards)) title.Awards = metadata.Awards;
         if (!string.IsNullOrWhiteSpace(metadata.BoxOffice)) title.BoxOffice = metadata.BoxOffice;
-        title.MetadataStatus = "enriched";
+        title.MetadataStatus = ImdbTitleEnrichmentStatus.Enriched.ToDatabaseValue();
         title.NextEnrichmentAttemptAt = null;
         title.LastEnrichmentError = null;
         title.UpdatedAt = updatedAt;

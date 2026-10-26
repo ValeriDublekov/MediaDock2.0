@@ -1,5 +1,6 @@
 using MediaDock.Application.GoldenGlobes;
 using MediaDock.Application.Metadata;
+using MediaDock.Application.PersonalRatings;
 using MediaDock.Infrastructure.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
@@ -30,7 +31,7 @@ public sealed class PostgresGoldenGlobeEnrichmentRepository(MediaDockDbContext d
                             && (x.NextEnrichmentAttemptAt == null || x.NextEnrichmentAttemptAt <= now))
                         || (x.EnrichmentStatus == GoldenGlobeEnrichmentStatuses.Enriched
                             && !db.ImdbTitles.Any(title => title.ImdbId == x.ImdbId
-                                && title.MetadataStatus == "enriched")))))
+                                && title.MetadataStatus == ImdbTitleEnrichmentStatusValues.Enriched)))))
             .Select(x => new
             {
                 x.Title,

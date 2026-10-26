@@ -40,6 +40,7 @@ public static class ApiServiceCollectionExtensions
 				?? throw new InvalidOperationException("ConnectionStrings:MediaDock must be configured.")));
 		services.AddScoped<InitialAdminBootstrapper>();
 		services.AddScoped<UserAdministrationApiService>();
+				services.AddScoped<IMovieTablesDashboardApiService, MovieTablesDashboardApiService>();
 		services.AddIngestionInfrastructure();
 		services.AddScoped<GoldenGlobeDatasetImporter>();
 		services.AddScoped<ImdbTitleDatasetImporter>();

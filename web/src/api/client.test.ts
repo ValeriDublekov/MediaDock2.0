@@ -25,6 +25,7 @@ import {
   getGoldenGlobeFilms,
   setGoldenGlobeImdbId,
   getMovieAwards,
+  getMovieTablesDashboard,
   getOscarFilm,
   getOscarCategories,
   getOscarFilms,
@@ -643,6 +644,42 @@ describe('typed API client', () => {
       status: 0,
       message: 'Could not reach the API. Check the server connection and retry.',
     } satisfies Partial<ApiError>)
+  })
+
+  it('fetches movie tables dashboard statistics from the admin endpoint', async () => {
+    const payload = {
+      imdb: {
+        totalCount: 100,
+        byMediaType: { movie: 80, series: 20 },
+        byMetadataStatus: { enriched: 95, pending: 4, temporary_error: 1 },
+        enrichedCount: 95,
+        pendingCount: 4,
+      },
+      goldenGlobes: {
+        totalCount: 50,
+        byNomineeType: { movie: 40, series: 10 },
+        byEnrichmentStatus: { enriched: 50 },
+        withImdbLinkCount: 48,
+        withoutImdbLinkCount: 2,
+        totalNominationsCount: 120,
+      },
+      oscar: {
+        totalCount: 30,
+        byEnrichmentStatus: { enriched: 30 },
+        withImdbLinkCount: 30,
+        withoutImdbLinkCount: 0,
+        totalNominationsCount: 150,
+      },
+      generatedAtUtc: '2026-10-24T10:00:00Z',
+    }
+    const stub = fetchStub(response(200, payload))
+
+    const result = await getMovieTablesDashboard(stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/admin/movie-tables-dashboard')
+    expect(result.imdb.totalCount).toBe(100)
+    expect(result.goldenGlobes.withImdbLinkCount).toBe(48)
+    expect(result.oscar.totalNominationsCount).toBe(150)
   })
 
   it('explains a non-JSON proxy failure without hiding the HTTP status', async () => {

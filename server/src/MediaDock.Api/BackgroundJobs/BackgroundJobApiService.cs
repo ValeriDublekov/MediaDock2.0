@@ -1,5 +1,6 @@
 using System.Text.Json;
 using MediaDock.Api.Middleware;
+using MediaDock.Application.PersonalRatings;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -312,8 +313,9 @@ internal sealed class BackgroundJobApiService(
         var hasEligibleRatings = await dbContext.PersonalRatings.AnyAsync(rating =>
             rating.UserId == ownerUserId
             && dbContext.ImdbTitles.Any(title => title.ImdbId == rating.ImdbId
-                && (title.MetadataStatus == "pending"
-                    || ((title.MetadataStatus == "temporary_error" || title.MetadataStatus == "not_found")
+                && (title.MetadataStatus == ImdbTitleEnrichmentStatusValues.Pending
+                    || ((title.MetadataStatus == ImdbTitleEnrichmentStatusValues.TemporaryError
+                            || title.MetadataStatus == ImdbTitleEnrichmentStatusValues.NotFound)
                         && (title.NextEnrichmentAttemptAt == null || title.NextEnrichmentAttemptAt <= now)))),
             cancellationToken);
         if (!hasEligibleRatings)
@@ -447,8 +449,9 @@ internal sealed class BackgroundJobApiService(
 
         var now = timeProvider.GetUtcNow();
         var hasEligibleTitles = await dbContext.ImdbTitles.AnyAsync(title =>
-            title.MetadataStatus == "pending"
-            || ((title.MetadataStatus == "temporary_error" || title.MetadataStatus == "not_found")
+                title.MetadataStatus == ImdbTitleEnrichmentStatusValues.Pending
+                || ((title.MetadataStatus == ImdbTitleEnrichmentStatusValues.TemporaryError
+                    || title.MetadataStatus == ImdbTitleEnrichmentStatusValues.NotFound)
                 && (title.NextEnrichmentAttemptAt == null || title.NextEnrichmentAttemptAt <= now)),
             cancellationToken);
         if (!hasEligibleTitles)

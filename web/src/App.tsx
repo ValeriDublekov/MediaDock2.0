@@ -16,6 +16,7 @@ import { AuthStatus } from './features/auth/AuthStatus'
 import { UsersView } from './features/users/UsersView'
 import { RecommendationSettingsView } from './features/recommendations/RecommendationSettingsView'
 import { RecommendationsView } from './features/recommendations/RecommendationsView'
+import { MovieTablesDashboardView } from './features/dashboard/MovieTablesDashboardView'
 
 type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'account' | 'administration'
 
@@ -28,6 +29,7 @@ const sections: { id: Section; path: string; number: string; label: string }[] =
 
 const administrationPages = [
   { path: '/configuration/system', label: 'System', description: 'Review deployment controls and the running version.' },
+  { path: '/configuration/dashboard', label: 'Dashboard', description: 'Review the state and counts of system movie tables.' },
   { path: '/configuration/torrent', label: 'Torrent settings', description: 'Manage RSS profiles and matching rules.' },
   { path: '/configuration/ingestion', label: 'Ingestion', description: 'Import and enrich award datasets.' },
   { path: '/configuration/recommendations', label: 'Recommendation settings', description: 'Configure vote normalization and award points.' },
@@ -401,6 +403,7 @@ function AppContent() {
               </ActiveAccountArea>
             )} />
             <Route path="/configuration" element={<AdminArea isAdmin={isAdmin}><Navigate replace to="/configuration/system" /></AdminArea>} />
+            <Route path="/configuration/dashboard" element={<AdminArea isAdmin={isAdmin}><MovieTablesDashboardView /></AdminArea>} />
             <Route path="/configuration/torrent" element={(
               <AdminArea isAdmin={isAdmin}>
                 <SourceSettingsView onOpenHistory={(scanRunId) => navigate(scanRunId ? `/history?scanRunId=${scanRunId}` : '/history')} />

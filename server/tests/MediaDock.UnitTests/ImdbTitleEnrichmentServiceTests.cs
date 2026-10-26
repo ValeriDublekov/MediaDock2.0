@@ -48,7 +48,7 @@ public sealed class ImdbTitleEnrichmentServiceTests
 
         var update = Assert.Single(repository.Updates);
         Assert.Equal("partial", result.Status);
-        Assert.Equal("temporary_error", update.Update.Status);
+        Assert.Equal(ImdbTitleEnrichmentStatus.TemporaryError, update.Update.Status);
         Assert.Equal("quota_exceeded", update.Update.ErrorCode);
         Assert.Equal(new DateTimeOffset(2026, 10, 20, 0, 0, 0, TimeSpan.Zero), update.Update.NextAttemptAt);
         Assert.Equal(42, update.OwnerUserId);
@@ -71,7 +71,7 @@ public sealed class ImdbTitleEnrichmentServiceTests
 
         var update = Assert.Single(repository.Updates).Update;
         Assert.Equal("succeeded", result.Status);
-        Assert.Equal("not_found", update.Status);
+        Assert.Equal(ImdbTitleEnrichmentStatus.NotFound, update.Status);
         Assert.Equal(1, update.AttemptCount);
         Assert.Equal("not_found", update.ErrorCode);
         Assert.Equal(now.AddDays(2), update.NextAttemptAt);
@@ -93,7 +93,7 @@ public sealed class ImdbTitleEnrichmentServiceTests
 
         var update = Assert.Single(repository.Updates).Update;
         Assert.Equal("partial", result.Status);
-        Assert.Equal("temporary_error", update.Status);
+        Assert.Equal(ImdbTitleEnrichmentStatus.TemporaryError, update.Status);
         Assert.Equal(3, update.AttemptCount);
         Assert.Equal("timeout", update.ErrorCode);
         Assert.Equal(now.AddHours(4), update.NextAttemptAt);
@@ -132,7 +132,7 @@ public sealed class ImdbTitleEnrichmentServiceTests
         Assert.Equal("succeeded", result.Status);
         Assert.Equal(ImdbTitleEnrichmentService.MaximumBatchSize, repository.RequestedCatalogLimit);
         Assert.Empty(repository.Updates);
-        Assert.Equal([("tt1234567", "enriched")], repository.CatalogUpdates
+        Assert.Equal([("tt1234567", ImdbTitleEnrichmentStatus.Enriched)], repository.CatalogUpdates
             .Select(update => (update.ImdbId, update.Update.Status)));
         Assert.Equal(["tt1234567"], client.RequestedImdbIds);
     }

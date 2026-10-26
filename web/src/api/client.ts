@@ -27,6 +27,7 @@ import type {
   GoldenGlobeFilm,
   GoldenGlobeImdbLinkResult,
   MovieAwardRecognition,
+  MovieTablesDashboard,
   Occurrence,
   OperationalHistoryCleanupResponse,
   PageResponse,
@@ -521,4 +522,8 @@ export async function importPersonalRatings(file: File, fetcher?: typeof fetch) 
 
 export function enqueuePersonalRatingsEnrichment(fetcher?: typeof fetch) {
   return postAuthChange<PersonalRatingsEnrichmentAccepted | undefined>('/personal-ratings/enrichment', fetcher)
+}
+
+export function getMovieTablesDashboard(fetcher?: typeof fetch) {
+  return requestJson<MovieTablesDashboard>('/admin/movie-tables-dashboard', {}, fetcher)
 }

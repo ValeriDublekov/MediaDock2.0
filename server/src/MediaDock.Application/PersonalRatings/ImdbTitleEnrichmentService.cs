@@ -102,10 +102,10 @@ public sealed class ImdbTitleEnrichmentService
 
                 switch (update.Status)
                 {
-                    case ImdbTitleEnrichmentStatuses.Enriched:
+                    case ImdbTitleEnrichmentStatus.Enriched:
                         enrichedTitles++;
                         break;
-                    case ImdbTitleEnrichmentStatuses.NotFound:
+                    case ImdbTitleEnrichmentStatus.NotFound:
                         notFoundTitles++;
                         break;
                     default:
@@ -154,7 +154,7 @@ public sealed class ImdbTitleEnrichmentService
             }
 
             return new(
-                ImdbTitleEnrichmentStatuses.Enriched,
+                ImdbTitleEnrichmentStatus.Enriched,
                 attemptCount,
                 attemptedAt,
                 null,
@@ -165,7 +165,7 @@ public sealed class ImdbTitleEnrichmentService
         if (resolution.Status == MetadataLookupStatus.ConfirmedNotFound)
         {
             return new(
-                ImdbTitleEnrichmentStatuses.NotFound,
+                ImdbTitleEnrichmentStatus.NotFound,
                 attemptCount,
                 attemptedAt,
                 attemptedAt.Add(NotFoundRetryDelay),
@@ -177,7 +177,7 @@ public sealed class ImdbTitleEnrichmentService
             ? NextUtcDay(attemptedAt)
             : attemptedAt.Add(GetRetryDelay(attemptCount));
         return new(
-            ImdbTitleEnrichmentStatuses.TemporaryError,
+            ImdbTitleEnrichmentStatus.TemporaryError,
             attemptCount,
             attemptedAt,
             nextAttemptAt,
@@ -190,7 +190,7 @@ public sealed class ImdbTitleEnrichmentService
         DateTimeOffset attemptedAt,
         string errorCode) =>
         new(
-            ImdbTitleEnrichmentStatuses.TemporaryError,
+            ImdbTitleEnrichmentStatus.TemporaryError,
             attemptCount,
             attemptedAt,
             attemptedAt.Add(GetRetryDelay(attemptCount)),
