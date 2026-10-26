@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
+import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
 import type { CatalogTitle, ImdbCandidateSearch, MovieAwardRecognition, PageResponse, TitleDetails } from '../../api/types'
 import { CatalogView } from './CatalogView'
 
@@ -12,6 +12,7 @@ vi.mock('../../api/client', () => ({
   deleteCatalogTitle: vi.fn(),
   getTitleOscars: vi.fn().mockResolvedValue([]),
   getMovieAwards: vi.fn().mockResolvedValue([]),
+  getScanRuns: vi.fn(),
   searchCatalogTitleImdbCandidates: vi.fn(),
   lookupCatalogTitleImdbCandidate: vi.fn(),
   applyCatalogTitleImdbCandidate: vi.fn(),
@@ -64,6 +65,21 @@ describe('CatalogView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
     expect(screen.getByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     expect(catalogRequest).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows scan history in the catalog only when enabled and omits unrelated history controls', async () => {
+    catalogRequest.mockResolvedValue(page([]))
+    vi.mocked(getScanRuns).mockResolvedValue({ items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 })
+    const view = render(<CatalogView />)
+
+    expect(screen.queryByRole('button', { name: 'Scan history' })).toBeNull()
+    view.rerender(<CatalogView canViewScanHistory />)
+    fireEvent.click(screen.getByRole('button', { name: 'Scan history' }))
+
+    expect(await screen.findByText('No scan runs found')).toBeTruthy()
+    expect(getScanRuns).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
+    expect(screen.queryByRole('button', { name: 'Parse log' })).toBeNull()
+    expect(screen.queryByLabelText('Delete older than (days)')).toBeNull()
   })
 
   it('associates the IMDb rating with its title and opens that title at its torrent sources', async () => {

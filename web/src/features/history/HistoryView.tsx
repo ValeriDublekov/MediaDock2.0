@@ -9,11 +9,12 @@ import { formatDate, formatWords } from '../../shared/format'
 type HistoryTab = 'scans' | 'parses'
 type ParseLogFilter = '' | 'retryable' | 'terminal' | 'resolved' | 'unresolvedMovies'
 
-export function HistoryView({ scanRunId = null, onClearScanRun }: {
+export function HistoryView({ scanRunId = null, onClearScanRun, scanRunsOnly = false }: {
   scanRunId?: number | null
   onClearScanRun?: () => void
+  scanRunsOnly?: boolean
 } = {}) {
-  const [tab, setTab] = useState<HistoryTab>('parses')
+  const [tab, setTab] = useState<HistoryTab>(scanRunsOnly ? 'scans' : 'parses')
   const [page, setPage] = useState(1)
   const [scanStatus, setScanStatus] = useState('')
   const [scanTrigger, setScanTrigger] = useState('')
@@ -102,16 +103,18 @@ export function HistoryView({ scanRunId = null, onClearScanRun }: {
   return (
     <section aria-label="Operation history">
       <div className="history-toolbar">
-        <div aria-label="History type" className="segment-control" role="group">
+        {!scanRunsOnly && <div aria-label="History type" className="segment-control" role="group">
           <button aria-pressed={tab === 'scans'} onClick={() => changeTab('scans')} type="button">Scan runs</button>
           <button aria-pressed={tab === 'parses'} onClick={() => changeTab('parses')} type="button">Parse log</button>
-        </div>
+        </div>}
         {tab === 'scans' ? (
           <div className="history-filters">
             <div className="field"><label htmlFor="scan-status-filter">Status</label><select id="scan-status-filter" onChange={(event) => { setPage(1); setScanStatus(event.target.value) }} value={scanStatus}><option value="">All statuses</option><option value="running">Running</option><option value="succeeded">Succeeded</option><option value="partial">Partial</option><option value="failed">Failed</option></select></div>
             <div className="field"><label htmlFor="scan-trigger-filter">Trigger</label><select id="scan-trigger-filter" onChange={(event) => { setPage(1); setScanTrigger(event.target.value) }} value={scanTrigger}><option value="">All triggers</option><option value="schedule">Schedule</option><option value="manual">Manual</option><option value="local">Local</option></select></div>
-            <div className="field"><label htmlFor="history-retention-days">Delete older than (days)</label><input id="history-retention-days" max="36500" min="1" onChange={(event) => setRetentionDays(event.target.value)} type="number" value={retentionDays} /></div>
-            <button className="button button-secondary" disabled={deletingHistory || !validRetentionDays} onClick={() => void deleteOldHistory()} type="button">{deletingHistory ? 'Deleting…' : 'Delete old logs'}</button>
+            {!scanRunsOnly && <>
+              <div className="field"><label htmlFor="history-retention-days">Delete older than (days)</label><input id="history-retention-days" max="36500" min="1" onChange={(event) => setRetentionDays(event.target.value)} type="number" value={retentionDays} /></div>
+              <button className="button button-secondary" disabled={deletingHistory || !validRetentionDays} onClick={() => void deleteOldHistory()} type="button">{deletingHistory ? 'Deleting…' : 'Delete old logs'}</button>
+            </>}
           </div>
         ) : (
           <form className="history-filters" onSubmit={applySearch}>
@@ -182,14 +185,16 @@ function ParseLogTable({ items, onRetry }: { items: ParseLog[]; onRetry: (entry:
   return (
     <div className="table-wrap">
       <table className="data-table">
-        <thead><tr><th>RAW TITLE</th><th>FEED</th><th>PARSE</th><th>DIAGNOSIS</th><th>RETRY</th><th>PROCESSED</th><th>ACTION</th></tr></thead>
+        <thead><tr><th>RAW TITLE</th><th>PARSED TITLE</th><th>YEAR</th><th>FEED</th><th>RESULT</th><th>RETRY</th><th>PROCESSED</th><th>ACTION</th></tr></thead>
         <tbody>{items.map((entry) => (
           <tr key={entry.id}>
-            <td>{entry.rawTitle}<span className="subtle-line">{entry.parsedTitle ?? 'No normalized title'}{entry.parsedYear ? ` | ${entry.parsedYear}` : ''}</span></td>
+            <td>{entry.rawTitle || '—'}</td>
+            <td>{entry.parsedTitle ?? 'No normalized title'}</td>
+            <td>{entry.parsedYear ?? '—'}</td>
             <td>{entry.sourceName ?? entry.feedName}<span className="subtle-line">{entry.feedType ?? 'Unknown feed type'}</span></td>
-            <td><span className={`state-pill${entry.parsedSuccessfully ? '' : ' is-muted'}`}>{getParseLogStatus(entry)}</span></td>
             <td>
               <span className="state-pill">{getParseLogDiagnosis(entry)}</span>
+              <span className={`subtle-line${entry.parsedSuccessfully ? '' : ' is-muted'}`}>{getParseLogStatus(entry)}</span>
               {entry.lookupTitles.length > 0 && <span className="subtle-line">Lookup names: {entry.lookupTitles.join(' → ')}</span>}
               {entry.ignoreReason && <span className="subtle-line">Reason: {formatWords(entry.ignoreReason)}</span>}
               {entry.errorMessage && <span className="subtle-line">Error: {entry.errorMessage}</span>}

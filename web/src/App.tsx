@@ -366,7 +366,7 @@ function AppContent() {
 
           <Routes>
             <Route path="/" element={<Navigate replace to="/catalog" />} />
-            <Route path="/catalog" element={<CatalogView canDeleteTitles={isAdmin} />} />
+            <Route path="/catalog" element={<CatalogView canDeleteTitles={isAdmin} canViewScanHistory={isAdmin} />} />
             <Route path="/oscar" element={<OscarCatalogView />} />
             <Route path="/golden-globes" element={<GoldenGlobeCatalogView />} />
             <Route path="/favorites" element={isActiveAccount

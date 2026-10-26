@@ -15,6 +15,7 @@ import { TitleDetailsDialog } from './TitleDetailsDialog'
 import { FavoriteControls } from '../favorites/FavoriteControls'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
+import { HistoryView } from '../history/HistoryView'
 
 interface CatalogFilters {
   search: string
@@ -143,7 +144,8 @@ function CatalogRow({ title, onSelect, awards }: { title: CatalogTitle; onSelect
   )
 }
 
-export function CatalogView({ canDeleteTitles = false }: { canDeleteTitles?: boolean } = {}) {
+export function CatalogView({ canDeleteTitles = false, canViewScanHistory = false }: { canDeleteTitles?: boolean; canViewScanHistory?: boolean } = {}) {
+  const [catalogView, setCatalogView] = useState<'titles' | 'history'>('titles')
   const [viewMode, setViewMode] = useState<ViewMode>('posters')
   const [category, setCategory] = useState<CatalogCategory>('movie')
   const [ratingRanges, setRatingRanges] = useState(readSavedImdbRatingRanges)
@@ -254,6 +256,11 @@ export function CatalogView({ canDeleteTitles = false }: { canDeleteTitles?: boo
 
   return (
     <section aria-label="Catalog" className="media-view">
+      {canViewScanHistory && <div aria-label="Catalog view" className="catalog-screen-switch segment-control" role="group">
+        <button aria-pressed={catalogView === 'titles'} onClick={() => setCatalogView('titles')} type="button">Titles</button>
+        <button aria-pressed={catalogView === 'history'} onClick={() => setCatalogView('history')} type="button">Scan history</button>
+      </div>}
+      {canViewScanHistory && catalogView === 'history' ? <HistoryView scanRunsOnly /> : <>
       {deleteNotice && <p className="form-message" role="status">{deleteNotice}</p>}
       <nav aria-label="Catalog categories" className="catalog-category-nav">
         {categories.map((item) => <button
@@ -418,6 +425,7 @@ export function CatalogView({ canDeleteTitles = false }: { canDeleteTitles?: boo
         onClose={() => setImdbMatchTarget(null)}
         target={imdbMatchTarget}
       />}
+      </>}
     </section>
   )
 }

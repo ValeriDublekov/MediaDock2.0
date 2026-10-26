@@ -123,6 +123,20 @@ describe('HistoryView parse diagnosis', () => {
     expect(screen.queryByText('Parsing failed')).toBeNull()
   })
 
+  it('shows the raw torrent title, parsed title, and year in separate columns', async () => {
+    const entry = createLog({ rawTitle: 'Example Film (2024) [1080p]', parsedTitle: 'Example Film', parsedYear: 2024 })
+    vi.mocked(getParseLogs).mockResolvedValue(createPage([entry]))
+    vi.mocked(getScanRuns).mockResolvedValue(createPage<ScanRun>([]))
+
+    render(<HistoryView scanRunId={42} />)
+
+    const row = await screen.findByRole('row', { name: /Example Film \(2024\) \[1080p\]/ })
+    const cells = within(row).getAllByRole('cell')
+    expect(cells[0].textContent).toBe(entry.rawTitle)
+    expect(cells[1].textContent).toBe(entry.parsedTitle)
+    expect(cells[2].textContent).toBe('2024')
+  })
+
   it('confirms deletion of history older than the selected days and refreshes scans', async () => {
     vi.mocked(getParseLogs).mockResolvedValue(createPage<ParseLog>([]))
     vi.mocked(getScanRuns).mockResolvedValue(createPage<ScanRun>([]))
@@ -184,7 +198,7 @@ describe('HistoryView parse diagnosis', () => {
     await waitFor(() => expect(applyParseLogImdbCandidate).toHaveBeenCalledWith(42, 'tt87654321'))
     await waitFor(() => expect(getParseLogs).toHaveBeenCalledTimes(2))
     const resolvedRow = await screen.findByRole('row', { name: /Example Film/ })
-    expect(resolvedRow.querySelector('td:nth-child(4) .state-pill')?.textContent).toBe('Resolved')
+    expect(within(resolvedRow).getByText('Resolved')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Retry IMDb match/ })).toBeNull()
   })
 
