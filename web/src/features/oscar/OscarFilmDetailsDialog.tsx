@@ -55,7 +55,7 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
             <h2 id="oscar-film-details-heading">{film?.title ?? 'Oscar film'}</h2>
             {film && (
               <div className="detail-meta">
-                {film.filmYear} | {film.metadataTitle} | {formatWords(film.enrichmentStatus)}
+                {film.filmYear} | {film.metadataTitle}{film.enrichmentStatus !== 'enriched' && ` | ${formatWords(film.enrichmentStatus)}`}
               </div>
             )}
           </div>
@@ -78,7 +78,7 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
                 <div><dt>Runtime</dt><dd>{film.runtime ?? 'Not listed'}</dd></div>
                 <div><dt>Genres</dt><dd>{film.genres.join(', ') || 'Not tagged'}</dd></div>
                 <div><dt>Countries</dt><dd>{film.countries.join(', ') || 'Not tagged'}</dd></div>
-                <div><dt>OMDb status</dt><dd><span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span></dd></div>
+                {film.enrichmentStatus !== 'enriched' && <div><dt>OMDb status</dt><dd><span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span></dd></div>}
                 <div><dt>Last attempt</dt><dd>{formatDate(film.lastEnrichmentAttemptAt)}</dd></div>
                 <div><dt>Next attempt</dt><dd>{formatDate(film.nextEnrichmentAttemptAt)}</dd></div>
                 <div><dt>Box office</dt><dd>{film.boxOffice ?? 'Not listed'}</dd></div>

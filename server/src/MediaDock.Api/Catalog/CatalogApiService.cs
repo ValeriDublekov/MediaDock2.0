@@ -157,7 +157,9 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
                 movie.ImdbTitle == null ? Array.Empty<string>() : movie.ImdbTitle.Countries,
                 movie.LastSeenAt,
                 movie.Releases.Count,
-                movie.ImdbTitle == null ? null : movie.ImdbTitle.MetadataStatus))
+                movie.ImdbTitle == null ? null : movie.ImdbTitle.MetadataStatus,
+                movie.ImdbTitle == null ? null : movie.ImdbTitle.Director,
+                movie.ImdbTitle == null ? null : movie.ImdbTitle.Plot))
             .ToListAsync(cancellationToken);
 
         return CreatePage(items, page, pageSize, totalCount, yearBounds, imdbRatingBounds);

@@ -131,6 +131,10 @@ public sealed class CatalogEndpointsApiTests
         Assert.Empty(yearlessCatalogTitle.Genres);
         Assert.Null(yearlessCatalogTitle.PosterUrl);
 
+        var catalogMovie = Assert.Single(unfilteredCatalog.Items, title => title.Title == "The Matrix");
+        Assert.Equal("The Wachowskis", catalogMovie.Director);
+        Assert.Equal("Canonical plot.", catalogMovie.Plot);
+
         using var inProgressSeriesResponse = await client.GetAsync("/api/catalog?feedTypes=series_ongoing");
         var inProgressSeries = await inProgressSeriesResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
         Assert.NotNull(inProgressSeries);

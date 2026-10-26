@@ -73,7 +73,9 @@ public sealed record CatalogTitleResponse(
     IReadOnlyList<string> Countries,
     DateTimeOffset? LastSeenAt,
     int OccurrenceCount,
-    string? MetadataStatus);
+    string? MetadataStatus,
+    string? Director,
+    string? Plot);
 
 /// <summary>Full metadata for one catalog title.</summary>
 public sealed record TitleDetailsResponse(

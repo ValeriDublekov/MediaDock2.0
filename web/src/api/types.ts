@@ -37,6 +37,8 @@ export interface CatalogTitle {
   lastSeenAt: string | null
   occurrenceCount: number
   metadataStatus: string | null
+  director: string | null
+  plot: string | null
 }
 
 export interface TitleDetails extends CatalogTitle {
@@ -156,6 +158,9 @@ export interface GoldenGlobeFilm {
   enrichmentStatus: OscarEnrichmentStatus
   metadataStatus: string | null
   enrichmentError: string | null
+  genres: string[]
+  director: string | null
+  plot: string | null
   nominations: GoldenGlobeNomination[]
 }
 

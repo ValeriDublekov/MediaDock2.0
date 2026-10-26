@@ -16,9 +16,12 @@ const film: GoldenGlobeFilm = {
   isImdbIdManual: false,
   imdbRating: null,
   posterUrl: 'https://example.test/a-film.jpg',
-  enrichmentStatus: 'pending',
+  enrichmentStatus: 'enriched',
   metadataStatus: null,
   enrichmentError: null,
+  genres: [],
+  director: null,
+  plot: null,
   nominations: [{ id: 1, year: 2025, award: 'Best Picture', isWinner: true }],
 }
 
@@ -49,8 +52,11 @@ describe('GoldenGlobeCatalogView', () => {
     render(<GoldenGlobeCatalogView />)
 
     expect(await screen.findByRole('button', { name: 'A Film' })).toBeTruthy()
+    expect(screen.getByText('Director: Not listed')).toBeTruthy()
+    expect(screen.getByText('Plot unavailable')).toBeTruthy()
+    expect(document.querySelector('.state-pill.is-enriched')).toBeNull()
     expect(screen.getByRole('img', { name: 'Poster for A Film' }).getAttribute('src')).toBe('https://example.test/a-film.jpg')
-    expect(screen.queryByText('Genres unavailable')).toBeNull()
+    expect(screen.getByText('Genres unavailable')).toBeTruthy()
     expect(screen.getByTitle('Ceremony year 2025')).toBeTruthy()
     const awardSummary = within(screen.getByLabelText('Awards and nominations'))
     expect(awardSummary.getByText('Golden Globes')).toBeTruthy()
@@ -60,6 +66,7 @@ describe('GoldenGlobeCatalogView', () => {
     expect(screen.getByRole('img', { name: 'Poster for A Film' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'View A Film Golden Globes details' })).toBeTruthy()
     expect(within(screen.getByLabelText('Awards and nominations')).getByText('Golden Globes')).toBeTruthy()
+    expect(screen.queryByText('enriched')).toBeNull()
 
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: '  A Film  ' } })
     expect(getGoldenGlobeFilms).toHaveBeenCalledTimes(1)
@@ -164,6 +171,7 @@ describe('GoldenGlobeCatalogView', () => {
 
     expect(await screen.findByText('movie')).toBeTruthy()
     expect(screen.getByText('series')).toBeTruthy()
+    expect(screen.getByText('movie').className).toBe(screen.getByText('series').className)
   })
 
   it('opens combined award details from the shared poster card', async () => {
@@ -179,6 +187,7 @@ describe('GoldenGlobeCatalogView', () => {
 
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('heading', { name: 'A Film' })).toBeTruthy()
+    expect(within(dialog).queryByText('enriched')).toBeNull()
     expect(within(dialog).getByRole('heading', { name: 'Awards and nominations' })).toBeTruthy()
     expect(within(dialog).getByText('Ceremony year 2025')).toBeTruthy()
     expect(within(dialog).getByRole('link', { name: 'Open A Film on IMDb (opens in new tab)' }).textContent).toContain('7.4')

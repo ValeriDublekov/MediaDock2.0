@@ -3,6 +3,19 @@ import type { MovieAwardRecognition, MovieAwardSource } from '../api/types'
 import { formatWords } from '../shared/format'
 import { Poster } from './Poster'
 
+interface MovieTitleMetadata {
+  director: string | null
+  plot: string | null
+}
+
+function MovieTitleFacts({ director, plot }: MovieTitleMetadata) {
+  const synopsis = plot?.trim()
+  return <div className="movie-title-metadata">
+    <span className="movie-title-director">Director: {director?.trim() || 'Not listed'}</span>
+    <p className="movie-title-plot" title={synopsis || undefined}>{synopsis || 'Plot unavailable'}</p>
+  </div>
+}
+
 interface MoviePosterCardProps {
   title: string
   year: number | null
@@ -13,6 +26,7 @@ interface MoviePosterCardProps {
   posterUrl: string | null
   posterLabel?: string
   genres?: string[]
+  metadata?: MovieTitleMetadata
   awards: MovieAwardRecognition[]
   showAwards?: boolean
   onOpen?: () => void
@@ -33,6 +47,7 @@ export function MoviePosterCard({
   posterUrl,
   posterLabel = 'FILM',
   genres,
+  metadata,
   awards,
   showAwards = true,
   onOpen,
@@ -66,6 +81,7 @@ export function MoviePosterCard({
         <span className="tile-year" title={year === null ? `${yearLabel} unknown` : `${yearLabel} ${year}`}>{year ?? '—'}</span>
       </div>
       <MovieImdbLink imdbId={imdbId} rating={imdbRating} title={title} />
+      {metadata && <MovieTitleFacts director={metadata.director} plot={metadata.plot} />}
       <div className="tile-genres">
         {genres === undefined ? null : genres.length > 0
           ? genres.slice(0, 3).map((genre) => <span className="tile-genre" key={genre}>{genre}</span>)
@@ -85,15 +101,17 @@ interface MovieTableTitleProps {
   openLabel: string
   subtitle?: ReactNode
   onOpen: () => void
+  metadata?: MovieTitleMetadata
   children?: ReactNode
 }
 
-export function MovieTableTitle({ title, posterUrl, posterLabel, openLabel, subtitle, onOpen, children }: MovieTableTitleProps) {
+export function MovieTableTitle({ title, posterUrl, posterLabel, openLabel, subtitle, onOpen, metadata, children }: MovieTableTitleProps) {
   return <div className="title-cell">
     <Poster className="poster-small" label={posterLabel} src={posterUrl} title={title} />
     <span className="movie-table-title-details">
       <button aria-label={openLabel} className="title-link" onClick={onOpen} type="button">{title}</button>
       {subtitle !== undefined && <span className="subtle-line">{subtitle}</span>}
+      {metadata && <MovieTitleFacts director={metadata.director} plot={metadata.plot} />}
       {children}
     </span>
   </div>
@@ -160,15 +178,21 @@ export function MovieAwardsSummary({ awards, compact = false }: { awards: MovieA
       const records = awards.filter((award) => award.source === source)
       if (records.length === 0) return null
       const wins = records.filter((award) => award.isWinner).length
-      const names = [...new Set(records.map((award) => award.award))]
-      return <div className="movie-awards-source" key={source}>
+      const detailText = records.map((award) => {
+        const details = [award.isWinner ? 'Winner' : 'Nominee', award.award]
+        if (award.filmYear !== null) details.push(`Film year ${award.filmYear}`)
+        if (award.ceremonyYear !== null) details.push(`Ceremony year ${award.ceremonyYear}`)
+        if (award.ceremony !== null) details.push(`Ceremony ${award.ceremony}`)
+        if (award.nominees) details.push(award.nominees)
+        if (award.name && award.name !== award.nominees) details.push(award.name)
+        if (award.detail) details.push(award.detail)
+        return details.join(' · ')
+      }).join('\n')
+      return <div aria-label={`${sourceLabels[source]} awards and nominations`} className="movie-awards-source" key={source} role="group" tabIndex={0} title={detailText}>
         <div className="movie-awards-source-heading">
           <strong>{sourceLabels[source]}</strong>
           <span>{wins} {wins === 1 ? 'win' : 'wins'} · {records.length} {records.length === 1 ? 'nomination' : 'nominations'}</span>
         </div>
-        <span className="movie-awards-categories">
-          {names.slice(0, 2).join(' · ')}{names.length > 2 ? ` · +${names.length - 2}` : ''}
-        </span>
       </div>
     })}
   </div>

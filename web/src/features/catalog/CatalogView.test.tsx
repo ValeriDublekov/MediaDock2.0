@@ -46,6 +46,8 @@ const title: CatalogTitle = {
   lastSeenAt: '2026-09-28T12:00:00Z',
   occurrenceCount: 3,
   metadataStatus: 'enriched',
+  director: 'Tanya Davis',
+  plot: 'A retired cartographer returns home.',
 }
 
 describe('CatalogView', () => {
@@ -57,11 +59,14 @@ describe('CatalogView', () => {
     render(<CatalogView />)
 
     expect(await screen.findByRole('img', { name: 'Poster for Quiet River' })).toBeTruthy()
+    expect(screen.getByText('Director: Tanya Davis')).toBeTruthy()
+    expect(screen.getByText('A retired cartographer returns home.')).toBeTruthy()
     fireEvent.error(screen.getByRole('img', { name: 'Poster for Quiet River' }))
     expect(screen.queryByRole('img', { name: 'Poster for Quiet River' })).toBeNull()
     expect(screen.getByText('SER')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(screen.getByRole('img', { name: 'Poster for Quiet River' })).toBeTruthy()
+    expect(screen.getByText('Director: Tanya Davis')).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: 'LAST SEEN' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
     expect(screen.getByRole('button', { name: 'View Quiet River details' })).toBeTruthy()

@@ -38,11 +38,15 @@ public sealed class GoldenGlobeApiTests
             var bestPicture = new GoldenGlobeAward { Name = "Best Motion Picture" };
             var bestDirector = new GoldenGlobeAward { Name = "Best Director" };
             var aFilmMovie = CreateGroup("A Film", 2025, imdbId: "tt12345678", enrichmentStatus: "enriched");
+            var aFilmMetadata = CreateImdbTitle("tt12345678", "movie", 8.0m, "https://example.test/a-film.jpg");
+            aFilmMetadata.Genres = ["Drama"];
+            aFilmMetadata.Director = "A Director";
+            aFilmMetadata.Plot = "A plot synopsis.";
             var aFilmSeries = CreateGroup("A Film", 2025, "series", "tt87654321", "enriched");
             var manualTypeMismatch = CreateGroup("Manual Type Mismatch", 2025, "series", "tt76543210", "enriched");
             manualTypeMismatch.IsImdbIdManual = true;
             db.ImdbTitles.AddRange(
-                CreateImdbTitle("tt12345678", "movie", 8.0m, "https://example.test/a-film.jpg"),
+                aFilmMetadata,
                 CreateImdbTitle("tt87654321", "series", 7.4m, "https://example.test/a-film-series.jpg"),
                 CreateImdbTitle("tt8749198", "series", 8.1m, "https://example.test/daisy.jpg"),
                 CreateImdbTitle("tt32345678", "movie", null, null),
@@ -166,6 +170,9 @@ public sealed class GoldenGlobeApiTests
         Assert.Equal("tt12345678", firstFilm.ImdbId);
         Assert.Equal("https://example.test/a-film.jpg", firstFilm.PosterUrl);
         Assert.Equal(8.0m, firstFilm.ImdbRating);
+        Assert.Equal(new[] { "Drama" }, firstFilm.Genres);
+        Assert.Equal("A Director", firstFilm.Director);
+        Assert.Equal("A plot synopsis.", firstFilm.Plot);
         Assert.Equal(new[] { "Best Director", "Best Motion Picture" }, firstFilm.Nominations.Select(row => row.Award));
 
         using var groupedResponse = await client.GetAsync("/api/golden-globes?pageSize=100");

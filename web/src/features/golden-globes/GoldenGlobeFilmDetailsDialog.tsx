@@ -113,7 +113,7 @@ export function GoldenGlobeFilmDetailsDialog({ film, awards, onClose, onUpdated 
         <div>
           <p className="eyebrow">GOLDEN GLOBES</p>
           <h2 id="golden-globe-film-details-heading">{currentFilm.title}</h2>
-          <div className="detail-meta">Ceremony year {currentFilm.year} | {formatWords(currentFilm.enrichmentStatus)}</div>
+          <div className="detail-meta">{formatWords(currentFilm.nomineeType)} | Ceremony year {currentFilm.year}{currentFilm.enrichmentStatus !== 'enriched' && ` | ${formatWords(currentFilm.enrichmentStatus)}`}</div>
         </div>
         <button aria-label="Close Golden Globes details" className="button button-secondary" onClick={onClose} type="button">Close</button>
       </header>
@@ -124,7 +124,7 @@ export function GoldenGlobeFilmDetailsDialog({ film, awards, onClose, onUpdated 
         <dl className="detail-facts">
           <div><dt>IMDb ID</dt><dd>{currentFilm.imdbId ?? 'Not listed'}{currentFilm.isImdbIdManual ? ' (manual)' : ''}</dd></div>
           <div><dt>IMDb rating</dt><dd>{currentFilm.imdbRating?.toFixed(1) ?? 'Not rated'}</dd></div>
-          <div><dt>OMDb status</dt><dd>{formatWords(currentFilm.enrichmentStatus)}</dd></div>
+          {currentFilm.enrichmentStatus !== 'enriched' && <div><dt>OMDb status</dt><dd>{formatWords(currentFilm.enrichmentStatus)}</dd></div>}
         </dl>
         <FavoriteControls from="catalog" imdbId={currentFilm.imdbId} metadataStatus={currentFilm.metadataStatus} mediaType={currentFilm.nomineeType} occurrenceCount={0} />
         <IgnoredMovieControl imdbId={currentFilm.imdbId} mediaType={currentFilm.nomineeType} />

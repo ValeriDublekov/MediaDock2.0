@@ -130,6 +130,7 @@ function CatalogRow({ title, onSelect, awards }: { title: CatalogTitle; onSelect
           posterUrl={title.posterUrl}
           subtitle={`${title.year ?? 'Year unknown'} | ${title.occurrenceCount} observations`}
           title={title.title}
+          metadata={{ director: title.director, plot: title.plot }}
         />
       </td>
       <td><span className="type-label">{formatWords(title.mediaType)}</span>{title.contentKind && <span className="subtle-line">{formatWords(title.contentKind)}</span>}</td>
@@ -362,6 +363,7 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
               awards={combineMovieAwards([], pageAwards, title.imdbId)}
                 footer={<FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} placement="status" />}
               genres={title.genres}
+                metadata={{ director: title.director, plot: title.plot }}
               imdbId={title.imdbId}
               imdbRating={title.imdbRating}
               key={title.id}

@@ -103,15 +103,17 @@ describe('OscarCatalogView', () => {
 
   it('shows the common award summary, film details, and IMDb link in both list modes', async () => {
     filmRequest.mockResolvedValue(page([{ ...film, posterUrl: 'https://example.test/poster.jpg' }]))
-    render(<OscarCatalogView />)
+    const view = render(<OscarCatalogView />)
 
     expect(await screen.findByText('Awards and nominations')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'View The Shape of Water Oscar details' })).toBeTruthy()
     const awardSummary = within(screen.getByLabelText('Awards and nominations'))
     expect(awardSummary.getByText('Oscars')).toBeTruthy()
-    expect(awardSummary.getByText('1 win · 2 nominations')).toBeTruthy()
+    const awardCount = awardSummary.getByText('1 win · 2 nominations')
+    expect(awardCount.closest('.movie-awards-source')?.getAttribute('title')).toContain('Winner · Best Picture')
     expect(screen.getByText(film.plot!)).toBeTruthy()
     expect(screen.getByText(`Director: ${film.director}`)).toBeTruthy()
+    expect(view.container.querySelector('.state-pill.is-enriched')).toBeNull()
     expect(screen.getByText('Drama')).toBeTruthy()
     expect(screen.getByText('Fantasy')).toBeTruthy()
     expect(screen.getByText('Romance')).toBeTruthy()
@@ -122,12 +124,15 @@ describe('OscarCatalogView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(screen.getByRole('img', { name: 'Poster for The Shape of Water' })).toBeTruthy()
     expect(screen.getByRole('columnheader', { name: 'OMDB' })).toBeTruthy()
-    expect(screen.getByText('Winner')).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: 'TYPE' })).toBeTruthy()
+    const tableAwardSummary = within(screen.getByLabelText('Awards and nominations'))
+    expect(tableAwardSummary.getByText('1 win · 2 nominations')).toBeTruthy()
+    expect(screen.queryByText('Winner')).toBeNull()
     expect(screen.getByRole('link', { name: 'Open The Shape of Water on IMDb (opens in new tab)' })).toBeTruthy()
     expect(filmRequest).toHaveBeenCalledTimes(1)
   })
 
-  it('labels a film with no winning nomination as a nominee', async () => {
+  it('shows a zero-win count and keeps nomination details on hover', async () => {
     filmRequest.mockResolvedValue(page([{
       ...film,
       nominations: film.nominations.map((nomination) => ({ ...nomination, isWinner: false })),
@@ -135,9 +140,10 @@ describe('OscarCatalogView', () => {
     render(<OscarCatalogView />)
 
     const awardSummary = within(await screen.findByLabelText('Awards and nominations'))
-    expect(awardSummary.getByText('0 wins · 2 nominations')).toBeTruthy()
+    const awardCount = awardSummary.getByText('0 wins · 2 nominations')
+    expect(awardCount.closest('.movie-awards-source')?.getAttribute('title')).toContain('Nominee · Best Picture')
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
-    expect(screen.getByText('Nominee')).toBeTruthy()
+    expect(within(screen.getByLabelText('Awards and nominations')).getByText('0 wins · 2 nominations')).toBeTruthy()
   })
 
   it('applies award filters and renders the empty state', async () => {
@@ -271,6 +277,7 @@ describe('OscarCatalogView', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'View The Shape of Water Oscar details' }))
     const dialog = await screen.findByRole('dialog')
     expect(detailsRequest).toHaveBeenCalledWith(film.id)
+    expect(within(dialog).queryByText('enriched')).toBeNull()
     expect(within(dialog).getByRole('heading', { name: 'Awards and nominations' })).toBeTruthy()
     expect(within(dialog).queryByText('2 wins & 14 nominations total')).toBeNull()
     expect(await within(dialog).findAllByText('Guillermo del Toro and J. Miles Dale')).toHaveLength(2)

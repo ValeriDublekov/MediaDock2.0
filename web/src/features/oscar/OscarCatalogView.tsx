@@ -62,53 +62,35 @@ function buildQuery(page: number, filters: OscarFilters): OscarCatalogQuery {
 }
 
 function OscarRow({ film, onSelect, awards }: { film: OscarFilm; onSelect: (id: number) => void; awards: ReturnType<typeof combineMovieAwards> }) {
-  const categories = [...new Set(film.nominations.map((nomination) => nomination.category))]
-  const winCount = film.nominations.filter((nomination) => nomination.isWinner).length
-  const nominationCount = film.nominations.length
-
   return (
     <tr>
       <td>
         <MovieTableTitle
+          metadata={{ director: film.director, plot: film.plot }}
           onOpen={() => onSelect(film.id)}
           openLabel={`View ${film.title} Oscar details`}
           posterLabel="OSC"
           posterUrl={film.posterUrl}
           subtitle={film.filmYear}
           title={film.title}
-        >
-            <span className="subtle-line">Director: {film.director ?? 'Not listed'}</span>
-            <span className="subtle-line">{film.genres.join(' · ') || 'Genres unavailable'}</span>
-            {film.plot && <span className="oscar-row-plot">{film.plot}</span>}
-        </MovieTableTitle>
+        />
       </td>
-      <td>
-        <span className="oscar-categories">
-          {categories.slice(0, 2).join(', ') || 'No categories listed'}
-        </span>
-        {categories.length > 2 && <span className="subtle-line">+{categories.length - 2} more</span>}
-      </td>
-      <td>
-        <span className={`state-pill ${winCount > 0 ? 'is-winner' : 'is-muted'}`}>
-          {winCount > 0 ? 'Winner' : 'Nominee'}
-        </span>
-        <span className="subtle-line">
-          {winCount > 0 && `${winCount} ${winCount === 1 ? 'win' : 'wins'} · `}
-          {nominationCount} {nominationCount === 1 ? 'nomination' : 'nominations'}
-        </span>
-      </td>
+      <td><span className="type-label">{formatWords(film.mediaType)}</span></td>
       <td>
         <MovieImdbLink imdbId={film.imdbId} rating={film.imdbRating} title={film.title} />
         {film.imdbVotes !== null && <span className="subtle-line">{film.imdbVotes.toLocaleString()} votes</span>}
       </td>
       <td><MovieAwardsSummary awards={awards} compact /></td>
+      <td>{film.genres.slice(0, 2).join(', ') || 'Not tagged'}</td>
       <td>
-        <span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>
-          {formatWords(film.enrichmentStatus)}
-        </span>
-        <span className="subtle-line">
-          {film.enrichmentAttemptCount} {film.enrichmentAttemptCount === 1 ? 'attempt' : 'attempts'}
-        </span>
+        {film.enrichmentStatus !== 'enriched' && <>
+          <span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>
+            {formatWords(film.enrichmentStatus)}
+          </span>
+          <span className="subtle-line">
+            {film.enrichmentAttemptCount} {film.enrichmentAttemptCount === 1 ? 'attempt' : 'attempts'}
+          </span>
+        </>}
       </td>
       <td>
         <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} />
@@ -349,15 +331,14 @@ export function OscarCatalogView() {
                 posterUrl={film.posterUrl}
                 title={film.title}
                 year={film.filmYear}
+                metadata={{ director: film.director, plot: film.plot }}
               >
-                <div className="oscar-tile-director">Director: {film.director ?? 'Not listed'}</div>
-                {film.plot && <p className="oscar-tile-plot">{film.plot}</p>}
-                <span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span>
+                {film.enrichmentStatus !== 'enriched' && <span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span>}
               </MoviePosterCard>
             })}
           </div> : <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th>FILM</th><th>CATEGORIES</th><th>RESULT</th><th>IMDB</th><th>AWARDS</th><th>OMDB</th><th>ACTIONS</th></tr></thead>
+              <thead><tr><th>FILM</th><th>TYPE</th><th>IMDB</th><th>AWARDS</th><th>GENRES</th><th>OMDB</th><th>ACTIONS</th></tr></thead>
               <tbody>
                 {result.items.map((film) => (
                   <OscarRow awards={combineMovieAwards(getOscarRecognitions(film), pageAwards, film.imdbId)} film={film} key={film.id} onSelect={setSelectedFilmId} />

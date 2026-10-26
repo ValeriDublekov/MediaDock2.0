@@ -105,6 +105,9 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
                     film.LastEnrichmentError,
                     group.OrderBy(x => x.Award.Name).ThenBy(x => x.Id)
                         .Select(x => new GoldenGlobeNominationResponse(x.Id, film.Year, x.Award.Name, x.Winner)).ToArray(),
+                    null,
+                    Array.Empty<string>(),
+                    null,
                     null);
             })
             .OrderByDescending(x => x.Year).ThenBy(x => x.Title, StringComparer.OrdinalIgnoreCase).ThenBy(x => x.NomineeType, StringComparer.Ordinal).ToArray();
@@ -126,7 +129,10 @@ internal sealed class GoldenGlobeApiService(MediaDockDbContext dbContext, TimePr
             {
                 PosterUrl = details?.PosterUrl,
                 ImdbRating = details?.ImdbRating,
-                MetadataStatus = details?.MetadataStatus
+                MetadataStatus = details?.MetadataStatus,
+                Genres = details?.Genres ?? Array.Empty<string>(),
+                Director = details?.Director,
+                Plot = details?.Plot
             });
         }
 

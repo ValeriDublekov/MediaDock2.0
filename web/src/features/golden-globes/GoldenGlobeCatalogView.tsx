@@ -53,7 +53,7 @@ function describeEnrichmentError(error: string, ceremonyYear: number) {
 
 function EnrichmentStatus({ film }: { film: GoldenGlobeFilm }) {
   return <>
-    <span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span>
+    {film.enrichmentStatus !== 'enriched' && <span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span>}
     {film.enrichmentError && <div className="golden-globe-enrichment-error">
       <span><strong>Enrichment issue:</strong> {describeEnrichmentError(film.enrichmentError, film.year)}</span>
       <code>{film.enrichmentError}</code>
@@ -192,10 +192,13 @@ export function GoldenGlobeCatalogView() {
         <div className="poster-grid">
           {result.items.map((film) => <MoviePosterCard
             awards={combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId)}
+            footer={<FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} placement="status" />}
+            genres={film.genres}
             imdbId={film.imdbId}
             imdbRating={film.imdbRating}
+            metadata={{ director: film.director, plot: film.plot }}
             key={film.filmId}
-            mediaType={null}
+            mediaType={film.nomineeType}
             onOpen={() => setSelectedFilm(film)}
             posterLabel="GLO"
             posterActions={<>
@@ -206,24 +209,20 @@ export function GoldenGlobeCatalogView() {
             title={film.title}
             year={film.year}
             yearLabel="Ceremony year"
-          >
-            <span className="state-pill is-muted">{formatWords(film.nomineeType)}</span>
-            <EnrichmentStatus film={film} />
-            <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} placement="status" />
-          </MoviePosterCard>)}
+          ><EnrichmentStatus film={film} /></MoviePosterCard>)}
         </div>
       ) : (
         <div className="table-wrap">
           <table className="data-table">
-            <thead><tr><th>FILM</th><th>IMDB</th><th>AWARDS</th><th>RESULT</th><th>OMDb status</th><th>ACTIONS</th></tr></thead>
+            <thead><tr><th>FILM</th><th>TYPE</th><th>IMDB</th><th>AWARDS</th><th>GENRES</th><th>OMDb status</th><th>ACTIONS</th></tr></thead>
             <tbody>{result.items.map((film) => {
-              const wins = film.nominations.filter((nomination) => nomination.isWinner).length
               const awards = combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId)
               return <tr key={film.filmId}>
-                <td><MovieTableTitle onOpen={() => setSelectedFilm(film)} openLabel={`View ${film.title} Golden Globes details`} posterLabel="GLO" posterUrl={film.posterUrl} subtitle={`Ceremony year ${film.year} - ${formatWords(film.nomineeType)}`} title={film.title} /></td>
+                <td><MovieTableTitle metadata={{ director: film.director, plot: film.plot }} onOpen={() => setSelectedFilm(film)} openLabel={`View ${film.title} Golden Globes details`} posterLabel="GLO" posterUrl={film.posterUrl} subtitle={`Ceremony year ${film.year}`} title={film.title} /></td>
+                <td><span className="type-label">{formatWords(film.nomineeType)}</span></td>
                 <td><MovieImdbLink imdbId={film.imdbId} rating={film.imdbRating} title={film.title} /></td>
                 <td><MovieAwardsSummary awards={awards} compact /></td>
-                <td><span className={`state-pill ${wins > 0 ? 'is-winner' : 'is-muted'}`}>{wins > 0 ? 'Winner' : 'Nominee'}</span></td>
+                <td>{film.genres.slice(0, 2).join(', ') || 'Not tagged'}</td>
                 <td><EnrichmentStatus film={film} /></td>
                 <td>
                   <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} />

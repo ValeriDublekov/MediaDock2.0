@@ -285,7 +285,6 @@ button:disabled { cursor: not-allowed; }
 .oscar-filter-form { grid-template-columns: minmax(170px, 1.5fr) repeat(2, minmax(90px, 0.55fr)) minmax(180px, 1.3fr) minmax(115px, 0.8fr) minmax(140px, 1fr) auto; }
 .oscar-list-poster { width: 34px; height: 46px; flex: 0 0 auto; border: 1px solid #c9d8ce; background: #eaf1e9; object-fit: cover; }
 .oscar-title-stamp { color: #8d5738; background: #f4ede3; border-color: #ddc8ae; }
-.oscar-categories { display: block; max-width: 300px; color: #46594e; font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
 .state-pill.is-winner { border-color: #dbc292; color: #77531e; background: #f7f0df; }
 .state-pill.is-pending { border-color: #e1d1a5; color: #796322; background: #faf5e5; }
 .state-pill.is-enriched { border-color: #c3d8c8; color: #386247; background: #edf5ed; }
@@ -362,11 +361,11 @@ button:disabled { cursor: not-allowed; }
 .tile-genres { display: flex; min-height: 0; flex-wrap: wrap; gap: 5px; color: #b9c2bc; }
 .tile-genres:empty { display: none; }
 .tile-genre { border: 1px solid #454d48; border-radius: 3px; padding: 2px 6px; color: #dce1dc; background: #2a302d; font-size: 10px; }
-.oscar-tile-director { color: #c2cbc5; font-size: 11px; line-height: 1.35; }
-.oscar-tile-plot, .oscar-row-plot { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; color: #b9c2bc; font-size: 11px; line-height: 1.4; }
-.oscar-tile-plot { margin: 0; }
+.movie-title-metadata { display: grid; width: 100%; min-width: 0; gap: 2px; }
+.movie-title-director { color: #c2cbc5; font-size: 11px; line-height: 1.35; }
+.movie-title-plot { display: -webkit-box; margin: 0; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; color: #b9c2bc; font-size: 11px; line-height: 1.4; }
+.movie-table-title-details .movie-title-plot { -webkit-line-clamp: 2; }
 .movie-table-title-details { display: grid; min-width: 0; gap: 3px; }
-.oscar-row-plot { -webkit-line-clamp: 2; }
 .tile-rating { display: inline-flex; min-height: 24px; align-items: center; gap: 5px; border: 1px solid #efad39; border-radius: 3px; padding: 2px 6px; color: #171b19; background: #f0aa32; font-size: 10px; font-weight: 700; }
 .oscar-imdb-rating { text-decoration: none; }
 .oscar-imdb-rating:hover { border-color: #ffc45f; background: #ffc45f; }
