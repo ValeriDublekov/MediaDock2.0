@@ -418,6 +418,33 @@ describe('RecommendationsView', () => {
     expect(await screen.findByText('No recommendations available')).toBeTruthy()
   })
 
+  it('keeps the current page when refreshing after marking a recommendation watched', async () => {
+    vi.mocked(getRecommendations)
+      .mockResolvedValueOnce(recommendationPage([recommendation()], 1, 51, 3))
+      .mockResolvedValueOnce(recommendationPage([recommendation({ title: 'Second page title' })], 2, 51, 3))
+      .mockResolvedValueOnce(recommendationPage([recommendation({ title: 'Updated second page title' })], 2, 50, 2))
+
+    render(<RecommendationsView mediaType="movie" />)
+
+    expect(await screen.findByRole('link', { name: 'Quiet River' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(await screen.findByRole('link', { name: 'Second page title' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mark Second page title as watched' }))
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Your rating (1-10)' }), { target: { value: '9' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save rating and mark watched' }))
+
+    expect(await screen.findByRole('link', { name: 'Updated second page title' })).toBeTruthy()
+    expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'movie',
+      page: 2,
+      pageSize: 25,
+      ratingWeight: 0.5,
+      votesWeight: 0.25,
+      awardsWeight: 0.25,
+    })
+  })
+
   it('shows an empty state when the server returns no candidates', async () => {
     vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([]))
 
