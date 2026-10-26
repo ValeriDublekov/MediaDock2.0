@@ -57,6 +57,7 @@ const emptyImdbRatingRanges: CatalogRatingRanges = {
 }
 const imdbRatingStorageKey = 'mediadock.catalog.imdbRatingRanges'
 const searchDebounceMs = 350
+const catalogPageSize = 50
 
 function ratingScopeForCategory(category: CatalogCategory): CatalogRatingScope {
   if (category === 'series' || category === 'series_ongoing') return 'series'
@@ -102,7 +103,7 @@ function saveImdbRatingRanges(ranges: CatalogRatingRanges) {
 function buildQuery(page: number, filters: CatalogFilters, category: CatalogCategory): CatalogQuery {
   return {
     page,
-    pageSize: 20,
+    pageSize: catalogPageSize,
     ...(category !== 'all' ? { feedTypes: categoryFeedTypes[category] } : {}),
     ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
     ...(filters.mediaType ? { mediaType: filters.mediaType as MediaType } : {}),
