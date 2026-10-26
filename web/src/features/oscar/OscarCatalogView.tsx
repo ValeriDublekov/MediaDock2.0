@@ -333,10 +333,7 @@ export function OscarCatalogView() {
             {result.items.map((film) => {
               return <MoviePosterCard
                 awards={combineMovieAwards(getOscarRecognitions(film), pageAwards, film.imdbId)}
-                footer={<>
-                  <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} />
-                  <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} />
-                </>}
+                footer={<FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} placement="status" />}
                 genres={film.genres}
                 imdbId={film.imdbId}
                 imdbRating={film.imdbRating}
@@ -345,6 +342,10 @@ export function OscarCatalogView() {
                 onOpen={() => setSelectedFilmId(film.id)}
                 openLabel={`View ${film.title} Oscar details`}
                 posterLabel="OSC"
+                posterActions={<>
+                  <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} placement="poster" />
+                  <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} placement="poster" />
+                </>}
                 posterUrl={film.posterUrl}
                 title={film.title}
                 year={film.filmYear}

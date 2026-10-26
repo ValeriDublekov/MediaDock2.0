@@ -95,7 +95,28 @@ describe('CatalogView', () => {
 
     const imdbLink = await screen.findByRole('link', { name: 'Open Quiet River on IMDb (opens in new tab)' })
     expect(imdbLink.textContent).toContain('8.1')
-    fireEvent.click(screen.getByRole('button', { name: 'View torrent sources for Quiet River (3)' }))
+    const torrentsButton = screen.getByRole('button', { name: 'View torrent sources for Quiet River (3)' })
+    expect(torrentsButton.getAttribute('data-tooltip')).toBe('3 torrent sources')
+    fireEvent.click(torrentsButton)
+
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    expect(getTitle).toHaveBeenCalledWith(title.id)
+  })
+
+  it('opens title details when clicking a non-action area of the poster card', async () => {
+    catalogRequest.mockResolvedValue(page([title]))
+    vi.mocked(getTitle).mockResolvedValue({
+      ...title,
+      broadcastRangeStartYear: null, broadcastRangeEndYear: null, broadcastRangeRaw: null,
+      imdbVotes: null, metascore: null, director: null, plot: null, runtime: null, awards: null,
+      boxOffice: null, firstSeenAt: '2026-09-28T12:00:00Z', updatedAt: '2026-09-28T12:00:00Z',
+    })
+    vi.mocked(getTitleOccurrences).mockResolvedValue({ items: [], page: 1, pageSize: 5, totalCount: 0, totalPages: 0 })
+    render(<CatalogView />)
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Open Quiet River on IMDb (opens in new tab)' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(await screen.findByText('3 feed observations'))
 
     expect(await screen.findByRole('dialog')).toBeTruthy()
     expect(getTitle).toHaveBeenCalledWith(title.id)

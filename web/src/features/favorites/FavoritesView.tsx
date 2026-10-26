@@ -3,8 +3,9 @@ import { getFavorites } from '../../api/client'
 import type { FavoriteTitle, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
-import { Poster } from '../../components/Poster'
+import { MovieDetailsIntro, MoviePosterCard } from '../../components/MoviePresentation'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
+import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 import { TitleDetailsDialog } from '../catalog/TitleDetailsDialog'
 import { FavoriteControls } from './FavoriteControls'
 import { useFavorites } from './FavoriteContext'
@@ -19,7 +20,7 @@ export function FavoritesView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
-  const [selected, setSelected] = useState<number | null>(null)
+  const [selected, setSelected] = useState<FavoriteTitle | null>(null)
   const { available, titles } = useFavorites()
 
   useEffect(() => {
@@ -55,23 +56,34 @@ export function FavoritesView() {
     {available && !loading && !error && result?.items.length === 0 && <EmptyState title="No favorites here" message="Add movies from supported catalogs or titles from recommendations." />}
     {available && !loading && !error && result && result.items.length > 0 && <>
       {viewMode === 'posters' ? <div className="poster-grid">
-        {result.items.map((item) => <article className="movie-tile" key={item.imdbId}>
-          {item.torrentMovieId !== null ? <button aria-label={`View ${item.title} details`} className="poster-action" onClick={() => setSelected(item.torrentMovieId)} type="button">
-            <Poster src={item.posterUrl} title={item.title} />
-          </button> : <Poster src={item.posterUrl} title={item.title} />}
-          <div className="movie-tile-info">
-            {item.torrentMovieId !== null
-              ? <button className="tile-title" onClick={() => setSelected(item.torrentMovieId)} type="button">{item.title}</button>
-              : <strong className="tile-title">{item.title}</strong>}
-            <div className="tile-meta">{item.year ?? 'Year unknown'} <span aria-hidden="true">·</span> <span>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog', item.addedFromRecommendations && 'Recommendations'].filter(Boolean).join(' / ')}</span></div>
-            <div className="tile-genres">{item.mediaType === 'movie' ? item.winCount > 0 ? `${item.winCount} Oscar ${item.winCount === 1 ? 'win' : 'wins'}` : `${item.nominationCount} nominations` : 'Series watch list'}</div>
-            <div className="tile-footer"><span className="tile-rating">{item.imdbRating === null ? 'Not rated' : `IMDb ${item.imdbRating.toFixed(1)}`}</span></div>
-            <FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} />
+        {result.items.map((item) => <MoviePosterCard
+          awards={[]}
+          footer={<FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} placement="status" />}
+          imdbId={item.imdbId}
+          imdbRating={item.imdbRating}
+          key={item.imdbId}
+          mediaType={item.mediaType}
+          onOpen={() => setSelected(item)}
+          openLabel={`View ${item.title} details`}
+          posterActions={<>
+            <FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} placement="poster" />
+            <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} placement="poster" />
+          </>}
+          posterLabel={item.mediaType.slice(0, 3).toUpperCase()}
+          posterUrl={item.posterUrl}
+          showAwards={false}
+          title={item.title}
+          year={item.year}
+        >
+          <div className="tile-observations">
+            <span>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog', item.addedFromRecommendations && 'Recommendations'].filter(Boolean).join(' / ')}</span>
+            <span>{item.mediaType === 'movie' ? item.winCount > 0 ? `${item.winCount} Oscar ${item.winCount === 1 ? 'win' : 'wins'}` : `${item.nominationCount} nominations` : 'Series watch list'}</span>
+            <span>{item.occurrenceCount ? `${item.occurrenceCount} torrent ${item.occurrenceCount === 1 ? 'source' : 'sources'}` : 'No torrent source available'}</span>
           </div>
-        </article>)}
+        </MoviePosterCard>)}
       </div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>TITLE</th><th>ORIGIN</th><th>OSCAR</th><th>TORRENTS</th><th>STATUS</th></tr></thead>
         <tbody>{result.items.map((item) => <tr key={item.imdbId}>
-          <td>{item.torrentMovieId !== null ? <button className="title-link" onClick={() => setSelected(item.torrentMovieId)} type="button">{item.title}</button> : item.title}<span className="subtle-line">{item.year ?? 'Year unknown'}</span></td>
+          <td><button className="title-link" onClick={() => setSelected(item)} type="button">{item.title}</button><span className="subtle-line">{item.year ?? 'Year unknown'}</span></td>
           <td>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog', item.addedFromRecommendations && 'Recommendations'].filter(Boolean).join(' / ')}</td>
           <td>{item.mediaType === 'movie' ? `${item.nominationCount} nominations, ${item.winCount} wins` : 'No Oscar records'}</td>
           <td>{item.occurrenceCount ? `${item.occurrenceCount} sources` : 'No source available'}</td>
@@ -80,6 +92,39 @@ export function FavoritesView() {
       </table></div>}
       <Pagination onPageChange={(next) => { setPage(next); setLoading(true) }} page={result} />
     </>}
-    {selected !== null && <TitleDetailsDialog onClose={() => setSelected(null)} titleId={selected} />}
+    {selected && (selected.torrentMovieId !== null
+      ? <TitleDetailsDialog onClose={() => setSelected(null)} titleId={selected.torrentMovieId} />
+      : <FavoriteDetailsDialog item={selected} onClose={() => setSelected(null)} />)}
   </section>
+}
+
+function FavoriteDetailsDialog({ item, onClose }: { item: FavoriteTitle; onClose: () => void }) {
+  const origin = [item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog', item.addedFromRecommendations && 'Recommendations'].filter(Boolean).join(' / ')
+  return <div className="detail-backdrop" onMouseDown={(event) => {
+    if (event.target === event.currentTarget) onClose()
+  }}>
+    <section aria-labelledby="favorite-title-details-heading" aria-modal="true" className="detail-dialog" role="dialog">
+      <header className="detail-header">
+        <div>
+          <p className="eyebrow">FAVORITE</p>
+          <h2 id="favorite-title-details-heading">{item.title}</h2>
+          <div className="detail-meta">{item.year ?? 'Year unknown'} | {item.mediaType}</div>
+        </div>
+        <button aria-label="Close favorite details" className="button button-secondary" onClick={onClose} type="button">Close</button>
+      </header>
+      <div className="detail-body">
+        <MovieDetailsIntro imdbId={item.imdbId} imdbRating={item.imdbRating} posterLabel={item.mediaType.slice(0, 3).toUpperCase()} posterUrl={item.posterUrl} title={item.title} />
+        <dl className="detail-facts">
+          <div><dt>Saved from</dt><dd>{origin || 'Favorites'}</dd></div>
+          <div><dt>Oscar nominations</dt><dd>{item.nominationCount}</dd></div>
+          <div><dt>Oscar wins</dt><dd>{item.winCount}</dd></div>
+          <div><dt>Torrent sources</dt><dd>{item.occurrenceCount}</dd></div>
+          <div><dt>Watch status</dt><dd>{item.toWatch ? 'To watch' : 'Not marked to watch'}</dd></div>
+          {item.mediaType === 'movie' && <div><dt>Download status</dt><dd>{item.toDownload ? 'To download' : 'Not marked to download'}</dd></div>}
+        </dl>
+        <FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} />
+        <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} />
+      </div>
+    </section>
+  </div>
 }

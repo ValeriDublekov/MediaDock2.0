@@ -134,3 +134,23 @@ it('shows series recommendations in the shared favorites list with watch-only co
   fireEvent.click(watchToggle)
   await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith('tt12345678', { toWatch: false }))
 })
+
+it('uses the shared poster card and opens details for a favorite without a torrent record', async () => {
+  const movie: FavoriteTitle = {
+    imdbId: 'tt12345678', torrentMovieId: null, title: 'Award Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
+    imdbRating: 8.2, posterUrl: null, toWatch: true, toDownload: false,
+    addedFromOscar: true, addedFromCatalog: false, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
+    updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 2,
+    winCount: 1, occurrenceCount: 0, lastSeenAt: null,
+  }
+  vi.mocked(getFavorites).mockResolvedValue({ items: [movie], page: 1, pageSize: 20, totalCount: 1, totalPages: 1 })
+  render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
+
+  expect(await screen.findByRole('button', { name: 'View Award Film details' })).toBeTruthy()
+  expect(screen.getByText('1 Oscar win')).toBeTruthy()
+  fireEvent.click(screen.getByText('1 Oscar win'))
+
+  expect(await screen.findByRole('dialog')).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'Award Film' })).toBeTruthy()
+  expect(screen.getByText('2', { selector: 'dd' })).toBeTruthy()
+})

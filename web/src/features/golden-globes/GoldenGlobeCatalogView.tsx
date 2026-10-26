@@ -198,6 +198,10 @@ export function GoldenGlobeCatalogView() {
             mediaType={null}
             onOpen={() => setSelectedFilm(film)}
             posterLabel="GLO"
+            posterActions={<>
+              <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} placement="poster" />
+              <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.nomineeType} placement="poster" />
+            </>}
             posterUrl={film.posterUrl}
             title={film.title}
             year={film.year}
@@ -205,8 +209,7 @@ export function GoldenGlobeCatalogView() {
           >
             <span className="state-pill is-muted">{formatWords(film.nomineeType)}</span>
             <EnrichmentStatus film={film} />
-            <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} />
-            <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.nomineeType} />
+            <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} placement="status" />
           </MoviePosterCard>)}
         </div>
       ) : (
@@ -222,7 +225,10 @@ export function GoldenGlobeCatalogView() {
                 <td><MovieAwardsSummary awards={awards} compact /></td>
                 <td><span className={`state-pill ${wins > 0 ? 'is-winner' : 'is-muted'}`}>{wins > 0 ? 'Winner' : 'Nominee'}</span></td>
                 <td><EnrichmentStatus film={film} /></td>
-                <td><IgnoredMovieControl imdbId={film.imdbId} mediaType={film.nomineeType} /></td>
+                <td>
+                  <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} />
+                  <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.nomineeType} />
+                </td>
               </tr>
             })}</tbody>
           </table>

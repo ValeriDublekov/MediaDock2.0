@@ -14,11 +14,12 @@ interface MoviePosterCardProps {
   posterLabel?: string
   genres?: string[]
   awards: MovieAwardRecognition[]
+  showAwards?: boolean
   onOpen?: () => void
   openLabel?: string
   posterBadge?: ReactNode
+  posterActions?: ReactNode
   children?: ReactNode
-  actions?: ReactNode
   footer?: ReactNode
 }
 
@@ -33,11 +34,12 @@ export function MoviePosterCard({
   posterLabel = 'FILM',
   genres,
   awards,
+  showAwards = true,
   onOpen,
   openLabel,
   posterBadge,
+  posterActions,
   children,
-  actions,
   footer,
 }: MoviePosterCardProps) {
   const poster = <>
@@ -46,10 +48,16 @@ export function MoviePosterCard({
     {posterBadge}
   </>
 
-  return <article className="movie-tile">
-    {onOpen
-      ? <button aria-label={openLabel ?? `View ${title} details`} className="poster-action" onClick={onOpen} type="button">{poster}</button>
-      : <div className="poster-display">{poster}</div>}
+  return <article className={`movie-tile${onOpen ? ' is-clickable' : ''}`} onClick={onOpen ? (event) => {
+    if (event.target instanceof Element && event.target.closest('a, button, input, label, select, textarea, summary')) return
+    onOpen()
+  } : undefined}>
+    <div className="poster-stage">
+      {onOpen
+        ? <button aria-label={openLabel ?? `View ${title} details`} className="poster-action" onClick={onOpen} type="button">{poster}</button>
+        : <div className="poster-display">{poster}</div>}
+      {posterActions && <div className="poster-overlay-actions">{posterActions}</div>}
+    </div>
     <div className="movie-tile-info">
       <div className="tile-heading">
         {onOpen
@@ -63,9 +71,8 @@ export function MoviePosterCard({
           ? genres.slice(0, 3).map((genre) => <span className="tile-genre" key={genre}>{genre}</span>)
           : <span>Genres unavailable</span>}
       </div>
-      <MovieAwardsSummary awards={awards} />
+      {showAwards && <MovieAwardsSummary awards={awards} />}
       {children}
-      {actions && <div className="tile-actions">{actions}</div>}
       {footer}
     </div>
   </article>

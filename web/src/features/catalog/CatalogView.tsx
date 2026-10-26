@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Download } from 'lucide-react'
 import { getCatalog } from '../../api/client'
 import type { CatalogQuery, CatalogTitle, FeedType, MediaType, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
@@ -358,17 +359,8 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
           {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
           {viewMode === 'posters' ? <div className="poster-grid">
             {result.items.map((title) => <MoviePosterCard
-              actions={<>
-                <button aria-label={`Open details for ${title.title}`} className="tile-action" onClick={() => openTitle(title.id, 'details')} type="button">Details</button>
-                <button aria-label={`View torrent sources for ${title.title} (${title.occurrenceCount})`} className="tile-action tile-action-primary" onClick={() => openTitle(title.id, 'torrents')} type="button">
-                  Torrents <span>{title.occurrenceCount}</span>
-                </button>
-              </>}
               awards={combineMovieAwards([], pageAwards, title.imdbId)}
-              footer={<>
-                <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} />
-                <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} />
-              </>}
+                footer={<FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} placement="status" />}
               genres={title.genres}
               imdbId={title.imdbId}
               imdbRating={title.imdbRating}
@@ -377,6 +369,17 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
               onOpen={() => openTitle(title.id, 'details')}
               openLabel={`View ${title.title} details`}
               posterLabel={title.mediaType.slice(0, 3).toUpperCase()}
+              posterActions={<>
+                <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} placement="poster" />
+                <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} placement="poster" />
+                <button
+                  aria-label={`View torrent sources for ${title.title} (${title.occurrenceCount})`}
+                  className="tile-icon-action torrent-icon"
+                  data-tooltip={`${title.occurrenceCount} ${title.occurrenceCount === 1 ? 'torrent source' : 'torrent sources'}`}
+                  onClick={() => openTitle(title.id, 'torrents')}
+                  type="button"
+                ><Download aria-hidden="true" size={16} /></button>
+              </>}
               posterUrl={title.posterUrl}
               title={title.title}
               year={title.year}
