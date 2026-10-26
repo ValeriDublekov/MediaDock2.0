@@ -144,7 +144,7 @@ function CatalogRow({ title, onSelect, awards }: { title: CatalogTitle; onSelect
   )
 }
 
-export function CatalogView({ canDeleteTitles = false, canViewScanHistory = false }: { canDeleteTitles?: boolean; canViewScanHistory?: boolean } = {}) {
+export function CatalogView({ canDeleteTitles = false, canViewHistory = false }: { canDeleteTitles?: boolean; canViewHistory?: boolean } = {}) {
   const [catalogView, setCatalogView] = useState<'titles' | 'history'>('titles')
   const [viewMode, setViewMode] = useState<ViewMode>('posters')
   const [category, setCategory] = useState<CatalogCategory>('movie')
@@ -256,11 +256,11 @@ export function CatalogView({ canDeleteTitles = false, canViewScanHistory = fals
 
   return (
     <section aria-label="Catalog" className="media-view">
-      {canViewScanHistory && <div aria-label="Catalog view" className="catalog-screen-switch segment-control" role="group">
+      {canViewHistory && <div aria-label="Catalog view" className="catalog-screen-switch segment-control" role="group">
         <button aria-pressed={catalogView === 'titles'} onClick={() => setCatalogView('titles')} type="button">Titles</button>
-        <button aria-pressed={catalogView === 'history'} onClick={() => setCatalogView('history')} type="button">Scan history</button>
+        <button aria-pressed={catalogView === 'history'} onClick={() => setCatalogView('history')} type="button">History</button>
       </div>}
-      {canViewScanHistory && catalogView === 'history' ? <HistoryView scanRunsOnly /> : <>
+      {canViewHistory && catalogView === 'history' ? <HistoryView showCleanupControls={false} /> : <>
       {deleteNotice && <p className="form-message" role="status">{deleteNotice}</p>}
       <nav aria-label="Catalog categories" className="catalog-category-nav">
         {categories.map((item) => <button

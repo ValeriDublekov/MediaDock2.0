@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
+import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getParseLogs, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
 import type { CatalogTitle, ImdbCandidateSearch, MovieAwardRecognition, PageResponse, TitleDetails } from '../../api/types'
 import { CatalogView } from './CatalogView'
 
@@ -10,9 +10,10 @@ vi.mock('../../api/client', () => ({
   getTitle: vi.fn(),
   getTitleOccurrences: vi.fn(),
   deleteCatalogTitle: vi.fn(),
+  getParseLogs: vi.fn(),
+  getScanRuns: vi.fn(),
   getTitleOscars: vi.fn().mockResolvedValue([]),
   getMovieAwards: vi.fn().mockResolvedValue([]),
-  getScanRuns: vi.fn(),
   searchCatalogTitleImdbCandidates: vi.fn(),
   lookupCatalogTitleImdbCandidate: vi.fn(),
   applyCatalogTitleImdbCandidate: vi.fn(),
@@ -67,18 +68,24 @@ describe('CatalogView', () => {
     expect(catalogRequest).toHaveBeenCalledTimes(1)
   })
 
-  it('shows scan history in the catalog only when enabled and omits unrelated history controls', async () => {
+  it('shows parse log by default and lets admins switch to scan runs from the catalog', async () => {
     catalogRequest.mockResolvedValue(page([]))
+    vi.mocked(getParseLogs).mockResolvedValue({ items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 })
     vi.mocked(getScanRuns).mockResolvedValue({ items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 })
     const view = render(<CatalogView />)
 
-    expect(screen.queryByRole('button', { name: 'Scan history' })).toBeNull()
-    view.rerender(<CatalogView canViewScanHistory />)
-    fireEvent.click(screen.getByRole('button', { name: 'Scan history' }))
+    expect(screen.queryByRole('button', { name: 'History' })).toBeNull()
+    view.rerender(<CatalogView canViewHistory />)
+    fireEvent.click(screen.getByRole('button', { name: 'History' }))
 
+    expect(await screen.findByText('No parse entries found')).toBeTruthy()
+    expect(getParseLogs).toHaveBeenCalledWith({ page: 1, pageSize: 20, unresolvedMoviesOnly: true })
+    expect(screen.getByRole('button', { name: 'Parse log' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Scan runs' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Scan runs' }))
     expect(await screen.findByText('No scan runs found')).toBeTruthy()
     expect(getScanRuns).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
-    expect(screen.queryByRole('button', { name: 'Parse log' })).toBeNull()
     expect(screen.queryByLabelText('Delete older than (days)')).toBeNull()
   })
 

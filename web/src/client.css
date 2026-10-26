@@ -185,7 +185,10 @@ button:disabled { cursor: not-allowed; }
 .recommendation-score-guide p { max-width: 850px; margin: 8px 0 0; }
 .recommendations-table { min-width: 1040px; }
 .recommendations-table td { vertical-align: top; }
-.recommendation-actions { display: grid; justify-items: start; gap: 5px; }
+.recommendation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 7px; }
+.recommendation-actions > .button,
+.recommendation-actions .favorite-controls .button { min-height: 28px; padding-inline: 8px; font-size: 10px; }
+.recommendation-actions .text-button { min-height: 26px; padding-inline: 2px; font-size: 10px; }
 .recommendation-actions .ignored-movie-controls { min-width: 0; }
 .recommendation-actions .favorite-controls { min-width: 0; }
 .recommendation-title-cell { display: grid; min-width: 240px; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 10px; }

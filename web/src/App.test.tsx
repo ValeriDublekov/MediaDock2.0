@@ -42,7 +42,7 @@ vi.mock('./features/auth/AuthStatus', async () => {
   }
 })
 vi.mock('./features/catalog/CatalogView', () => ({
-  CatalogView: ({ canDeleteTitles, canViewScanHistory }: { canDeleteTitles: boolean; canViewScanHistory: boolean }) => <div data-can-delete-titles={canDeleteTitles} data-can-view-scan-history={canViewScanHistory}>Catalog route content</div>,
+  CatalogView: ({ canDeleteTitles, canViewHistory }: { canDeleteTitles: boolean; canViewHistory: boolean }) => <div data-can-delete-titles={canDeleteTitles} data-can-view-history={canViewHistory}>Catalog route content</div>,
 }))
 vi.mock('./features/oscar/OscarCatalogView', () => ({ OscarCatalogView: () => <div>Oscar route content</div> }))
 vi.mock('./features/golden-globes/GoldenGlobeCatalogView', () => ({ GoldenGlobeCatalogView: () => <div>Golden Globes route content</div> }))
@@ -239,14 +239,14 @@ describe('App routes', () => {
     const userView = renderAt('/catalog')
     const userCatalog = await screen.findByText('Catalog route content')
     expect(userCatalog.getAttribute('data-can-delete-titles')).toBe('false')
-    expect(userCatalog.getAttribute('data-can-view-scan-history')).toBe('false')
+    expect(userCatalog.getAttribute('data-can-view-history')).toBe('false')
     userView.unmount()
 
     authMock.session = activeAdminSession
     renderAt('/catalog')
     const adminCatalog = await screen.findByText('Catalog route content')
     expect(adminCatalog.getAttribute('data-can-delete-titles')).toBe('true')
-    expect(adminCatalog.getAttribute('data-can-view-scan-history')).toBe('true')
+    expect(adminCatalog.getAttribute('data-can-view-history')).toBe('true')
   })
 
   it('shows admin controls separately from account and library navigation', async () => {
@@ -353,7 +353,7 @@ describe('App routes', () => {
     expect(screen.getByText('System route content')).toBeTruthy()
     const administrationLink = screen.getByRole('link', { name: /Administration/ })
     const administrationNavigation = screen.getByRole('navigation', { name: 'Administration navigation' })
-    const historyLink = screen.getByRole('link', { name: 'Scan history' })
+    const historyLink = screen.getByRole('link', { name: 'Parse log' })
     expect(administrationLink.compareDocumentPosition(administrationNavigation) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(administrationNavigation.compareDocumentPosition(historyLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(administrationNavigation.querySelector('a')?.textContent).toBe('System')

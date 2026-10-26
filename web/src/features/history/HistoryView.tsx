@@ -9,12 +9,12 @@ import { formatDate, formatWords } from '../../shared/format'
 type HistoryTab = 'scans' | 'parses'
 type ParseLogFilter = '' | 'retryable' | 'terminal' | 'resolved' | 'unresolvedMovies'
 
-export function HistoryView({ scanRunId = null, onClearScanRun, scanRunsOnly = false }: {
+export function HistoryView({ scanRunId = null, onClearScanRun, showCleanupControls = true }: {
   scanRunId?: number | null
   onClearScanRun?: () => void
-  scanRunsOnly?: boolean
+  showCleanupControls?: boolean
 } = {}) {
-  const [tab, setTab] = useState<HistoryTab>(scanRunsOnly ? 'scans' : 'parses')
+  const [tab, setTab] = useState<HistoryTab>('parses')
   const [page, setPage] = useState(1)
   const [scanStatus, setScanStatus] = useState('')
   const [scanTrigger, setScanTrigger] = useState('')
@@ -103,15 +103,15 @@ export function HistoryView({ scanRunId = null, onClearScanRun, scanRunsOnly = f
   return (
     <section aria-label="Operation history">
       <div className="history-toolbar">
-        {!scanRunsOnly && <div aria-label="History type" className="segment-control" role="group">
+        <div aria-label="History type" className="segment-control" role="group">
           <button aria-pressed={tab === 'scans'} onClick={() => changeTab('scans')} type="button">Scan runs</button>
           <button aria-pressed={tab === 'parses'} onClick={() => changeTab('parses')} type="button">Parse log</button>
-        </div>}
+        </div>
         {tab === 'scans' ? (
           <div className="history-filters">
             <div className="field"><label htmlFor="scan-status-filter">Status</label><select id="scan-status-filter" onChange={(event) => { setPage(1); setScanStatus(event.target.value) }} value={scanStatus}><option value="">All statuses</option><option value="running">Running</option><option value="succeeded">Succeeded</option><option value="partial">Partial</option><option value="failed">Failed</option></select></div>
             <div className="field"><label htmlFor="scan-trigger-filter">Trigger</label><select id="scan-trigger-filter" onChange={(event) => { setPage(1); setScanTrigger(event.target.value) }} value={scanTrigger}><option value="">All triggers</option><option value="schedule">Schedule</option><option value="manual">Manual</option><option value="local">Local</option></select></div>
-            {!scanRunsOnly && <>
+            {showCleanupControls && <>
               <div className="field"><label htmlFor="history-retention-days">Delete older than (days)</label><input id="history-retention-days" max="36500" min="1" onChange={(event) => setRetentionDays(event.target.value)} type="number" value={retentionDays} /></div>
               <button className="button button-secondary" disabled={deletingHistory || !validRetentionDays} onClick={() => void deleteOldHistory()} type="button">{deletingHistory ? 'Deleting…' : 'Delete old logs'}</button>
             </>}

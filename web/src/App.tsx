@@ -35,7 +35,7 @@ const administrationPages = [
   { path: '/configuration/recommendations', label: 'Recommendation settings', description: 'Configure vote normalization and award points.' },
   { path: '/configuration/omdb', label: 'OMDb provider', description: 'Configure provider credentials and shared request limits.' },
   { path: '/configuration/users', label: 'Users', description: 'Review registration requests and manage account status.' },
-  { path: '/history', label: 'Scan history', description: 'Review completed scans and individual parser decisions.' },
+  { path: '/history', label: 'Parse log', description: 'Review parser decisions and completed scans.' },
 ]
 
 const recommendationPages: { path: string; label: string; mediaType: RecommendationMediaType }[] = [
@@ -366,7 +366,7 @@ function AppContent() {
 
           <Routes>
             <Route path="/" element={<Navigate replace to="/catalog" />} />
-            <Route path="/catalog" element={<CatalogView canDeleteTitles={isAdmin} canViewScanHistory={isAdmin} />} />
+            <Route path="/catalog" element={<CatalogView canDeleteTitles={isAdmin} canViewHistory={isAdmin} />} />
             <Route path="/oscar" element={<OscarCatalogView />} />
             <Route path="/golden-globes" element={<GoldenGlobeCatalogView />} />
             <Route path="/favorites" element={isActiveAccount
