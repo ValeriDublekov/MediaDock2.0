@@ -20,11 +20,11 @@ import { MovieTablesDashboardView } from './features/dashboard/MovieTablesDashbo
 
 type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'account' | 'administration'
 
-const sections: { id: Section; path: string; number: string; label: string }[] = [
-  { id: 'catalog', path: '/catalog', number: '01', label: 'Torents catalog' },
-  { id: 'oscar', path: '/oscar', number: '02', label: 'Oscar catalog' },
-  { id: 'golden-globes', path: '/golden-globes', number: '03', label: 'Golden Globes catalog' },
-  { id: 'favorites', path: '/favorites', number: '04', label: 'Favorites' },
+const sections: { id: Section; path: string; label: string }[] = [
+  { id: 'catalog', path: '/catalog', label: 'Torents catalog' },
+  { id: 'oscar', path: '/oscar', label: 'Oscar catalog' },
+  { id: 'golden-globes', path: '/golden-globes', label: 'Golden Globes catalog' },
+  { id: 'favorites', path: '/favorites', label: 'Favorites' },
 ]
 
 const administrationPages = [
@@ -206,6 +206,17 @@ function AppContent() {
     ? `${session.identity.issuer}:${session.identity.subject}`
     : null
   const isAdmin = isActiveAccount && session?.user?.role === 'admin'
+  const mainNavigation: { path: string; label: string }[] = [
+    { path: '/catalog', label: 'Torents catalog' },
+    ...(isActiveAccount ? [
+      ...recommendationPages,
+      { path: '/favorites', label: 'Favorites' },
+      { path: '/account/ignored-movies', label: 'Ignored' },
+      { path: '/account/personal-ratings', label: 'Personal ratings' },
+    ] : []),
+    { path: '/oscar', label: 'Oscar catalog' },
+    { path: '/golden-globes', label: 'Golden Globes catalog' },
+  ]
   const isAdministrationPath = location.pathname.startsWith('/configuration') || location.pathname === '/history'
   const section: Section = isAdministrationPath
     ? 'administration'
@@ -240,58 +251,21 @@ function AppContent() {
           <span className="brand-name">MediaDock</span>
         </NavLink>
 
-        <div className="sidebar-label sidebar-label-first">LIBRARY</div>
-        <nav className="primary-nav" aria-label="Library navigation">
-          {sections.filter((item) => item.id !== 'favorites').map((item) => (
+        <div className="sidebar-label sidebar-label-first">MAIN MENU</div>
+        <nav className="primary-nav" aria-label="Main navigation">
+          {mainNavigation.map((item, index) => (
             <NavLink
-              aria-current={section === item.id ? 'page' : undefined}
+              aria-label={item.label}
               className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
               end
-              key={item.id}
+              key={item.path}
               to={item.path}
             >
-              <span className="nav-number">{item.number}</span>
+              <span className="nav-number">{String(index + 1).padStart(2, '0')}</span>
               <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>
-
-        {isActiveAccount && (
-          <div className="account-nav-group">
-            <div className="sidebar-label">PERSONAL</div>
-            <nav aria-label="Personal navigation" className="configuration-nav">
-              <NavLink
-                className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
-                end
-                to="/favorites"
-              >
-                Favorites
-              </NavLink>
-              <NavLink
-                className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
-                end
-                to="/account/ignored-movies"
-              >
-                Ignored titles
-              </NavLink>
-              {recommendationPages.map((page) => <NavLink
-                className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
-                end
-                key={page.path}
-                to={page.path}
-              >
-                {page.label}
-              </NavLink>)}
-              <NavLink
-                className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
-                end
-                to="/account/personal-ratings"
-              >
-                Personal IMDb ratings
-              </NavLink>
-            </nav>
-          </div>
-        )}
 
         {isAdmin && (
           <div className="configuration-nav-group">
@@ -303,7 +277,7 @@ function AppContent() {
                 end
                 to="/configuration/system"
               >
-                <span className="nav-number">05</span>
+                <span className="nav-number">09</span>
                 <span>Administration</span>
               </NavLink>
             </nav>

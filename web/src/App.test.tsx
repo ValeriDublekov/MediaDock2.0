@@ -178,13 +178,16 @@ describe('App routes', () => {
     expect(screen.queryByText('Recommendations route content')).toBeNull()
   })
 
-  it('shows shared library navigation without personal or admin links to anonymous visitors', async () => {
+  it('shows only shared pages in the main navigation to anonymous visitors', async () => {
     renderAt('/catalog')
 
-    expect(await screen.findByRole('navigation', { name: 'Library navigation' })).toBeTruthy()
-    expect(screen.getByRole('link', { name: /Torents catalog/ })).toBeTruthy()
+    const mainNavigation = await screen.findByRole('navigation', { name: 'Main navigation' })
+    expect(Array.from(mainNavigation.querySelectorAll('a'), (link) => link.getAttribute('aria-label'))).toEqual([
+      'Torents catalog',
+      'Oscar catalog',
+      'Golden Globes catalog',
+    ])
     expect(screen.queryByRole('link', { name: /Favorites/ })).toBeNull()
-    expect(screen.queryByRole('navigation', { name: 'Personal navigation' })).toBeNull()
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
   })
 
@@ -194,9 +197,17 @@ describe('App routes', () => {
     renderAt('/account/personal-ratings')
 
     expect(await screen.findByText('Ratings route content')).toBeTruthy()
-    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Personal IMDb ratings')
-    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Favorites')
-    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Ignored titles')
+    const mainNavigation = screen.getByRole('navigation', { name: 'Main navigation' })
+    expect(Array.from(mainNavigation.querySelectorAll('a'), (link) => link.getAttribute('aria-label'))).toEqual([
+      'Torents catalog',
+      'Movie recommendations',
+      'Series recommendations',
+      'Favorites',
+      'Ignored',
+      'Personal ratings',
+      'Oscar catalog',
+      'Golden Globes catalog',
+    ])
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Users' })).toBeNull()
   })
@@ -210,7 +221,7 @@ describe('App routes', () => {
     expect(screen.getByTestId('recommendations-route-content').getAttribute('data-media-type')).toBe('movie')
     expect(screen.getByRole('link', { name: 'Movie recommendations' }).getAttribute('aria-current')).toBe('page')
     expect(screen.getByRole('link', { name: 'Series recommendations' })).toBeTruthy()
-    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Personal IMDb ratings')
+    expect(screen.getByRole('navigation', { name: 'Main navigation' }).textContent).toContain('Personal ratings')
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
   })
 
@@ -231,7 +242,7 @@ describe('App routes', () => {
     renderAt('/account/ignored-movies')
 
     expect(await screen.findByText('Ignored movies route content')).toBeTruthy()
-    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Ignored titles')
+    expect(screen.getByRole('navigation', { name: 'Main navigation' }).textContent).toContain('Ignored')
   })
 
   it('shows catalog delete and scan history permissions only to active administrators', async () => {
@@ -255,12 +266,12 @@ describe('App routes', () => {
     renderAt('/configuration/users')
 
     expect(await screen.findByText('Users route content')).toBeTruthy()
-    expect(screen.getByRole('navigation', { name: 'Library navigation' })).toBeTruthy()
-    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Personal IMDb ratings')
+    expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Main navigation' }).textContent).toContain('Personal ratings')
     const administrationNavigation = screen.getByRole('navigation', { name: 'Administration navigation' })
     expect(administrationNavigation.textContent).toContain('Users')
     expect(administrationNavigation.textContent).toContain('Recommendation settings')
-    expect(administrationNavigation.textContent).not.toContain('Personal IMDb ratings')
+    expect(administrationNavigation.textContent).not.toContain('Personal ratings')
     expect(screen.getByRole('navigation', { name: 'Administration section navigation' }).textContent).toContain('Administration')
   })
 
@@ -324,7 +335,7 @@ describe('App routes', () => {
 
     expect(await screen.findByRole('navigation', { name: 'Administration section navigation' })).toBeTruthy()
     expect(screen.queryByText('Previous account import result')).toBeNull()
-    expect(screen.getByRole('navigation', { name: 'Personal navigation' }).textContent).toContain('Personal IMDb ratings')
+    expect(screen.getByRole('navigation', { name: 'Main navigation' }).textContent).toContain('Personal ratings')
   })
 
   it('hides the open-mode warning only when the server confirms enforcement', async () => {
