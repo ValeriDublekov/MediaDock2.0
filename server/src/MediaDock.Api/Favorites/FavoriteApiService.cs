@@ -42,7 +42,10 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
         var changed = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO favorite_movies (user_id, imdb_id, to_watch, to_download, added_from_oscar, added_from_catalog, added_from_recommendations, created_at, updated_at)
             SELECT {userId}, imdb_id, {toWatch}, {fromCatalog}, {fromOscar}, {fromCatalog}, {fromRecommendations}, {now}, {now}
-            FROM imdb_titles WHERE imdb_id = {imdbId} AND metadata_status = 'enriched' AND media_type = 'movie'
+            FROM imdb_titles
+            WHERE imdb_id = {imdbId}
+                AND metadata_status = 'enriched'
+                AND (media_type = 'movie' OR ({fromRecommendations} AND media_type = 'series'))
             ON CONFLICT (user_id, imdb_id) DO UPDATE SET
                 to_watch = favorite_movies.to_watch OR EXCLUDED.added_from_recommendations OR (EXCLUDED.added_from_oscar AND NOT favorite_movies.added_from_oscar),
                 to_download = favorite_movies.to_download OR (EXCLUDED.added_from_catalog AND NOT favorite_movies.added_from_catalog),
@@ -51,7 +54,7 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
                 added_from_recommendations = favorite_movies.added_from_recommendations OR EXCLUDED.added_from_recommendations,
                 updated_at = EXCLUDED.updated_at
             """, cancellationToken);
-                if (changed == 0) throw new ApiNotFoundException("Enriched IMDb movie not found.");
+                if (changed == 0) throw new ApiNotFoundException("Enriched IMDb title not found.");
                 return await GetOneAsync(userId, imdbId, cancellationToken);
     }
 

@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addFavorite, getFavorites, getOscarCategories, getOscarFilm, getOscarFilms, updateFavorite } from '../../api/client'
-import type { FavoriteMovie, OscarFilm, OscarNomination, PageResponse } from '../../api/types'
+import type { FavoriteTitle, OscarFilm, OscarNomination, PageResponse } from '../../api/types'
 import { FavoriteProvider } from '../favorites/FavoriteContext'
 import { OscarCatalogView } from './OscarCatalogView'
 
@@ -290,7 +290,7 @@ describe('OscarCatalogView', () => {
   })
 
   it('adds from Oscar, preserves a disabled marker, and keeps state after a failed save', async () => {
-    const favorite: FavoriteMovie = {
+    const favorite: FavoriteTitle = {
       imdbId: film.imdbId!, torrentMovieId: null, title: film.title, year: film.filmYear, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: film.imdbRating, posterUrl: null, toWatch: true, toDownload: false,
       addedFromOscar: true, addedFromCatalog: false, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
@@ -314,7 +314,7 @@ describe('OscarCatalogView', () => {
   })
 
   it('records Oscar origin on an existing catalog favorite without clearing download', async () => {
-    const existing: FavoriteMovie = {
+    const existing: FavoriteTitle = {
       imdbId: film.imdbId!, torrentMovieId: null, title: film.title, year: film.filmYear, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: film.imdbRating, posterUrl: null, toWatch: false, toDownload: true,
       addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',

@@ -11,7 +11,7 @@ import type {
   BackgroundJobEvents,
   DeploymentActionResult,
   DeploymentStatus,
-  FavoriteMovie,
+  FavoriteTitle,
   IgnoredMovie,
   AppliedImdbCandidate,
   ImdbCandidateSearch,
@@ -169,7 +169,7 @@ export function getTitleOscars(id: number, fetcher?: typeof fetch) {
 }
 
 export function getFavorites(query: { status?: 'all' | 'to_watch' | 'to_download'; page: number; pageSize: number }, fetcher?: typeof fetch) {
-  return requestJson<PageResponse<FavoriteMovie>>(withQuery('/favorites', query), {}, fetcher)
+  return requestJson<PageResponse<FavoriteTitle>>(withQuery('/favorites', query), {}, fetcher)
 }
 
 export function getIgnoredMovies(query: { page: number; pageSize: number }, fetcher?: typeof fetch) {
@@ -192,11 +192,11 @@ export function getPersonalRatings(
 }
 
 export function addFavorite(imdbId: string, from: 'oscar' | 'catalog' | 'recommendation', fetcher?: typeof fetch) {
-  return requestJson<FavoriteMovie>('/favorites', { method: 'POST', body: JSON.stringify({ imdbId, from }) }, fetcher)
+  return requestJson<FavoriteTitle>('/favorites', { method: 'POST', body: JSON.stringify({ imdbId, from }) }, fetcher)
 }
 
 export function updateFavorite(imdbId: string, input: { toWatch?: boolean; toDownload?: boolean }, fetcher?: typeof fetch) {
-  return requestJson<FavoriteMovie>(`/favorites/${encodeURIComponent(imdbId)}`, { method: 'PATCH', body: JSON.stringify(input) }, fetcher)
+  return requestJson<FavoriteTitle>(`/favorites/${encodeURIComponent(imdbId)}`, { method: 'PATCH', body: JSON.stringify(input) }, fetcher)
 }
 
 export function removeFavorite(imdbId: string, fetcher?: typeof fetch) {

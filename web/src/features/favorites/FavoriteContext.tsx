@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { addFavorite, getFavorites, removeFavorite, updateFavorite } from '../../api/client'
-import type { FavoriteMovie } from '../../api/types'
+import type { FavoriteTitle } from '../../api/types'
 
 interface FavoriteState {
   available: boolean
-  movies: Record<string, FavoriteMovie>
+  titles: Record<string, FavoriteTitle>
   pending: string | null
   loading: boolean
   error: string | null
@@ -16,12 +16,12 @@ interface FavoriteState {
 
 const FavoriteContext = createContext<FavoriteState | null>(null)
 const emptyState: FavoriteState = {
-  available: false, movies: {}, pending: null, loading: false, error: null, retry: () => {},
+  available: false, titles: {}, pending: null, loading: false, error: null, retry: () => {},
   add: async () => false, update: async () => {}, remove: async () => {},
 }
 
 export function FavoriteProvider({ children, accountKey }: { children: ReactNode; accountKey: string | null }) {
-  const [movies, setMovies] = useState<Record<string, FavoriteMovie>>({})
+  const [titles, setTitles] = useState<Record<string, FavoriteTitle>>({})
   const [pending, setPending] = useState<string | null>(null)
   const [loading, setLoading] = useState(accountKey !== null)
   const [error, setError] = useState<string | null>(null)
@@ -36,7 +36,7 @@ export function FavoriteProvider({ children, accountKey }: { children: ReactNode
         const pages = await Promise.all(Array.from({ length: first.totalPages - 1 }, (_, index) =>
           getFavorites({ page: index + 2, pageSize: 100 })))
         if (active) {
-          setMovies(Object.fromEntries([first, ...pages].flatMap((page) => page.items).map((movie) => [movie.imdbId, movie])))
+          setTitles(Object.fromEntries([first, ...pages].flatMap((page) => page.items).map((title) => [title.imdbId, title])))
           setError(null)
         }
       } catch (reason) {
@@ -49,15 +49,15 @@ export function FavoriteProvider({ children, accountKey }: { children: ReactNode
     return () => { active = false }
   }, [accountKey, attempt])
 
-  async function mutate(imdbId: string, action: () => Promise<FavoriteMovie | void>): Promise<boolean> {
+  async function mutate(imdbId: string, action: () => Promise<FavoriteTitle | void>): Promise<boolean> {
     if (accountKey === null) return false
     setPending(imdbId)
     setError(null)
     try {
-      const movie = await action()
-      setMovies((current) => {
+      const title = await action()
+      setTitles((current) => {
         const next = { ...current }
-        if (movie) next[imdbId] = movie
+        if (title) next[imdbId] = title
         else delete next[imdbId]
         return next
       })
@@ -70,7 +70,7 @@ export function FavoriteProvider({ children, accountKey }: { children: ReactNode
     }
   }
 
-  return <FavoriteContext.Provider value={{ available: accountKey !== null, movies, pending, loading, error, retry: () => { setLoading(true); setAttempt((value) => value + 1) },
+  return <FavoriteContext.Provider value={{ available: accountKey !== null, titles, pending, loading, error, retry: () => { setLoading(true); setAttempt((value) => value + 1) },
     add: (imdbId, from) => mutate(imdbId, () => addFavorite(imdbId, from)),
     update: async (imdbId, input) => { await mutate(imdbId, () => updateFavorite(imdbId, input)) },
     remove: async (imdbId) => { await mutate(imdbId, () => removeFavorite(imdbId)) },

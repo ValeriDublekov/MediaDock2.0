@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getFavorites } from '../../api/client'
-import type { FavoriteMovie, PageResponse } from '../../api/types'
+import type { FavoriteTitle, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { Poster } from '../../components/Poster'
@@ -15,12 +15,12 @@ export function FavoritesView() {
   const [viewMode, setViewMode] = useState<ViewMode>('posters')
   const [status, setStatus] = useState<Status>('all')
   const [page, setPage] = useState(1)
-  const [result, setResult] = useState<PageResponse<FavoriteMovie> | null>(null)
+  const [result, setResult] = useState<PageResponse<FavoriteTitle> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selected, setSelected] = useState<number | null>(null)
-  const { available, movies } = useFavorites()
+  const { available, titles } = useFavorites()
 
   useEffect(() => {
     if (!available) return
@@ -31,7 +31,7 @@ export function FavoritesView() {
       .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Favorites could not be loaded.') })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [available, status, page, attempt, movies])
+  }, [available, status, page, attempt, titles])
 
   function changeStatus(next: Status) {
     setStatus(next)
@@ -47,12 +47,12 @@ export function FavoritesView() {
           <button aria-pressed={status === option} className={`button ${status === option ? '' : 'button-secondary'}`} key={option}
             onClick={() => changeStatus(option)} type="button">{option === 'all' ? 'All' : option === 'to_watch' ? 'To watch' : 'To download'}</button>)}
       </div>
-      <div className="toolbar-actions">{!error && result && <span className="result-count">{result.totalCount} movies</span>}<ViewModeControl onChange={setViewMode} value={viewMode} /></div>
+      <div className="toolbar-actions">{!error && result && <span className="result-count">{result.totalCount} {result.totalCount === 1 ? 'title' : 'titles'}</span>}<ViewModeControl onChange={setViewMode} value={viewMode} /></div>
     </div>
     {!available && <EmptyState title="Sign in to view favorites" message="An active linked account is required." />}
     {available && loading && <LoadingState label="Loading favorites" />}
     {available && !loading && error && <ErrorState message={error} onRetry={() => { setLoading(true); setError(null); setAttempt((value) => value + 1) }} />}
-    {available && !loading && !error && result?.items.length === 0 && <EmptyState title="No favorites here" message="Add a movie from a supported catalog." />}
+    {available && !loading && !error && result?.items.length === 0 && <EmptyState title="No favorites here" message="Add movies from supported catalogs or titles from recommendations." />}
     {available && !loading && !error && result && result.items.length > 0 && <>
       {viewMode === 'posters' ? <div className="poster-grid">
         {result.items.map((item) => <article className="movie-tile" key={item.imdbId}>
@@ -64,16 +64,16 @@ export function FavoritesView() {
               ? <button className="tile-title" onClick={() => setSelected(item.torrentMovieId)} type="button">{item.title}</button>
               : <strong className="tile-title">{item.title}</strong>}
             <div className="tile-meta">{item.year ?? 'Year unknown'} <span aria-hidden="true">·</span> <span>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog', item.addedFromRecommendations && 'Recommendations'].filter(Boolean).join(' / ')}</span></div>
-            <div className="tile-genres">{item.winCount > 0 ? `${item.winCount} Oscar ${item.winCount === 1 ? 'win' : 'wins'}` : `${item.nominationCount} nominations`}</div>
+            <div className="tile-genres">{item.mediaType === 'movie' ? item.winCount > 0 ? `${item.winCount} Oscar ${item.winCount === 1 ? 'win' : 'wins'}` : `${item.nominationCount} nominations` : 'Series watch list'}</div>
             <div className="tile-footer"><span className="tile-rating">{item.imdbRating === null ? 'Not rated' : `IMDb ${item.imdbRating.toFixed(1)}`}</span></div>
             <FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} />
           </div>
         </article>)}
-      </div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>MOVIE</th><th>ORIGIN</th><th>OSCAR</th><th>TORRENTS</th><th>STATUS</th></tr></thead>
+      </div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>TITLE</th><th>ORIGIN</th><th>OSCAR</th><th>TORRENTS</th><th>STATUS</th></tr></thead>
         <tbody>{result.items.map((item) => <tr key={item.imdbId}>
           <td>{item.torrentMovieId !== null ? <button className="title-link" onClick={() => setSelected(item.torrentMovieId)} type="button">{item.title}</button> : item.title}<span className="subtle-line">{item.year ?? 'Year unknown'}</span></td>
           <td>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog', item.addedFromRecommendations && 'Recommendations'].filter(Boolean).join(' / ')}</td>
-          <td>{item.nominationCount} nominations, {item.winCount} wins</td>
+          <td>{item.mediaType === 'movie' ? `${item.nominationCount} nominations, ${item.winCount} wins` : 'No Oscar records'}</td>
           <td>{item.occurrenceCount ? `${item.occurrenceCount} sources` : 'No source available'}</td>
           <td><FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} /></td>
         </tr>)}</tbody>

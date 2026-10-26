@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { addFavorite, getFavorites, updateFavorite } from '../../api/client'
-import type { FavoriteMovie, PageResponse } from '../../api/types'
+import type { FavoriteTitle, PageResponse } from '../../api/types'
 import { FavoriteControls } from './FavoriteControls'
 import { FavoriteProvider } from './FavoriteContext'
 import { FavoritesView } from './FavoritesView'
@@ -19,18 +19,18 @@ it('does not report zero movies when the API fails', async () => {
   render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
 
   expect(await screen.findByText('Could not load this view')).toBeTruthy()
-  expect(screen.queryByText('0 movies')).toBeNull()
+  expect(screen.queryByText('0 titles')).toBeNull()
 })
 
 it('filters one canonical movie independently by watch and download status', async () => {
-  const movie: FavoriteMovie = {
+  const movie: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: 42, title: 'Shared Movie', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: null, posterUrl: null, toWatch: true, toDownload: true,
     addedFromOscar: true, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 2,
     winCount: 1, occurrenceCount: 1, lastSeenAt: '2026-09-30T00:00:00Z',
   }
-  const response = (pageSize: number): PageResponse<FavoriteMovie> => ({
+  const response = (pageSize: number): PageResponse<FavoriteTitle> => ({
     items: [movie], page: 1, pageSize, totalCount: 1, totalPages: 1,
   })
   vi.mocked(getFavorites).mockImplementation(async (query) => response(query.pageSize))
@@ -56,14 +56,14 @@ it('does not load favorites without an active account', async () => {
 })
 
 it('reloads and clears favorites when the account changes', async () => {
-  const firstMovie: FavoriteMovie = {
+  const firstMovie: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: 1, title: 'First Account Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: null, posterUrl: null, toWatch: true, toDownload: false,
     addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
     winCount: 0, occurrenceCount: 1, lastSeenAt: '2026-09-30T00:00:00Z',
   }
-  const secondMovie: FavoriteMovie = { ...firstMovie, imdbId: 'tt87654321', torrentMovieId: 2, title: 'Second Account Film' }
+  const secondMovie: FavoriteTitle = { ...firstMovie, imdbId: 'tt87654321', torrentMovieId: 2, title: 'Second Account Film' }
   let currentMovie = firstMovie
   vi.mocked(getFavorites).mockImplementation(async (query) => ({
     items: [currentMovie], page: query.page, pageSize: query.pageSize, totalCount: 1, totalPages: 1,
@@ -82,7 +82,7 @@ it('reloads and clears favorites when the account changes', async () => {
 })
 
 it('shares state by IMDb ID, blocks ineligible adds, and allows download before a torrent exists', async () => {
-  const favorite: FavoriteMovie = {
+  const favorite: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: null, title: 'Shared Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: 8.2, posterUrl: null, toWatch: true, toDownload: false,
     addedFromOscar: true, addedFromCatalog: false, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
@@ -113,4 +113,24 @@ it('shares state by IMDb ID, blocks ineligible adds, and allows download before 
   expect(download.disabled).toBe(false)
   fireEvent.click(download)
   await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith('tt12345678', { toDownload: true }))
+})
+
+it('shows series recommendations in the shared favorites list with watch-only controls', async () => {
+  const series: FavoriteTitle = {
+    imdbId: 'tt12345678', torrentMovieId: null, title: 'Shared Series', year: 2025, mediaType: 'series', metadataStatus: 'enriched',
+    imdbRating: 8.4, posterUrl: null, toWatch: true, toDownload: false,
+    addedFromOscar: false, addedFromCatalog: false, addedFromRecommendations: true,
+    createdAt: '2026-10-26T00:00:00Z', updatedAt: '2026-10-26T00:00:00Z',
+    oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
+  }
+  vi.mocked(getFavorites).mockResolvedValue({ items: [series], page: 1, pageSize: 20, totalCount: 1, totalPages: 1 })
+  vi.mocked(updateFavorite).mockResolvedValue({ ...series, toWatch: false })
+  render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
+
+  expect(await screen.findAllByText('Shared Series')).toHaveLength(2)
+  expect(screen.getByText('Series watch list')).toBeTruthy()
+  const watchToggle = screen.getByRole('checkbox', { name: 'To watch' }) as HTMLInputElement
+  expect(watchToggle.checked).toBe(true)
+  fireEvent.click(watchToggle)
+  await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith('tt12345678', { toWatch: false }))
 })

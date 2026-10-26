@@ -496,7 +496,7 @@ export interface OperationalHistoryCleanupResponse {
   deletedParseLogs: number
 }
 
-export interface FavoriteMovie {
+export interface FavoriteTitle {
   imdbId: string
   torrentMovieId: number | null
   title: string

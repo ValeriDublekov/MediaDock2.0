@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addFavorite, getBackgroundJob, getFavorites, getGoldenGlobeCategories, getGoldenGlobeFilms, getMovieAwards, setGoldenGlobeImdbId } from '../../api/client'
-import type { FavoriteMovie, GoldenGlobeFilm, MovieAwardRecognition, PageResponse } from '../../api/types'
+import type { FavoriteTitle, GoldenGlobeFilm, MovieAwardRecognition, PageResponse } from '../../api/types'
 import { FavoriteProvider } from '../favorites/FavoriteContext'
 import { GoldenGlobeCatalogView } from './GoldenGlobeCatalogView'
 
@@ -266,7 +266,7 @@ describe('GoldenGlobeCatalogView', () => {
 
   it('adds enriched Golden Globes movies to shared favorites by IMDb ID', async () => {
     const enrichedFilm = { ...film, imdbId: 'tt12345678', enrichmentStatus: 'enriched' as const, metadataStatus: 'enriched' }
-    const favorite: FavoriteMovie = {
+    const favorite: FavoriteTitle = {
       imdbId: 'tt12345678', torrentMovieId: null, title: 'A Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: null, posterUrl: null, toWatch: false, toDownload: true,
       addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',

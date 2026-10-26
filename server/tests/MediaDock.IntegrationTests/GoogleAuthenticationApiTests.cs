@@ -41,6 +41,7 @@ public sealed class GoogleAuthenticationApiTests
         long secondUserId;
         const string firstImdbId = "tt12345678";
         const string secondImdbId = "tt87654321";
+        const string seriesImdbId = "tt99887766";
         await using (var db = new MediaDockDbContext(options))
         {
             await db.Database.MigrateAsync();
@@ -93,6 +94,16 @@ public sealed class GoogleAuthenticationApiTests
                     MediaType = "movie",
                     ImdbRating = 6.3m,
                     PosterUrl = "https://example.test/canonical-second.jpg",
+                    MetadataStatus = "enriched",
+                    UpdatedAt = now
+                },
+                new ImdbTitle
+                {
+                    ImdbId = seriesImdbId,
+                    TitleText = "Shared Series",
+                    Year = 2025,
+                    MediaType = "series",
+                    ImdbRating = 8.4m,
                     MetadataStatus = "enriched",
                     UpdatedAt = now
                 },
@@ -155,6 +166,10 @@ public sealed class GoogleAuthenticationApiTests
                 new { imdbId = blockedImdbId, from = "catalog" });
             Assert.Equal(HttpStatusCode.NotFound, blockedResponse.StatusCode);
         }
+        using var seriesCatalogAddResponse = await firstClient.PostAsJsonAsync(
+            "/api/favorites",
+            new { imdbId = seriesImdbId, from = "catalog" });
+        Assert.Equal(HttpStatusCode.NotFound, seriesCatalogAddResponse.StatusCode);
 
         using var recommendationAddResponse = await firstClient.PostAsJsonAsync(
             "/api/favorites",
@@ -288,6 +303,23 @@ public sealed class GoogleAuthenticationApiTests
         var secondDownloadFilter = await secondDownloadFilterResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
         Assert.Equal(0, firstDownloadFilter?.TotalCount);
         Assert.Equal(2, secondDownloadFilter?.TotalCount);
+
+        using var seriesRecommendationAddResponse = await firstClient.PostAsJsonAsync(
+            "/api/favorites",
+            new { imdbId = seriesImdbId, from = "recommendation" });
+        Assert.Equal(HttpStatusCode.OK, seriesRecommendationAddResponse.StatusCode);
+        var seriesFavorite = await seriesRecommendationAddResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.NotNull(seriesFavorite);
+        Assert.Equal("series", seriesFavorite.MediaType);
+        Assert.True(seriesFavorite.ToWatch);
+        Assert.False(seriesFavorite.ToDownload);
+
+        using var seriesWatchFilterResponse = await firstClient.GetAsync("/api/favorites?status=to_watch");
+        var seriesWatchFilter = await seriesWatchFilterResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
+        Assert.Equal(HttpStatusCode.OK, seriesWatchFilterResponse.StatusCode);
+        Assert.Contains(seriesWatchFilter?.Items, favorite => favorite.ImdbId == seriesImdbId && favorite.MediaType == "series");
+        using var seriesDeleteResponse = await firstClient.DeleteAsync($"/api/favorites/{seriesImdbId}");
+        Assert.Equal(HttpStatusCode.NoContent, seriesDeleteResponse.StatusCode);
 
         using var crossUserUpdateResponse = await firstClient.PatchAsJsonAsync(
             $"/api/favorites/{secondImdbId}",

@@ -10,7 +10,7 @@ import {
   recalculateRecommendationVoteWeights,
   updateRecommendationSettings,
 } from '../../api/client'
-import type { FavoriteMovie, Recommendation, PageResponse, RecommendationSettings, VoteWeightRecalculationResponse } from '../../api/types'
+import type { FavoriteTitle, Recommendation, PageResponse, RecommendationSettings, VoteWeightRecalculationResponse } from '../../api/types'
 import { FavoriteProvider } from '../favorites/FavoriteContext'
 import { RecommendationsView } from './RecommendationsView'
 import { RecommendationSettingsView } from './RecommendationSettingsView'
@@ -83,7 +83,7 @@ function recommendationPage(
   return { items, page, pageSize: 25, totalCount, totalPages, ...(yearBounds ? { yearBounds } : {}) }
 }
 
-function favoritePage(items: FavoriteMovie[] = []): PageResponse<FavoriteMovie> {
+function favoritePage(items: FavoriteTitle[] = []): PageResponse<FavoriteTitle> {
   return { items, page: 1, pageSize: 100, totalCount: items.length, totalPages: items.length === 0 ? 0 : 1 }
 }
 
@@ -432,7 +432,7 @@ describe('RecommendationsView', () => {
   })
 
   it('adds only unwatched movie recommendations to the watch list and refreshes results', async () => {
-    const savedFavorite: FavoriteMovie = {
+    const savedFavorite: FavoriteTitle = {
       imdbId: 'tt12345678', torrentMovieId: null, title: 'Quiet River', year: 2004, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: 8.1, posterUrl: null, toWatch: true, toDownload: false,
       addedFromOscar: false, addedFromCatalog: false, addedFromRecommendations: true,
@@ -517,7 +517,15 @@ describe('RecommendationsView', () => {
     })
   })
 
-  it('uses the shared controls and watch action for series', async () => {
+  it('uses the same watch-list and watched actions for series', async () => {
+    const savedSeries: FavoriteTitle = {
+      imdbId: 'tt12345678', torrentMovieId: null, title: 'Quiet River', year: 2004, mediaType: 'series', metadataStatus: 'enriched',
+      imdbRating: 8.1, posterUrl: null, toWatch: true, toDownload: false,
+      addedFromOscar: false, addedFromCatalog: false, addedFromRecommendations: true,
+      createdAt: '2026-10-26T00:00:00Z', updatedAt: '2026-10-26T00:00:00Z',
+      oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
+    }
+    vi.mocked(addFavorite).mockResolvedValue(savedSeries)
     vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([
       recommendation({
         mediaType: 'series',
@@ -563,7 +571,11 @@ describe('RecommendationsView', () => {
     }))
 
     expect(await screen.findByRole('checkbox', { name: 'Exclude already watched series' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Add Quiet River to watch list' })).toBeNull()
+    const addButton = await screen.findByRole('button', { name: 'Add Quiet River to watch list' }) as HTMLButtonElement
+    await waitFor(() => expect(addButton.disabled).toBe(false))
+    fireEvent.click(addButton)
+    await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt12345678', 'recommendation'))
+    expect(await screen.findByText('In watch list')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Mark Quiet River as watched' }))
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Your rating (1-10)' }), { target: { value: '9' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save rating and mark watched' }))

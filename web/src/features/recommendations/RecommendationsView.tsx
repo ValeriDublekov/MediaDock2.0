@@ -326,11 +326,11 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
             </td>
             <td>{!item.isWatched && <div className="recommendation-actions">
               <button aria-label={`Mark ${item.title} as watched`} className="button button-secondary" onClick={() => openWatchDialog(item)} type="button">Mark watched</button>
-              {mediaType === 'movie' && <RecommendationWatchlistControl imdbId={item.imdbId} onAdded={() => {
+              <RecommendationWatchlistControl imdbId={item.imdbId} onAdded={() => {
                 setLoading(true)
                 setError(null)
                 setAttempt((value) => value + 1)
-              }} title={item.title} />}
+              }} title={item.title} />
               <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} />
             </div>}</td>
           </tr>)}</tbody>
