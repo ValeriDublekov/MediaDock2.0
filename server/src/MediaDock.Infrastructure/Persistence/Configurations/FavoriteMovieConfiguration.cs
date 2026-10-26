@@ -9,7 +9,7 @@ internal sealed class ImdbFavoriteMovieConfiguration : IEntityTypeConfiguration<
     public void Configure(EntityTypeBuilder<ImdbFavoriteMovie> builder)
     {
         builder.ToTable("favorite_movies", table =>
-            table.HasCheckConstraint("ck_favorite_movies_origin", "added_from_oscar OR added_from_catalog"));
+            table.HasCheckConstraint("ck_favorite_movies_origin", "added_from_oscar OR added_from_catalog OR added_from_recommendations"));
         builder.HasKey(entity => new { entity.UserId, entity.ImdbId }).HasName("pk_favorite_movies_imdb");
         builder.Property(entity => entity.UserId).HasColumnName("user_id");
         builder.Property(entity => entity.ImdbId).HasColumnName("imdb_id").HasMaxLength(32).IsRequired();
@@ -17,6 +17,7 @@ internal sealed class ImdbFavoriteMovieConfiguration : IEntityTypeConfiguration<
         builder.Property(entity => entity.ToDownload).HasColumnName("to_download");
         builder.Property(entity => entity.AddedFromOscar).HasColumnName("added_from_oscar");
         builder.Property(entity => entity.AddedFromCatalog).HasColumnName("added_from_catalog");
+        builder.Property(entity => entity.AddedFromRecommendations).HasColumnName("added_from_recommendations");
         builder.Property(entity => entity.CreatedAt).HasColumnName("created_at");
         builder.Property(entity => entity.UpdatedAt).HasColumnName("updated_at");
         builder.HasOne(entity => entity.ImdbTitle)

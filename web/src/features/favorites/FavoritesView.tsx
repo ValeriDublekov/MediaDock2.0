@@ -63,7 +63,7 @@ export function FavoritesView() {
             {item.torrentMovieId !== null
               ? <button className="tile-title" onClick={() => setSelected(item.torrentMovieId)} type="button">{item.title}</button>
               : <strong className="tile-title">{item.title}</strong>}
-            <div className="tile-meta">{item.year ?? 'Year unknown'} <span aria-hidden="true">·</span> <span>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog'].filter(Boolean).join(' / ')}</span></div>
+            <div className="tile-meta">{item.year ?? 'Year unknown'} <span aria-hidden="true">·</span> <span>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog', item.addedFromRecommendations && 'Recommendations'].filter(Boolean).join(' / ')}</span></div>
             <div className="tile-genres">{item.winCount > 0 ? `${item.winCount} Oscar ${item.winCount === 1 ? 'win' : 'wins'}` : `${item.nominationCount} nominations`}</div>
             <div className="tile-footer"><span className="tile-rating">{item.imdbRating === null ? 'Not rated' : `IMDb ${item.imdbRating.toFixed(1)}`}</span></div>
             <FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} />
@@ -72,7 +72,7 @@ export function FavoritesView() {
       </div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>MOVIE</th><th>ORIGIN</th><th>OSCAR</th><th>TORRENTS</th><th>STATUS</th></tr></thead>
         <tbody>{result.items.map((item) => <tr key={item.imdbId}>
           <td>{item.torrentMovieId !== null ? <button className="title-link" onClick={() => setSelected(item.torrentMovieId)} type="button">{item.title}</button> : item.title}<span className="subtle-line">{item.year ?? 'Year unknown'}</span></td>
-          <td>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog'].filter(Boolean).join(' / ')}</td>
+          <td>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog', item.addedFromRecommendations && 'Recommendations'].filter(Boolean).join(' / ')}</td>
           <td>{item.nominationCount} nominations, {item.winCount} wins</td>
           <td>{item.occurrenceCount ? `${item.occurrenceCount} sources` : 'No source available'}</td>
           <td><FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} /></td>

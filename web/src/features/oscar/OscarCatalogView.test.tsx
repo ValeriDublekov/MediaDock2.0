@@ -293,7 +293,7 @@ describe('OscarCatalogView', () => {
     const favorite: FavoriteMovie = {
       imdbId: film.imdbId!, torrentMovieId: null, title: film.title, year: film.filmYear, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: film.imdbRating, posterUrl: null, toWatch: true, toDownload: false,
-      addedFromOscar: true, addedFromCatalog: false, createdAt: '2026-09-30T00:00:00Z',
+      addedFromOscar: true, addedFromCatalog: false, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
       updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 2,
       winCount: 1, occurrenceCount: 0, lastSeenAt: null,
     }
@@ -317,7 +317,7 @@ describe('OscarCatalogView', () => {
     const existing: FavoriteMovie = {
       imdbId: film.imdbId!, torrentMovieId: null, title: film.title, year: film.filmYear, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: film.imdbRating, posterUrl: null, toWatch: false, toDownload: true,
-      addedFromOscar: false, addedFromCatalog: true, createdAt: '2026-09-30T00:00:00Z',
+      addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
       updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 2,
       winCount: 1, occurrenceCount: 1, lastSeenAt: '2026-09-30T00:00:00Z',
     }

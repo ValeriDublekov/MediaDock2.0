@@ -191,7 +191,7 @@ export function getPersonalRatings(
   return requestJson<PageResponse<PersonalRating>>(withQuery('/personal-ratings', query), {}, fetcher)
 }
 
-export function addFavorite(imdbId: string, from: 'oscar' | 'catalog', fetcher?: typeof fetch) {
+export function addFavorite(imdbId: string, from: 'oscar' | 'catalog' | 'recommendation', fetcher?: typeof fetch) {
   return requestJson<FavoriteMovie>('/favorites', { method: 'POST', body: JSON.stringify({ imdbId, from }) }, fetcher)
 }
 

@@ -29,3 +29,24 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, occu
     {error && <span role="alert">{error} <button className="text-button" onClick={retry} type="button">Retry</button></span>}
   </div>
 }
+
+export function RecommendationWatchlistControl({ imdbId, title, onAdded }: {
+  imdbId: string
+  title: string
+  onAdded: () => void
+}) {
+  const { available, movies, pending, loading, error, add, retry } = useFavorites()
+  if (!available) return null
+  if (movies[imdbId]?.toWatch) return <span className="subtle-line">In watch list</span>
+
+  return <div className="favorite-controls recommendation-watchlist-control">
+    <button
+      aria-label={`Add ${title} to watch list`}
+      className="button button-secondary"
+      disabled={pending === imdbId || loading || Boolean(error)}
+      onClick={() => { void add(imdbId, 'recommendation').then((added) => { if (added) onAdded() }) }}
+      type="button"
+    >Add to watch list</button>
+    {error && <span role="alert">{error} <button className="text-button" onClick={retry} type="button">Retry</button></span>}
+  </div>
+}

@@ -33,20 +33,23 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
         CreateFavoriteRequest request,
         CancellationToken cancellationToken)
     {
-                var imdbId = request.ImdbId.Trim().ToLowerInvariant();
-                var fromOscar = request.From == "oscar";
-                var fromCatalog = request.From == "catalog";
+        var imdbId = request.ImdbId.Trim().ToLowerInvariant();
+        var fromOscar = request.From == "oscar";
+        var fromCatalog = request.From == "catalog";
+        var fromRecommendations = request.From == "recommendation";
+        var toWatch = fromOscar || fromRecommendations;
         var now = DateTimeOffset.UtcNow;
         var changed = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-                        INSERT INTO favorite_movies (user_id, imdb_id, to_watch, to_download, added_from_oscar, added_from_catalog, created_at, updated_at)
-                        SELECT {userId}, imdb_id, {fromOscar}, {fromCatalog}, {fromOscar}, {fromCatalog}, {now}, {now}
-                        FROM imdb_titles WHERE imdb_id = {imdbId} AND metadata_status = 'enriched' AND media_type = 'movie'
-                        ON CONFLICT (user_id, imdb_id) DO UPDATE SET
-                            to_watch = favorite_movies.to_watch OR (EXCLUDED.added_from_oscar AND NOT favorite_movies.added_from_oscar),
-                            to_download = favorite_movies.to_download OR (EXCLUDED.added_from_catalog AND NOT favorite_movies.added_from_catalog),
-                            added_from_oscar = favorite_movies.added_from_oscar OR EXCLUDED.added_from_oscar,
-                            added_from_catalog = favorite_movies.added_from_catalog OR EXCLUDED.added_from_catalog,
-              updated_at = EXCLUDED.updated_at
+            INSERT INTO favorite_movies (user_id, imdb_id, to_watch, to_download, added_from_oscar, added_from_catalog, added_from_recommendations, created_at, updated_at)
+            SELECT {userId}, imdb_id, {toWatch}, {fromCatalog}, {fromOscar}, {fromCatalog}, {fromRecommendations}, {now}, {now}
+            FROM imdb_titles WHERE imdb_id = {imdbId} AND metadata_status = 'enriched' AND media_type = 'movie'
+            ON CONFLICT (user_id, imdb_id) DO UPDATE SET
+                to_watch = favorite_movies.to_watch OR EXCLUDED.added_from_recommendations OR (EXCLUDED.added_from_oscar AND NOT favorite_movies.added_from_oscar),
+                to_download = favorite_movies.to_download OR (EXCLUDED.added_from_catalog AND NOT favorite_movies.added_from_catalog),
+                added_from_oscar = favorite_movies.added_from_oscar OR EXCLUDED.added_from_oscar,
+                added_from_catalog = favorite_movies.added_from_catalog OR EXCLUDED.added_from_catalog,
+                added_from_recommendations = favorite_movies.added_from_recommendations OR EXCLUDED.added_from_recommendations,
+                updated_at = EXCLUDED.updated_at
             """, cancellationToken);
                 if (changed == 0) throw new ApiNotFoundException("Enriched IMDb movie not found.");
                 return await GetOneAsync(userId, imdbId, cancellationToken);
@@ -98,7 +101,8 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
             favorite.ImdbTitle.ImdbRating,
             favorite.ImdbTitle.PosterUrl,
             favorite.ToWatch, favorite.ToDownload,
-            favorite.AddedFromOscar, favorite.AddedFromCatalog, favorite.CreatedAt, favorite.UpdatedAt,
+            favorite.AddedFromOscar, favorite.AddedFromCatalog, favorite.AddedFromRecommendations,
+            favorite.CreatedAt, favorite.UpdatedAt,
             dbContext.OscarMovies.Count(film => film.ImdbId == favorite.ImdbId),
             dbContext.OscarNominations.Count(nomination => nomination.OscarMovie != null
                 && nomination.OscarMovie.ImdbId == favorite.ImdbId),

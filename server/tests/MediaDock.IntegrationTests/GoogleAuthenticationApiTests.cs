@@ -156,6 +156,34 @@ public sealed class GoogleAuthenticationApiTests
             Assert.Equal(HttpStatusCode.NotFound, blockedResponse.StatusCode);
         }
 
+        using var recommendationAddResponse = await firstClient.PostAsJsonAsync(
+            "/api/favorites",
+            new { imdbId = secondImdbId, from = "recommendation" });
+        Assert.Equal(HttpStatusCode.OK, recommendationAddResponse.StatusCode);
+        var recommendationFavorite = await recommendationAddResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.NotNull(recommendationFavorite);
+        Assert.True(recommendationFavorite.ToWatch);
+        Assert.False(recommendationFavorite.ToDownload);
+        Assert.False(recommendationFavorite.AddedFromOscar);
+        Assert.False(recommendationFavorite.AddedFromCatalog);
+        Assert.True(recommendationFavorite.AddedFromRecommendations);
+
+        using var unwatchRecommendationResponse = await firstClient.PatchAsJsonAsync(
+            $"/api/favorites/{secondImdbId}",
+            new { toWatch = false });
+        Assert.Equal(HttpStatusCode.OK, unwatchRecommendationResponse.StatusCode);
+        using var readdRecommendationResponse = await firstClient.PostAsJsonAsync(
+            "/api/favorites",
+            new { imdbId = secondImdbId, from = "recommendation" });
+        var readdedRecommendation = await readdRecommendationResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.Equal(HttpStatusCode.OK, readdRecommendationResponse.StatusCode);
+        Assert.NotNull(readdedRecommendation);
+        Assert.True(readdedRecommendation.ToWatch);
+        Assert.False(readdedRecommendation.ToDownload);
+
+        using var removeRecommendationResponse = await firstClient.DeleteAsync($"/api/favorites/{secondImdbId}");
+        Assert.Equal(HttpStatusCode.NoContent, removeRecommendationResponse.StatusCode);
+
         using var firstAddResponse = await firstClient.PostAsJsonAsync(
             $"/api/favorites?userId={secondUserId}",
             new { imdbId = firstImdbId, from = "catalog", userId = secondUserId });

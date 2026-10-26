@@ -672,6 +672,10 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("added_from_oscar");
 
+                    b.Property<bool>("AddedFromRecommendations")
+                        .HasColumnType("boolean")
+                        .HasColumnName("added_from_recommendations");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -695,7 +699,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.ToTable("favorite_movies", null, t =>
                         {
-                            t.HasCheckConstraint("ck_favorite_movies_origin", "added_from_oscar OR added_from_catalog");
+                            t.HasCheckConstraint("ck_favorite_movies_origin", "added_from_oscar OR added_from_catalog OR added_from_recommendations");
                         });
                 });
 

@@ -187,6 +187,7 @@ button:disabled { cursor: not-allowed; }
 .recommendations-table td { vertical-align: top; }
 .recommendation-actions { display: grid; justify-items: start; gap: 5px; }
 .recommendation-actions .ignored-movie-controls { min-width: 0; }
+.recommendation-actions .favorite-controls { min-width: 0; }
 .recommendation-title-cell { display: grid; min-width: 240px; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 10px; }
 .recommendation-title-cell > div { min-width: 0; }
 .recommendation-title-cell .title-link { max-width: none; overflow-wrap: anywhere; white-space: normal; }

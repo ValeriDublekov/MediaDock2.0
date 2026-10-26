@@ -269,7 +269,7 @@ describe('GoldenGlobeCatalogView', () => {
     const favorite: FavoriteMovie = {
       imdbId: 'tt12345678', torrentMovieId: null, title: 'A Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: null, posterUrl: null, toWatch: false, toDownload: true,
-      addedFromOscar: false, addedFromCatalog: true, createdAt: '2026-09-30T00:00:00Z',
+      addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
       updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
       winCount: 0, occurrenceCount: 0, lastSeenAt: null,
     }

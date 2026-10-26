@@ -8,6 +8,7 @@ public sealed class ImdbFavoriteMovie
     public bool ToDownload { get; set; }
     public bool AddedFromOscar { get; set; }
     public bool AddedFromCatalog { get; set; }
+    public bool AddedFromRecommendations { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 

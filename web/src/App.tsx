@@ -62,7 +62,7 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
   favorites: {
     eyebrow: 'MY MOVIES',
     title: 'Favorites',
-    description: 'Movies saved from the catalog and Oscar awards.',
+    description: 'Movies saved from recommendations, the catalog, and Oscar awards.',
   },
   account: {
     eyebrow: 'PERSONAL',

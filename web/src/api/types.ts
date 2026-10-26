@@ -509,6 +509,7 @@ export interface FavoriteMovie {
   toDownload: boolean
   addedFromOscar: boolean
   addedFromCatalog: boolean
+  addedFromRecommendations: boolean
   createdAt: string
   updatedAt: string
   oscarFilmCount: number

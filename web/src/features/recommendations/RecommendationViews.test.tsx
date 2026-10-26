@@ -1,6 +1,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  addFavorite,
+  getFavorites,
   getRecommendationGenres,
   getRecommendations,
   getRecommendationSettings,
@@ -8,17 +10,22 @@ import {
   recalculateRecommendationVoteWeights,
   updateRecommendationSettings,
 } from '../../api/client'
-import type { Recommendation, PageResponse, RecommendationSettings, VoteWeightRecalculationResponse } from '../../api/types'
+import type { FavoriteMovie, Recommendation, PageResponse, RecommendationSettings, VoteWeightRecalculationResponse } from '../../api/types'
+import { FavoriteProvider } from '../favorites/FavoriteContext'
 import { RecommendationsView } from './RecommendationsView'
 import { RecommendationSettingsView } from './RecommendationSettingsView'
 
 vi.mock('../../api/client', () => ({
+  addFavorite: vi.fn(),
+  getFavorites: vi.fn(),
   getRecommendationGenres: vi.fn(),
   getRecommendations: vi.fn(),
   getRecommendationSettings: vi.fn(),
   markRecommendationWatched: vi.fn(),
+  removeFavorite: vi.fn(),
   recalculateRecommendationVoteWeights: vi.fn(),
   updateRecommendationSettings: vi.fn(),
+  updateFavorite: vi.fn(),
 }))
 
 const dirtyWarning = 'New metadata detected. Recommended scores may be inaccurate. Recalculate vote weights.'
@@ -74,6 +81,10 @@ function recommendationPage(
   yearBounds?: PageResponse<Recommendation>['yearBounds'],
 ): PageResponse<Recommendation> {
   return { items, page, pageSize: 25, totalCount, totalPages, ...(yearBounds ? { yearBounds } : {}) }
+}
+
+function favoritePage(items: FavoriteMovie[] = []): PageResponse<FavoriteMovie> {
+  return { items, page: 1, pageSize: 100, totalCount: items.length, totalPages: items.length === 0 ? 0 : 1 }
 }
 
 function recommendationSettings(overrides: Partial<RecommendationSettings> = {}): RecommendationSettings {
@@ -224,6 +235,8 @@ describe('RecommendationSettingsView', () => {
 
 describe('RecommendationsView', () => {
   beforeEach(() => {
+    vi.mocked(addFavorite).mockReset()
+    vi.mocked(getFavorites).mockReset()
     vi.mocked(getRecommendationGenres).mockReset()
     vi.mocked(getRecommendationGenres).mockResolvedValue(['Comedy', 'Drama'])
     vi.mocked(getRecommendations).mockReset()
@@ -418,6 +431,36 @@ describe('RecommendationsView', () => {
     expect(await screen.findByText('No recommendations available')).toBeTruthy()
   })
 
+  it('adds only unwatched movie recommendations to the watch list and refreshes results', async () => {
+    const savedFavorite: FavoriteMovie = {
+      imdbId: 'tt12345678', torrentMovieId: null, title: 'Quiet River', year: 2004, mediaType: 'movie', metadataStatus: 'enriched',
+      imdbRating: 8.1, posterUrl: null, toWatch: true, toDownload: false,
+      addedFromOscar: false, addedFromCatalog: false, addedFromRecommendations: true,
+      createdAt: '2026-10-26T00:00:00Z', updatedAt: '2026-10-26T00:00:00Z',
+      oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
+    }
+    vi.mocked(getFavorites).mockResolvedValue(favoritePage())
+    vi.mocked(addFavorite).mockResolvedValue(savedFavorite)
+    vi.mocked(getRecommendations)
+      .mockResolvedValueOnce(recommendationPage([
+        recommendation(),
+        recommendation({ imdbId: 'tt87654321', title: 'Already Watched', isWatched: true }),
+      ]))
+      .mockResolvedValueOnce(recommendationPage([]))
+
+    render(<FavoriteProvider accountKey="test-account"><RecommendationsView mediaType="movie" /></FavoriteProvider>)
+
+    const addButton = await screen.findByRole('button', { name: 'Add Quiet River to watch list' }) as HTMLButtonElement
+    const watchedRow = screen.getByRole('link', { name: 'Already Watched' }).closest('tr')
+    expect(watchedRow).not.toBeNull()
+    expect(within(watchedRow as HTMLElement).queryByRole('button', { name: 'Add Already Watched to watch list' })).toBeNull()
+    await waitFor(() => expect(addButton.disabled).toBe(false))
+    fireEvent.click(addButton)
+
+    await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt12345678', 'recommendation'))
+    expect(await screen.findByText('No recommendations available')).toBeTruthy()
+  })
+
   it('keeps the current page when refreshing after marking a recommendation watched', async () => {
     vi.mocked(getRecommendations)
       .mockResolvedValueOnce(recommendationPage([recommendation()], 1, 51, 3))
@@ -491,8 +534,9 @@ describe('RecommendationsView', () => {
         }],
       }),
     ], 1, 1, 1, { minYear: 2000, maxYear: 2025 }))
+    vi.mocked(getFavorites).mockResolvedValue(favoritePage())
 
-    render(<RecommendationsView mediaType="series" />)
+    render(<FavoriteProvider accountKey="test-account"><RecommendationsView mediaType="series" /></FavoriteProvider>)
 
     expect(await screen.findByRole('columnheader', { name: 'SERIES' })).toBeTruthy()
     expect(getRecommendationGenres).toHaveBeenCalledWith('series')
@@ -519,6 +563,7 @@ describe('RecommendationsView', () => {
     }))
 
     expect(await screen.findByRole('checkbox', { name: 'Exclude already watched series' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Add Quiet River to watch list' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Mark Quiet River as watched' }))
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Your rating (1-10)' }), { target: { value: '9' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save rating and mark watched' }))

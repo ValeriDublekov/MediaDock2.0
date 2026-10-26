@@ -26,7 +26,7 @@ it('filters one canonical movie independently by watch and download status', asy
   const movie: FavoriteMovie = {
     imdbId: 'tt12345678', torrentMovieId: 42, title: 'Shared Movie', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: null, posterUrl: null, toWatch: true, toDownload: true,
-    addedFromOscar: true, addedFromCatalog: true, createdAt: '2026-09-30T00:00:00Z',
+    addedFromOscar: true, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 2,
     winCount: 1, occurrenceCount: 1, lastSeenAt: '2026-09-30T00:00:00Z',
   }
@@ -59,7 +59,7 @@ it('reloads and clears favorites when the account changes', async () => {
   const firstMovie: FavoriteMovie = {
     imdbId: 'tt12345678', torrentMovieId: 1, title: 'First Account Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: null, posterUrl: null, toWatch: true, toDownload: false,
-    addedFromOscar: false, addedFromCatalog: true, createdAt: '2026-09-30T00:00:00Z',
+    addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
     winCount: 0, occurrenceCount: 1, lastSeenAt: '2026-09-30T00:00:00Z',
   }
@@ -85,7 +85,7 @@ it('shares state by IMDb ID, blocks ineligible adds, and allows download before 
   const favorite: FavoriteMovie = {
     imdbId: 'tt12345678', torrentMovieId: null, title: 'Shared Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: 8.2, posterUrl: null, toWatch: true, toDownload: false,
-    addedFromOscar: true, addedFromCatalog: false, createdAt: '2026-09-30T00:00:00Z',
+    addedFromOscar: true, addedFromCatalog: false, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 0,
     winCount: 0, occurrenceCount: 0, lastSeenAt: null,
   }
