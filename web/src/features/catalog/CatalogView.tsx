@@ -14,6 +14,7 @@ import { titlePageSize } from '../../shared/titlePagination'
 import { combineMovieAwards, movieAwardsRequestKey } from '../../shared/movieAwards'
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { TitleDetailsDialog } from './TitleDetailsDialog'
+import { RssFeedPreviewDialog } from './RssFeedPreviewDialog'
 import { FavoriteControls } from '../favorites/FavoriteControls'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
@@ -160,6 +161,7 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
   const [attempt, setAttempt] = useState(0)
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null)
   const [selectedTitleId, setSelectedTitleId] = useState<number | null>(null)
+  const [rssPreviewProfileId, setRssPreviewProfileId] = useState<FeedType | 'all' | null>(null)
   const [imdbMatchTarget, setImdbMatchTarget] = useState<ImdbCandidateTarget | null>(null)
   const [detailsSection, setDetailsSection] = useState<'details' | 'torrents'>('details')
   const { revision: ignoredMoviesRevision } = useIgnoredMovies()
@@ -347,6 +349,7 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
       <div className="section-toolbar">
         <span className="result-count">{result ? `${result.totalCount.toLocaleString()} titles` : 'Catalog records'}</span>
         <div className="toolbar-actions">
+          <button className="button button-secondary" onClick={() => setRssPreviewProfileId(category === 'all' ? 'all' : categoryFeedTypes[category][0])} type="button">RSS contents</button>
           <ViewModeControl onChange={setViewMode} value={viewMode} />
           <button className="text-button" onClick={() => setAttempt((current) => current + 1)} type="button">Refresh results</button>
         </div>
@@ -429,6 +432,10 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
         }}
         onClose={() => setImdbMatchTarget(null)}
         target={imdbMatchTarget}
+      />}
+      {rssPreviewProfileId !== null && <RssFeedPreviewDialog
+        onClose={() => setRssPreviewProfileId(null)}
+        profileId={rssPreviewProfileId}
       />}
       </>}
     </section>

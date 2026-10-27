@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getParseLogs, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
-import type { CatalogTitle, ImdbCandidateSearch, MovieAwardRecognition, PageResponse, TitleDetails } from '../../api/types'
+import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getParseLogs, getRssFeedPreview, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
+import type { CatalogTitle, ImdbCandidateSearch, MovieAwardRecognition, PageResponse, RssFeedPreview, TitleDetails } from '../../api/types'
 import { CatalogView } from './CatalogView'
 
 vi.mock('../../api/client', () => ({
@@ -11,6 +11,7 @@ vi.mock('../../api/client', () => ({
   getTitleOccurrences: vi.fn(),
   deleteCatalogTitle: vi.fn(),
   getParseLogs: vi.fn(),
+  getRssFeedPreview: vi.fn(),
   getScanRuns: vi.fn(),
   getTitleOscars: vi.fn().mockResolvedValue([]),
   getMovieAwards: vi.fn().mockResolvedValue([]),
@@ -71,6 +72,41 @@ describe('CatalogView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
     expect(screen.getByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     expect(catalogRequest).toHaveBeenCalledTimes(1)
+  })
+
+  it('opens RSS content for the selected category from the catalog toolbar', async () => {
+    catalogRequest.mockResolvedValue(page([]))
+    vi.mocked(getRssFeedPreview).mockImplementation(async (profileId) => ({
+      profileId,
+      profileName: profileId,
+      feeds: [{
+        sourceId: 1,
+        sourceUrl: 'https://feed.rutracker.cc/movies.atom',
+        originalContent: '<rss />',
+        fetchDurationMs: 20000,
+        parseDurationMs: 1.5,
+        items: [],
+      }],
+    } satisfies RssFeedPreview))
+    render(<CatalogView />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'RSS contents' }))
+    expect(await screen.findByRole('heading', { name: 'RSS contents' })).toBeTruthy()
+    const originalFeedLink = await screen.findByRole('link', { name: 'Open original RSS' })
+    expect(originalFeedLink.getAttribute('href')).toBe('https://feed.rutracker.cc/movies.atom')
+    expect(originalFeedLink.getAttribute('target')).toBe('_blank')
+    expect(screen.getByText('Fetch: 20.00 s')).toBeTruthy()
+    expect(screen.getByText('Parse: 1.5 ms')).toBeTruthy()
+    await waitFor(() => expect(getRssFeedPreview).toHaveBeenCalledWith('movie'))
+    fireEvent.click(screen.getByRole('button', { name: 'Close RSS contents' }))
+
+    fireEvent.click(screen.getByRole('button', { name: 'All' }))
+    fireEvent.click(screen.getByRole('button', { name: 'RSS contents' }))
+    await waitFor(() => {
+      expect(getRssFeedPreview).toHaveBeenCalledWith('movie')
+      expect(getRssFeedPreview).toHaveBeenCalledWith('series_complete')
+      expect(getRssFeedPreview).toHaveBeenCalledWith('series_ongoing')
+    })
   })
 
   it('shows parse log by default and lets admins switch to scan runs from the catalog', async () => {

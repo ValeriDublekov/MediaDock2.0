@@ -5,9 +5,11 @@ import { ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate } from '../../shared/format'
 
 interface RssFeedPreviewDialogProps {
-  profileId: FeedType
+  profileId: FeedType | 'all'
   onClose: () => void
 }
+
+const allFeedProfiles: FeedType[] = ['movie', 'series_complete', 'series_ongoing']
 
 function formatDuration(durationMs: number): string {
   return durationMs >= 1000 ? `${(durationMs / 1000).toFixed(2)} s` : `${durationMs.toFixed(1)} ms`
@@ -34,8 +36,9 @@ export function RssFeedPreviewDialog({ profileId, onClose }: RssFeedPreviewDialo
     let current = true
     setLoading(true)
     setError(null)
-    getRssFeedPreview(profileId)
-      .then((response) => { if (current) setPreviews([response]) })
+    const profileIds = profileId === 'all' ? allFeedProfiles : [profileId]
+    Promise.all(profileIds.map((id) => getRssFeedPreview(id)))
+      .then((response) => { if (current) setPreviews(response) })
       .catch((requestError: unknown) => {
         if (current) setError(requestError instanceof Error ? requestError.message : 'The RSS preview request failed.')
       })

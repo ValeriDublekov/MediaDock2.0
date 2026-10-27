@@ -12,7 +12,6 @@ import {
   getProviderSettings,
   getPersonalRatings,
   getPersonalRatingsEnrichmentJob,
-  getRssFeedPreview,
   getSettings,
   getSources,
   getVersion,
@@ -22,7 +21,7 @@ import {
   updateProviderSettings,
   updateSettings,
 } from '../../api/client'
-import type { BackgroundJob, OmdbDailyUsage, PersonalRating, ProviderSettings, RssFeedPreview, Settings, SourceProfile, SystemVersion } from '../../api/types'
+import type { BackgroundJob, OmdbDailyUsage, PersonalRating, ProviderSettings, Settings, SourceProfile, SystemVersion } from '../../api/types'
 import { OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './ConfigurationSettingsViews'
 import { SourceSettingsView } from './SourceSettingsView'
 
@@ -37,7 +36,6 @@ vi.mock('../../api/client', () => ({
   getPersonalRatingsEnrichmentJob: vi.fn(),
   getOmdbDailyUsage: vi.fn(),
   getPersonalRatings: vi.fn(),
-  getRssFeedPreview: vi.fn(),
   getProviderSettings: vi.fn(),
   getSettings: vi.fn(),
   getSources: vi.fn(),
@@ -103,7 +101,6 @@ describe('SourceSettingsView', () => {
       items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0,
     })
     vi.mocked(getPersonalRatingsEnrichmentJob).mockReset().mockResolvedValue(personalRatingsJob)
-    vi.mocked(getRssFeedPreview).mockReset()
     vi.mocked(enqueuePersonalRatingsEnrichment).mockReset().mockResolvedValue(undefined)
     vi.mocked(getProviderSettings).mockReset().mockResolvedValue(providerSettings)
     vi.mocked(getSettings).mockReset().mockResolvedValue({
@@ -279,7 +276,7 @@ describe('SourceSettingsView', () => {
     render(<SourceSettingsView />)
 
     expect(await screen.findByRole('heading', { name: 'RSS profiles' })).toBeTruthy()
-    expect(screen.getAllByRole('button', { name: 'Preview RSS' })).toHaveLength(3)
+    expect(screen.queryByRole('button', { name: 'Preview RSS' })).toBeNull()
     expect(screen.getAllByRole('button', { name: 'Add URL' })).toHaveLength(3)
     expect(getSources).toHaveBeenCalledOnce()
     expect(getSettings).toHaveBeenCalledOnce()
@@ -287,38 +284,5 @@ describe('SourceSettingsView', () => {
     expect(getOmdbDailyUsage).not.toHaveBeenCalled()
     expect(getVersion).not.toHaveBeenCalled()
     expect(importPersonalRatings).not.toHaveBeenCalled()
-  })
-
-  it('opens RSS content with its original URL and fetch and parse durations', async () => {
-    vi.mocked(getSources).mockResolvedValue([
-      { id: 'movie', name: 'Movies', urls: [{ id: 8, url: 'https://feed.rutracker.cc/movies.atom' }] },
-      { id: 'series_complete', name: 'Complete seasons', urls: [] },
-      { id: 'series_ongoing', name: 'Ongoing episodes', urls: [] },
-    ] satisfies SourceProfile[])
-    vi.mocked(getRssFeedPreview).mockResolvedValue({
-      profileId: 'movie',
-      profileName: 'Movies',
-      feeds: [{
-        sourceId: 8,
-        sourceUrl: 'https://feed.rutracker.cc/movies.atom',
-        originalContent: '<rss />',
-        fetchDurationMs: 20000,
-        parseDurationMs: 1.5,
-        items: [],
-      }],
-    } satisfies RssFeedPreview)
-
-    render(<SourceSettingsView />)
-    fireEvent.click((await screen.findAllByRole('button', { name: 'Preview RSS' }))[0])
-
-    const originalFeedLink = await screen.findByRole('link', { name: 'Open original RSS' })
-    expect(originalFeedLink.getAttribute('href')).toBe('https://feed.rutracker.cc/movies.atom')
-    expect(originalFeedLink.getAttribute('target')).toBe('_blank')
-    expect(screen.getByText('Fetch: 20.00 s')).toBeTruthy()
-    expect(screen.getByText('Parse: 1.5 ms')).toBeTruthy()
-    expect(getRssFeedPreview).toHaveBeenCalledWith('movie')
-
-    fireEvent.click(screen.getByRole('tab', { name: 'Original XML' }))
-    expect(screen.getByRole('link', { name: 'Open original RSS' })).toBeTruthy()
   })
 })
