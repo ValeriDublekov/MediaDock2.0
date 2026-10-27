@@ -1,13 +1,15 @@
 import { useFavorites } from './FavoriteContext'
 import { BookmarkCheck, BookmarkPlus, Star } from 'lucide-react'
 
-export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, occurrenceCount, placement = 'inline', onAdded, onRemoved, onUpdated }: {
+export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, occurrenceCount, placement = 'inline', allowAddFromHere = true, alwaysShowRemove = false, onAdded, onRemoved, onUpdated }: {
   imdbId: string | null
   metadataStatus: string | null
   from: 'oscar' | 'catalog'
   mediaType: string
   occurrenceCount: number
   placement?: 'inline' | 'poster' | 'status'
+  allowAddFromHere?: boolean
+  alwaysShowRemove?: boolean
   onAdded?: () => void
   onRemoved?: () => void
   onUpdated?: (input: { toWatch?: boolean; toDownload?: boolean }) => void
@@ -55,17 +57,17 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, occu
           </label>
           {occurrenceCount === 0 && favorite.occurrenceCount === 0 && <span className="subtle-line">No torrent source available</span>}
         </>}
-        {!selectedFromHere && canAddFromHere && <button className="text-button" disabled={disabled} onClick={addFromHere} type="button">
+        {allowAddFromHere && !selectedFromHere && canAddFromHere && <button className="text-button" disabled={disabled} onClick={addFromHere} type="button">
           Add from {from === 'oscar' ? 'Oscar' : 'catalog'}
         </button>}
-        {!selectedFromHere && canAddFromHere && <button className="text-button" disabled={disabled} onClick={removeFromFavorites} type="button">Remove from favorites</button>}
+        {(alwaysShowRemove || (!selectedFromHere && canAddFromHere)) && <button className="text-button" disabled={disabled} onClick={removeFromFavorites} type="button">Remove from favorites</button>}
       </>}
       {error && <span role="alert">{error} <button className="text-button" onClick={retry} type="button">Retry</button></span>}
     </div>
   }
 
   return <div className="favorite-controls">
-    {!selectedFromHere && canAddFromHere && <button className="text-button" disabled={disabled} onClick={addFromHere} type="button">
+    {allowAddFromHere && !selectedFromHere && canAddFromHere && <button className="text-button" disabled={disabled} onClick={addFromHere} type="button">
       {favorite ? `Add from ${from === 'oscar' ? 'Oscar' : 'catalog'}` : 'Add to favorites'}
     </button>}
     {favorite && <button className="text-button" disabled={disabled} onClick={removeFromFavorites} type="button">Remove from favorites</button>}

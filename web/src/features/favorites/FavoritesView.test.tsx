@@ -137,6 +137,32 @@ it('shows series recommendations in the shared favorites list with watch-only co
   await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith('tt12345678', { toWatch: false }))
 })
 
+it('does not offer adding another origin from the favorites view', async () => {
+  const movie: FavoriteTitle = {
+    imdbId: 'tt12345678', torrentMovieId: null, title: 'Recommendation Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
+    imdbRating: 8.2, posterUrl: null, toWatch: true, toDownload: false,
+    addedFromOscar: false, addedFromCatalog: false, addedFromRecommendations: true,
+    createdAt: '2026-10-26T00:00:00Z', updatedAt: '2026-10-26T00:00:00Z',
+    oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
+  }
+  vi.mocked(getFavorites).mockResolvedValue({ items: [movie], page: 1, pageSize: 60, totalCount: 1, totalPages: 1 })
+  render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
+
+  expect(await screen.findByRole('button', { name: 'View Recommendation Film details' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Add from catalog to favorites' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Add from catalog' })).toBeNull()
+  expect(screen.getAllByRole('button', { name: 'Remove from favorites' })).toHaveLength(1)
+
+  fireEvent.click(screen.getByRole('button', { name: 'View Recommendation Film details' }))
+  expect(await screen.findByRole('dialog')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Add from catalog' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Close favorite details' }))
+
+  fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+  expect(screen.getByRole('columnheader', { name: 'ORIGIN' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Add from catalog' })).toBeNull()
+})
+
 it('uses the shared poster card and opens details for a favorite without a torrent record', async () => {
   const movie: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: null, title: 'Award Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
