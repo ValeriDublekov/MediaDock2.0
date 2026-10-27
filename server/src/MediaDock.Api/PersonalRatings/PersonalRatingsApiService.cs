@@ -20,7 +20,8 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
         var page = query.Page ?? 1;
         var pageSize = query.PageSize ?? 25;
         var ratings = dbContext.PersonalRatings.AsNoTracking()
-            .Where(rating => rating.UserId == userId);
+            .Where(rating => rating.UserId == userId
+                && (query.ManuallyAddedOnly != true || rating.IsManuallyAdded));
         var totalCount = await ratings.CountAsync(cancellationToken);
         var orderedRatings = query.Sort switch
         {

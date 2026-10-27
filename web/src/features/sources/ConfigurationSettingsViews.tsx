@@ -45,6 +45,7 @@ export function PersonalRatingsView() {
   const [ratings, setRatings] = useState<PageResponse<PersonalRating> | null>(null)
   const [page, setPage] = useState(1)
   const [sort, setSort] = useState<PersonalRatingsSort>('desc')
+  const [manuallyAddedOnly, setManuallyAddedOnly] = useState(false)
   const [loadingRatings, setLoadingRatings] = useState(true)
   const [ratingsError, setRatingsError] = useState<string | null>(null)
   const [ratingsAttempt, setRatingsAttempt] = useState(0)
@@ -57,7 +58,12 @@ export function PersonalRatingsView() {
   useEffect(() => {
     let active = true
 
-    getPersonalRatings({ page, pageSize: titlePageSize, sort })
+    getPersonalRatings({
+      page,
+      pageSize: titlePageSize,
+      sort,
+      ...(manuallyAddedOnly ? { manuallyAddedOnly: true } : {}),
+    })
       .then((response) => { if (active) setRatings(response) })
       .catch((requestError: unknown) => {
         if (active) setRatingsError(requestError instanceof Error ? requestError.message : 'Could not load personal IMDb ratings.')
@@ -65,10 +71,10 @@ export function PersonalRatingsView() {
       .finally(() => { if (active) setLoadingRatings(false) })
 
     return () => { active = false }
-  }, [page, sort, ratingsAttempt])
+  }, [manuallyAddedOnly, page, sort, ratingsAttempt])
 
   useEffect(() => {
-    const queryKey = `${page}:${sort}`
+    const queryKey = `${page}:${sort}:${manuallyAddedOnly}`
     if (loadingRatings || ratingsError || !ratings || ratings.page !== page || !ratings.items.some((rating) => rating.metadataStatus === 'pending')) return
     if (requestedEnrichment.current.has(queryKey)) return
 
@@ -88,7 +94,7 @@ export function PersonalRatingsView() {
         requestedEnrichment.current.delete(queryKey)
         setEnrichmentError(requestError instanceof Error ? requestError.message : 'Could not queue metadata enrichment.')
       })
-  }, [loadingRatings, page, ratings, ratingsError, sort])
+  }, [loadingRatings, manuallyAddedOnly, page, ratings, ratingsError, sort])
 
   useEffect(() => {
     if (!enrichmentJob || (enrichmentJob.status !== 'queued' && enrichmentJob.status !== 'running')) return
@@ -205,6 +211,15 @@ export function PersonalRatingsView() {
             <button aria-pressed={sort === 'vote_date_asc'} className={`button ${sort === 'vote_date_asc' ? '' : 'button-secondary'}`} onClick={() => changeRatingsSort('vote_date_asc')} type="button">Oldest first</button>
             <button aria-pressed={sort === 'vote_date_desc'} className={`button ${sort === 'vote_date_desc' ? '' : 'button-secondary'}`} onClick={() => changeRatingsSort('vote_date_desc')} type="button">Newest first</button>
           </div>
+          <label className="checkbox-field">
+            <input checked={manuallyAddedOnly} onChange={(event) => {
+              setManuallyAddedOnly(event.currentTarget.checked)
+              setPage(1)
+              setLoadingRatings(true)
+              setRatingsError(null)
+            }} type="checkbox" />
+            Only show ratings added in MediaDock
+          </label>
         </div>
       </div>
       <div className="section-toolbar">
@@ -225,7 +240,10 @@ export function PersonalRatingsView() {
         setLoadingRatings(true)
         setRatingsAttempt((current) => current + 1)
       }} />}
-      {!loadingRatings && !ratingsError && ratings?.items.length === 0 && <EmptyState title="No personal ratings yet" message="Import an IMDb ratings export to see your titles here." />}
+      {!loadingRatings && !ratingsError && ratings?.items.length === 0 && <EmptyState
+        title={manuallyAddedOnly ? 'No ratings added in MediaDock yet' : 'No personal ratings yet'}
+        message={manuallyAddedOnly ? 'Add a rating from a movie or series recommendation to see it here.' : 'Import an IMDb ratings export to see your titles here.'}
+      />}
       {!loadingRatings && !ratingsError && ratings && ratings.items.length > 0 && <>
         {viewMode === 'posters' ? <div className="poster-grid personal-ratings-grid">
           {ratings.items.map((rating) => <MoviePosterCard

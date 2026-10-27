@@ -199,8 +199,8 @@ public sealed class PersonalRatingsApiTests
             db.PersonalRatings.AddRange(
                 new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000001", Rating = 8, UpdatedAt = now },
                 new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000002", Rating = 8, UpdatedAt = now },
-                new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000003", Rating = 2, DateRated = new DateOnly(2020, 1, 1), UpdatedAt = now },
-                new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000004", Rating = 10, DateRated = new DateOnly(2024, 1, 1), UpdatedAt = now },
+                new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000003", Rating = 2, DateRated = new DateOnly(2020, 1, 1), IsManuallyAdded = true, UpdatedAt = now },
+                new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000004", Rating = 10, DateRated = new DateOnly(2024, 1, 1), IsManuallyAdded = true, UpdatedAt = now },
                 new PersonalRating { UserId = secondUser.Id, ImdbId = "tt0000001", Rating = 1, UpdatedAt = now },
                 new PersonalRating { UserId = secondUser.Id, ImdbId = "tt0000005", Rating = 9, UpdatedAt = now });
             await db.SaveChangesAsync();
@@ -281,6 +281,17 @@ public sealed class PersonalRatingsApiTests
         using var newestVotesResponse = await firstClient.GetAsync("/api/personal-ratings?sort=vote_date_desc");
         var newestVotesPage = await newestVotesResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
         Assert.Equal(["tt0000004", "tt0000003", "tt0000001", "tt0000002"], newestVotesPage?.Items.Select(item => item.ImdbId));
+
+        using var manualFirstPageResponse = await firstClient.GetAsync("/api/personal-ratings?manuallyAddedOnly=true&pageSize=1");
+        var manualFirstPage = await manualFirstPageResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
+        Assert.Equal(2, manualFirstPage?.TotalCount);
+        Assert.Equal(2, manualFirstPage?.TotalPages);
+        Assert.Equal(["tt0000004"], manualFirstPage?.Items.Select(item => item.ImdbId));
+        Assert.All(manualFirstPage!.Items, item => Assert.True(item.IsManuallyAdded));
+
+        using var manualSecondPageResponse = await firstClient.GetAsync("/api/personal-ratings?manuallyAddedOnly=true&page=2&pageSize=1");
+        var manualSecondPage = await manualSecondPageResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
+        Assert.Equal(["tt0000003"], manualSecondPage?.Items.Select(item => item.ImdbId));
 
         using var invalidPageResponse = await firstClient.GetAsync("/api/personal-ratings?page=0");
         Assert.Equal(HttpStatusCode.BadRequest, invalidPageResponse.StatusCode);

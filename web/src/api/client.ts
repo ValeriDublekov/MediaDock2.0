@@ -194,7 +194,7 @@ export function removeIgnoredMovie(imdbId: string, fetcher?: typeof fetch) {
 }
 
 export function getPersonalRatings(
-  query: { page: number; pageSize: number; sort: PersonalRatingsSort },
+  query: { page: number; pageSize: number; sort: PersonalRatingsSort; manuallyAddedOnly?: boolean },
   fetcher?: typeof fetch,
 ) {
   return requestJson<PageResponse<PersonalRating>>(withQuery('/personal-ratings', query), {}, fetcher)

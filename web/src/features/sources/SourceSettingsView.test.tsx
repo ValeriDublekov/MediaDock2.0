@@ -239,6 +239,33 @@ describe('SourceSettingsView', () => {
     await waitFor(() => expect(getPersonalRatings).toHaveBeenLastCalledWith({ page: 1, pageSize: titlePageSize, sort: 'vote_date_desc' }))
   })
 
+  it('filters personal ratings to entries added in MediaDock and resets pagination', async () => {
+    vi.mocked(getPersonalRatings).mockImplementation(async ({ page, manuallyAddedOnly }) => personalRatingsPage([
+      personalRating(
+        `tt000000${page}`,
+        manuallyAddedOnly ? 'MediaDock rating' : `Imported rating page ${page}`,
+        8,
+        'enriched',
+        manuallyAddedOnly ?? false,
+      ),
+    ], page, manuallyAddedOnly ? 1 : 2))
+
+    render(<PersonalRatingsView />)
+
+    expect(await screen.findByRole('link', { name: 'Imported rating page 1' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(await screen.findByRole('link', { name: 'Imported rating page 2' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Only show ratings added in MediaDock' }))
+
+    expect(await screen.findByRole('link', { name: 'MediaDock rating' })).toBeTruthy()
+    await waitFor(() => expect(getPersonalRatings).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: titlePageSize,
+      sort: 'desc',
+      manuallyAddedOnly: true,
+    }))
+  })
+
   it('shows personal ratings as poster cards with date and table modes', async () => {
     const ratedTitle = { ...personalRating('tt1234567', 'Poster title'), dateRated: '2020-06-02' }
     vi.mocked(getPersonalRatings).mockResolvedValue(personalRatingsPage([ratedTitle]))

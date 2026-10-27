@@ -13,6 +13,8 @@ public sealed record PersonalRatingsQuery
 
     [RegularExpression("^(asc|desc|vote_date_asc|vote_date_desc)$")]
     public string? Sort { get; init; }
+
+    public bool? ManuallyAddedOnly { get; init; }
 }
 
 public sealed class PersonalRatingsImportForm
