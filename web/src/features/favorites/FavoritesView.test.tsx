@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, expect, it, vi } from 'vitest'
 import { addFavorite, getFavorites, removeFavorite, updateFavorite } from '../../api/client'
 import type { FavoriteTitle, PageResponse } from '../../api/types'
+import { titlePageSize } from '../../shared/titlePagination'
 import { FavoriteControls } from './FavoriteControls'
 import { FavoriteProvider } from './FavoriteContext'
 import { FavoritesView } from './FavoritesView'
@@ -43,9 +44,9 @@ it('filters one canonical movie independently by watch and download status', asy
   expect(screen.getByRole('columnheader', { name: 'ORIGIN' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
   fireEvent.click(screen.getByRole('button', { name: 'To watch' }))
-  await waitFor(() => expect(getFavorites).toHaveBeenCalledWith({ status: 'to_watch', page: 1, pageSize: 100 }))
+  await waitFor(() => expect(getFavorites).toHaveBeenCalledWith({ status: 'to_watch', page: 1, pageSize: titlePageSize }))
   fireEvent.click(screen.getByRole('button', { name: 'To download' }))
-  await waitFor(() => expect(getFavorites).toHaveBeenCalledWith({ status: 'to_download', page: 1, pageSize: 100 }))
+  await waitFor(() => expect(getFavorites).toHaveBeenCalledWith({ status: 'to_download', page: 1, pageSize: titlePageSize }))
   expect(screen.getAllByRole('button', { name: 'Shared Movie' })).toHaveLength(1)
 })
 

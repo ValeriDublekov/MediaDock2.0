@@ -12,6 +12,7 @@ import {
   updateRecommendationSettings,
 } from '../../api/client'
 import type { FavoriteTitle, Recommendation, PageResponse, RecommendationSettings, VoteWeightRecalculationResponse } from '../../api/types'
+import { titlePageSize } from '../../shared/titlePagination'
 import { FavoriteProvider } from '../favorites/FavoriteContext'
 import { IgnoredMoviesProvider } from '../ignored-movies/IgnoredMoviesContext'
 import { RecommendationsView } from './RecommendationsView'
@@ -85,11 +86,11 @@ function recommendationPage(
   totalPages = totalCount === 0 ? 0 : 1,
   yearBounds?: PageResponse<Recommendation>['yearBounds'],
 ): PageResponse<Recommendation> {
-  return { items, page, pageSize: 100, totalCount, totalPages, ...(yearBounds ? { yearBounds } : {}) }
+  return { items, page, pageSize: titlePageSize, totalCount, totalPages, ...(yearBounds ? { yearBounds } : {}) }
 }
 
 function favoritePage(items: FavoriteTitle[] = []): PageResponse<FavoriteTitle> {
-  return { items, page: 1, pageSize: 100, totalCount: items.length, totalPages: items.length === 0 ? 0 : 1 }
+  return { items, page: 1, pageSize: titlePageSize, totalCount: items.length, totalPages: items.length === 0 ? 0 : 1 }
 }
 
 function recommendationSettings(overrides: Partial<RecommendationSettings> = {}): RecommendationSettings {
@@ -270,7 +271,7 @@ describe('RecommendationsView', () => {
 
   it('renders all three recommendation actions as buttons on poster cards', async () => {
     vi.mocked(getFavorites).mockResolvedValue(favoritePage())
-    vi.mocked(getIgnoredMovies).mockResolvedValue({ items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0 })
+    vi.mocked(getIgnoredMovies).mockResolvedValue({ items: [], page: 1, pageSize: titlePageSize, totalCount: 0, totalPages: 0 })
     vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()]))
 
     render(<FavoriteProvider accountKey="test-account"><IgnoredMoviesProvider accountKey="test-account"><RecommendationsView mediaType="movie" /></IgnoredMoviesProvider></FavoriteProvider>)
@@ -295,7 +296,7 @@ describe('RecommendationsView', () => {
     expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 100,
+      pageSize: titlePageSize,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -308,7 +309,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 100,
+      pageSize: titlePageSize,
       ratingWeight: 0.8,
       votesWeight: 0.1,
       awardsWeight: 0.1,
@@ -321,7 +322,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 100,
+      pageSize: titlePageSize,
       ratingWeight: 0.8,
       votesWeight: 0.1,
       awardsWeight: 0.1,
@@ -333,7 +334,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 100,
+      pageSize: titlePageSize,
       ratingWeight: 0.8,
       votesWeight: 0.1,
       awardsWeight: 0.1,
@@ -345,7 +346,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 2,
-      pageSize: 100,
+      pageSize: titlePageSize,
       ratingWeight: 0.8,
       votesWeight: 0.1,
       awardsWeight: 0.1,
@@ -376,7 +377,7 @@ describe('RecommendationsView', () => {
     expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 100,
+      pageSize: titlePageSize,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -388,7 +389,7 @@ describe('RecommendationsView', () => {
     expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 100,
+      pageSize: titlePageSize,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -418,7 +419,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 100,
+      pageSize: titlePageSize,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -435,7 +436,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 100,
+      pageSize: titlePageSize,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -542,7 +543,7 @@ describe('RecommendationsView', () => {
     expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 100,
+      pageSize: titlePageSize,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -558,22 +559,24 @@ describe('RecommendationsView', () => {
       oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
     }
     vi.mocked(addFavorite).mockResolvedValue(savedSeries)
+    const seriesRecommendation = recommendation({
+      mediaType: 'series',
+      awardEvents: [{
+        awardSource: 'golden_globes',
+        categoryKey: 'best_television_series_drama',
+        categoryName: 'Best Television Series - Drama',
+        ceremony: null,
+        ceremonyYear: 2025,
+        outcome: 'nomination',
+        basePoints: 0.5,
+        tasteMultiplier: 1,
+        adjustedPoints: 0.5,
+      }],
+    })
     vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([
-      recommendation({
-        mediaType: 'series',
-        awardEvents: [{
-          awardSource: 'golden_globes',
-          categoryKey: 'best_television_series_drama',
-          categoryName: 'Best Television Series - Drama',
-          ceremony: null,
-          ceremonyYear: 2025,
-          outcome: 'nomination',
-          basePoints: 0.5,
-          tasteMultiplier: 1,
-          adjustedPoints: 0.5,
-        }],
-      }),
-    ], 1, 1, 1, { minYear: 2000, maxYear: 2025 }))
+      seriesRecommendation,
+      { ...seriesRecommendation, imdbId: 'tt87654321', title: 'Second Series' },
+    ], 1, 2, 1, { minYear: 2000, maxYear: 2025 }))
     vi.mocked(getFavorites).mockResolvedValue(favoritePage())
 
     render(<FavoriteProvider accountKey="test-account"><RecommendationsView mediaType="series" /></FavoriteProvider>)
@@ -584,7 +587,7 @@ describe('RecommendationsView', () => {
     expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'series',
       page: 1,
-      pageSize: 100,
+      pageSize: titlePageSize,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -596,7 +599,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'series',
       page: 1,
-      pageSize: 100,
+      pageSize: titlePageSize,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -608,10 +611,11 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(addButton.disabled).toBe(false))
     fireEvent.click(addButton)
     await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt12345678', 'recommendation'))
-    expect(await screen.findByText('In watch list')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Mark Quiet River as watched' }))
+    expect(screen.queryByRole('link', { name: 'Quiet River' })).toBeNull()
+    expect(await screen.findByRole('link', { name: 'Second Series' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Mark Second Series as watched' }))
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Your rating (1-10)' }), { target: { value: '9' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save rating and mark watched' }))
-    await waitFor(() => expect(markRecommendationWatched).toHaveBeenCalledWith('tt12345678', 9, 'series'))
+    await waitFor(() => expect(markRecommendationWatched).toHaveBeenCalledWith('tt87654321', 9, 'series'))
   })
 })

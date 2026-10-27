@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addFavorite, getBackgroundJob, getFavorites, getGoldenGlobeCategories, getGoldenGlobeFilms, getMovieAwards, setGoldenGlobeImdbId } from '../../api/client'
 import type { FavoriteTitle, GoldenGlobeFilm, MovieAwardRecognition, PageResponse } from '../../api/types'
+import { titlePageSize } from '../../shared/titlePagination'
 import { FavoriteProvider } from '../favorites/FavoriteContext'
 import { GoldenGlobeCatalogView } from './GoldenGlobeCatalogView'
 
@@ -28,7 +29,7 @@ const film: GoldenGlobeFilm = {
 const page: PageResponse<GoldenGlobeFilm> = {
   items: [film],
   page: 1,
-  pageSize: 100,
+  pageSize: titlePageSize,
   totalCount: 1,
   totalPages: 1,
   yearBounds: { minYear: 2024, maxYear: 2025 },
@@ -39,7 +40,7 @@ describe('GoldenGlobeCatalogView', () => {
   beforeEach(() => {
     vi.mocked(getGoldenGlobeFilms).mockReset().mockResolvedValue(page)
     vi.mocked(getGoldenGlobeCategories).mockReset().mockResolvedValue(['Best Director', 'Best Picture'])
-    vi.mocked(getFavorites).mockReset().mockResolvedValue({ items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0 })
+    vi.mocked(getFavorites).mockReset().mockResolvedValue({ items: [], page: 1, pageSize: titlePageSize, totalCount: 0, totalPages: 0 })
     vi.mocked(addFavorite).mockReset()
     vi.mocked(getMovieAwards).mockReset().mockResolvedValue([])
     vi.mocked(getBackgroundJob).mockReset()
@@ -74,14 +75,14 @@ describe('GoldenGlobeCatalogView', () => {
     fireEvent.change(minimum, { target: { value: '2025' } })
     fireEvent.pointerUp(minimum)
     fireEvent.change(screen.getByLabelText('Award result'), { target: { value: 'winner' } })
-    expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 1, pageSize: 100, yearFrom: 2025, result: 'winner' })
+    expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 1, pageSize: titlePageSize, yearFrom: 2025, result: 'winner' })
     fireEvent.change(screen.getByLabelText('OMDb status'), { target: { value: 'not_found' } })
     fireEvent.click(screen.getByLabelText('Categories: All categories (2)'))
     fireEvent.click(screen.getByLabelText('Best Director'))
 
     await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({
       page: 1,
-      pageSize: 100,
+      pageSize: titlePageSize,
       search: 'A Film',
       yearFrom: 2025,
       categories: ['Best Picture'],
@@ -98,9 +99,9 @@ describe('GoldenGlobeCatalogView', () => {
     expect(await screen.findByRole('button', { name: 'A Film' })).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'A Film' } })
     expect(getGoldenGlobeFilms).toHaveBeenCalledTimes(1)
-    await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 1, pageSize: 100, search: 'A Film' }))
+    await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 1, pageSize: titlePageSize, search: 'A Film' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Next page' }))
-    await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 2, pageSize: 100, search: 'A Film' }))
+    await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 2, pageSize: titlePageSize, search: 'A Film' }))
 
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'Unsubmitted search' } })
     const maximum = screen.getByRole('slider', { name: 'Ceremony year maximum' }) as HTMLInputElement
@@ -112,7 +113,7 @@ describe('GoldenGlobeCatalogView', () => {
     fireEvent.pointerUp(maximum, { pointerType: 'touch' })
 
     await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 100, search: 'A Film', yearTo: 2024,
+      page: 1, pageSize: titlePageSize, search: 'A Film', yearTo: 2024,
     }))
   })
 
@@ -127,7 +128,7 @@ describe('GoldenGlobeCatalogView', () => {
     fireEvent.pointerUp(minimum)
 
     await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 100, imdbRatingFrom: 7.8,
+      page: 1, pageSize: titlePageSize, imdbRatingFrom: 7.8,
     }))
   })
 
