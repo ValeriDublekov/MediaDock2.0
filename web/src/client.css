@@ -186,6 +186,18 @@ button:disabled { cursor: not-allowed; }
 .recommendations-table { min-width: 1040px; }
 .recommendations-table td { vertical-align: top; }
 .recommendation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 7px; }
+.recommendation-card-scores { display: grid; width: 100%; gap: 7px; border-top: 1px solid #414844; padding-top: 8px; }
+.recommendation-card-final-score { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: #b9c2bc; font-size: 10px; }
+.recommendation-card-final-score strong { color: #f0bd62; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.recommendation-card-breakdown { display: grid; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin: 0; }
+.recommendation-card-breakdown > div { min-width: 0; }
+.recommendation-card-breakdown dt { color: #aeb8b1; font-size: 9px; overflow-wrap: anywhere; }
+.recommendation-card-breakdown dd { display: grid; margin: 2px 0 0; color: #f3f2ec; font-size: 10px; font-variant-numeric: tabular-nums; font-weight: 700; }
+.recommendation-card-breakdown dd span { color: #aeb8b1; font-size: 9px; font-weight: 400; }
+.recommendation-card-awards { width: 100%; border-top: 1px solid #414844; padding-top: 7px; }
+.recommendation-card-awards summary { white-space: normal; }
+.recommendation-card-awards .recommendation-award-events { min-width: 0; max-width: 100%; padding-left: 14px; }
+.recommendation-card-awards .recommendation-award-events li { overflow-wrap: anywhere; }
 .recommendation-actions > .button,
 .recommendation-actions .favorite-controls .button { min-height: 28px; padding-inline: 8px; font-size: 10px; }
 .recommendation-actions .text-button { min-height: 26px; padding-inline: 2px; font-size: 10px; }
@@ -362,7 +374,7 @@ button:disabled { cursor: not-allowed; }
 .oscar-tile-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #aeb8b1; font-size: 11px; }
 .oscar-nomination-count { display: inline-flex; align-items: center; border: 1px solid #56645a; border-radius: 3px; padding: 3px 7px; color: #d8e2d8; background: #2c3931; font-size: 10px; font-weight: 600; line-height: 1.2; }
 .tile-heading { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.tile-title { display: block; min-width: 0; flex: 1; border: 0; padding: 0; color: #f5f3ed; background: transparent; font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 17px; font-weight: 700; line-height: 1.22; text-align: left; overflow-wrap: anywhere; }
+.tile-title { display: block; min-width: 0; flex: 1; border: 0; padding: 0; color: #f5f3ed; background: transparent; font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 17px; font-weight: 700; line-height: 1.22; text-align: left; text-decoration: none; overflow-wrap: anywhere; }
 .tile-title:hover { color: #f0bd62; }
 .tile-year { flex: 0 0 auto; border: 1px solid #555d58; border-radius: 3px; padding: 2px 6px; color: #e0e4de; background: #303633; font-size: 10px; font-variant-numeric: tabular-nums; }
 .tile-genres { color: #c2cbc5; font-size: 12px; line-height: 1.4; }

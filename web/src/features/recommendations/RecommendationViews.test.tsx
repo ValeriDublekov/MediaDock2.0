@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   addFavorite,
   getFavorites,
+  getIgnoredMovies,
   getRecommendationGenres,
   getRecommendations,
   getRecommendationSettings,
@@ -12,16 +13,20 @@ import {
 } from '../../api/client'
 import type { FavoriteTitle, Recommendation, PageResponse, RecommendationSettings, VoteWeightRecalculationResponse } from '../../api/types'
 import { FavoriteProvider } from '../favorites/FavoriteContext'
+import { IgnoredMoviesProvider } from '../ignored-movies/IgnoredMoviesContext'
 import { RecommendationsView } from './RecommendationsView'
 import { RecommendationSettingsView } from './RecommendationSettingsView'
 
 vi.mock('../../api/client', () => ({
   addFavorite: vi.fn(),
+  addIgnoredMovie: vi.fn(),
   getFavorites: vi.fn(),
+  getIgnoredMovies: vi.fn(),
   getRecommendationGenres: vi.fn(),
   getRecommendations: vi.fn(),
   getRecommendationSettings: vi.fn(),
   markRecommendationWatched: vi.fn(),
+  removeIgnoredMovie: vi.fn(),
   removeFavorite: vi.fn(),
   recalculateRecommendationVoteWeights: vi.fn(),
   updateRecommendationSettings: vi.fn(),
@@ -240,6 +245,7 @@ describe('RecommendationsView', () => {
     vi.mocked(getRecommendationGenres).mockReset()
     vi.mocked(getRecommendationGenres).mockResolvedValue(['Comedy', 'Drama'])
     vi.mocked(getRecommendations).mockReset()
+    vi.mocked(getIgnoredMovies).mockReset()
     vi.mocked(markRecommendationWatched).mockReset().mockResolvedValue(undefined)
     vi.mocked(getRecommendationSettings).mockReset()
     vi.mocked(updateRecommendationSettings).mockReset()
@@ -247,6 +253,32 @@ describe('RecommendationsView', () => {
   })
 
   afterEach(cleanup)
+
+  it('defaults to poster cards and keeps the table as an alternate view', async () => {
+    vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()]))
+
+    render(<RecommendationsView mediaType="movie" />)
+
+    expect(await screen.findByRole('link', { name: 'Quiet River' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Posters' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByRole('columnheader', { name: 'MOVIE' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+    expect(screen.getByRole('columnheader', { name: 'MOVIE' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
+    expect(screen.getByRole('button', { name: 'Posters' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('renders all three recommendation actions as buttons on poster cards', async () => {
+    vi.mocked(getFavorites).mockResolvedValue(favoritePage())
+    vi.mocked(getIgnoredMovies).mockResolvedValue({ items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0 })
+    vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()]))
+
+    render(<FavoriteProvider accountKey="test-account"><IgnoredMoviesProvider accountKey="test-account"><RecommendationsView mediaType="movie" /></IgnoredMoviesProvider></FavoriteProvider>)
+
+    expect(await screen.findByRole('button', { name: 'Mark Quiet River as watched' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Add Quiet River to watch list' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Ignore movie' })).toBeTruthy()
+  })
 
   it('renders only server-returned candidates and keeps all three coefficients at 100%', async () => {
     vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()], 1, 26, 2, { minYear: 2000, maxYear: 2025 }))
@@ -394,10 +426,10 @@ describe('RecommendationsView', () => {
     }))
     expect(watchedCheckbox.checked).toBe(false)
     const watchedMovieLink = await screen.findByRole('link', { name: 'Quiet River' })
-    const watchedMovieRow = watchedMovieLink.closest('tr')
-    expect(watchedMovieRow).not.toBeNull()
-    expect(within(watchedMovieRow as HTMLElement).queryByRole('button', { name: 'Mark Quiet River as watched' })).toBeNull()
-    expect(within(watchedMovieRow as HTMLElement).queryByRole('button', { name: 'Ignore movie' })).toBeNull()
+    const watchedMovieCard = watchedMovieLink.closest('article')
+    expect(watchedMovieCard).not.toBeNull()
+    expect(within(watchedMovieCard as HTMLElement).queryByRole('button', { name: 'Mark Quiet River as watched' })).toBeNull()
+    expect(within(watchedMovieCard as HTMLElement).queryByRole('button', { name: 'Ignore movie' })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
@@ -451,9 +483,9 @@ describe('RecommendationsView', () => {
     render(<FavoriteProvider accountKey="test-account"><RecommendationsView mediaType="movie" /></FavoriteProvider>)
 
     const addButton = await screen.findByRole('button', { name: 'Add Quiet River to watch list' }) as HTMLButtonElement
-    const watchedRow = screen.getByRole('link', { name: 'Already Watched' }).closest('tr')
-    expect(watchedRow).not.toBeNull()
-    expect(within(watchedRow as HTMLElement).queryByRole('button', { name: 'Add Already Watched to watch list' })).toBeNull()
+    const watchedCard = screen.getByRole('link', { name: 'Already Watched' }).closest('article')
+    expect(watchedCard).not.toBeNull()
+    expect(within(watchedCard as HTMLElement).queryByRole('button', { name: 'Add Already Watched to watch list' })).toBeNull()
     await waitFor(() => expect(addButton.disabled).toBe(false))
     fireEvent.click(addButton)
 
@@ -546,6 +578,7 @@ describe('RecommendationsView', () => {
 
     render(<FavoriteProvider accountKey="test-account"><RecommendationsView mediaType="series" /></FavoriteProvider>)
 
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(await screen.findByRole('columnheader', { name: 'SERIES' })).toBeTruthy()
     expect(getRecommendationGenres).toHaveBeenCalledWith('series')
     expect(getRecommendations).toHaveBeenLastCalledWith({

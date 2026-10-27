@@ -1,10 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Check } from 'lucide-react'
 import { getRecommendationGenres, getRecommendations, markRecommendationWatched } from '../../api/client'
 import type { PageResponse, Recommendation, RecommendationCoefficients, RecommendationMediaType, RecommendationQuery } from '../../api/types'
 import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
+import { MoviePosterCard } from '../../components/MoviePresentation'
 import { Pagination } from '../../components/Pagination'
 import { Poster } from '../../components/Poster'
+import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { YearRangeFilter } from '../../components/YearRangeFilter'
 import { formatWords } from '../../shared/format'
 import { RecommendationWatchlistControl } from '../favorites/FavoriteControls'
@@ -80,6 +83,7 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
   const titleTypeHeading = mediaType === 'movie' ? 'Movie' : 'Series'
   const titleType = mediaType === 'movie' ? 'movie' : 'series'
   const titleTypes = mediaType === 'movie' ? 'movies' : 'series'
+  const [viewMode, setViewMode] = useState<ViewMode>('posters')
   const [sliderPercentages, setSliderPercentages] = useState(initialSliderPercentages)
   const [pageNumber, setPageNumber] = useState(1)
   const [draftYearFilter, setDraftYearFilter] = useState(emptyYearFilter)
@@ -236,6 +240,35 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
     }
   }
 
+  function renderPosterActions(item: Recommendation) {
+    if (item.isWatched) return null
+    const label = `Mark ${item.title} as watched`
+    return <>
+      <button aria-label={label} className="tile-icon-action" data-tooltip={label} onClick={() => openWatchDialog(item)} type="button">
+        <Check aria-hidden="true" size={16} />
+      </button>
+      <RecommendationWatchlistControl imdbId={item.imdbId} onAdded={() => {
+        setLoading(true)
+        setError(null)
+        setAttempt((value) => value + 1)
+      }} placement="poster" title={item.title} />
+      <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} placement="poster" />
+    </>
+  }
+
+  function renderTableActions(item: Recommendation) {
+    if (item.isWatched) return null
+    return <div className="recommendation-actions">
+      <button aria-label={`Mark ${item.title} as watched`} className="button button-secondary" onClick={() => openWatchDialog(item)} type="button">Mark watched</button>
+      <RecommendationWatchlistControl imdbId={item.imdbId} onAdded={() => {
+        setLoading(true)
+        setError(null)
+        setAttempt((value) => value + 1)
+      }} title={item.title} />
+      <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} />
+    </div>
+  }
+
   return <section aria-labelledby="recommendations-heading" className="management-section recommendations-view">
     <h2 id="recommendations-heading">Recommendations</h2>
     <p className="section-caption">A personal ranking of eligible award-nominated {titleTypes}, based on your ratings and the shared metadata catalog.</p>
@@ -290,11 +323,52 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
       <p>The API combines a Bayesian IMDb rating, capped time-normalized vote popularity, and capped points from distinct award events. Award points use the configured win or nomination value multiplied by your winner-derived category taste. The sliders set the three request coefficients; candidate eligibility and all score calculations remain server-side.</p>
     </details>
 
+    <div className="section-toolbar">
+      <span className="result-count">{result ? `${result.totalCount.toLocaleString()} recommendations` : 'Recommendations'}</span>
+      <ViewModeControl onChange={setViewMode} value={viewMode} />
+    </div>
+
     {loading && <LoadingState label="Loading recommendations" />}
     {!loading && error && <ErrorState message={error} onRetry={retry} />}
     {!loading && !error && result?.items.length === 0 && <EmptyState title="No recommendations available" message={`No eligible award-nominated ${titleTypes} are available for this account yet.`} />}
     {!loading && !error && result && result.items.length > 0 && <>
-      <div className="table-wrap">
+      {viewMode === 'posters' ? <div className="poster-grid recommendation-poster-grid">
+        {result.items.map((item) => <MoviePosterCard
+          awards={[]}
+          genres={item.genres}
+          imdbId={item.imdbId}
+          imdbRating={item.imdbRating}
+          key={item.imdbId}
+          mediaType={item.mediaType}
+          posterActions={renderPosterActions(item)}
+          posterLabel={item.mediaType.slice(0, 3).toUpperCase()}
+          posterUrl={item.posterUrl}
+          showAwards={false}
+          title={item.title}
+          titleHref={`https://www.imdb.com/title/${encodeURIComponent(item.imdbId)}/`}
+          year={item.year}
+          yearLabel={`${titleTypeHeading} year`}
+        >
+          <div className="recommendation-card-scores">
+            <div className="recommendation-card-final-score"><span>Final score</span><strong>{scoreValue(item.finalScore)} / 10</strong></div>
+            <dl className="recommendation-card-breakdown">
+              <div><dt>Rating</dt><dd>{scoreValue(item.ratingComponent)}<span>× {coefficientLabel(item.ratingWeight)}</span></dd></div>
+              <div><dt>Popularity</dt><dd>{scoreValue(item.popularityComponent)}<span>× {coefficientLabel(item.votesWeight)}</span></dd></div>
+              <div><dt>Awards</dt><dd>{scoreValue(item.awardComponent)}<span>× {coefficientLabel(item.awardsWeight)}</span></dd></div>
+            </dl>
+          </div>
+          <details className="recommendation-award-details recommendation-card-awards">
+            <summary>{item.awardEvents.length} {item.awardEvents.length === 1 ? 'award event' : 'award events'}</summary>
+            {item.awardEvents.length === 0 ? <p>No award points were applied.</p> : <ul className="recommendation-award-events">
+              {item.awardEvents.map((event, index) => <li key={`${event.awardSource}/${event.categoryKey}/${event.ceremony ?? event.ceremonyYear ?? index}`}>
+                <strong>{event.categoryName}</strong>
+                <span>{sourceLabel(event.awardSource)} · {formatWords(event.outcome)}{eventOccasion(event) ? ` · ${eventOccasion(event)}` : ''}</span>
+                <span>{scoreValue(event.basePoints)} base × {scoreValue(event.tasteMultiplier)} taste = {scoreValue(event.adjustedPoints)}</span>
+              </li>)}
+            </ul>}
+          </details>
+        </MoviePosterCard>)}
+      </div> : <div className="table-wrap">
         <table className="data-table recommendations-table">
           <thead><tr><th scope="col">{titleTypeHeading.toUpperCase()}</th><th scope="col">FINAL SCORE</th><th scope="col">RATING</th><th scope="col">POPULARITY</th><th scope="col">AWARD POINTS</th><th scope="col">AWARD EVENTS</th><th scope="col">ACTIONS</th></tr></thead>
           <tbody>{result.items.map((item) => <tr key={item.imdbId}>
@@ -324,18 +398,10 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
                 </ul>}
               </details>
             </td>
-            <td>{!item.isWatched && <div className="recommendation-actions">
-              <button aria-label={`Mark ${item.title} as watched`} className="button button-secondary" onClick={() => openWatchDialog(item)} type="button">Mark watched</button>
-              <RecommendationWatchlistControl imdbId={item.imdbId} onAdded={() => {
-                setLoading(true)
-                setError(null)
-                setAttempt((value) => value + 1)
-              }} title={item.title} />
-              <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} />
-            </div>}</td>
+            <td>{renderTableActions(item)}</td>
           </tr>)}</tbody>
         </table>
-      </div>
+      </div>}
       <Pagination page={result} onPageChange={changePage} />
     </>}
 

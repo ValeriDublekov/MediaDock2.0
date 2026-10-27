@@ -31,6 +31,7 @@ interface MoviePosterCardProps {
   showAwards?: boolean
   onOpen?: () => void
   openLabel?: string
+  titleHref?: string
   posterBadge?: ReactNode
   posterActions?: ReactNode
   children?: ReactNode
@@ -52,6 +53,7 @@ export function MoviePosterCard({
   showAwards = true,
   onOpen,
   openLabel,
+  titleHref,
   posterBadge,
   posterActions,
   children,
@@ -77,7 +79,9 @@ export function MoviePosterCard({
       <div className="tile-heading">
         {onOpen
           ? <button className="tile-title" onClick={onOpen} type="button">{title}</button>
-          : <h3 className="tile-title">{title}</h3>}
+          : titleHref
+            ? <a className="tile-title" href={titleHref} rel="noopener noreferrer" target="_blank">{title}</a>
+            : <h3 className="tile-title">{title}</h3>}
         <span className="tile-year" title={year === null ? `${yearLabel} unknown` : `${yearLabel} ${year}`}>{year ?? '—'}</span>
       </div>
       <MovieImdbLink imdbId={imdbId} rating={imdbRating} title={title} />

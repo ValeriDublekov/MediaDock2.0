@@ -1,5 +1,5 @@
 import { useFavorites } from './FavoriteContext'
-import { Star } from 'lucide-react'
+import { BookmarkCheck, BookmarkPlus, Star } from 'lucide-react'
 
 export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, occurrenceCount, placement = 'inline' }: {
   imdbId: string | null
@@ -69,14 +69,28 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, occu
   </div>
 }
 
-export function RecommendationWatchlistControl({ imdbId, title, onAdded }: {
+export function RecommendationWatchlistControl({ imdbId, title, onAdded, placement = 'inline' }: {
   imdbId: string
   title: string
   onAdded: () => void
+  placement?: 'inline' | 'poster'
 }) {
   const { available, titles, pending, loading, error, add, retry } = useFavorites()
   if (!available) return null
-  if (titles[imdbId]?.toWatch) return <span className="subtle-line">In watch list</span>
+  const isInWatchList = Boolean(titles[imdbId]?.toWatch)
+
+  if (placement === 'poster') {
+    const label = isInWatchList ? `${title} is in watch list` : `Add ${title} to watch list`
+    return <button
+      aria-label={label}
+      className={`tile-icon-action favorite-icon${isInWatchList ? ' is-active' : ''}`}
+      data-tooltip={label}
+      disabled={isInWatchList || pending === imdbId || loading || Boolean(error)}
+      onClick={() => { void add(imdbId, 'recommendation').then((added) => { if (added) onAdded() }) }}
+      type="button"
+    >{isInWatchList ? <BookmarkCheck aria-hidden="true" size={16} /> : <BookmarkPlus aria-hidden="true" size={16} />}</button>
+  }
+  if (isInWatchList) return <span className="subtle-line">In watch list</span>
 
   return <div className="favorite-controls recommendation-watchlist-control">
     <button
