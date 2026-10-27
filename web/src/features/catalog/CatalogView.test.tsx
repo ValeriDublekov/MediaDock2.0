@@ -1,13 +1,12 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getParseLogs, getRssFeedPreview, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
+import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getParseLogs, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
 import type { CatalogTitle, ImdbCandidateSearch, MovieAwardRecognition, PageResponse, TitleDetails } from '../../api/types'
 import { CatalogView } from './CatalogView'
 
 vi.mock('../../api/client', () => ({
   ApiError: class ApiError extends Error {},
   getCatalog: vi.fn(),
-  getRssFeedPreview: vi.fn(),
   getTitle: vi.fn(),
   getTitleOccurrences: vi.fn(),
   deleteCatalogTitle: vi.fn(),
@@ -29,7 +28,7 @@ function page(
   yearBounds?: PageResponse<CatalogTitle>['yearBounds'],
   imdbRatingBounds?: PageResponse<CatalogTitle>['imdbRatingBounds'],
 ): PageResponse<CatalogTitle> {
-  return { items, page: number, pageSize: 50, totalCount: items.length, totalPages, ...(yearBounds ? { yearBounds } : {}), ...(imdbRatingBounds ? { imdbRatingBounds } : {}) }
+  return { items, page: number, pageSize: 100, totalCount: items.length, totalPages, ...(yearBounds ? { yearBounds } : {}), ...(imdbRatingBounds ? { imdbRatingBounds } : {}) }
 }
 
 const title: CatalogTitle = {
@@ -52,7 +51,7 @@ const title: CatalogTitle = {
 }
 
 describe('CatalogView', () => {
-  beforeEach(() => { catalogRequest.mockReset(); vi.mocked(getRssFeedPreview).mockReset(); window.localStorage.clear() })
+  beforeEach(() => { catalogRequest.mockReset(); window.localStorage.clear() })
   afterEach(() => cleanup())
 
   it('switches between posters and table without refetching and replaces broken images', async () => {
@@ -107,45 +106,6 @@ describe('CatalogView', () => {
 
     expect(await screen.findByRole('dialog')).toBeTruthy()
     expect(getTitle).toHaveBeenCalledWith(title.id)
-  })
-
-  it('shows RSS contents for the active catalog category', async () => {
-    catalogRequest.mockResolvedValue(page([title]))
-    vi.mocked(getRssFeedPreview).mockImplementation(async (profileId) => ({
-      profileId,
-      profileName: profileId === 'series_ongoing' ? 'Ongoing episodes' : 'Movies',
-      feeds: [{
-        sourceId: 2,
-        originalContent: '<feed><entry><title>Quiet River RSS entry</title></entry></feed>',
-        items: [{
-          title: 'Quiet River RSS entry',
-          feedEntryId: 'entry-2',
-          torrentUrl: 'https://feed.rutracker.cc/download/2',
-          publishedAt: '2026-10-27T12:00:00Z',
-        }],
-      }],
-    }))
-    render(<CatalogView />)
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Series in progress' }))
-    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 50, feedTypes: ['series_ongoing'] }))
-    fireEvent.click(screen.getByRole('button', { name: 'RSS contents' }))
-
-    const dialog = await screen.findByRole('dialog')
-    expect(getRssFeedPreview).toHaveBeenCalledWith('series_ongoing')
-    expect(within(dialog).getByText('Quiet River RSS entry')).toBeTruthy()
-    fireEvent.click(within(dialog).getByRole('tab', { name: 'Original XML' }))
-    expect(within(dialog).getByLabelText('Original RSS feed 1').textContent).toContain('<entry>')
-  })
-
-  it('hides RSS contents when all catalog categories are selected', async () => {
-    catalogRequest.mockResolvedValue(page([title]))
-    render(<CatalogView />)
-
-    fireEvent.click(await screen.findByRole('button', { name: 'All' }))
-
-    expect(screen.queryByRole('button', { name: 'RSS contents' })).toBeNull()
-    expect(getRssFeedPreview).not.toHaveBeenCalled()
   })
 
   it('opens title details when clicking a non-action area of the poster card', async () => {
@@ -321,7 +281,7 @@ describe('CatalogView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
       page: 2,
-      pageSize: 50,
+      pageSize: 100,
       feedTypes: ['movie'],
     }))
   })
@@ -342,11 +302,11 @@ describe('CatalogView', () => {
     fireEvent.change(screen.getByLabelText('Search titles'), { target: { value: 'Quiet River' } })
     expect(catalogRequest).toHaveBeenCalledTimes(1)
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 50, feedTypes: ['movie'], search: 'Quiet River',
+      page: 1, pageSize: 100, feedTypes: ['movie'], search: 'Quiet River',
     }))
     fireEvent.click(await screen.findByRole('button', { name: 'Next page' }))
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 2, pageSize: 50, feedTypes: ['movie'], search: 'Quiet River',
+      page: 2, pageSize: 100, feedTypes: ['movie'], search: 'Quiet River',
     }))
 
     fireEvent.change(screen.getByLabelText('Search titles'), { target: { value: 'Unsubmitted search' } })
@@ -369,7 +329,7 @@ describe('CatalogView', () => {
 
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
       page: 1,
-      pageSize: 50,
+      pageSize: 100,
       feedTypes: ['movie'],
       search: 'Quiet River',
       yearFrom: 2000,
@@ -406,7 +366,7 @@ describe('CatalogView', () => {
     fireEvent.pointerUp(maximum)
 
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 50, feedTypes: ['movie'], imdbRatingFrom: 8.1, imdbRatingTo: 8.5,
+      page: 1, pageSize: 100, feedTypes: ['movie'], imdbRatingFrom: 8.1, imdbRatingTo: 8.5,
     }))
   })
 
@@ -420,12 +380,12 @@ describe('CatalogView', () => {
     fireEvent.change(movieMaximum, { target: { value: '8.5' } })
     fireEvent.pointerUp(movieMaximum)
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 50, feedTypes: ['movie'], imdbRatingFrom: 8.1, imdbRatingTo: 8.5,
+      page: 1, pageSize: 100, feedTypes: ['movie'], imdbRatingFrom: 8.1, imdbRatingTo: 8.5,
     }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Series' }))
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 50, feedTypes: ['series_complete'],
+      page: 1, pageSize: 100, feedTypes: ['series_complete'],
     }))
     expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('5 – 9')
     fireEvent.change(screen.getByRole('slider', { name: 'IMDb rating minimum' }), { target: { value: '6.5' } })
@@ -433,18 +393,18 @@ describe('CatalogView', () => {
     fireEvent.change(seriesMaximum, { target: { value: '7.5' } })
     fireEvent.pointerUp(seriesMaximum)
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 50, feedTypes: ['series_complete'], imdbRatingFrom: 6.5, imdbRatingTo: 7.5,
+      page: 1, pageSize: 100, feedTypes: ['series_complete'], imdbRatingFrom: 6.5, imdbRatingTo: 7.5,
     }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Series in progress' }))
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 50, feedTypes: ['series_ongoing'], imdbRatingFrom: 6.5, imdbRatingTo: 7.5,
+      page: 1, pageSize: 100, feedTypes: ['series_ongoing'], imdbRatingFrom: 6.5, imdbRatingTo: 7.5,
     }))
     expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('6.5 – 7.5')
 
     fireEvent.click(screen.getByRole('button', { name: 'Movies' }))
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 50, feedTypes: ['movie'], imdbRatingFrom: 8.1, imdbRatingTo: 8.5,
+      page: 1, pageSize: 100, feedTypes: ['movie'], imdbRatingFrom: 8.1, imdbRatingTo: 8.5,
     }))
     expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('8.1 – 8.5')
 
@@ -453,13 +413,13 @@ describe('CatalogView', () => {
     render(<CatalogView />)
     expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 50, feedTypes: ['movie'], imdbRatingFrom: 8.1, imdbRatingTo: 8.5,
+      page: 1, pageSize: 100, feedTypes: ['movie'], imdbRatingFrom: 8.1, imdbRatingTo: 8.5,
     }))
     expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('8.1 – 8.5')
 
     fireEvent.click(screen.getByRole('button', { name: 'Series' }))
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 50, feedTypes: ['series_complete'], imdbRatingFrom: 6.5, imdbRatingTo: 7.5,
+      page: 1, pageSize: 100, feedTypes: ['series_complete'], imdbRatingFrom: 6.5, imdbRatingTo: 7.5,
     }))
     expect(screen.getByLabelText('IMDb rating selected range').textContent).toBe('6.5 – 7.5')
   })
@@ -473,7 +433,7 @@ describe('CatalogView', () => {
     fireEvent.pointerUp(screen.getByRole('slider', { name: 'Title year minimum' }))
 
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 50, feedTypes: ['movie'],
+      page: 1, pageSize: 100, feedTypes: ['movie'],
     }))
     expect(screen.getByRole('button', { name: 'View Year Unknown details' })).toBeTruthy()
   })
@@ -487,16 +447,16 @@ describe('CatalogView', () => {
     expect(screen.getByRole('button', { name: 'Movies' }).getAttribute('aria-pressed')).toBe('true')
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
       page: 1,
-      pageSize: 50,
+      pageSize: 100,
       feedTypes: ['movie'],
     }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Series' }))
-    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 50, feedTypes: ['series_complete'] }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 100, feedTypes: ['series_complete'] }))
     fireEvent.click(screen.getByRole('button', { name: 'Series in progress' }))
-    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 50, feedTypes: ['series_ongoing'] }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 100, feedTypes: ['series_ongoing'] }))
     fireEvent.click(screen.getByRole('button', { name: 'All' }))
-    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 50 }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 100 }))
     expect(screen.getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe('true')
   })
 
@@ -510,18 +470,18 @@ describe('CatalogView', () => {
     expect(screen.queryByRole('button', { name: 'Apply filters' })).toBeNull()
     fireEvent.change(screen.getByLabelText('Media type'), { target: { value: 'series' } })
     expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 50, feedTypes: ['movie'], mediaType: 'series',
+      page: 1, pageSize: 100, feedTypes: ['movie'], mediaType: 'series',
     })
     fireEvent.change(screen.getByLabelText('Genre'), { target: { value: 'drama' } })
     expect(screen.getByText('More filters (2 active)')).toBeTruthy()
     expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 50, feedTypes: ['movie'], mediaType: 'series', genre: 'drama',
+      page: 1, pageSize: 100, feedTypes: ['movie'], mediaType: 'series', genre: 'drama',
     })
 
     expect(await screen.findByText('No titles found')).toBeTruthy()
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
       page: 1,
-      pageSize: 50,
+      pageSize: 100,
       feedTypes: ['movie'],
       search: 'quiet river',
       mediaType: 'series',

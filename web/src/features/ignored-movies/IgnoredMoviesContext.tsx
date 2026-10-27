@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { addIgnoredMovie, getIgnoredMovies, removeIgnoredMovie } from '../../api/client'
 import type { IgnoredMovie } from '../../api/types'
+import { titlePageSize } from '../../shared/titlePagination'
 
 interface IgnoredMoviesState {
   available: boolean
@@ -47,9 +48,9 @@ export function IgnoredMoviesProvider({ children, accountKey }: { children: Reac
     setError(null)
     async function load() {
       try {
-        const first = await getIgnoredMovies({ page: 1, pageSize: 100 })
+        const first = await getIgnoredMovies({ page: 1, pageSize: titlePageSize })
         const pages = await Promise.all(Array.from({ length: first.totalPages - 1 }, (_, index) =>
-          getIgnoredMovies({ page: index + 2, pageSize: 100 })))
+          getIgnoredMovies({ page: index + 2, pageSize: titlePageSize })))
         if (active) {
           setMovies(Object.fromEntries([first, ...pages].flatMap((page) => page.items).map((movie) => [movie.imdbId, movie])))
           setError(null)

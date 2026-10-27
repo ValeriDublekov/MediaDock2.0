@@ -28,7 +28,7 @@ const film: GoldenGlobeFilm = {
 const page: PageResponse<GoldenGlobeFilm> = {
   items: [film],
   page: 1,
-  pageSize: 20,
+  pageSize: 100,
   totalCount: 1,
   totalPages: 1,
   yearBounds: { minYear: 2024, maxYear: 2025 },
@@ -74,14 +74,14 @@ describe('GoldenGlobeCatalogView', () => {
     fireEvent.change(minimum, { target: { value: '2025' } })
     fireEvent.pointerUp(minimum)
     fireEvent.change(screen.getByLabelText('Award result'), { target: { value: 'winner' } })
-    expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, yearFrom: 2025, result: 'winner' })
+    expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 1, pageSize: 100, yearFrom: 2025, result: 'winner' })
     fireEvent.change(screen.getByLabelText('OMDb status'), { target: { value: 'not_found' } })
     fireEvent.click(screen.getByLabelText('Categories: All categories (2)'))
     fireEvent.click(screen.getByLabelText('Best Director'))
 
     await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({
       page: 1,
-      pageSize: 20,
+      pageSize: 100,
       search: 'A Film',
       yearFrom: 2025,
       categories: ['Best Picture'],
@@ -98,9 +98,9 @@ describe('GoldenGlobeCatalogView', () => {
     expect(await screen.findByRole('button', { name: 'A Film' })).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'A Film' } })
     expect(getGoldenGlobeFilms).toHaveBeenCalledTimes(1)
-    await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'A Film' }))
+    await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 1, pageSize: 100, search: 'A Film' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Next page' }))
-    await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 2, pageSize: 20, search: 'A Film' }))
+    await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({ page: 2, pageSize: 100, search: 'A Film' }))
 
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'Unsubmitted search' } })
     const maximum = screen.getByRole('slider', { name: 'Ceremony year maximum' }) as HTMLInputElement
@@ -112,7 +112,7 @@ describe('GoldenGlobeCatalogView', () => {
     fireEvent.pointerUp(maximum, { pointerType: 'touch' })
 
     await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 20, search: 'A Film', yearTo: 2024,
+      page: 1, pageSize: 100, search: 'A Film', yearTo: 2024,
     }))
   })
 
@@ -127,7 +127,7 @@ describe('GoldenGlobeCatalogView', () => {
     fireEvent.pointerUp(minimum)
 
     await waitFor(() => expect(getGoldenGlobeFilms).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 20, imdbRatingFrom: 7.8,
+      page: 1, pageSize: 100, imdbRatingFrom: 7.8,
     }))
   })
 

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Download, Rss } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { getCatalog } from '../../api/client'
 import type { CatalogQuery, CatalogTitle, FeedType, MediaType, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
@@ -10,10 +10,10 @@ import { YearRangeFilter } from '../../components/YearRangeFilter'
 import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatDate, formatWords } from '../../shared/format'
+import { titlePageSize } from '../../shared/titlePagination'
 import { combineMovieAwards, movieAwardsRequestKey } from '../../shared/movieAwards'
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { TitleDetailsDialog } from './TitleDetailsDialog'
-import { RssFeedPreviewDialog } from './RssFeedPreviewDialog'
 import { FavoriteControls } from '../favorites/FavoriteControls'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
@@ -36,16 +36,10 @@ type CatalogRatingScope = 'movie' | 'series' | 'all'
 type ImdbRatingRange = Pick<CatalogFilters, 'imdbRatingFrom' | 'imdbRatingTo'>
 type CatalogRatingRanges = Record<CatalogRatingScope, ImdbRatingRange>
 
-const categoryFeedTypes: Record<CatalogCategory, FeedType[]> = {
+const categoryFeedTypes: Record<Exclude<CatalogCategory, 'all'>, FeedType[]> = {
   movie: ['movie'],
   series: ['series_complete'],
   series_ongoing: ['series_ongoing'],
-  all: ['movie', 'series_complete', 'series_ongoing'],
-}
-const rssProfileByCategory: Record<Exclude<CatalogCategory, 'all'>, FeedType> = {
-  movie: 'movie',
-  series: 'series_complete',
-  series_ongoing: 'series_ongoing',
 }
 
 const categories: Array<{ id: CatalogCategory; label: string }> = [
@@ -66,7 +60,6 @@ const emptyImdbRatingRanges: CatalogRatingRanges = {
 }
 const imdbRatingStorageKey = 'mediadock.catalog.imdbRatingRanges'
 const searchDebounceMs = 350
-const catalogPageSize = 50
 
 function ratingScopeForCategory(category: CatalogCategory): CatalogRatingScope {
   if (category === 'series' || category === 'series_ongoing') return 'series'
@@ -112,7 +105,7 @@ function saveImdbRatingRanges(ranges: CatalogRatingRanges) {
 function buildQuery(page: number, filters: CatalogFilters, category: CatalogCategory): CatalogQuery {
   return {
     page,
-    pageSize: catalogPageSize,
+    pageSize: titlePageSize,
     ...(category !== 'all' ? { feedTypes: categoryFeedTypes[category] } : {}),
     ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
     ...(filters.mediaType ? { mediaType: filters.mediaType as MediaType } : {}),
@@ -166,7 +159,6 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null)
-  const [showRssPreview, setShowRssPreview] = useState(false)
   const [selectedTitleId, setSelectedTitleId] = useState<number | null>(null)
   const [imdbMatchTarget, setImdbMatchTarget] = useState<ImdbCandidateTarget | null>(null)
   const [detailsSection, setDetailsSection] = useState<'details' | 'torrents'>('details')
@@ -356,7 +348,6 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
         <span className="result-count">{result ? `${result.totalCount.toLocaleString()} titles` : 'Catalog records'}</span>
         <div className="toolbar-actions">
           <ViewModeControl onChange={setViewMode} value={viewMode} />
-          {category !== 'all' && <button className="button button-secondary" onClick={() => setShowRssPreview(true)} type="button"><Rss aria-hidden="true" size={16} /> RSS contents</button>}
           <button className="text-button" onClick={() => setAttempt((current) => current + 1)} type="button">Refresh results</button>
         </div>
       </div>
@@ -430,10 +421,6 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
           setAttempt((current) => current + 1)
         } : undefined}
         titleId={selectedTitleId}
-      />}
-      {showRssPreview && category !== 'all' && <RssFeedPreviewDialog
-        onClose={() => setShowRssPreview(false)}
-        profileId={rssProfileByCategory[category]}
       />}
       {imdbMatchTarget && <ImdbCandidatePicker
         onApplied={() => {

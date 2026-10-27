@@ -14,6 +14,7 @@ import { YearRangeFilter } from '../../components/YearRangeFilter'
 import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatWords } from '../../shared/format'
+import { titlePageSize } from '../../shared/titlePagination'
 import { combineMovieAwards, getOscarRecognitions, movieAwardsRequestKey } from '../../shared/movieAwards'
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
@@ -47,7 +48,7 @@ const searchDebounceMs = 350
 function buildQuery(page: number, filters: OscarFilters): OscarCatalogQuery {
   return {
     page,
-    pageSize: 20,
+    pageSize: titlePageSize,
     ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
     ...(filters.yearFrom ? { yearFrom: Number(filters.yearFrom) } : {}),
     ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}),

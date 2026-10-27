@@ -5,6 +5,7 @@ import { ErrorState, LoadingState } from '../../components/Feedback'
 import { EmptyState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { formatDate, formatWords } from '../../shared/format'
+import { titlePageSize } from '../../shared/titlePagination'
 import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
 import { DeploymentControlPanel } from './DeploymentControlPanel'
 
@@ -19,8 +20,6 @@ const emptyProviderSettings: ProviderSettingsDraft = {
   clearOmdbApiKey: false,
   omdbDailyRequestLimit: '0',
 }
-
-const personalRatingsPageSize = 25
 
 function providerSettingsToDraft(settings: ProviderSettings): ProviderSettingsDraft {
   return {
@@ -50,7 +49,7 @@ export function PersonalRatingsView() {
   useEffect(() => {
     let active = true
 
-    getPersonalRatings({ page, pageSize: personalRatingsPageSize, sort })
+    getPersonalRatings({ page, pageSize: titlePageSize, sort })
       .then((response) => { if (active) setRatings(response) })
       .catch((requestError: unknown) => {
         if (active) setRatingsError(requestError instanceof Error ? requestError.message : 'Could not load personal IMDb ratings.')

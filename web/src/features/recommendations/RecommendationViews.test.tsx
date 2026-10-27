@@ -85,7 +85,7 @@ function recommendationPage(
   totalPages = totalCount === 0 ? 0 : 1,
   yearBounds?: PageResponse<Recommendation>['yearBounds'],
 ): PageResponse<Recommendation> {
-  return { items, page, pageSize: 25, totalCount, totalPages, ...(yearBounds ? { yearBounds } : {}) }
+  return { items, page, pageSize: 100, totalCount, totalPages, ...(yearBounds ? { yearBounds } : {}) }
 }
 
 function favoritePage(items: FavoriteTitle[] = []): PageResponse<FavoriteTitle> {
@@ -295,7 +295,7 @@ describe('RecommendationsView', () => {
     expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -308,7 +308,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       ratingWeight: 0.8,
       votesWeight: 0.1,
       awardsWeight: 0.1,
@@ -321,7 +321,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       ratingWeight: 0.8,
       votesWeight: 0.1,
       awardsWeight: 0.1,
@@ -333,7 +333,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       ratingWeight: 0.8,
       votesWeight: 0.1,
       awardsWeight: 0.1,
@@ -345,7 +345,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 2,
-      pageSize: 25,
+      pageSize: 100,
       ratingWeight: 0.8,
       votesWeight: 0.1,
       awardsWeight: 0.1,
@@ -376,7 +376,7 @@ describe('RecommendationsView', () => {
     expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -388,7 +388,7 @@ describe('RecommendationsView', () => {
     expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -418,7 +418,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -435,7 +435,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -513,7 +513,7 @@ describe('RecommendationsView', () => {
     expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 2,
-      pageSize: 25,
+      pageSize: 100,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -542,7 +542,7 @@ describe('RecommendationsView', () => {
     expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -584,7 +584,7 @@ describe('RecommendationsView', () => {
     expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'series',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,
@@ -596,7 +596,7 @@ describe('RecommendationsView', () => {
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'series',
       page: 1,
-      pageSize: 25,
+      pageSize: 100,
       ratingWeight: 0.5,
       votesWeight: 0.25,
       awardsWeight: 0.25,

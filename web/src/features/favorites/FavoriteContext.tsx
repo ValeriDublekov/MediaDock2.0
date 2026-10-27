@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { addFavorite, getFavorites, removeFavorite, updateFavorite } from '../../api/client'
 import type { FavoriteTitle } from '../../api/types'
+import { titlePageSize } from '../../shared/titlePagination'
 
 interface FavoriteState {
   available: boolean
@@ -32,9 +33,9 @@ export function FavoriteProvider({ children, accountKey }: { children: ReactNode
     if (accountKey === null) return
     async function load() {
       try {
-        const first = await getFavorites({ page: 1, pageSize: 100 })
+        const first = await getFavorites({ page: 1, pageSize: titlePageSize })
         const pages = await Promise.all(Array.from({ length: first.totalPages - 1 }, (_, index) =>
-          getFavorites({ page: index + 2, pageSize: 100 })))
+          getFavorites({ page: index + 2, pageSize: titlePageSize })))
         if (active) {
           setTitles(Object.fromEntries([first, ...pages].flatMap((page) => page.items).map((title) => [title.imdbId, title])))
           setError(null)

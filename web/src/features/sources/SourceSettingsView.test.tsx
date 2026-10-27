@@ -68,7 +68,7 @@ function personalRating(imdbId: string, title: string, rating = 8, metadataStatu
 }
 
 function personalRatingsPage(items: PersonalRating[], page = 1, totalPages = 1) {
-  return { items, page, pageSize: 25, totalCount: totalPages * 25, totalPages }
+  return { items, page, pageSize: 100, totalCount: totalPages * 100, totalPages }
 }
 
 const personalRatingsJob: BackgroundJob = {
@@ -98,7 +98,7 @@ describe('SourceSettingsView', () => {
     vi.mocked(getBackgroundJobEvents).mockReset().mockResolvedValue({ items: [], nextAfterId: 0 })
     vi.mocked(getOmdbDailyUsage).mockReset().mockResolvedValue([])
     vi.mocked(getPersonalRatings).mockReset().mockResolvedValue({
-      items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0,
+      items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0,
     })
     vi.mocked(getPersonalRatingsEnrichmentJob).mockReset().mockResolvedValue(personalRatingsJob)
     vi.mocked(enqueuePersonalRatingsEnrichment).mockReset().mockResolvedValue(undefined)
@@ -209,12 +209,12 @@ describe('SourceSettingsView', () => {
     render(<PersonalRatingsView />)
 
     expect(await screen.findByRole('link', { name: 'Rating page 1' })).toBeTruthy()
-    expect(getPersonalRatings).toHaveBeenLastCalledWith({ page: 1, pageSize: 25, sort: 'desc' })
+    expect(getPersonalRatings).toHaveBeenLastCalledWith({ page: 1, pageSize: 100, sort: 'desc' })
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
     expect(await screen.findByRole('link', { name: 'Rating page 2' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Lowest first' }))
     expect(await screen.findByRole('link', { name: 'Rating page 1' })).toBeTruthy()
-    expect(getPersonalRatings).toHaveBeenLastCalledWith({ page: 1, pageSize: 25, sort: 'asc' })
+    expect(getPersonalRatings).toHaveBeenLastCalledWith({ page: 1, pageSize: 100, sort: 'asc' })
 
     const callsBeforeSelectedSort = vi.mocked(getPersonalRatings).mock.calls.length
     fireEvent.click(screen.getByRole('button', { name: 'Lowest first' }))

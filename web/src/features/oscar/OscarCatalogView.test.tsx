@@ -25,7 +25,7 @@ function page(items: OscarFilm[], number = 1, totalPages = 1): PageResponse<Osca
   return {
     items,
     page: number,
-    pageSize: 20,
+    pageSize: 100,
     totalCount: items.length,
     totalPages,
     yearBounds: { minYear: 2021, maxYear: 2023 },
@@ -155,9 +155,9 @@ describe('OscarCatalogView', () => {
     expect(filmRequest).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('button', { name: 'Apply filters' })).toBeNull()
     fireEvent.change(screen.getByLabelText('Award result'), { target: { value: 'winner' } })
-    expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, result: 'winner' })
+    expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 100, result: 'winner' })
     fireEvent.change(screen.getByLabelText('OMDb status'), { target: { value: 'pending' } })
-    expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, result: 'winner', enrichmentStatus: 'pending' })
+    expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 100, result: 'winner', enrichmentStatus: 'pending' })
     fireEvent.click(await screen.findByLabelText('Categories: All categories (5)'))
     fireEvent.click(screen.getByLabelText('BEST PICTURE'))
     expect(screen.getByText('More filters (3 active)')).toBeTruthy()
@@ -165,7 +165,7 @@ describe('OscarCatalogView', () => {
     expect(await screen.findByText('No Oscar films found')).toBeTruthy()
     await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({
       page: 1,
-      pageSize: 20,
+      pageSize: 100,
       search: 'Oppenheimer',
       categories: ['DIRECTING', 'WRITING (Original Screenplay)', 'WRITING (Adapted Screenplay)', 'CINEMATOGRAPHY'],
       categoryFilter: true,
@@ -181,9 +181,9 @@ describe('OscarCatalogView', () => {
     expect(await screen.findByRole('button', { name: 'View The Shape of Water Oscar details' })).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'Shape of Water' } })
     expect(filmRequest).toHaveBeenCalledTimes(1)
-    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'Shape of Water' }))
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 100, search: 'Shape of Water' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Next page' }))
-    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 2, pageSize: 20, search: 'Shape of Water' }))
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 2, pageSize: 100, search: 'Shape of Water' }))
 
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'Unsubmitted search' } })
     const minimum = screen.getByRole('slider', { name: 'Film year minimum' }) as HTMLInputElement
@@ -195,7 +195,7 @@ describe('OscarCatalogView', () => {
     fireEvent.keyUp(minimum, { key: 'ArrowRight' })
 
     await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 20, search: 'Shape of Water', yearFrom: 2022,
+      page: 1, pageSize: 100, search: 'Shape of Water', yearFrom: 2022,
     }))
   })
 
@@ -211,7 +211,7 @@ describe('OscarCatalogView', () => {
     fireEvent.keyUp(maximum, { key: 'ArrowLeft' })
 
     await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: 20, imdbRatingTo: 8.4,
+      page: 1, pageSize: 100, imdbRatingTo: 8.4,
     }))
   })
 
@@ -220,7 +220,7 @@ describe('OscarCatalogView', () => {
     render(<OscarCatalogView />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Next page' }))
-    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 }))
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 2, pageSize: 100 }))
 
     const summary = await screen.findByLabelText('Categories: All categories (5)')
     expect((screen.getAllByRole('checkbox') as HTMLInputElement[]).every((checkbox) => checkbox.checked)).toBe(true)
@@ -234,19 +234,19 @@ describe('OscarCatalogView', () => {
 
     await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({
       page: 1,
-      pageSize: 20,
+      pageSize: 100,
       categories: [],
       categoryFilter: true,
     }))
     expect(screen.getByLabelText('Categories: 0 of 5 selected')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Select all' }))
-    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 }))
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 100 }))
     expect(screen.getByLabelText('Categories: All categories (5)')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: 'temporary search' } })
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
-    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 }))
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 100 }))
     expect((screen.getByLabelText('Search films') as HTMLInputElement).value).toBe('')
   })
 
@@ -293,7 +293,7 @@ describe('OscarCatalogView', () => {
 
     expect(await screen.findByRole('button', { name: 'View The Shape of Water Oscar details' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
-    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 }))
+    await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 2, pageSize: 100 }))
   })
 
   it('adds from Oscar, preserves a disabled marker, and keeps state after a failed save', async () => {

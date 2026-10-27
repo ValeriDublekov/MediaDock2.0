@@ -42,9 +42,9 @@ it('filters one canonical movie independently by watch and download status', asy
   expect(screen.getByRole('columnheader', { name: 'ORIGIN' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
   fireEvent.click(screen.getByRole('button', { name: 'To watch' }))
-  await waitFor(() => expect(getFavorites).toHaveBeenCalledWith({ status: 'to_watch', page: 1, pageSize: 20 }))
+  await waitFor(() => expect(getFavorites).toHaveBeenCalledWith({ status: 'to_watch', page: 1, pageSize: 100 }))
   fireEvent.click(screen.getByRole('button', { name: 'To download' }))
-  await waitFor(() => expect(getFavorites).toHaveBeenCalledWith({ status: 'to_download', page: 1, pageSize: 20 }))
+  await waitFor(() => expect(getFavorites).toHaveBeenCalledWith({ status: 'to_download', page: 1, pageSize: 100 }))
   expect(screen.getAllByRole('button', { name: 'Shared Movie' })).toHaveLength(1)
 })
 
@@ -123,7 +123,7 @@ it('shows series recommendations in the shared favorites list with watch-only co
     createdAt: '2026-10-26T00:00:00Z', updatedAt: '2026-10-26T00:00:00Z',
     oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
   }
-  vi.mocked(getFavorites).mockResolvedValue({ items: [series], page: 1, pageSize: 20, totalCount: 1, totalPages: 1 })
+  vi.mocked(getFavorites).mockResolvedValue({ items: [series], page: 1, pageSize: 100, totalCount: 1, totalPages: 1 })
   vi.mocked(updateFavorite).mockResolvedValue({ ...series, toWatch: false })
   render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
 
@@ -143,7 +143,7 @@ it('uses the shared poster card and opens details for a favorite without a torre
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 2,
     winCount: 1, occurrenceCount: 0, lastSeenAt: null,
   }
-  vi.mocked(getFavorites).mockResolvedValue({ items: [movie], page: 1, pageSize: 20, totalCount: 1, totalPages: 1 })
+  vi.mocked(getFavorites).mockResolvedValue({ items: [movie], page: 1, pageSize: 100, totalCount: 1, totalPages: 1 })
   render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
 
   expect(await screen.findByRole('button', { name: 'View Award Film details' })).toBeTruthy()

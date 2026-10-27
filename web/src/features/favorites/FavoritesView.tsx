@@ -4,6 +4,7 @@ import type { FavoriteTitle, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { MovieDetailsIntro, MoviePosterCard } from '../../components/MoviePresentation'
+import { titlePageSize } from '../../shared/titlePagination'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 import { TitleDetailsDialog } from '../catalog/TitleDetailsDialog'
@@ -27,7 +28,7 @@ export function FavoritesView() {
     if (!available) return
     let active = true
 
-    getFavorites({ status, page, pageSize: 20 })
+    getFavorites({ status, page, pageSize: titlePageSize })
       .then((response) => { if (active) setResult(response) })
       .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Favorites could not be loaded.') })
       .finally(() => { if (active) setLoading(false) })

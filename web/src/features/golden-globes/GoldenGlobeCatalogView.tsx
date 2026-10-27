@@ -9,6 +9,7 @@ import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } f
 import { Pagination } from '../../components/Pagination'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatWords } from '../../shared/format'
+import { titlePageSize } from '../../shared/titlePagination'
 import { combineMovieAwards, getGoldenGlobeRecognitions, movieAwardsRequestKey } from '../../shared/movieAwards'
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
@@ -21,7 +22,7 @@ const emptyFilters: Filters = { search: '', yearFrom: '', yearTo: '', imdbRating
 const searchDebounceMs = 350
 
 function queryFor(page: number, filters: Filters): GoldenGlobeCatalogQuery {
-  return { page, pageSize: 20, ...(filters.search.trim() ? { search: filters.search.trim() } : {}), ...(filters.yearFrom ? { yearFrom: Number(filters.yearFrom) } : {}), ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}), ...(filters.imdbRatingFrom ? { imdbRatingFrom: Number(filters.imdbRatingFrom) } : {}), ...(filters.imdbRatingTo ? { imdbRatingTo: Number(filters.imdbRatingTo) } : {}), ...(filters.categories !== null ? { categories: filters.categories, categoryFilter: true } : {}), ...(filters.result ? { result: filters.result as GoldenGlobeCatalogQuery['result'] } : {}), ...(filters.enrichmentStatus ? { enrichmentStatus: filters.enrichmentStatus as GoldenGlobeEnrichmentStatus } : {}) }
+  return { page, pageSize: titlePageSize, ...(filters.search.trim() ? { search: filters.search.trim() } : {}), ...(filters.yearFrom ? { yearFrom: Number(filters.yearFrom) } : {}), ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}), ...(filters.imdbRatingFrom ? { imdbRatingFrom: Number(filters.imdbRatingFrom) } : {}), ...(filters.imdbRatingTo ? { imdbRatingTo: Number(filters.imdbRatingTo) } : {}), ...(filters.categories !== null ? { categories: filters.categories, categoryFilter: true } : {}), ...(filters.result ? { result: filters.result as GoldenGlobeCatalogQuery['result'] } : {}), ...(filters.enrichmentStatus ? { enrichmentStatus: filters.enrichmentStatus as GoldenGlobeEnrichmentStatus } : {}) }
 }
 
 function describeEnrichmentError(error: string, ceremonyYear: number) {

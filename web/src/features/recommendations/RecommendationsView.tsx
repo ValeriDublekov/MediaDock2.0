@@ -10,6 +10,7 @@ import { Poster } from '../../components/Poster'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { YearRangeFilter } from '../../components/YearRangeFilter'
 import { formatWords } from '../../shared/format'
+import { titlePageSize } from '../../shared/titlePagination'
 import { RecommendationWatchlistControl } from '../favorites/FavoriteControls'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
@@ -17,7 +18,6 @@ import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
 type CoefficientKey = keyof RecommendationCoefficients
 type SliderPercentages = Record<CoefficientKey, number>
 
-const recommendationsPageSize = 25
 const coefficientControls: Array<{ key: CoefficientKey; id: string; label: string }> = [
   { key: 'ratingWeight', id: 'recommendation-rating-weight', label: 'IMDb rating' },
   { key: 'votesWeight', id: 'recommendation-votes-weight', label: 'Vote popularity' },
@@ -126,7 +126,7 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
     const query: RecommendationQuery = {
       mediaType,
       page: pageNumber,
-      pageSize: recommendationsPageSize,
+      pageSize: titlePageSize,
       ...toCoefficients(sliderPercentages),
       ...(excludeWatched ? {} : { excludeWatched: false }),
       ...(appliedYearFilter.from ? { yearFrom: Number(appliedYearFilter.from) } : {}),
