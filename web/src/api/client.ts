@@ -40,6 +40,7 @@ import type {
   RecommendationQuery,
   RecommendationSettings,
   RecommendationSettingsInput,
+  RssFeedPreview,
   VoteWeightRecalculationResult,
   ScanRun,
   ScanRunQuery,
@@ -150,6 +151,10 @@ function withQuery(path: string, query: object, repeatedKeys: readonly string[] 
 
 export function getCatalog(query: CatalogQuery, fetcher?: typeof fetch) {
   return requestJson<PageResponse<CatalogTitle>>(withQuery('/catalog', query), {}, fetcher)
+}
+
+export function getRssFeedPreview(profileId: FeedType, fetcher?: typeof fetch) {
+  return requestJson<RssFeedPreview>(`/catalog/rss/${encodeURIComponent(profileId)}`, {}, fetcher)
 }
 
 export function getOscarFilms(query: OscarCatalogQuery, fetcher?: typeof fetch) {

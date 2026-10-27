@@ -194,6 +194,24 @@ export interface SourceProfile {
   urls: SourceUrl[]
 }
 
+export interface RssFeedPreviewItem {
+  title: string | null
+  feedEntryId: string | null
+  torrentUrl: string | null
+  publishedAt: string | null
+}
+
+export interface RssFeedPreviewSource {
+  sourceId: number
+  items: RssFeedPreviewItem[]
+}
+
+export interface RssFeedPreview {
+  profileId: FeedType
+  profileName: string
+  feeds: RssFeedPreviewSource[]
+}
+
 export interface Settings {
   excludedGenres: string[]
   excludedCountries: string[]

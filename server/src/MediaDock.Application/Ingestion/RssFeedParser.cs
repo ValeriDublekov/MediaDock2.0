@@ -4,7 +4,7 @@ using System.Xml.Linq;
 
 namespace MediaDock.Application.Ingestion;
 
-internal static class RssFeedParser
+public static class RssFeedParser
 {
     private const int MaximumFeedSizeBytes = 4 * 1024 * 1024;
 

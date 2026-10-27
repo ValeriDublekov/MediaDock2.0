@@ -26,6 +26,19 @@ internal static class CatalogEndpoints
             .Produces<PageResponse<CatalogTitleResponse>>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        app.MapGet("/api/catalog/rss/{profileId}", async Task<Ok<RssFeedPreviewResponse>> (
+            string profileId,
+            IRssFeedPreviewApiService previewService,
+            CancellationToken cancellationToken) =>
+        {
+            var preview = await previewService.GetPreviewAsync(profileId, cancellationToken);
+            return TypedResults.Ok(preview);
+        })
+            .WithName("GetCatalogRssPreview")
+            .WithSummary("Preview current RSS items for a configured catalog profile.")
+            .Produces<RssFeedPreviewResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
         app.MapGet("/api/titles/{id:long}", async Task<Ok<TitleDetailsResponse>> (
             long id,
             ICatalogApiService catalogService,

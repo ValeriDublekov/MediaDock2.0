@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using MediaDock.Api.Catalog;
 using MediaDock.Api.Common;
+using MediaDock.Application.Ingestion;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
@@ -183,6 +185,75 @@ public sealed class CatalogEndpointsApiTests
         Assert.Equal("1080p", Assert.Single(occurrences.Items).Quality);
         Assert.Equal("BDRip", Assert.Single(occurrences.Items).RipType);
         Assert.DoesNotContain("\"yearBounds\"", await occurrencesResponse.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task RssPreviewReturnsItemsOnlyForEnabledSourcesInTheSelectedProfile()
+    {
+        var transport = new StaticRssFeedTransport(Encoding.UTF8.GetBytes("""
+            <rss version="2.0"><channel><title>Movies</title><item>
+              <title>Example Film</title><guid>entry-1</guid>
+              <link>https://feed.rutracker.cc/download/1</link>
+              <pubDate>Tue, 27 Oct 2026 12:00:00 GMT</pubDate>
+            </item></channel></rss>
+            """));
+        await using var host = await CatalogApiTestHost.CreateAsync(
+            "mediadock_catalog_rss_preview_test",
+            rssFeedTransport: transport);
+        host.Db.Sources.AddRange(
+            new Source
+            {
+                StableKey = "preview-movie-enabled",
+                Name = "Movies",
+                FeedType = "movie",
+                Url = "https://feed.rutracker.cc/movies.atom",
+                IsEnabled = true
+            },
+            new Source
+            {
+                StableKey = "preview-movie-disabled",
+                Name = "Movies",
+                FeedType = "movie",
+                Url = "https://feed.rutracker.cc/disabled.atom",
+                IsEnabled = false
+            },
+            new Source
+            {
+                StableKey = "preview-series-enabled",
+                Name = "Series",
+                FeedType = "series_complete",
+                Url = "https://feed.rutracker.cc/series.atom",
+                IsEnabled = true
+            });
+        await host.Db.SaveChangesAsync();
+
+        using var response = await host.Client.GetAsync("/api/catalog/rss/movie");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var preview = await response.Content.ReadFromJsonAsync<RssFeedPreviewResponse>();
+        Assert.NotNull(preview);
+        Assert.Equal("movie", preview.ProfileId);
+        Assert.Equal("Movies", preview.ProfileName);
+        var feed = Assert.Single(preview.Feeds);
+        var item = Assert.Single(feed.Items);
+        Assert.Equal("Example Film", item.Title);
+        Assert.Equal("entry-1", item.FeedEntryId);
+        Assert.Equal("https://feed.rutracker.cc/download/1", item.TorrentUrl);
+        Assert.Equal(new DateTimeOffset(2026, 10, 27, 12, 0, 0, TimeSpan.Zero), item.PublishedAt);
+        Assert.Equal(new[] { "https://feed.rutracker.cc/movies.atom" }, transport.RequestedUrls);
+
+        using var invalidProfileResponse = await host.Client.GetAsync("/api/catalog/rss/unknown");
+        Assert.Equal(HttpStatusCode.BadRequest, invalidProfileResponse.StatusCode);
+    }
+
+    private sealed class StaticRssFeedTransport(byte[] body) : IRssFeedTransport
+    {
+        public List<string> RequestedUrls { get; } = [];
+
+        public Task<byte[]> FetchAsync(string url, CancellationToken cancellationToken = default)
+        {
+            RequestedUrls.Add(url);
+            return Task.FromResult(body);
+        }
     }
 
     [Fact]

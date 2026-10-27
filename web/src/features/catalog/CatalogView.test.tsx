@@ -1,12 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getParseLogs, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
+import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getParseLogs, getRssFeedPreview, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
 import type { CatalogTitle, ImdbCandidateSearch, MovieAwardRecognition, PageResponse, TitleDetails } from '../../api/types'
 import { CatalogView } from './CatalogView'
 
 vi.mock('../../api/client', () => ({
   ApiError: class ApiError extends Error {},
   getCatalog: vi.fn(),
+  getRssFeedPreview: vi.fn(),
   getTitle: vi.fn(),
   getTitleOccurrences: vi.fn(),
   deleteCatalogTitle: vi.fn(),
@@ -51,7 +52,7 @@ const title: CatalogTitle = {
 }
 
 describe('CatalogView', () => {
-  beforeEach(() => { catalogRequest.mockReset(); window.localStorage.clear() })
+  beforeEach(() => { catalogRequest.mockReset(); vi.mocked(getRssFeedPreview).mockReset(); window.localStorage.clear() })
   afterEach(() => cleanup())
 
   it('switches between posters and table without refetching and replaces broken images', async () => {
@@ -106,6 +107,32 @@ describe('CatalogView', () => {
 
     expect(await screen.findByRole('dialog')).toBeTruthy()
     expect(getTitle).toHaveBeenCalledWith(title.id)
+  })
+
+  it('shows RSS contents for the active catalog category', async () => {
+    catalogRequest.mockResolvedValue(page([title]))
+    vi.mocked(getRssFeedPreview).mockImplementation(async (profileId) => ({
+      profileId,
+      profileName: profileId === 'series_ongoing' ? 'Ongoing episodes' : 'Movies',
+      feeds: [{
+        sourceId: 2,
+        items: [{
+          title: 'Quiet River RSS entry',
+          feedEntryId: 'entry-2',
+          torrentUrl: 'https://feed.rutracker.cc/download/2',
+          publishedAt: '2026-10-27T12:00:00Z',
+        }],
+      }],
+    }))
+    render(<CatalogView />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Series in progress' }))
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: 50, feedTypes: ['series_ongoing'] }))
+    fireEvent.click(screen.getByRole('button', { name: 'RSS contents' }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(getRssFeedPreview).toHaveBeenCalledWith('series_ongoing')
+    expect(within(dialog).getByText('Quiet River RSS entry')).toBeTruthy()
   })
 
   it('opens title details when clicking a non-action area of the poster card', async () => {

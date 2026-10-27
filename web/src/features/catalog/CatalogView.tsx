@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Download } from 'lucide-react'
+import { Download, Rss } from 'lucide-react'
 import { getCatalog } from '../../api/client'
 import type { CatalogQuery, CatalogTitle, FeedType, MediaType, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
@@ -13,6 +13,7 @@ import { formatDate, formatWords } from '../../shared/format'
 import { combineMovieAwards, movieAwardsRequestKey } from '../../shared/movieAwards'
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { TitleDetailsDialog } from './TitleDetailsDialog'
+import { RssFeedPreviewDialog } from './RssFeedPreviewDialog'
 import { FavoriteControls } from '../favorites/FavoriteControls'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
@@ -35,10 +36,11 @@ type CatalogRatingScope = 'movie' | 'series' | 'all'
 type ImdbRatingRange = Pick<CatalogFilters, 'imdbRatingFrom' | 'imdbRatingTo'>
 type CatalogRatingRanges = Record<CatalogRatingScope, ImdbRatingRange>
 
-const categoryFeedTypes: Record<Exclude<CatalogCategory, 'all'>, FeedType[]> = {
+const categoryFeedTypes: Record<CatalogCategory, FeedType[]> = {
   movie: ['movie'],
   series: ['series_complete'],
   series_ongoing: ['series_ongoing'],
+  all: ['movie', 'series_complete', 'series_ongoing'],
 }
 
 const categories: Array<{ id: CatalogCategory; label: string }> = [
@@ -159,6 +161,7 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null)
+  const [showRssPreview, setShowRssPreview] = useState(false)
   const [selectedTitleId, setSelectedTitleId] = useState<number | null>(null)
   const [imdbMatchTarget, setImdbMatchTarget] = useState<ImdbCandidateTarget | null>(null)
   const [detailsSection, setDetailsSection] = useState<'details' | 'torrents'>('details')
@@ -348,6 +351,7 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
         <span className="result-count">{result ? `${result.totalCount.toLocaleString()} titles` : 'Catalog records'}</span>
         <div className="toolbar-actions">
           <ViewModeControl onChange={setViewMode} value={viewMode} />
+          <button className="button button-secondary" onClick={() => setShowRssPreview(true)} type="button"><Rss aria-hidden="true" size={16} /> RSS contents</button>
           <button className="text-button" onClick={() => setAttempt((current) => current + 1)} type="button">Refresh results</button>
         </div>
       </div>
@@ -421,6 +425,10 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
           setAttempt((current) => current + 1)
         } : undefined}
         titleId={selectedTitleId}
+      />}
+      {showRssPreview && <RssFeedPreviewDialog
+        onClose={() => setShowRssPreview(false)}
+        profileIds={categoryFeedTypes[category]}
       />}
       {imdbMatchTarget && <ImdbCandidatePicker
         onApplied={() => {

@@ -1,4 +1,5 @@
 using System.Net.Http;
+using MediaDock.Application.Ingestion;
 using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
@@ -36,7 +37,8 @@ internal sealed class CatalogApiTestHost : IAsyncDisposable
     internal static async Task<CatalogApiTestHost> CreateAsync(
         string database,
         IReadOnlyDictionary<string, string?>? buildMetadata = null,
-        IOmdbClientFactory? omdbClientFactory = null)
+        IOmdbClientFactory? omdbClientFactory = null,
+        IRssFeedTransport? rssFeedTransport = null)
     {
         var postgres = PostgreSqlTestContainerBuilder.Create(database).Build();
         MediaDockDbContext? db = null;
@@ -50,7 +52,7 @@ internal sealed class CatalogApiTestHost : IAsyncDisposable
             db = new MediaDockDbContext(dbOptions);
             await db.Database.MigrateAsync();
 
-            factory = new ApiFactory(postgres.GetConnectionString(), buildMetadata, omdbClientFactory);
+            factory = new ApiFactory(postgres.GetConnectionString(), buildMetadata, omdbClientFactory, rssFeedTransport);
             var client = factory.CreateClient();
             return new CatalogApiTestHost(postgres, db, factory, client);
         }
@@ -78,7 +80,8 @@ internal sealed class CatalogApiTestHost : IAsyncDisposable
     private sealed class ApiFactory(
         string connectionString,
         IReadOnlyDictionary<string, string?>? buildMetadata,
-        IOmdbClientFactory? omdbClientFactory) : WebApplicationFactory<Program>
+        IOmdbClientFactory? omdbClientFactory,
+        IRssFeedTransport? rssFeedTransport) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -99,12 +102,21 @@ internal sealed class CatalogApiTestHost : IAsyncDisposable
                 configuration.AddInMemoryCollection(values);
             });
 
-            if (omdbClientFactory is not null)
+            if (omdbClientFactory is not null || rssFeedTransport is not null)
             {
                 builder.ConfigureTestServices(services =>
                 {
-                    services.RemoveAll<IOmdbClientFactory>();
-                    services.AddSingleton(omdbClientFactory);
+                    if (omdbClientFactory is not null)
+                    {
+                        services.RemoveAll<IOmdbClientFactory>();
+                        services.AddSingleton(omdbClientFactory);
+                    }
+
+                    if (rssFeedTransport is not null)
+                    {
+                        services.RemoveAll<IRssFeedTransport>();
+                        services.AddSingleton<IRssFeedTransport>(rssFeedTransport);
+                    }
                 });
             }
         }
