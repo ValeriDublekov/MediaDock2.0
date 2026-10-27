@@ -22,15 +22,26 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
         var ratings = dbContext.PersonalRatings.AsNoTracking()
             .Where(rating => rating.UserId == userId);
         var totalCount = await ratings.CountAsync(cancellationToken);
-        var orderedRatings = query.Sort == "asc"
-            ? ratings.OrderBy(rating => rating.Rating).ThenBy(rating => rating.ImdbId)
-            : ratings.OrderByDescending(rating => rating.Rating).ThenBy(rating => rating.ImdbId);
+        var orderedRatings = query.Sort switch
+        {
+            "asc" => ratings.OrderBy(rating => rating.Rating).ThenBy(rating => rating.ImdbId),
+            "vote_date_asc" => ratings
+                .OrderBy(rating => rating.DateRated.HasValue)
+                .ThenBy(rating => rating.DateRated)
+                .ThenBy(rating => rating.ImdbId),
+            "vote_date_desc" => ratings
+                .OrderByDescending(rating => rating.DateRated.HasValue)
+                .ThenByDescending(rating => rating.DateRated)
+                .ThenBy(rating => rating.ImdbId),
+            _ => ratings.OrderByDescending(rating => rating.Rating).ThenBy(rating => rating.ImdbId)
+        };
         var items = await orderedRatings
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(rating => new PersonalRatingResponse(
                 rating.ImdbId,
                 rating.Rating,
+                rating.DateRated,
                 rating.IsManuallyAdded,
                 rating.ImdbTitle.TitleText ?? rating.ImdbId,
                 rating.ImdbTitle.Year,
@@ -113,17 +124,18 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
         var updated = 0;
         var unchanged = 0;
 
-        foreach (var (imdbId, rating) in importedRatings)
+        foreach (var (imdbId, entry) in importedRatings)
         {
             if (existingRatings.TryGetValue(imdbId, out var existing))
             {
-                if (existing.Rating == rating)
+                if (existing.Rating == entry.Rating && existing.DateRated == entry.DateRated)
                 {
                     unchanged++;
                     continue;
                 }
 
-                existing.Rating = rating;
+                existing.Rating = entry.Rating;
+                existing.DateRated = entry.DateRated;
                 existing.UpdatedAt = importedAt;
                 updated++;
                 continue;
@@ -133,7 +145,8 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
             {
                 UserId = userId,
                 ImdbId = imdbId,
-                Rating = rating,
+                Rating = entry.Rating,
+                DateRated = entry.DateRated,
                 UpdatedAt = importedAt
             });
             added++;

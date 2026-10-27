@@ -14,6 +14,7 @@ internal sealed class PersonalRatingConfiguration : IEntityTypeConfiguration<Per
         builder.Property(entity => entity.UserId).HasColumnName("user_id");
         builder.Property(entity => entity.ImdbId).HasColumnName("imdb_id").HasMaxLength(14);
         builder.Property(entity => entity.Rating).HasColumnName("rating");
+        builder.Property(entity => entity.DateRated).HasColumnName("date_rated").HasColumnType("date");
         builder.Property(entity => entity.IsManuallyAdded).HasColumnName("is_manually_added").HasDefaultValue(false);
         builder.Property(entity => entity.UpdatedAt).HasColumnName("updated_at");
         builder.HasOne(entity => entity.ImdbTitle)

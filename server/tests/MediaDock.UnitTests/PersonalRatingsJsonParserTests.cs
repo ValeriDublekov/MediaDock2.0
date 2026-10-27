@@ -19,8 +19,19 @@ public sealed class PersonalRatingsJsonParserTests
         var result = PersonalRatingsJsonParser.Parse(Encoding.UTF8.GetBytes(json));
 
         Assert.Equal(2, result.Ratings.Count);
-        Assert.Equal(8, result.Ratings["tt14452776"]);
-        Assert.Equal(6, result.Ratings["tt1172049"]);
+        Assert.Equal(8, result.Ratings["tt14452776"].Rating);
+        Assert.Equal(6, result.Ratings["tt1172049"].Rating);
+    }
+
+    [Fact]
+    public void ParseReadsOptionalVoteDates()
+    {
+        const string json = "[{\"id\":\"tt14452776\",\"rating\":8,\"dateRated\":\"2020-06-02\"},{\"id\":\"tt1172049\",\"rating\":6}]";
+
+        var result = PersonalRatingsJsonParser.Parse(Encoding.UTF8.GetBytes(json));
+
+        Assert.Equal(new DateOnly(2020, 6, 2), result.Ratings["tt14452776"].DateRated);
+        Assert.Null(result.Ratings["tt1172049"].DateRated);
     }
 
     [Fact]
@@ -31,7 +42,7 @@ public sealed class PersonalRatingsJsonParserTests
         var result = PersonalRatingsJsonParser.Parse(Encoding.UTF8.GetBytes(json));
 
         Assert.Single(result.Ratings);
-        Assert.Equal(8, result.Ratings["tt14452776"]);
+        Assert.Equal(8, result.Ratings["tt14452776"].Rating);
         Assert.Equal(new[] { "tt1234567", "tt7654321" }, result.MissingRatingIds);
     }
 
@@ -39,6 +50,7 @@ public sealed class PersonalRatingsJsonParserTests
     [InlineData("[{\"id\":\"movie-1\",\"rating\":8}]")]
     [InlineData("[{\"id\":\"tt1234567\",\"rating\":0}]")]
     [InlineData("[{\"id\":\"tt1234567\",\"rating\":10.5}]")]
+    [InlineData("[{\"id\":\"tt1234567\",\"rating\":8,\"dateRated\":\"not-a-date\"}]")]
     [InlineData("[null]")]
     [InlineData("[]")]
     [InlineData("not json")]

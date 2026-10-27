@@ -379,11 +379,12 @@ export interface PersonalRatingsImportResult {
   }>
 }
 
-export type PersonalRatingsSort = 'asc' | 'desc'
+export type PersonalRatingsSort = 'asc' | 'desc' | 'vote_date_asc' | 'vote_date_desc'
 
 export interface PersonalRating {
   imdbId: string
   rating: number
+  dateRated: string | null
   isManuallyAdded: boolean
   title: string
   year: number | null

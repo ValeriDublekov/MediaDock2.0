@@ -1340,6 +1340,10 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(14)")
                         .HasColumnName("imdb_id");
 
+                    b.Property<DateOnly?>("DateRated")
+                        .HasColumnType("date")
+                        .HasColumnName("date_rated");
+
                     b.Property<bool>("IsManuallyAdded")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")

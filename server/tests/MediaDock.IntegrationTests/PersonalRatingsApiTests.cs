@@ -199,8 +199,8 @@ public sealed class PersonalRatingsApiTests
             db.PersonalRatings.AddRange(
                 new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000001", Rating = 8, UpdatedAt = now },
                 new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000002", Rating = 8, UpdatedAt = now },
-                new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000003", Rating = 2, UpdatedAt = now },
-                new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000004", Rating = 10, UpdatedAt = now },
+                new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000003", Rating = 2, DateRated = new DateOnly(2020, 1, 1), UpdatedAt = now },
+                new PersonalRating { UserId = firstUser.Id, ImdbId = "tt0000004", Rating = 10, DateRated = new DateOnly(2024, 1, 1), UpdatedAt = now },
                 new PersonalRating { UserId = secondUser.Id, ImdbId = "tt0000001", Rating = 1, UpdatedAt = now },
                 new PersonalRating { UserId = secondUser.Id, ImdbId = "tt0000005", Rating = 9, UpdatedAt = now });
             await db.SaveChangesAsync();
@@ -254,6 +254,8 @@ public sealed class PersonalRatingsApiTests
         Assert.Equal("pending", defaultPage.Items[1].MetadataStatus);
         Assert.Equal("tt0000002", defaultPage.Items[2].Title);
         Assert.Equal("not_found", defaultPage.Items[2].MetadataStatus);
+        Assert.Equal(new DateOnly(2024, 1, 1), defaultPage.Items[0].DateRated);
+        Assert.Null(defaultPage.Items[1].DateRated);
 
         using var firstPageResponse = await firstClient.GetAsync("/api/personal-ratings?page=1&pageSize=2");
         var firstPage = await firstPageResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
@@ -272,6 +274,13 @@ public sealed class PersonalRatingsApiTests
         Assert.Equal(
             ["tt0000003", "tt0000001", "tt0000002", "tt0000004"],
             ascendingPage?.Items.Select(item => item.ImdbId));
+
+        using var oldestVotesResponse = await firstClient.GetAsync("/api/personal-ratings?sort=vote_date_asc");
+        var oldestVotesPage = await oldestVotesResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
+        Assert.Equal(["tt0000001", "tt0000002", "tt0000003", "tt0000004"], oldestVotesPage?.Items.Select(item => item.ImdbId));
+        using var newestVotesResponse = await firstClient.GetAsync("/api/personal-ratings?sort=vote_date_desc");
+        var newestVotesPage = await newestVotesResponse.Content.ReadFromJsonAsync<PageResponse<PersonalRatingResponse>>();
+        Assert.Equal(["tt0000004", "tt0000003", "tt0000001", "tt0000002"], newestVotesPage?.Items.Select(item => item.ImdbId));
 
         using var invalidPageResponse = await firstClient.GetAsync("/api/personal-ratings?page=0");
         Assert.Equal(HttpStatusCode.BadRequest, invalidPageResponse.StatusCode);
@@ -533,7 +542,7 @@ public sealed class PersonalRatingsApiTests
 
         using var firstImportResponse = await ImportAsync(firstClient,
             $"/api/personal-ratings/import?userId={secondUserId}",
-            "[{\"id\":\"tt1234567\",\"rating\":8},{\"id\":\"tt7654321\",\"rating\":6}]",
+            "[{\"id\":\"tt1234567\",\"rating\":8,\"dateRated\":\"2018-03-04\"},{\"id\":\"tt7654321\",\"rating\":6}]",
             firstToken,
             secondUserId);
         Assert.Equal(HttpStatusCode.OK, firstImportResponse.StatusCode);
@@ -569,7 +578,7 @@ public sealed class PersonalRatingsApiTests
         using var repeatImportResponse = await ImportAsync(
             firstClient,
             "/api/personal-ratings/import",
-            "[{\"id\":\"tt1234567\",\"rating\":8},{\"id\":\"tt7654321\",\"rating\":6}]",
+            "[{\"id\":\"tt1234567\",\"rating\":8,\"dateRated\":\"2018-03-04\"},{\"id\":\"tt7654321\",\"rating\":6}]",
             firstToken);
         Assert.Equal(HttpStatusCode.OK, repeatImportResponse.StatusCode);
         var repeatImport = await repeatImportResponse.Content.ReadFromJsonAsync<PersonalRatingsImportResponse>();
@@ -586,8 +595,12 @@ public sealed class PersonalRatingsApiTests
         Assert.DoesNotContain(ratings, rating => rating.ImdbId == "tt9999999");
         Assert.Equal(8, Assert.Single(ratings, rating =>
             rating.UserId == firstUserId && rating.ImdbId == "tt1234567").Rating);
+        Assert.Equal(new DateOnly(2018, 3, 4), Assert.Single(ratings, rating =>
+            rating.UserId == firstUserId && rating.ImdbId == "tt1234567").DateRated);
         Assert.Equal(6, Assert.Single(ratings, rating =>
             rating.UserId == firstUserId && rating.ImdbId == "tt7654321").Rating);
+        Assert.Null(Assert.Single(ratings, rating =>
+            rating.UserId == firstUserId && rating.ImdbId == "tt7654321").DateRated);
         Assert.Equal(9, Assert.Single(ratings, rating =>
             rating.UserId == secondUserId && rating.ImdbId == "tt1234567").Rating);
         Assert.Equal(10, Assert.Single(ratings, rating =>

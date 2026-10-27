@@ -8,6 +8,8 @@ import {
   getActiveBackgroundJob,
   getBackgroundJob,
   getBackgroundJobEvents,
+  getFavorites,
+  getIgnoredMovies,
   getOmdbDailyUsage,
   getProviderSettings,
   getPersonalRatings,
@@ -24,6 +26,8 @@ import {
 } from '../../api/client'
 import type { BackgroundJob, OmdbDailyUsage, PersonalRating, ProviderSettings, Settings, SourceProfile, SystemVersion } from '../../api/types'
 import { titlePageSize } from '../../shared/titlePagination'
+import { FavoriteProvider } from '../favorites/FavoriteContext'
+import { IgnoredMoviesProvider } from '../ignored-movies/IgnoredMoviesContext'
 import { OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './ConfigurationSettingsViews'
 import { SourceSettingsView } from './SourceSettingsView'
 
@@ -35,6 +39,8 @@ vi.mock('../../api/client', () => ({
   getActiveBackgroundJob: vi.fn(),
   getBackgroundJob: vi.fn(),
   getBackgroundJobEvents: vi.fn(),
+  getFavorites: vi.fn(),
+  getIgnoredMovies: vi.fn(),
   getPersonalRatingsEnrichmentJob: vi.fn(),
   getOmdbDailyUsage: vi.fn(),
   getPersonalRatings: vi.fn(),
@@ -64,7 +70,7 @@ const systemVersion: SystemVersion = {
 
 function personalRating(imdbId: string, title: string, rating = 8, metadataStatus = 'enriched', isManuallyAdded = false): PersonalRating {
   return {
-    imdbId, title, rating, isManuallyAdded, year: 2024, mediaType: 'movie', imdbRating: 7.5, imdbVotes: 1000,
+    imdbId, title, rating, dateRated: null, isManuallyAdded, year: 2024, mediaType: 'movie', imdbRating: 7.5, imdbVotes: 1000,
     metascore: null, genres: [], countries: [], director: null, plot: null, posterUrl: null,
     runtime: null, awards: null, boxOffice: null, metadataStatus,
   }
@@ -99,6 +105,8 @@ describe('SourceSettingsView', () => {
     vi.mocked(getActiveBackgroundJob).mockReset().mockResolvedValue(null)
     vi.mocked(getBackgroundJob).mockReset()
     vi.mocked(getBackgroundJobEvents).mockReset().mockResolvedValue({ items: [], nextAfterId: 0 })
+    vi.mocked(getFavorites).mockReset().mockResolvedValue({ items: [], page: 1, pageSize: titlePageSize, totalCount: 0, totalPages: 0 })
+    vi.mocked(getIgnoredMovies).mockReset().mockResolvedValue({ items: [], page: 1, pageSize: titlePageSize, totalCount: 0, totalPages: 0 })
     vi.mocked(getOmdbDailyUsage).mockReset().mockResolvedValue([])
     vi.mocked(getPersonalRatings).mockReset().mockResolvedValue({
       items: [], page: 1, pageSize: titlePageSize, totalCount: 0, totalPages: 0,
@@ -224,6 +232,44 @@ describe('SourceSettingsView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lowest first' }))
     expect(vi.mocked(getPersonalRatings).mock.calls).toHaveLength(callsBeforeSelectedSort)
     expect(screen.getByRole('button', { name: 'Lowest first' }).getAttribute('aria-pressed')).toBe('true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Oldest first' }))
+    await waitFor(() => expect(getPersonalRatings).toHaveBeenLastCalledWith({ page: 1, pageSize: titlePageSize, sort: 'vote_date_asc' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Newest first' }))
+    await waitFor(() => expect(getPersonalRatings).toHaveBeenLastCalledWith({ page: 1, pageSize: titlePageSize, sort: 'vote_date_desc' }))
+  })
+
+  it('shows personal ratings as poster cards with date and table modes', async () => {
+    const ratedTitle = { ...personalRating('tt1234567', 'Poster title'), dateRated: '2020-06-02' }
+    vi.mocked(getPersonalRatings).mockResolvedValue(personalRatingsPage([ratedTitle]))
+
+    render(<PersonalRatingsView />)
+
+    expect(await screen.findByRole('link', { name: 'Poster title' })).toBeTruthy()
+    expect(screen.getByText('Your rating 8 / 10')).toBeTruthy()
+    expect(screen.getByText('Voted 2020-06-02')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Posters' }).getAttribute('aria-pressed')).toBe('true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+    expect(screen.getByRole('columnheader', { name: 'VOTED' })).toBeTruthy()
+    expect(screen.getByText('2020-06-02')).toBeTruthy()
+  })
+
+  it('places favorite and ignore controls over personal rating posters', async () => {
+    vi.mocked(getPersonalRatings).mockResolvedValue(personalRatingsPage([personalRating('tt1234567', 'Poster actions')]))
+    const { container } = render(
+      <FavoriteProvider accountKey="test-account">
+        <IgnoredMoviesProvider accountKey="test-account">
+          <PersonalRatingsView />
+        </IgnoredMoviesProvider>
+      </FavoriteProvider>,
+    )
+
+    expect(await screen.findByRole('button', { name: 'Add to favorites' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Ignore movie' })).toBeTruthy()
+    const overlay = container.querySelector('.poster-overlay-actions')
+    expect(overlay?.querySelector('[aria-label="Add to favorites"]')).toBeTruthy()
+    expect(overlay?.querySelector('[aria-label="Ignore movie"]')).toBeTruthy()
   })
 
   it('deletes manually added ratings and keeps imported ratings read-only', async () => {

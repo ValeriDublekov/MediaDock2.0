@@ -31,7 +31,7 @@ Compact map of the PostgreSQL persistence model in `server/`. This is an orienta
 | `omdb_daily_usage` | [`OmdbDailyUsage`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/OmdbDailyUsage.cs) | Daily UTC OMDb usage counters and safe quota/error state. |
 | `favorite_movies` | [`ImdbFavoriteMovie`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/ImdbFavoriteMovie.cs) | Active user-owned watch/download markers keyed by IMDb ID. |
 | `user_ignored_movies` | [`UserIgnoredMovie`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/UserIgnoredMovie.cs) | User-owned movie exclusions keyed by user and canonical IMDb ID. |
-| `personal_ratings` | [`PersonalRating`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/PersonalRating.cs) | User-owned IMDb ratings, including titles outside the local catalog; `is_manually_added` marks ratings created from recommendations. |
+| `personal_ratings` | [`PersonalRating`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/PersonalRating.cs) | User-owned IMDb ratings and optional vote dates, including titles outside the local catalog; `is_manually_added` marks ratings created from recommendations. |
 | `users` | [`User`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/User.cs) | Internal account, profile, role, and lifecycle state. |
 | `external_identities` | [`ExternalIdentity`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/ExternalIdentity.cs) | OIDC issuer/subject mapping to an internal user. |
 | `registration_requests` | [`RegistrationRequest`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/RegistrationRequest.cs) | User registration approval state; provider identity is stored separately. |

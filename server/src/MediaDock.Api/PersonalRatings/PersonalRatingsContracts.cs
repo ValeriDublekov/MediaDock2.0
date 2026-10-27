@@ -11,7 +11,7 @@ public sealed record PersonalRatingsQuery
     [Range(1, 100)]
     public int? PageSize { get; init; }
 
-    [RegularExpression("^(asc|desc)$")]
+    [RegularExpression("^(asc|desc|vote_date_asc|vote_date_desc)$")]
     public string? Sort { get; init; }
 }
 
@@ -23,6 +23,7 @@ public sealed class PersonalRatingsImportForm
 public sealed record PersonalRatingResponse(
     string ImdbId,
     int Rating,
+    DateOnly? DateRated,
     bool IsManuallyAdded,
     string Title,
     int? Year,

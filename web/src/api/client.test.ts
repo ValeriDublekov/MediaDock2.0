@@ -192,6 +192,11 @@ describe('typed API client', () => {
     expect(requestUrl.searchParams.get('page')).toBe('2')
     expect(requestUrl.searchParams.get('pageSize')).toBe('25')
     expect(requestUrl.searchParams.get('sort')).toBe('asc')
+
+    const dateStub = fetchStub(response(200, page))
+    await getPersonalRatings({ page: 1, pageSize: 25, sort: 'vote_date_desc' }, dateStub.fetcher)
+    const dateRequestUrl = new URL(String(dateStub.calls[0]?.input), 'http://localhost')
+    expect(dateRequestUrl.searchParams.get('sort')).toBe('vote_date_desc')
   })
 
   it('removes a personal rating by IMDb ID', async () => {

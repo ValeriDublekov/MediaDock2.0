@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Trash2 } from 'lucide-react'
 import { enqueuePersonalRatingsEnrichment, getOmdbDailyUsage, getPersonalRatings, getPersonalRatingsEnrichmentJob, getProviderSettings, getVersion, importPersonalRatings, removePersonalRating, testOmdbApi, updateProviderSettings } from '../../api/client'
 import type { BackgroundJob, OmdbDailyUsage, OmdbDiagnostic, PageResponse, PersonalRating, PersonalRatingsImportResult, PersonalRatingsSort, ProviderSettings, ProviderSettingsInput, SystemVersion } from '../../api/types'
 import { ErrorState, LoadingState } from '../../components/Feedback'
 import { EmptyState } from '../../components/Feedback'
+import { MoviePosterCard } from '../../components/MoviePresentation'
 import { Pagination } from '../../components/Pagination'
+import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatDate, formatWords } from '../../shared/format'
 import { titlePageSize } from '../../shared/titlePagination'
+import { FavoriteControls } from '../favorites/FavoriteControls'
+import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
 import { DeploymentControlPanel } from './DeploymentControlPanel'
 
@@ -33,6 +38,7 @@ export function IngestionSettingsView() {
 }
 
 export function PersonalRatingsView() {
+  const [viewMode, setViewMode] = useState<ViewMode>('posters')
   const [importingRatings, setImportingRatings] = useState(false)
   const [ratingsImportError, setRatingsImportError] = useState<string | null>(null)
   const [ratingsImportResult, setRatingsImportResult] = useState<PersonalRatingsImportResult | null>(null)
@@ -190,10 +196,20 @@ export function PersonalRatingsView() {
       </form>
       <div className="ratings-toolbar">
         <h3>Your ratings</h3>
-        <div aria-label="Sort personal ratings by your score" className="favorite-filters" role="group">
-          <button aria-pressed={sort === 'asc'} className={`button ${sort === 'asc' ? '' : 'button-secondary'}`} onClick={() => changeRatingsSort('asc')} type="button">Lowest first</button>
-          <button aria-pressed={sort === 'desc'} className={`button ${sort === 'desc' ? '' : 'button-secondary'}`} onClick={() => changeRatingsSort('desc')} type="button">Highest first</button>
+        <div className="ratings-sort-controls">
+          <div aria-label="Sort personal ratings by your score" className="favorite-filters" role="group">
+            <button aria-pressed={sort === 'asc'} className={`button ${sort === 'asc' ? '' : 'button-secondary'}`} onClick={() => changeRatingsSort('asc')} type="button">Lowest first</button>
+            <button aria-pressed={sort === 'desc'} className={`button ${sort === 'desc' ? '' : 'button-secondary'}`} onClick={() => changeRatingsSort('desc')} type="button">Highest first</button>
+          </div>
+          <div aria-label="Sort personal ratings by vote date" className="favorite-filters" role="group">
+            <button aria-pressed={sort === 'vote_date_asc'} className={`button ${sort === 'vote_date_asc' ? '' : 'button-secondary'}`} onClick={() => changeRatingsSort('vote_date_asc')} type="button">Oldest first</button>
+            <button aria-pressed={sort === 'vote_date_desc'} className={`button ${sort === 'vote_date_desc' ? '' : 'button-secondary'}`} onClick={() => changeRatingsSort('vote_date_desc')} type="button">Newest first</button>
+          </div>
         </div>
+      </div>
+      <div className="section-toolbar">
+        <span className="result-count">{ratings?.totalCount.toLocaleString() ?? '—'} ratings</span>
+        <ViewModeControl onChange={setViewMode} value={viewMode} />
       </div>
       {enrichmentJob && <div aria-label="Personal ratings enrichment status" className="ingestion-current" role="status">
         <span className={`state-pill is-${enrichmentJob.status}`}>{formatWords(enrichmentJob.status)}</span>
@@ -211,9 +227,43 @@ export function PersonalRatingsView() {
       }} />}
       {!loadingRatings && !ratingsError && ratings?.items.length === 0 && <EmptyState title="No personal ratings yet" message="Import an IMDb ratings export to see your titles here." />}
       {!loadingRatings && !ratingsError && ratings && ratings.items.length > 0 && <>
-        <div className="table-wrap">
+        {viewMode === 'posters' ? <div className="poster-grid personal-ratings-grid">
+          {ratings.items.map((rating) => <MoviePosterCard
+            awards={[]}
+            genres={rating.genres}
+            imdbId={rating.imdbId}
+            imdbRating={rating.imdbRating}
+            key={rating.imdbId}
+            mediaType={rating.mediaType}
+            metadata={{ director: rating.director, plot: rating.plot }}
+            posterActions={<>
+              <FavoriteControls from="catalog" imdbId={rating.imdbId} metadataStatus={rating.metadataStatus} mediaType={rating.mediaType ?? ''} occurrenceCount={0} placement="poster" />
+              <IgnoredMovieControl imdbId={rating.imdbId} mediaType={rating.mediaType} placement="poster" />
+              {rating.isManuallyAdded && <button
+                aria-label={`Delete ${rating.title} personal rating`}
+                className="tile-icon-action"
+                data-tooltip={deletingRatingId === rating.imdbId ? 'Deleting rating' : 'Delete rating'}
+                disabled={deletingRatingId !== null}
+                onClick={() => void deleteManualRating(rating)}
+                type="button"
+              ><Trash2 aria-hidden="true" size={16} /></button>}
+            </>}
+            posterBadge={<span className="personal-rating-badge">Your rating {rating.rating} / 10</span>}
+            posterLabel={rating.mediaType?.slice(0, 3).toUpperCase() ?? 'IMDb'}
+            posterUrl={rating.posterUrl}
+            showAwards={false}
+            title={rating.title}
+            titleHref={`https://www.imdb.com/title/${encodeURIComponent(rating.imdbId)}/`}
+            year={rating.year}
+          >
+            <div className="tile-observations">
+              <time dateTime={rating.dateRated ?? undefined}>{rating.dateRated ? `Voted ${rating.dateRated}` : 'Vote date unknown'}</time>
+              <span>{rating.imdbId}</span>
+            </div>
+          </MoviePosterCard>)}
+        </div> : <div className="table-wrap">
           <table className="data-table personal-ratings-table">
-            <thead><tr><th>TITLE</th><th>YOUR RATING</th><th>IMDb RATING</th><th>METADATA</th><th>ACTIONS</th></tr></thead>
+            <thead><tr><th>TITLE</th><th>YOUR RATING</th><th>IMDb RATING</th><th>VOTED</th><th>METADATA</th><th>ACTIONS</th></tr></thead>
             <tbody>{ratings.items.map((rating) => <tr key={rating.imdbId}>
               <td>
                 <a className="title-link" href={`https://www.imdb.com/title/${encodeURIComponent(rating.imdbId)}/`} rel="noreferrer" target="_blank">{rating.title}</a>
@@ -221,6 +271,7 @@ export function PersonalRatingsView() {
               </td>
               <td><span className="rating-value">{rating.rating} / 10</span></td>
               <td>{rating.imdbRating === null ? 'Not rated' : rating.imdbRating.toFixed(1)}</td>
+              <td>{rating.dateRated ? <time dateTime={rating.dateRated}>{rating.dateRated}</time> : 'Unknown'}</td>
               <td><span className="type-label">{rating.metadataStatus.replaceAll('_', ' ')}</span></td>
               <td>{rating.isManuallyAdded && <button
                 aria-label={`Delete ${rating.title} personal rating`}
@@ -231,7 +282,7 @@ export function PersonalRatingsView() {
               >{deletingRatingId === rating.imdbId ? 'Deleting...' : 'Delete'}</button>}</td>
             </tr>)}</tbody>
           </table>
-        </div>
+        </div>}
         <Pagination page={ratings} onPageChange={(next) => {
           setPage(next)
           setLoadingRatings(true)
