@@ -157,6 +157,10 @@ export function getRssFeedPreview(profileId: FeedType, fetcher?: typeof fetch) {
   return requestJson<RssFeedPreview>(`/catalog/rss/${encodeURIComponent(profileId)}`, {}, fetcher)
 }
 
+export function refreshRssFeedPreview(profileId: FeedType, fetcher?: typeof fetch) {
+  return requestJson<RssFeedPreview>(`/catalog/rss/${encodeURIComponent(profileId)}/refresh`, { method: 'POST' }, fetcher)
+}
+
 export function getOscarFilms(query: OscarCatalogQuery, fetcher?: typeof fetch) {
   return requestJson<PageResponse<OscarFilm>>(withQuery('/oscars', query, ['categories']), {}, fetcher)
 }

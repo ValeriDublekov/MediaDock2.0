@@ -1470,6 +1470,42 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.RssFeedPreviewSnapshot", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("CachedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cached_at");
+
+                    b.Property<string>("FeedsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("feeds_json");
+
+                    b.Property<string>("ProfileId")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("profile_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_rss_feed_preview_snapshots");
+
+                    b.HasIndex("ProfileId", "CachedAt", "Id")
+                        .HasDatabaseName("ix_rss_feed_preview_snapshots_profile_cached_at_id");
+
+                    b.ToTable("rss_feed_preview_snapshots", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_rss_feed_preview_snapshots_profile_id", "profile_id IN ('movie', 'series_complete', 'series_ongoing')");
+                        });
+                });
+
             modelBuilder.Entity("MediaDock.Infrastructure.Persistence.Entities.RssItemProcessingState", b =>
                 {
                     b.Property<long>("SourceId")

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using MediaDock.Api.Catalog;
 using MediaDock.Api.Common;
 using MediaDock.Application.Ingestion;
@@ -188,7 +189,7 @@ public sealed class CatalogEndpointsApiTests
     }
 
     [Fact]
-    public async Task RssPreviewReturnsItemsOnlyForEnabledSourcesInTheSelectedProfile()
+    public async Task RssPreviewReadsCachedItemsAndRefreshesOnlyEnabledSourcesInTheSelectedProfile()
     {
         var transport = new StaticRssFeedTransport(Encoding.UTF8.GetBytes("""
             <rss version="2.0"><channel><title>Movies</title><item>
@@ -235,12 +236,21 @@ public sealed class CatalogEndpointsApiTests
             });
         await host.Db.SaveChangesAsync();
 
-        using var response = await host.Client.GetAsync("/api/catalog/rss/movie");
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var preview = await response.Content.ReadFromJsonAsync<RssFeedPreviewResponse>();
+        using var emptyResponse = await host.Client.GetAsync("/api/catalog/rss/movie");
+        Assert.Equal(HttpStatusCode.OK, emptyResponse.StatusCode);
+        var emptyPreview = await emptyResponse.Content.ReadFromJsonAsync<RssFeedPreviewResponse>();
+        Assert.NotNull(emptyPreview);
+        Assert.Null(emptyPreview.CachedAt);
+        Assert.Empty(emptyPreview.Feeds);
+        Assert.Empty(transport.RequestedUrls);
+
+        using var refreshResponse = await host.Client.PostAsync("/api/catalog/rss/movie/refresh", content: null);
+        Assert.Equal(HttpStatusCode.OK, refreshResponse.StatusCode);
+        var preview = await refreshResponse.Content.ReadFromJsonAsync<RssFeedPreviewResponse>();
         Assert.NotNull(preview);
         Assert.Equal("movie", preview.ProfileId);
         Assert.Equal("Movies", preview.ProfileName);
+        Assert.NotNull(preview.CachedAt);
         Assert.Equal(2, preview.Feeds.Count);
         Assert.All(preview.Feeds, feed =>
         {
@@ -255,9 +265,35 @@ public sealed class CatalogEndpointsApiTests
             Assert.True(feed.ParseDurationMs >= 0);
         });
         Assert.Equal(2, transport.MaxConcurrentRequests);
+        var initialRequestedUrls = transport.RequestedUrls;
         Assert.Equal(
             new[] { "https://feed.rutracker.cc/movies-secondary.atom", "https://feed.rutracker.cc/movies.atom" },
-            transport.RequestedUrls.OrderBy(url => url));
+            initialRequestedUrls.OrderBy(url => url));
+
+        using var cachedResponse = await host.Client.GetAsync("/api/catalog/rss/movie");
+        var cachedPreview = await cachedResponse.Content.ReadFromJsonAsync<RssFeedPreviewResponse>();
+        Assert.NotNull(cachedPreview);
+        Assert.Equal(preview.CachedAt, cachedPreview.CachedAt);
+        Assert.Equal(JsonSerializer.Serialize(preview.Feeds), JsonSerializer.Serialize(cachedPreview.Feeds));
+        Assert.Equal(initialRequestedUrls.Count, transport.RequestedUrls.Count);
+
+        var latestCachedAt = preview.CachedAt;
+        for (var refreshIndex = 0; refreshIndex < 5; refreshIndex++)
+        {
+            using var additionalRefresh = await host.Client.PostAsync("/api/catalog/rss/movie/refresh", content: null);
+            Assert.Equal(HttpStatusCode.OK, additionalRefresh.StatusCode);
+            var additionalPreview = await additionalRefresh.Content.ReadFromJsonAsync<RssFeedPreviewResponse>();
+            Assert.NotNull(additionalPreview);
+            latestCachedAt = additionalPreview.CachedAt;
+        }
+
+        var retainedSnapshots = await host.Db.RssFeedPreviewSnapshots
+            .Where(snapshot => snapshot.ProfileId == "movie")
+            .OrderByDescending(snapshot => snapshot.CachedAt)
+            .ThenByDescending(snapshot => snapshot.Id)
+            .ToListAsync();
+        Assert.Equal(5, retainedSnapshots.Count);
+        Assert.Equal(latestCachedAt, retainedSnapshots[0].CachedAt);
 
         using var invalidProfileResponse = await host.Client.GetAsync("/api/catalog/rss/unknown");
         Assert.Equal(HttpStatusCode.BadRequest, invalidProfileResponse.StatusCode);

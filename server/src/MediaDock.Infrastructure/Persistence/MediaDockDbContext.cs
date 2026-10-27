@@ -17,6 +17,7 @@ public sealed class MediaDockDbContext : DbContext
     public DbSet<ParseLog> ParseLogs => Set<ParseLog>();
     public DbSet<AppSetting> Settings => Set<AppSetting>();
     public DbSet<MetadataCacheEntry> MetadataCache => Set<MetadataCacheEntry>();
+    public DbSet<RssFeedPreviewSnapshot> RssFeedPreviewSnapshots => Set<RssFeedPreviewSnapshot>();
     public DbSet<OmdbDailyUsage> OmdbDailyUsage => Set<OmdbDailyUsage>();
     public DbSet<OscarMovie> OscarMovies => Set<OscarMovie>();
     public DbSet<OscarNomination> OscarNominations => Set<OscarNomination>();

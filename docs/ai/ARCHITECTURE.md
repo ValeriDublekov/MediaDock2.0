@@ -46,6 +46,8 @@ sequenceDiagram
 
 The [catalog view](../../web/src/features/catalog/CatalogView.tsx) builds the query and calls `getCatalog`; the [API client](../../web/src/api/client.ts) sends it to the API. The endpoint delegates to [CatalogApiService](../../server/src/MediaDock.Api/Catalog/CatalogApiService.cs), which queries Infrastructure's [DbContext](../../server/src/MediaDock.Infrastructure/Persistence/MediaDockDbContext.cs) directly. Keep this read path API-owned unless a shared Application use case emerges. HTTP contracts are documented in [catalogs and awards](API_CATALOGS_AND_AWARDS.md).
 
+RSS preview reads follow a separate cache path: `GET /api/catalog/rss/{profileId}` reads the latest persisted snapshot, while `POST /api/catalog/rss/{profileId}/refresh` fetches enabled source URLs and stores a new snapshot. Refresh retains five snapshots per profile; opening the preview does not contact RSS sources.
+
 ## Optional Google Identity Flow
 
 ```mermaid

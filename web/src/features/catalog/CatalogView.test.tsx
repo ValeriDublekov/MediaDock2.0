@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getParseLogs, getRssFeedPreview, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, searchCatalogTitleImdbCandidates } from '../../api/client'
+import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getParseLogs, getRssFeedPreview, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, refreshRssFeedPreview, searchCatalogTitleImdbCandidates } from '../../api/client'
 import type { CatalogTitle, ImdbCandidateSearch, MovieAwardRecognition, PageResponse, RssFeedPreview, TitleDetails } from '../../api/types'
 import { CatalogView } from './CatalogView'
 
@@ -12,6 +12,7 @@ vi.mock('../../api/client', () => ({
   deleteCatalogTitle: vi.fn(),
   getParseLogs: vi.fn(),
   getRssFeedPreview: vi.fn(),
+  refreshRssFeedPreview: vi.fn(),
   getScanRuns: vi.fn(),
   getTitleOscars: vi.fn().mockResolvedValue([]),
   getMovieAwards: vi.fn().mockResolvedValue([]),
@@ -52,7 +53,12 @@ const title: CatalogTitle = {
 }
 
 describe('CatalogView', () => {
-  beforeEach(() => { catalogRequest.mockReset(); window.localStorage.clear() })
+  beforeEach(() => {
+    catalogRequest.mockReset()
+    vi.mocked(getRssFeedPreview).mockReset()
+    vi.mocked(refreshRssFeedPreview).mockReset()
+    window.localStorage.clear()
+  })
   afterEach(() => cleanup())
 
   it('switches between posters and table without refetching and replaces broken images', async () => {
@@ -79,6 +85,7 @@ describe('CatalogView', () => {
     vi.mocked(getRssFeedPreview).mockImplementation(async (profileId) => ({
       profileId,
       profileName: profileId,
+      cachedAt: '2026-10-27T09:00:00Z',
       feeds: [{
         sourceId: 1,
         sourceUrl: 'https://feed.rutracker.cc/movies.atom',
@@ -95,6 +102,7 @@ describe('CatalogView', () => {
     const originalFeedLink = await screen.findByRole('link', { name: 'Open original RSS' })
     expect(originalFeedLink.getAttribute('href')).toBe('https://feed.rutracker.cc/movies.atom')
     expect(originalFeedLink.getAttribute('target')).toBe('_blank')
+    expect(screen.getByText((content) => content.startsWith('Cached ')).textContent).toContain('2026')
     expect(screen.getByText('Fetch: 20.00 s')).toBeTruthy()
     expect(screen.getByText('Parse: 1.5 ms')).toBeTruthy()
     await waitFor(() => expect(getRssFeedPreview).toHaveBeenCalledWith('movie'))
@@ -107,6 +115,24 @@ describe('CatalogView', () => {
       expect(getRssFeedPreview).toHaveBeenCalledWith('series_complete')
       expect(getRssFeedPreview).toHaveBeenCalledWith('series_ongoing')
     })
+  })
+
+  it('refetches the selected RSS category on demand', async () => {
+    catalogRequest.mockResolvedValue(page([]))
+    vi.mocked(getRssFeedPreview).mockResolvedValue({
+      profileId: 'movie', profileName: 'Movies', cachedAt: null, feeds: [],
+    })
+    vi.mocked(refreshRssFeedPreview).mockResolvedValue({
+      profileId: 'movie', profileName: 'Movies', cachedAt: '2026-10-27T09:00:00Z', feeds: [],
+    })
+    render(<CatalogView />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'RSS contents' }))
+    expect(await screen.findByText('No cached RSS data yet.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Refetch RSS feeds' }))
+
+    await waitFor(() => expect(refreshRssFeedPreview).toHaveBeenCalledWith('movie'))
+    expect(await screen.findByText((content) => content.startsWith('Cached '))).toBeTruthy()
   })
 
   it('shows parse log by default and lets admins switch to scan runs from the catalog', async () => {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getRssFeedPreview } from '../../api/client'
+import { RefreshCw } from 'lucide-react'
+import { getRssFeedPreview, refreshRssFeedPreview } from '../../api/client'
 import type { FeedType, RssFeedPreview } from '../../api/types'
 import { ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate } from '../../shared/format'
@@ -30,12 +31,15 @@ export function RssFeedPreviewDialog({ profileId, onClose }: RssFeedPreviewDialo
   const [view, setView] = useState<'formatted' | 'original'>('formatted')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let current = true
     setLoading(true)
     setError(null)
+    setRefreshError(null)
     const profileIds = profileId === 'all' ? allFeedProfiles : [profileId]
     Promise.all(profileIds.map((id) => getRssFeedPreview(id)))
       .then((response) => { if (current) setPreviews(response) })
@@ -45,6 +49,19 @@ export function RssFeedPreviewDialog({ profileId, onClose }: RssFeedPreviewDialo
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
   }, [profileId, attempt])
+
+  async function refetch() {
+    const profileIds = profileId === 'all' ? allFeedProfiles : [profileId]
+    setRefreshing(true)
+    setRefreshError(null)
+    try {
+      setPreviews(await Promise.all(profileIds.map((id) => refreshRssFeedPreview(id))))
+    } catch (requestError) {
+      setRefreshError(requestError instanceof Error ? requestError.message : 'The RSS refresh request failed.')
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   return (
     <div className="detail-backdrop" onMouseDown={(event) => {
@@ -63,11 +80,18 @@ export function RssFeedPreviewDialog({ profileId, onClose }: RssFeedPreviewDialo
             <p className="eyebrow">CATALOG FEEDS</p>
             <h2 id="rss-preview-heading">RSS contents</h2>
           </div>
-          <button aria-label="Close RSS contents" className="button button-secondary" onClick={onClose} type="button">Close</button>
+          <div className="detail-header-actions">
+            <button aria-label="Refetch RSS feeds" className="button button-secondary" disabled={loading || refreshing} onClick={() => void refetch()} type="button">
+              <RefreshCw aria-hidden="true" size={15} />
+              {refreshing ? 'Refetching...' : 'Refetch'}
+            </button>
+            <button aria-label="Close RSS contents" className="button button-secondary" onClick={onClose} type="button">Close</button>
+          </div>
         </header>
         <div className="detail-body">
           {loading && <LoadingState label="Loading RSS contents" />}
           {!loading && error && <ErrorState message={error} onRetry={() => setAttempt((current) => current + 1)} />}
+          {!loading && refreshError && <ErrorState message={refreshError} onRetry={() => void refetch()} />}
           {!loading && !error && <>
             <div aria-label="RSS view" className="rss-preview-tabs" role="tablist">
               <button aria-controls="rss-preview-formatted" aria-selected={view === 'formatted'} className={view === 'formatted' ? 'is-active' : ''} id="rss-preview-formatted-tab" onClick={() => setView('formatted')} role="tab" type="button">Parsed items</button>
@@ -78,7 +102,8 @@ export function RssFeedPreviewDialog({ profileId, onClose }: RssFeedPreviewDialo
                 {previews.map((preview) => (
                   <section aria-label={preview.profileName} className="rss-preview-profile" key={preview.profileId}>
                     <h3>{preview.profileName}</h3>
-                    {preview.feeds.length === 0 ? <p className="section-caption">No RSS URLs configured.</p> : preview.feeds.map((feed, feedIndex) => (
+                    <p className="section-caption">{preview.cachedAt ? `Cached ${formatDate(preview.cachedAt)}` : 'No cached RSS data yet.'}</p>
+                    {preview.feeds.length === 0 ? <p className="section-caption">{preview.cachedAt ? 'No RSS URLs configured.' : 'Refetch to load RSS contents.'}</p> : preview.feeds.map((feed, feedIndex) => (
                       <section aria-label={`Feed ${feedIndex + 1}`} className="rss-preview-feed" key={feed.sourceId}>
                         <FeedPreviewMeta feed={feed} />
                         <h4>Feed {feedIndex + 1}</h4>
@@ -103,7 +128,8 @@ export function RssFeedPreviewDialog({ profileId, onClose }: RssFeedPreviewDialo
                 {previews.map((preview) => (
                   <section aria-label={preview.profileName} className="rss-preview-profile" key={preview.profileId}>
                     <h3>{preview.profileName}</h3>
-                    {preview.feeds.length === 0 ? <p className="section-caption">No RSS URLs configured.</p> : preview.feeds.map((feed, feedIndex) => (
+                    <p className="section-caption">{preview.cachedAt ? `Cached ${formatDate(preview.cachedAt)}` : 'No cached RSS data yet.'}</p>
+                    {preview.feeds.length === 0 ? <p className="section-caption">{preview.cachedAt ? 'No RSS URLs configured.' : 'Refetch to load RSS contents.'}</p> : preview.feeds.map((feed, feedIndex) => (
                       <section aria-label={`Feed ${feedIndex + 1}`} className="rss-preview-feed" key={feed.sourceId}>
                         <FeedPreviewMeta feed={feed} />
                         <h4>Feed {feedIndex + 1}</h4>

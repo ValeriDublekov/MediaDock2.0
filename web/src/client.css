@@ -276,6 +276,8 @@ button:disabled { cursor: not-allowed; }
 .imdb-candidate-pagination .button { min-height: 32px; }
 .imdb-candidate-error { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #a64e35; font-size: 12px; overflow-wrap: anywhere; }
 .detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; border-bottom: 1px solid #d5dfd6; padding: 22px 24px 18px; }
+.detail-header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rss-preview-dialog .detail-header { flex-wrap: wrap; }
 .detail-header h2 { margin: 0; color: #1c372d; font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 400; line-height: 1.2; }
 .detail-meta { margin-top: 7px; color: #758179; font-size: 11px; }
 .detail-body { display: grid; gap: 20px; padding: 21px 24px 24px; }

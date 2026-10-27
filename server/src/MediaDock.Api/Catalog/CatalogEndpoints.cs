@@ -35,7 +35,21 @@ internal static class CatalogEndpoints
             return TypedResults.Ok(preview);
         })
             .WithName("GetCatalogRssPreview")
-            .WithSummary("Preview current RSS items for a configured catalog profile.")
+            .WithSummary("Return the latest cached RSS preview for a configured catalog profile.")
+            .WithDescription("Reads the latest stored snapshot without fetching RSS sources.")
+            .Produces<RssFeedPreviewResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
+        app.MapPost("/api/catalog/rss/{profileId}/refresh", async Task<Ok<RssFeedPreviewResponse>> (
+            string profileId,
+            IRssFeedPreviewApiService previewService,
+            CancellationToken cancellationToken) =>
+        {
+            var preview = await previewService.RefreshPreviewAsync(profileId, cancellationToken);
+            return TypedResults.Ok(preview);
+        })
+            .WithName("RefreshCatalogRssPreview")
+            .WithSummary("Fetch and cache current RSS items for a catalog profile.")
             .Produces<RssFeedPreviewResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 

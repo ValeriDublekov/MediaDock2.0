@@ -213,6 +213,7 @@ export interface RssFeedPreviewSource {
 export interface RssFeedPreview {
   profileId: FeedType
   profileName: string
+  cachedAt: string | null
   feeds: RssFeedPreviewSource[]
 }
 
