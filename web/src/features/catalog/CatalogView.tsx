@@ -42,6 +42,11 @@ const categoryFeedTypes: Record<CatalogCategory, FeedType[]> = {
   series_ongoing: ['series_ongoing'],
   all: ['movie', 'series_complete', 'series_ongoing'],
 }
+const rssProfileByCategory: Record<Exclude<CatalogCategory, 'all'>, FeedType> = {
+  movie: 'movie',
+  series: 'series_complete',
+  series_ongoing: 'series_ongoing',
+}
 
 const categories: Array<{ id: CatalogCategory; label: string }> = [
   { id: 'movie', label: 'Movies' },
@@ -351,7 +356,7 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
         <span className="result-count">{result ? `${result.totalCount.toLocaleString()} titles` : 'Catalog records'}</span>
         <div className="toolbar-actions">
           <ViewModeControl onChange={setViewMode} value={viewMode} />
-          <button className="button button-secondary" onClick={() => setShowRssPreview(true)} type="button"><Rss aria-hidden="true" size={16} /> RSS contents</button>
+          {category !== 'all' && <button className="button button-secondary" onClick={() => setShowRssPreview(true)} type="button"><Rss aria-hidden="true" size={16} /> RSS contents</button>}
           <button className="text-button" onClick={() => setAttempt((current) => current + 1)} type="button">Refresh results</button>
         </div>
       </div>
@@ -426,9 +431,9 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
         } : undefined}
         titleId={selectedTitleId}
       />}
-      {showRssPreview && <RssFeedPreviewDialog
+      {showRssPreview && category !== 'all' && <RssFeedPreviewDialog
         onClose={() => setShowRssPreview(false)}
-        profileIds={categoryFeedTypes[category]}
+        profileId={rssProfileByCategory[category]}
       />}
       {imdbMatchTarget && <ImdbCandidatePicker
         onApplied={() => {

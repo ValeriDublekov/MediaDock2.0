@@ -5,12 +5,13 @@ import { ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate } from '../../shared/format'
 
 interface RssFeedPreviewDialogProps {
-  profileIds: FeedType[]
+  profileId: FeedType
   onClose: () => void
 }
 
-export function RssFeedPreviewDialog({ profileIds, onClose }: RssFeedPreviewDialogProps) {
+export function RssFeedPreviewDialog({ profileId, onClose }: RssFeedPreviewDialogProps) {
   const [previews, setPreviews] = useState<RssFeedPreview[]>([])
+  const [view, setView] = useState<'formatted' | 'original'>('formatted')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -19,14 +20,14 @@ export function RssFeedPreviewDialog({ profileIds, onClose }: RssFeedPreviewDial
     let current = true
     setLoading(true)
     setError(null)
-    Promise.all(profileIds.map((profileId) => getRssFeedPreview(profileId)))
-      .then((response) => { if (current) setPreviews(response) })
+    getRssFeedPreview(profileId)
+      .then((response) => { if (current) setPreviews([response]) })
       .catch((requestError: unknown) => {
         if (current) setError(requestError instanceof Error ? requestError.message : 'The RSS preview request failed.')
       })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
-  }, [profileIds, attempt])
+  }, [profileId, attempt])
 
   return (
     <div className="detail-backdrop" onMouseDown={(event) => {
@@ -50,27 +51,51 @@ export function RssFeedPreviewDialog({ profileIds, onClose }: RssFeedPreviewDial
         <div className="detail-body">
           {loading && <LoadingState label="Loading RSS contents" />}
           {!loading && error && <ErrorState message={error} onRetry={() => setAttempt((current) => current + 1)} />}
-          {!loading && !error && previews.map((preview) => (
-            <section aria-label={preview.profileName} className="rss-preview-profile" key={preview.profileId}>
-              <h3>{preview.profileName}</h3>
-              {preview.feeds.length === 0 ? <p className="section-caption">No RSS URLs configured.</p> : preview.feeds.map((feed, feedIndex) => (
-                <section aria-label={`Feed ${feedIndex + 1}`} className="rss-preview-feed" key={feed.sourceId}>
-                  <h4>Feed {feedIndex + 1}</h4>
-                  {feed.items.length === 0 ? <p className="section-caption">No items in this feed.</p> : (
-                    <ol className="rss-preview-items">
-                      {feed.items.map((item, itemIndex) => (
-                        <li className="rss-preview-item" key={`${item.feedEntryId ?? item.torrentUrl ?? item.title ?? 'item'}-${itemIndex}`}>
-                          <strong>{item.title ?? 'Untitled RSS item'}</strong>
-                          {item.publishedAt && <time dateTime={item.publishedAt}>{formatDate(item.publishedAt)}</time>}
-                          {item.torrentUrl && <span className="rss-preview-url">{item.torrentUrl}</span>}
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-                </section>
-              ))}
-            </section>
-          ))}
+          {!loading && !error && <>
+            <div aria-label="RSS view" className="rss-preview-tabs" role="tablist">
+              <button aria-controls="rss-preview-formatted" aria-selected={view === 'formatted'} className={view === 'formatted' ? 'is-active' : ''} id="rss-preview-formatted-tab" onClick={() => setView('formatted')} role="tab" type="button">Parsed items</button>
+              <button aria-controls="rss-preview-original" aria-selected={view === 'original'} className={view === 'original' ? 'is-active' : ''} id="rss-preview-original-tab" onClick={() => setView('original')} role="tab" type="button">Original XML</button>
+            </div>
+            {view === 'formatted' ? (
+              <div aria-labelledby="rss-preview-formatted-tab" id="rss-preview-formatted" role="tabpanel">
+                {previews.map((preview) => (
+                  <section aria-label={preview.profileName} className="rss-preview-profile" key={preview.profileId}>
+                    <h3>{preview.profileName}</h3>
+                    {preview.feeds.length === 0 ? <p className="section-caption">No RSS URLs configured.</p> : preview.feeds.map((feed, feedIndex) => (
+                      <section aria-label={`Feed ${feedIndex + 1}`} className="rss-preview-feed" key={feed.sourceId}>
+                        <h4>Feed {feedIndex + 1}</h4>
+                        {feed.items.length === 0 ? <p className="section-caption">No items in this feed.</p> : (
+                          <ol className="rss-preview-items">
+                            {feed.items.map((item, itemIndex) => (
+                              <li className="rss-preview-item" key={`${item.feedEntryId ?? item.torrentUrl ?? item.title ?? 'item'}-${itemIndex}`}>
+                                <strong>{item.title ?? 'Untitled RSS item'}</strong>
+                                {item.publishedAt && <time dateTime={item.publishedAt}>{formatDate(item.publishedAt)}</time>}
+                                {item.torrentUrl && <span className="rss-preview-url">{item.torrentUrl}</span>}
+                              </li>
+                            ))}
+                          </ol>
+                        )}
+                      </section>
+                    ))}
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <div aria-labelledby="rss-preview-original-tab" className="rss-preview-originals" id="rss-preview-original" role="tabpanel">
+                {previews.map((preview) => (
+                  <section aria-label={preview.profileName} className="rss-preview-profile" key={preview.profileId}>
+                    <h3>{preview.profileName}</h3>
+                    {preview.feeds.length === 0 ? <p className="section-caption">No RSS URLs configured.</p> : preview.feeds.map((feed, feedIndex) => (
+                      <section aria-label={`Feed ${feedIndex + 1}`} className="rss-preview-feed" key={feed.sourceId}>
+                        <h4>Feed {feedIndex + 1}</h4>
+                        <pre aria-label={`Original RSS feed ${feedIndex + 1}`} className="rss-preview-original"><code>{feed.originalContent}</code></pre>
+                      </section>
+                    ))}
+                  </section>
+                ))}
+              </div>
+            )}
+          </>}
         </div>
       </section>
     </div>

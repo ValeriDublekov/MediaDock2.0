@@ -211,6 +211,14 @@ public sealed class CatalogEndpointsApiTests
             },
             new Source
             {
+                StableKey = "preview-movie-enabled-secondary",
+                Name = "Movies",
+                FeedType = "movie",
+                Url = "https://feed.rutracker.cc/movies-secondary.atom",
+                IsEnabled = true
+            },
+            new Source
+            {
                 StableKey = "preview-movie-disabled",
                 Name = "Movies",
                 FeedType = "movie",
@@ -233,13 +241,20 @@ public sealed class CatalogEndpointsApiTests
         Assert.NotNull(preview);
         Assert.Equal("movie", preview.ProfileId);
         Assert.Equal("Movies", preview.ProfileName);
-        var feed = Assert.Single(preview.Feeds);
-        var item = Assert.Single(feed.Items);
-        Assert.Equal("Example Film", item.Title);
-        Assert.Equal("entry-1", item.FeedEntryId);
-        Assert.Equal("https://feed.rutracker.cc/download/1", item.TorrentUrl);
-        Assert.Equal(new DateTimeOffset(2026, 10, 27, 12, 0, 0, TimeSpan.Zero), item.PublishedAt);
-        Assert.Equal(new[] { "https://feed.rutracker.cc/movies.atom" }, transport.RequestedUrls);
+        Assert.Equal(2, preview.Feeds.Count);
+        Assert.All(preview.Feeds, feed =>
+        {
+            var item = Assert.Single(feed.Items);
+            Assert.Equal("Example Film", item.Title);
+            Assert.Equal("entry-1", item.FeedEntryId);
+            Assert.Equal("https://feed.rutracker.cc/download/1", item.TorrentUrl);
+            Assert.Equal(new DateTimeOffset(2026, 10, 27, 12, 0, 0, TimeSpan.Zero), item.PublishedAt);
+            Assert.Equal(Encoding.UTF8.GetString(transport.Body), feed.OriginalContent);
+        });
+        Assert.Equal(2, transport.MaxConcurrentRequests);
+        Assert.Equal(
+            new[] { "https://feed.rutracker.cc/movies-secondary.atom", "https://feed.rutracker.cc/movies.atom" },
+            transport.RequestedUrls.OrderBy(url => url));
 
         using var invalidProfileResponse = await host.Client.GetAsync("/api/catalog/rss/unknown");
         Assert.Equal(HttpStatusCode.BadRequest, invalidProfileResponse.StatusCode);
@@ -247,12 +262,51 @@ public sealed class CatalogEndpointsApiTests
 
     private sealed class StaticRssFeedTransport(byte[] body) : IRssFeedTransport
     {
-        public List<string> RequestedUrls { get; } = [];
+        private readonly object _sync = new();
+        private readonly List<string> _requestedUrls = [];
+        private int _activeRequests;
+        private int _maxConcurrentRequests;
 
-        public Task<byte[]> FetchAsync(string url, CancellationToken cancellationToken = default)
+        public byte[] Body => body;
+        public IReadOnlyList<string> RequestedUrls
         {
-            RequestedUrls.Add(url);
-            return Task.FromResult(body);
+            get
+            {
+                lock (_sync)
+                {
+                    return [.. _requestedUrls];
+                }
+            }
+        }
+        public int MaxConcurrentRequests
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _maxConcurrentRequests;
+                }
+            }
+        }
+
+        public async Task<byte[]> FetchAsync(string url, CancellationToken cancellationToken = default)
+        {
+            var activeRequests = Interlocked.Increment(ref _activeRequests);
+            lock (_sync)
+            {
+                _requestedUrls.Add(url);
+                _maxConcurrentRequests = Math.Max(_maxConcurrentRequests, activeRequests);
+            }
+
+            try
+            {
+                await Task.Delay(100, cancellationToken);
+                return body;
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _activeRequests);
+            }
         }
     }
 

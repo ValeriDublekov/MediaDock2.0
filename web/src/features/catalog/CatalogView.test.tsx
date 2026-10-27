@@ -116,6 +116,7 @@ describe('CatalogView', () => {
       profileName: profileId === 'series_ongoing' ? 'Ongoing episodes' : 'Movies',
       feeds: [{
         sourceId: 2,
+        originalContent: '<feed><entry><title>Quiet River RSS entry</title></entry></feed>',
         items: [{
           title: 'Quiet River RSS entry',
           feedEntryId: 'entry-2',
@@ -133,6 +134,18 @@ describe('CatalogView', () => {
     const dialog = await screen.findByRole('dialog')
     expect(getRssFeedPreview).toHaveBeenCalledWith('series_ongoing')
     expect(within(dialog).getByText('Quiet River RSS entry')).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Original XML' }))
+    expect(within(dialog).getByLabelText('Original RSS feed 1').textContent).toContain('<entry>')
+  })
+
+  it('hides RSS contents when all catalog categories are selected', async () => {
+    catalogRequest.mockResolvedValue(page([title]))
+    render(<CatalogView />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'All' }))
+
+    expect(screen.queryByRole('button', { name: 'RSS contents' })).toBeNull()
+    expect(getRssFeedPreview).not.toHaveBeenCalled()
   })
 
   it('opens title details when clicking a non-action area of the poster card', async () => {

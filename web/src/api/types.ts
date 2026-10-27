@@ -203,6 +203,7 @@ export interface RssFeedPreviewItem {
 
 export interface RssFeedPreviewSource {
   sourceId: number
+  originalContent: string
   items: RssFeedPreviewItem[]
 }
 
