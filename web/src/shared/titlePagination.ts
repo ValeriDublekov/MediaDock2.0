@@ -1,1 +1,1 @@
-export const titlePageSize = 100
+export const titlePageSize = 60
