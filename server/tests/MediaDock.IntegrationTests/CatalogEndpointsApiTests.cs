@@ -250,6 +250,9 @@ public sealed class CatalogEndpointsApiTests
             Assert.Equal("https://feed.rutracker.cc/download/1", item.TorrentUrl);
             Assert.Equal(new DateTimeOffset(2026, 10, 27, 12, 0, 0, TimeSpan.Zero), item.PublishedAt);
             Assert.Equal(Encoding.UTF8.GetString(transport.Body), feed.OriginalContent);
+            Assert.Contains(feed.SourceUrl, transport.RequestedUrls);
+            Assert.True(feed.FetchDurationMs >= 0);
+            Assert.True(feed.ParseDurationMs >= 0);
         });
         Assert.Equal(2, transport.MaxConcurrentRequests);
         Assert.Equal(

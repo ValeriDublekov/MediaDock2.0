@@ -2,6 +2,7 @@ using MediaDock.Api.Middleware;
 using MediaDock.Application.Ingestion;
 using MediaDock.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 using System.Text;
 
 namespace MediaDock.Api.Catalog;
@@ -13,7 +14,10 @@ public sealed record RssFeedPreviewResponse(
 
 public sealed record RssFeedPreviewSourceResponse(
     long SourceId,
+    string SourceUrl,
     string OriginalContent,
+    double FetchDurationMs,
+    double ParseDurationMs,
     IReadOnlyList<RssFeedPreviewItemResponse> Items);
 
 public sealed record RssFeedPreviewItemResponse(
@@ -61,8 +65,13 @@ internal sealed class RssFeedPreviewApiService(
             async (index, token) =>
             {
                 var source = sources[index];
+                var fetchStartedAt = Stopwatch.GetTimestamp();
                 var body = await feedTransport.FetchAsync(source.Url, token);
-                var items = RssFeedParser.Parse(body)
+                var fetchDurationMs = Stopwatch.GetElapsedTime(fetchStartedAt).TotalMilliseconds;
+                var parseStartedAt = Stopwatch.GetTimestamp();
+                var parsedItems = RssFeedParser.Parse(body);
+                var parseDurationMs = Stopwatch.GetElapsedTime(parseStartedAt).TotalMilliseconds;
+                var items = parsedItems
                     .Select(item => new RssFeedPreviewItemResponse(
                         item.Title,
                         item.FeedEntryId,
@@ -71,7 +80,10 @@ internal sealed class RssFeedPreviewApiService(
                     .ToArray();
                 feeds[index] = new RssFeedPreviewSourceResponse(
                     source.Id,
+                    source.Url,
                     Encoding.UTF8.GetString(body),
+                    fetchDurationMs,
+                    parseDurationMs,
                     items);
             });
 

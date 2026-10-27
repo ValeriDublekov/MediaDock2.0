@@ -4,6 +4,7 @@ import type { FeedType, Settings, SettingsInput, SourceProfile, SourceUrl } from
 import { ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate } from '../../shared/format'
 import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
+import { RssFeedPreviewDialog } from '../catalog/RssFeedPreviewDialog'
 
 interface SettingsDraft {
   excludedGenres: string
@@ -37,6 +38,7 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
   const [settingsDraft, setSettingsDraft] = useState<SettingsDraft>(emptySettings)
   const [sourceDraft, setSourceDraft] = useState('')
   const [editingProfileId, setEditingProfileId] = useState<FeedType>('movie')
+  const [previewProfileId, setPreviewProfileId] = useState<FeedType | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [removingId, setRemovingId] = useState<number | null>(null)
   const [showSourceForm, setShowSourceForm] = useState(false)
@@ -174,7 +176,10 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
           <section aria-label={`${profile.name} profile`} className="source-profile" key={profile.id}>
             <div className="source-profile-heading">
               <h3>{profile.name}</h3>
-              <button className="button button-secondary" onClick={() => startNewSource(profile.id)} type="button">Add URL</button>
+              <div className="source-actions">
+                {profile.urls.length > 0 && <button className="button button-secondary" onClick={() => setPreviewProfileId(profile.id)} type="button">Preview RSS</button>}
+                <button className="button button-secondary" onClick={() => startNewSource(profile.id)} type="button">Add URL</button>
+              </div>
             </div>
             {profile.urls.length === 0 ? (
               <p className="section-caption">No URLs configured.</p>
@@ -229,6 +234,7 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
           </form>
         </section>
       </div>
+      {previewProfileId && <RssFeedPreviewDialog profileId={previewProfileId} onClose={() => setPreviewProfileId(null)} />}
     </section>
   )
 }

@@ -9,6 +9,20 @@ interface RssFeedPreviewDialogProps {
   onClose: () => void
 }
 
+function formatDuration(durationMs: number): string {
+  return durationMs >= 1000 ? `${(durationMs / 1000).toFixed(2)} s` : `${durationMs.toFixed(1)} ms`
+}
+
+function FeedPreviewMeta({ feed }: { feed: RssFeedPreview['feeds'][number] }) {
+  return (
+    <div className="rss-preview-feed-meta">
+      <a href={feed.sourceUrl} rel="noopener noreferrer" target="_blank">Open original RSS</a>
+      <span>Fetch: {formatDuration(feed.fetchDurationMs)}</span>
+      <span>Parse: {formatDuration(feed.parseDurationMs)}</span>
+    </div>
+  )
+}
+
 export function RssFeedPreviewDialog({ profileId, onClose }: RssFeedPreviewDialogProps) {
   const [previews, setPreviews] = useState<RssFeedPreview[]>([])
   const [view, setView] = useState<'formatted' | 'original'>('formatted')
@@ -63,6 +77,7 @@ export function RssFeedPreviewDialog({ profileId, onClose }: RssFeedPreviewDialo
                     <h3>{preview.profileName}</h3>
                     {preview.feeds.length === 0 ? <p className="section-caption">No RSS URLs configured.</p> : preview.feeds.map((feed, feedIndex) => (
                       <section aria-label={`Feed ${feedIndex + 1}`} className="rss-preview-feed" key={feed.sourceId}>
+                        <FeedPreviewMeta feed={feed} />
                         <h4>Feed {feedIndex + 1}</h4>
                         {feed.items.length === 0 ? <p className="section-caption">No items in this feed.</p> : (
                           <ol className="rss-preview-items">
@@ -87,6 +102,7 @@ export function RssFeedPreviewDialog({ profileId, onClose }: RssFeedPreviewDialo
                     <h3>{preview.profileName}</h3>
                     {preview.feeds.length === 0 ? <p className="section-caption">No RSS URLs configured.</p> : preview.feeds.map((feed, feedIndex) => (
                       <section aria-label={`Feed ${feedIndex + 1}`} className="rss-preview-feed" key={feed.sourceId}>
+                        <FeedPreviewMeta feed={feed} />
                         <h4>Feed {feedIndex + 1}</h4>
                         <pre aria-label={`Original RSS feed ${feedIndex + 1}`} className="rss-preview-original"><code>{feed.originalContent}</code></pre>
                       </section>
