@@ -279,6 +279,8 @@ describe('SourceSettingsView', () => {
     render(<SourceSettingsView />)
 
     expect(await screen.findByRole('heading', { name: 'RSS profiles' })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Preview RSS' })).toHaveLength(3)
+    expect(screen.getAllByRole('button', { name: 'Add URL' })).toHaveLength(3)
     expect(getSources).toHaveBeenCalledOnce()
     expect(getSettings).toHaveBeenCalledOnce()
     expect(getProviderSettings).not.toHaveBeenCalled()
@@ -307,7 +309,7 @@ describe('SourceSettingsView', () => {
     } satisfies RssFeedPreview)
 
     render(<SourceSettingsView />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Preview RSS' }))
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Preview RSS' }))[0])
 
     const originalFeedLink = await screen.findByRole('link', { name: 'Open original RSS' })
     expect(originalFeedLink.getAttribute('href')).toBe('https://feed.rutracker.cc/movies.atom')

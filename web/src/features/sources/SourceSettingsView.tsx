@@ -177,7 +177,7 @@ export function SourceSettingsView({ onOpenHistory = () => {} }: {
             <div className="source-profile-heading">
               <h3>{profile.name}</h3>
               <div className="source-actions">
-                {profile.urls.length > 0 && <button className="button button-secondary" onClick={() => setPreviewProfileId(profile.id)} type="button">Preview RSS</button>}
+                <button className="button button-secondary" onClick={() => setPreviewProfileId(profile.id)} type="button">Preview RSS</button>
                 <button className="button button-secondary" onClick={() => startNewSource(profile.id)} type="button">Add URL</button>
               </div>
             </div>
