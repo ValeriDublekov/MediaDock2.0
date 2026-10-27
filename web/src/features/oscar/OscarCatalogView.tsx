@@ -15,11 +15,11 @@ import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } f
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatWords } from '../../shared/format'
 import { titlePageSize } from '../../shared/titlePagination'
+import { removePageItems } from '../../shared/removePageItems'
 import { combineMovieAwards, getOscarRecognitions, movieAwardsRequestKey } from '../../shared/movieAwards'
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
-import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
 import { OscarFilmDetailsDialog } from './OscarFilmDetailsDialog'
 
 interface OscarFilters {
@@ -62,7 +62,7 @@ function buildQuery(page: number, filters: OscarFilters): OscarCatalogQuery {
   }
 }
 
-function OscarRow({ film, onSelect, awards }: { film: OscarFilm; onSelect: (id: number) => void; awards: ReturnType<typeof combineMovieAwards> }) {
+function OscarRow({ film, onSelect, onRemoved, awards }: { film: OscarFilm; onSelect: (id: number) => void; onRemoved: () => void; awards: ReturnType<typeof combineMovieAwards> }) {
   return (
     <tr>
       <td>
@@ -94,8 +94,8 @@ function OscarRow({ film, onSelect, awards }: { film: OscarFilm; onSelect: (id: 
         </>}
       </td>
       <td>
-        <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} />
-        <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} />
+        <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} onAdded={onRemoved} />
+        <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} onIgnored={onRemoved} />
       </td>
     </tr>
   )
@@ -114,16 +114,15 @@ export function OscarCatalogView() {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selectedFilmId, setSelectedFilmId] = useState<number | null>(null)
-  const { revision: ignoredMoviesRevision } = useIgnoredMovies()
   const awardsRequestKey = movieAwardsRequestKey(result?.items.map((film) => film.imdbId) ?? [])
   const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
   const activeFilterCount = Object.entries(draftFilters)
     .filter(([key, value]) => key !== 'search' && key !== 'categories' && value !== '')
     .length + (draftFilters.categories === null ? 0 : 1)
 
-  useEffect(() => {
-    setPage(1)
-  }, [ignoredMoviesRevision])
+  function removeOscarFilm(filmId: number) {
+    setResult((current) => removePageItems(current, (film) => film.id === filmId))
+  }
 
   useEffect(() => {
     let current = true
@@ -147,7 +146,7 @@ export function OscarCatalogView() {
       })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
-  }, [page, appliedFilters, attempt, ignoredMoviesRevision])
+  }, [page, appliedFilters, attempt])
 
   useEffect(() => {
     if (draftFilters.search === appliedFilters.search) return
@@ -316,7 +315,7 @@ export function OscarCatalogView() {
             {result.items.map((film) => {
               return <MoviePosterCard
                 awards={combineMovieAwards(getOscarRecognitions(film), pageAwards, film.imdbId)}
-                footer={<FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} placement="status" />}
+                footer={<FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} onAdded={() => removeOscarFilm(film.id)} placement="status" />}
                 genres={film.genres}
                 imdbId={film.imdbId}
                 imdbRating={film.imdbRating}
@@ -326,8 +325,8 @@ export function OscarCatalogView() {
                 openLabel={`View ${film.title} Oscar details`}
                 posterLabel="OSC"
                 posterActions={<>
-                  <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} placement="poster" />
-                  <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} placement="poster" />
+                  <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} onAdded={() => removeOscarFilm(film.id)} placement="poster" />
+                  <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} onIgnored={() => removeOscarFilm(film.id)} placement="poster" />
                 </>}
                 posterUrl={film.posterUrl}
                 title={film.title}
@@ -342,7 +341,7 @@ export function OscarCatalogView() {
               <thead><tr><th>FILM</th><th>TYPE</th><th>IMDB</th><th>AWARDS</th><th>GENRES</th><th>OMDB</th><th>ACTIONS</th></tr></thead>
               <tbody>
                 {result.items.map((film) => (
-                  <OscarRow awards={combineMovieAwards(getOscarRecognitions(film), pageAwards, film.imdbId)} film={film} key={film.id} onSelect={setSelectedFilmId} />
+                  <OscarRow awards={combineMovieAwards(getOscarRecognitions(film), pageAwards, film.imdbId)} film={film} key={film.id} onRemoved={() => removeOscarFilm(film.id)} onSelect={setSelectedFilmId} />
                 ))}
               </tbody>
             </table>
@@ -351,7 +350,12 @@ export function OscarCatalogView() {
         </>
       )}
       {selectedFilmId !== null && (
-        <OscarFilmDetailsDialog filmId={selectedFilmId} onClose={() => setSelectedFilmId(null)} />
+        <OscarFilmDetailsDialog
+          filmId={selectedFilmId}
+          onClose={() => setSelectedFilmId(null)}
+          onFavoriteAdded={() => removeOscarFilm(selectedFilmId)}
+          onIgnored={() => removeOscarFilm(selectedFilmId)}
+        />
       )}
     </section>
   )

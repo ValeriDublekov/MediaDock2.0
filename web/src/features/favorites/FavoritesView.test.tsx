@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { addFavorite, getFavorites, updateFavorite } from '../../api/client'
+import { addFavorite, getFavorites, removeFavorite, updateFavorite } from '../../api/client'
 import type { FavoriteTitle, PageResponse } from '../../api/types'
 import { FavoriteControls } from './FavoriteControls'
 import { FavoriteProvider } from './FavoriteContext'
@@ -11,6 +11,7 @@ afterEach(() => {
   cleanup()
   vi.mocked(getFavorites).mockReset()
   vi.mocked(addFavorite).mockReset()
+  vi.mocked(removeFavorite).mockReset()
   vi.mocked(updateFavorite).mockReset()
 })
 
@@ -153,4 +154,45 @@ it('uses the shared poster card and opens details for a favorite without a torre
   expect(await screen.findByRole('dialog')).toBeTruthy()
   expect(screen.getByRole('heading', { name: 'Award Film' })).toBeTruthy()
   expect(screen.getByText('2', { selector: 'dd' })).toBeTruthy()
+})
+
+it('removes a favorite locally without reloading the current page', async () => {
+  const movie: FavoriteTitle = {
+    imdbId: 'tt12345678', torrentMovieId: null, title: 'Local Favorite', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
+    imdbRating: 8.2, posterUrl: null, toWatch: true, toDownload: false,
+    addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
+    updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
+    winCount: 0, occurrenceCount: 1, lastSeenAt: '2026-09-30T00:00:00Z',
+  }
+  vi.mocked(getFavorites).mockResolvedValue({ items: [movie], page: 1, pageSize: 60, totalCount: 1, totalPages: 1 })
+  vi.mocked(removeFavorite).mockResolvedValue(undefined)
+  render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
+
+  expect(await screen.findByRole('button', { name: 'View Local Favorite details' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Remove from favorites' }))
+
+  await waitFor(() => expect(removeFavorite).toHaveBeenCalledWith(movie.imdbId))
+  expect(await screen.findByText('No favorites here')).toBeTruthy()
+  expect(getFavorites).toHaveBeenCalledTimes(2)
+})
+
+it('removes a favorite locally when it no longer matches the active status filter', async () => {
+  const movie: FavoriteTitle = {
+    imdbId: 'tt12345678', torrentMovieId: null, title: 'Watch Filter Favorite', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
+    imdbRating: 8.2, posterUrl: null, toWatch: true, toDownload: false,
+    addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
+    updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
+    winCount: 0, occurrenceCount: 1, lastSeenAt: '2026-09-30T00:00:00Z',
+  }
+  vi.mocked(getFavorites).mockResolvedValue({ items: [movie], page: 1, pageSize: 60, totalCount: 1, totalPages: 1 })
+  vi.mocked(updateFavorite).mockResolvedValue({ ...movie, toWatch: false })
+  render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
+
+  fireEvent.click(await screen.findByRole('button', { name: 'To watch' }))
+  const checkbox = await screen.findByRole('checkbox', { name: 'To watch' })
+  fireEvent.click(checkbox)
+
+  await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith(movie.imdbId, { toWatch: false }))
+  expect(await screen.findByText('No favorites here')).toBeTruthy()
+  expect(getFavorites).toHaveBeenCalledTimes(3)
 })

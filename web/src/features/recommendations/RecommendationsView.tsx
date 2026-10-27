@@ -11,9 +11,9 @@ import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl
 import { YearRangeFilter } from '../../components/YearRangeFilter'
 import { formatWords } from '../../shared/format'
 import { titlePageSize } from '../../shared/titlePagination'
+import { removePageItems } from '../../shared/removePageItems'
 import { RecommendationWatchlistControl } from '../favorites/FavoriteControls'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
-import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
 
 type CoefficientKey = keyof RecommendationCoefficients
 type SliderPercentages = Record<CoefficientKey, number>
@@ -101,11 +101,9 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
   const [watchRating, setWatchRating] = useState('')
   const [savingWatched, setSavingWatched] = useState(false)
   const [watchError, setWatchError] = useState<string | null>(null)
-  const { revision: ignoredMoviesRevision } = useIgnoredMovies()
-
-  useEffect(() => {
-    setPageNumber(1)
-  }, [ignoredMoviesRevision])
+  function removeRecommendation(imdbId: string) {
+    setResult((current) => removePageItems(current, (item) => item.imdbId === imdbId))
+  }
 
   useEffect(() => {
     let active = true
@@ -141,7 +139,7 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
       .finally(() => { if (active) setLoading(false) })
 
     return () => { active = false }
-  }, [appliedYearFilter, attempt, excludeWatched, ignoredMoviesRevision, mediaType, pageNumber, selectedGenres, sliderPercentages])
+  }, [appliedYearFilter, attempt, excludeWatched, mediaType, pageNumber, selectedGenres, sliderPercentages])
 
   function updateSlider(key: CoefficientKey, value: string) {
     setSliderPercentages((current) => changeSliderPercentages(current, key, value))
@@ -228,11 +226,16 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
     setWatchError(null)
     try {
       await markRecommendationWatched(watchDialogItem.imdbId, rating, mediaType)
+      if (excludeWatched) {
+        removeRecommendation(watchDialogItem.imdbId)
+      } else {
+        setResult((current) => current ? {
+          ...current,
+          items: current.items.map((item) => item.imdbId === watchDialogItem.imdbId ? { ...item, isWatched: true } : item),
+        } : current)
+      }
       setWatchDialogItem(null)
       setWatchRating('')
-      setLoading(true)
-      setError(null)
-      setAttempt((value) => value + 1)
     } catch (requestError: unknown) {
       setWatchError(requestError instanceof Error ? requestError.message : `Could not mark this ${titleType} as watched.`)
     } finally {
@@ -247,12 +250,8 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
       <button aria-label={label} className="tile-icon-action" data-tooltip={label} onClick={() => openWatchDialog(item)} type="button">
         <Check aria-hidden="true" size={16} />
       </button>
-      <RecommendationWatchlistControl imdbId={item.imdbId} onAdded={() => {
-        setLoading(true)
-        setError(null)
-        setAttempt((value) => value + 1)
-      }} placement="poster" title={item.title} />
-      <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} placement="poster" />
+      <RecommendationWatchlistControl imdbId={item.imdbId} onAdded={() => removeRecommendation(item.imdbId)} placement="poster" title={item.title} />
+      <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} onIgnored={() => removeRecommendation(item.imdbId)} placement="poster" />
     </>
   }
 
@@ -260,12 +259,8 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
     if (item.isWatched) return null
     return <div className="recommendation-actions">
       <button aria-label={`Mark ${item.title} as watched`} className="button button-secondary" onClick={() => openWatchDialog(item)} type="button">Mark watched</button>
-      <RecommendationWatchlistControl imdbId={item.imdbId} onAdded={() => {
-        setLoading(true)
-        setError(null)
-        setAttempt((value) => value + 1)
-      }} title={item.title} />
-      <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} />
+      <RecommendationWatchlistControl imdbId={item.imdbId} onAdded={() => removeRecommendation(item.imdbId)} title={item.title} />
+      <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} onIgnored={() => removeRecommendation(item.imdbId)} />
     </div>
   }
 

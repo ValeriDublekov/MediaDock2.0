@@ -10,11 +10,11 @@ import { Pagination } from '../../components/Pagination'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatWords } from '../../shared/format'
 import { titlePageSize } from '../../shared/titlePagination'
+import { removePageItems } from '../../shared/removePageItems'
 import { combineMovieAwards, getGoldenGlobeRecognitions, movieAwardsRequestKey } from '../../shared/movieAwards'
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
-import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
 import { GoldenGlobeFilmDetailsDialog } from './GoldenGlobeFilmDetailsDialog'
 
 interface Filters { search: string; yearFrom: string; yearTo: string; imdbRatingFrom: string; imdbRatingTo: string; categories: string[] | null; result: string; enrichmentStatus: string }
@@ -75,13 +75,12 @@ export function GoldenGlobeCatalogView() {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selectedFilm, setSelectedFilm] = useState<GoldenGlobeFilm | null>(null)
-  const { revision: ignoredMoviesRevision } = useIgnoredMovies()
   const awardsRequestKey = movieAwardsRequestKey(result?.items.map((film) => film.imdbId) ?? [])
   const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
 
-  useEffect(() => {
-    setPage(1)
-  }, [ignoredMoviesRevision])
+  function removeGoldenGlobeFilm(filmId: string) {
+    setResult((current) => removePageItems(current, (film) => film.filmId === filmId))
+  }
 
   useEffect(() => {
     let current = true
@@ -102,7 +101,7 @@ export function GoldenGlobeCatalogView() {
       if (current) setError(requestError instanceof Error ? requestError.message : 'The Golden Globes catalog request failed.')
     }).finally(() => { if (current) setLoading(false) })
     return () => { current = false }
-  }, [page, applied, attempt, ignoredMoviesRevision])
+  }, [page, applied, attempt])
 
   useEffect(() => {
     if (draft.search === applied.search) return
@@ -193,7 +192,7 @@ export function GoldenGlobeCatalogView() {
         <div className="poster-grid">
           {result.items.map((film) => <MoviePosterCard
             awards={combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId)}
-            footer={<FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} placement="status" />}
+            footer={<FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} onAdded={() => removeGoldenGlobeFilm(film.filmId)} placement="status" />}
             genres={film.genres}
             imdbId={film.imdbId}
             imdbRating={film.imdbRating}
@@ -203,8 +202,8 @@ export function GoldenGlobeCatalogView() {
             onOpen={() => setSelectedFilm(film)}
             posterLabel="GLO"
             posterActions={<>
-              <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} placement="poster" />
-              <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.nomineeType} placement="poster" />
+              <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} onAdded={() => removeGoldenGlobeFilm(film.filmId)} placement="poster" />
+              <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.nomineeType} onIgnored={() => removeGoldenGlobeFilm(film.filmId)} placement="poster" />
             </>}
             posterUrl={film.posterUrl}
             title={film.title}
@@ -226,8 +225,8 @@ export function GoldenGlobeCatalogView() {
                 <td>{film.genres.slice(0, 2).join(', ') || 'Not tagged'}</td>
                 <td><EnrichmentStatus film={film} /></td>
                 <td>
-                  <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} />
-                  <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.nomineeType} />
+                  <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} onAdded={() => removeGoldenGlobeFilm(film.filmId)} />
+                  <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.nomineeType} onIgnored={() => removeGoldenGlobeFilm(film.filmId)} />
                 </td>
               </tr>
             })}</tbody>
@@ -240,6 +239,8 @@ export function GoldenGlobeCatalogView() {
       awards={combineMovieAwards(getGoldenGlobeRecognitions(selectedFilm), pageAwards, selectedFilm.imdbId)}
       film={selectedFilm}
       onClose={() => setSelectedFilm(null)}
+      onFavoriteAdded={() => removeGoldenGlobeFilm(selectedFilm.filmId)}
+      onIgnored={() => removeGoldenGlobeFilm(selectedFilm.filmId)}
       onUpdated={refreshFilm}
     />}
   </section>

@@ -5,6 +5,7 @@ import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { MovieDetailsIntro, MoviePosterCard } from '../../components/MoviePresentation'
 import { titlePageSize } from '../../shared/titlePagination'
+import { removePageItems } from '../../shared/removePageItems'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 import { TitleDetailsDialog } from '../catalog/TitleDetailsDialog'
@@ -22,7 +23,7 @@ export function FavoritesView() {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selected, setSelected] = useState<FavoriteTitle | null>(null)
-  const { available, titles } = useFavorites()
+  const { available } = useFavorites()
 
   useEffect(() => {
     if (!available) return
@@ -33,7 +34,24 @@ export function FavoritesView() {
       .catch((reason: unknown) => { if (active) setError(reason instanceof Error ? reason.message : 'Favorites could not be loaded.') })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [available, status, page, attempt, titles])
+  }, [available, status, page, attempt])
+
+  function removeFavoriteTitle(imdbId: string) {
+    setResult((current) => removePageItems(current, (item) => item.imdbId === imdbId))
+  }
+
+  function updateFavoriteTitle(imdbId: string, input: { toWatch?: boolean; toDownload?: boolean }) {
+    setResult((current) => {
+      if (!current) return current
+      const item = current.items.find((candidate) => candidate.imdbId === imdbId)
+      if (!item) return current
+      const updated = { ...item, ...input }
+      const noLongerMatches = (status === 'to_watch' && !updated.toWatch)
+        || (status === 'to_download' && !updated.toDownload)
+      if (noLongerMatches) return removePageItems(current, (candidate) => candidate.imdbId === imdbId)
+      return { ...current, items: current.items.map((candidate) => candidate.imdbId === imdbId ? updated : candidate) }
+    })
+  }
 
   function changeStatus(next: Status) {
     setStatus(next)
@@ -59,7 +77,7 @@ export function FavoritesView() {
       {viewMode === 'posters' ? <div className="poster-grid">
         {result.items.map((item) => <MoviePosterCard
           awards={[]}
-          footer={<FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} placement="status" />}
+          footer={<FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={() => removeFavoriteTitle(item.imdbId)} onUpdated={(input) => updateFavoriteTitle(item.imdbId, input)} placement="status" />}
           imdbId={item.imdbId}
           imdbRating={item.imdbRating}
           key={item.imdbId}
@@ -67,7 +85,7 @@ export function FavoritesView() {
           onOpen={() => setSelected(item)}
           openLabel={`View ${item.title} details`}
           posterActions={<>
-            <FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} placement="poster" />
+            <FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={() => removeFavoriteTitle(item.imdbId)} onUpdated={(input) => updateFavoriteTitle(item.imdbId, input)} placement="poster" />
             <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} placement="poster" />
           </>}
           posterLabel={item.mediaType.slice(0, 3).toUpperCase()}
@@ -88,18 +106,39 @@ export function FavoritesView() {
           <td>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog', item.addedFromRecommendations && 'Recommendations'].filter(Boolean).join(' / ')}</td>
           <td>{item.mediaType === 'movie' ? `${item.nominationCount} nominations, ${item.winCount} wins` : 'No Oscar records'}</td>
           <td>{item.occurrenceCount ? `${item.occurrenceCount} sources` : 'No source available'}</td>
-          <td><FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} /></td>
+          <td><FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={() => removeFavoriteTitle(item.imdbId)} onUpdated={(input) => updateFavoriteTitle(item.imdbId, input)} /></td>
         </tr>)}</tbody>
       </table></div>}
       <Pagination onPageChange={(next) => { setPage(next); setLoading(true) }} page={result} />
     </>}
     {selected && (selected.torrentMovieId !== null
-      ? <TitleDetailsDialog onClose={() => setSelected(null)} titleId={selected.torrentMovieId} />
-      : <FavoriteDetailsDialog item={selected} onClose={() => setSelected(null)} />)}
+      ? <TitleDetailsDialog
+        onClose={() => setSelected(null)}
+        onFavoriteRemoved={() => { removeFavoriteTitle(selected.imdbId); setSelected(null) }}
+        onFavoriteUpdated={(input) => {
+          updateFavoriteTitle(selected.imdbId, input)
+          setSelected((current) => current ? { ...current, ...input } : current)
+        }}
+        titleId={selected.torrentMovieId}
+      />
+      : <FavoriteDetailsDialog
+        item={selected}
+        onClose={() => setSelected(null)}
+        onRemoved={() => { removeFavoriteTitle(selected.imdbId); setSelected(null) }}
+        onUpdated={(input) => {
+          updateFavoriteTitle(selected.imdbId, input)
+          setSelected((current) => current ? { ...current, ...input } : current)
+        }}
+      />)}
   </section>
 }
 
-function FavoriteDetailsDialog({ item, onClose }: { item: FavoriteTitle; onClose: () => void }) {
+function FavoriteDetailsDialog({ item, onClose, onRemoved, onUpdated }: {
+  item: FavoriteTitle
+  onClose: () => void
+  onRemoved: () => void
+  onUpdated: (input: { toWatch?: boolean; toDownload?: boolean }) => void
+}) {
   const origin = [item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog', item.addedFromRecommendations && 'Recommendations'].filter(Boolean).join(' / ')
   return <div className="detail-backdrop" onMouseDown={(event) => {
     if (event.target === event.currentTarget) onClose()
@@ -123,7 +162,7 @@ function FavoriteDetailsDialog({ item, onClose }: { item: FavoriteTitle; onClose
           <div><dt>Watch status</dt><dd>{item.toWatch ? 'To watch' : 'Not marked to watch'}</dd></div>
           {item.mediaType === 'movie' && <div><dt>Download status</dt><dd>{item.toDownload ? 'To download' : 'Not marked to download'}</dd></div>}
         </dl>
-        <FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} />
+        <FavoriteControls from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={onRemoved} onUpdated={onUpdated} />
         <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} />
       </div>
     </section>

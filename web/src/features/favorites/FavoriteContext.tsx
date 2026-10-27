@@ -11,14 +11,14 @@ interface FavoriteState {
   error: string | null
   retry: () => void
   add: (imdbId: string, from: 'oscar' | 'catalog' | 'recommendation') => Promise<boolean>
-  update: (imdbId: string, input: { toWatch?: boolean; toDownload?: boolean }) => Promise<void>
-  remove: (imdbId: string) => Promise<void>
+  update: (imdbId: string, input: { toWatch?: boolean; toDownload?: boolean }) => Promise<boolean>
+  remove: (imdbId: string) => Promise<boolean>
 }
 
 const FavoriteContext = createContext<FavoriteState | null>(null)
 const emptyState: FavoriteState = {
   available: false, titles: {}, pending: null, loading: false, error: null, retry: () => {},
-  add: async () => false, update: async () => {}, remove: async () => {},
+  add: async () => false, update: async () => false, remove: async () => false,
 }
 
 export function FavoriteProvider({ children, accountKey }: { children: ReactNode; accountKey: string | null }) {
@@ -73,8 +73,8 @@ export function FavoriteProvider({ children, accountKey }: { children: ReactNode
 
   return <FavoriteContext.Provider value={{ available: accountKey !== null, titles, pending, loading, error, retry: () => { setLoading(true); setAttempt((value) => value + 1) },
     add: (imdbId, from) => mutate(imdbId, () => addFavorite(imdbId, from)),
-    update: async (imdbId, input) => { await mutate(imdbId, () => updateFavorite(imdbId, input)) },
-    remove: async (imdbId) => { await mutate(imdbId, () => removeFavorite(imdbId)) },
+    update: (imdbId, input) => mutate(imdbId, () => updateFavorite(imdbId, input)),
+    remove: (imdbId) => mutate(imdbId, () => removeFavorite(imdbId)),
   }}>{children}</FavoriteContext.Provider>
 }
 

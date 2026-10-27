@@ -1,12 +1,19 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getMovieAwards, getParseLogs, getRssFeedPreview, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, refreshRssFeedPreview, searchCatalogTitleImdbCandidates } from '../../api/client'
+import { addFavorite, addIgnoredMovie, ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getFavorites, getIgnoredMovies, getMovieAwards, getParseLogs, getRssFeedPreview, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, refreshRssFeedPreview, searchCatalogTitleImdbCandidates } from '../../api/client'
 import type { CatalogTitle, ImdbCandidateSearch, MovieAwardRecognition, PageResponse, RssFeedPreview, TitleDetails } from '../../api/types'
+import { FavoriteProvider } from '../favorites/FavoriteContext'
+import { IgnoredMoviesProvider } from '../ignored-movies/IgnoredMoviesContext'
 import { CatalogView } from './CatalogView'
 
 vi.mock('../../api/client', () => ({
   ApiError: class ApiError extends Error {},
   getCatalog: vi.fn(),
+  getFavorites: vi.fn(),
+  addFavorite: vi.fn(),
+  getIgnoredMovies: vi.fn(),
+  addIgnoredMovie: vi.fn(),
+  removeIgnoredMovie: vi.fn(),
   getTitle: vi.fn(),
   getTitleOccurrences: vi.fn(),
   deleteCatalogTitle: vi.fn(),
@@ -52,6 +59,10 @@ const title: CatalogTitle = {
   plot: 'A retired cartographer returns home.',
 }
 
+function renderCatalogWithActions() {
+  return render(<FavoriteProvider accountKey="test-account"><IgnoredMoviesProvider accountKey="test-account"><CatalogView /></IgnoredMoviesProvider></FavoriteProvider>)
+}
+
 describe('CatalogView', () => {
   beforeEach(() => {
     catalogRequest.mockReset()
@@ -77,6 +88,44 @@ describe('CatalogView', () => {
     expect(screen.getByRole('columnheader', { name: 'LAST SEEN' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
     expect(screen.getByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
+    expect(catalogRequest).toHaveBeenCalledTimes(1)
+  })
+
+  it('removes a newly favorited title locally without reloading the catalog', async () => {
+    const movie = { ...title, mediaType: 'movie' as const }
+    catalogRequest.mockResolvedValue(page([movie]))
+    vi.mocked(getFavorites).mockResolvedValue({ items: [], page: 1, pageSize: 60, totalCount: 0, totalPages: 0 })
+    vi.mocked(getIgnoredMovies).mockResolvedValue({ items: [], page: 1, pageSize: 60, totalCount: 0, totalPages: 0 })
+    vi.mocked(addFavorite).mockResolvedValue({ imdbId: movie.imdbId! } as Awaited<ReturnType<typeof addFavorite>>)
+
+    renderCatalogWithActions()
+
+    expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
+    const addButton = await screen.findByRole('button', { name: 'Add to favorites' }) as HTMLButtonElement
+    await waitFor(() => expect(addButton.disabled).toBe(false))
+    fireEvent.click(addButton)
+
+    await waitFor(() => expect(addFavorite).toHaveBeenCalledWith(movie.imdbId, 'catalog'))
+    expect(screen.queryByRole('button', { name: 'View Quiet River details' })).toBeNull()
+    expect(catalogRequest).toHaveBeenCalledTimes(1)
+  })
+
+  it('removes an ignored title locally without resetting or reloading the catalog', async () => {
+    const movie = { ...title, mediaType: 'movie' as const }
+    catalogRequest.mockResolvedValue(page([movie]))
+    vi.mocked(getFavorites).mockResolvedValue({ items: [], page: 1, pageSize: 60, totalCount: 0, totalPages: 0 })
+    vi.mocked(getIgnoredMovies).mockResolvedValue({ items: [], page: 1, pageSize: 60, totalCount: 0, totalPages: 0 })
+    vi.mocked(addIgnoredMovie).mockResolvedValue({ imdbId: movie.imdbId! } as Awaited<ReturnType<typeof addIgnoredMovie>>)
+
+    renderCatalogWithActions()
+
+    expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
+    const ignoreButton = await screen.findByRole('button', { name: 'Ignore movie' }) as HTMLButtonElement
+    await waitFor(() => expect(ignoreButton.disabled).toBe(false))
+    fireEvent.click(ignoreButton)
+
+    await waitFor(() => expect(addIgnoredMovie).toHaveBeenCalledWith(movie.imdbId))
+    expect(screen.queryByRole('button', { name: 'View Quiet River details' })).toBeNull()
     expect(catalogRequest).toHaveBeenCalledTimes(1)
   })
 

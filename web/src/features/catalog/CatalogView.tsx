@@ -11,13 +11,13 @@ import { MovieAwardsSummary, MovieImdbLink, MoviePosterCard, MovieTableTitle } f
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { formatDate, formatWords } from '../../shared/format'
 import { titlePageSize } from '../../shared/titlePagination'
+import { removePageItems } from '../../shared/removePageItems'
 import { combineMovieAwards, movieAwardsRequestKey } from '../../shared/movieAwards'
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { TitleDetailsDialog } from './TitleDetailsDialog'
 import { RssFeedPreviewDialog } from './RssFeedPreviewDialog'
 import { FavoriteControls } from '../favorites/FavoriteControls'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
-import { useIgnoredMovies } from '../ignored-movies/IgnoredMoviesContext'
 import { HistoryView } from '../history/HistoryView'
 
 interface CatalogFilters {
@@ -120,7 +120,7 @@ function buildQuery(page: number, filters: CatalogFilters, category: CatalogCate
   }
 }
 
-function CatalogRow({ title, onSelect, awards }: { title: CatalogTitle; onSelect: (id: number) => void; awards: ReturnType<typeof combineMovieAwards> }) {
+function CatalogRow({ title, onSelect, onRemoved, awards }: { title: CatalogTitle; onSelect: (id: number) => void; onRemoved: () => void; awards: ReturnType<typeof combineMovieAwards> }) {
   return (
     <tr>
       <td>
@@ -140,8 +140,8 @@ function CatalogRow({ title, onSelect, awards }: { title: CatalogTitle; onSelect
       <td>{title.genres.slice(0, 2).join(', ') || 'Not tagged'}</td>
       <td>{formatDate(title.lastSeenAt)}</td>
       <td>
-        <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} />
-        <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} />
+        <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} onAdded={onRemoved} />
+        <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} onIgnored={onRemoved} />
       </td>
     </tr>
   )
@@ -164,14 +164,13 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
   const [rssPreviewProfileId, setRssPreviewProfileId] = useState<FeedType | 'all' | null>(null)
   const [imdbMatchTarget, setImdbMatchTarget] = useState<ImdbCandidateTarget | null>(null)
   const [detailsSection, setDetailsSection] = useState<'details' | 'torrents'>('details')
-  const { revision: ignoredMoviesRevision } = useIgnoredMovies()
   const awardsRequestKey = movieAwardsRequestKey(result?.items.map((title) => title.imdbId) ?? [])
   const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
   const activeFilterCount = Object.entries(draftFilters).filter(([key, value]) => key !== 'search' && value !== '').length
 
-  useEffect(() => {
-    setPage(1)
-  }, [ignoredMoviesRevision])
+  function removeCatalogTitle(titleId: number) {
+    setResult((current) => removePageItems(current, (title) => title.id === titleId))
+  }
 
   function openTitle(titleId: number, section: 'details' | 'torrents') {
     setDeleteNotice(null)
@@ -190,7 +189,7 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
       })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
-  }, [page, appliedFilters, category, attempt, ignoredMoviesRevision])
+  }, [page, appliedFilters, category, attempt])
 
   useEffect(() => {
     if (draftFilters.search === appliedFilters.search) return
@@ -364,7 +363,7 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
           {viewMode === 'posters' ? <div className="poster-grid">
             {result.items.map((title) => <MoviePosterCard
               awards={combineMovieAwards([], pageAwards, title.imdbId)}
-                footer={<FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} placement="status" />}
+                footer={<FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} onAdded={() => removeCatalogTitle(title.id)} placement="status" />}
               genres={title.genres}
                 metadata={{ director: title.director, plot: title.plot }}
               imdbId={title.imdbId}
@@ -375,8 +374,8 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
               openLabel={`View ${title.title} details`}
               posterLabel={title.mediaType.slice(0, 3).toUpperCase()}
               posterActions={<>
-                <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} placement="poster" />
-                <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} placement="poster" />
+                <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} onAdded={() => removeCatalogTitle(title.id)} placement="poster" />
+                <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} onIgnored={() => removeCatalogTitle(title.id)} placement="poster" />
                 <button
                   aria-label={`View torrent sources for ${title.title} (${title.occurrenceCount})`}
                   className="tile-icon-action torrent-icon"
@@ -397,7 +396,7 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
           </div> : <div className="table-wrap">
             <table className="data-table">
               <thead><tr><th>TITLE</th><th>TYPE</th><th>IMDB</th><th>AWARDS</th><th>GENRES</th><th>LAST SEEN</th><th>ACTIONS</th></tr></thead>
-              <tbody>{result.items.map((title) => <CatalogRow awards={combineMovieAwards([], pageAwards, title.imdbId)} key={title.id} onSelect={(id) => openTitle(id, 'details')} title={title} />)}</tbody>
+              <tbody>{result.items.map((title) => <CatalogRow awards={combineMovieAwards([], pageAwards, title.imdbId)} key={title.id} onRemoved={() => removeCatalogTitle(title.id)} onSelect={(id) => openTitle(id, 'details')} title={title} />)}</tbody>
             </table>
           </div>}
           <Pagination onPageChange={setPage} page={result} />
@@ -406,12 +405,15 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
       {selectedTitleId !== null && <TitleDetailsDialog
         initialSection={detailsSection}
         onClose={() => setSelectedTitleId(null)}
+        onFavoriteAdded={() => removeCatalogTitle(selectedTitleId)}
+        onIgnored={() => removeCatalogTitle(selectedTitleId)}
         onFindImdbMatch={(id, title, rawTitle) => {
           setSelectedTitleId(null)
           setImdbMatchTarget({ source: 'catalog', id, title, rawTitle })
         }}
         onDeleted={canDeleteTitles ? (result, deleteImdbInfo, hadImdbInfo) => {
           setSelectedTitleId(null)
+          if (selectedTitleId !== null) removeCatalogTitle(selectedTitleId)
           setDeleteNotice(deleteImdbInfo
             ? result.imdbInfoDeleted
               ? 'Title and IMDb information deleted.'
@@ -421,7 +423,6 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
             : hadImdbInfo
               ? 'Title deleted. IMDb information was kept.'
               : 'Title deleted.')
-          setAttempt((current) => current + 1)
         } : undefined}
         titleId={selectedTitleId}
       />}

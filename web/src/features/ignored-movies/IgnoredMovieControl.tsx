@@ -1,13 +1,21 @@
 import { useIgnoredMovies } from './IgnoredMoviesContext'
 import { Eye, EyeOff, RotateCw } from 'lucide-react'
 
-export function IgnoredMovieControl({ imdbId, mediaType, placement = 'inline' }: { imdbId: string | null; mediaType: string | null; placement?: 'inline' | 'poster' }) {
+export function IgnoredMovieControl({ imdbId, mediaType, placement = 'inline', onIgnored }: { imdbId: string | null; mediaType: string | null; placement?: 'inline' | 'poster'; onIgnored?: () => void }) {
   const { available, movies, pending, loading, error, ignore, remove, retry } = useIgnoredMovies()
   if (!available || (mediaType !== 'movie' && mediaType !== 'series') || !imdbId) return null
+  const ignoredImdbId = imdbId
 
-  const isIgnored = Boolean(movies[imdbId])
+  const isIgnored = Boolean(movies[ignoredImdbId])
   const titleType = mediaType === 'series' ? 'series' : 'movie'
   const disabled = loading || pending !== null || Boolean(error)
+  function handleClick() {
+    if (isIgnored) {
+      void remove(ignoredImdbId)
+      return
+    }
+    void ignore(ignoredImdbId).then((ignored) => { if (ignored) onIgnored?.() })
+  }
   if (placement === 'poster') {
     const label = isIgnored ? 'Remove from ignore list' : `Ignore ${titleType}`
     return <>
@@ -16,7 +24,7 @@ export function IgnoredMovieControl({ imdbId, mediaType, placement = 'inline' }:
         className={`tile-icon-action ignored-icon${isIgnored ? ' is-active' : ''}`}
         data-tooltip={label}
         disabled={disabled}
-        onClick={() => void (isIgnored ? remove(imdbId) : ignore(imdbId))}
+        onClick={handleClick}
         type="button"
       >{isIgnored ? <Eye aria-hidden="true" size={16} /> : <EyeOff aria-hidden="true" size={16} />}</button>
       {error && <span className="tile-action-error" role="alert">{error}
@@ -26,7 +34,7 @@ export function IgnoredMovieControl({ imdbId, mediaType, placement = 'inline' }:
   }
 
   return <div className="favorite-controls ignored-movie-controls">
-    <button className="text-button" disabled={disabled} onClick={() => void (isIgnored ? remove(imdbId) : ignore(imdbId))} type="button">
+    <button className="text-button" disabled={disabled} onClick={handleClick} type="button">
       {isIgnored ? 'Remove from ignore list' : `Ignore ${titleType}`}
     </button>
     {error && <span role="alert">{error} <button className="text-button" onClick={retry} type="button">Retry</button></span>}

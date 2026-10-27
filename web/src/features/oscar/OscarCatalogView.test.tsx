@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { addFavorite, getFavorites, getOscarCategories, getOscarFilm, getOscarFilms, updateFavorite } from '../../api/client'
+import { addFavorite, getFavorites, getOscarCategories, getOscarFilm, getOscarFilms } from '../../api/client'
 import type { FavoriteTitle, OscarFilm, OscarNomination, PageResponse } from '../../api/types'
 import { FavoriteProvider } from '../favorites/FavoriteContext'
 import { OscarCatalogView } from './OscarCatalogView'
@@ -12,14 +12,12 @@ vi.mock('../../api/client', () => ({
   getMovieAwards: vi.fn().mockResolvedValue([]),
   getFavorites: vi.fn(),
   addFavorite: vi.fn(),
-  updateFavorite: vi.fn(),
 }))
 
 const filmRequest = vi.mocked(getOscarFilms)
 const detailsRequest = vi.mocked(getOscarFilm)
 const favoritesRequest = vi.mocked(getFavorites)
 const addRequest = vi.mocked(addFavorite)
-const updateRequest = vi.mocked(updateFavorite)
 
 function page(items: OscarFilm[], number = 1, totalPages = 1): PageResponse<OscarFilm> {
   return {
@@ -97,7 +95,6 @@ describe('OscarCatalogView', () => {
     detailsRequest.mockReset()
     favoritesRequest.mockReset()
     addRequest.mockReset()
-    updateRequest.mockReset()
   })
   afterEach(() => cleanup())
 
@@ -296,7 +293,7 @@ describe('OscarCatalogView', () => {
     await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 2, pageSize: 100 }))
   })
 
-  it('adds from Oscar, preserves a disabled marker, and keeps state after a failed save', async () => {
+  it('adds from Oscar and removes the film locally without reloading', async () => {
     const favorite: FavoriteTitle = {
       imdbId: film.imdbId!, torrentMovieId: null, title: film.title, year: film.filmYear, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: film.imdbRating, posterUrl: null, toWatch: true, toDownload: false,
@@ -307,20 +304,15 @@ describe('OscarCatalogView', () => {
     filmRequest.mockResolvedValue(page([film]))
     favoritesRequest.mockResolvedValue({ items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0 })
     addRequest.mockResolvedValue(favorite)
-    updateRequest.mockRejectedValue(new Error('Save failed'))
     render(<FavoriteProvider accountKey="test-account"><OscarCatalogView /></FavoriteProvider>)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add to favorites' }))
     await waitFor(() => expect(addRequest).toHaveBeenCalledWith(film.imdbId, 'oscar'))
-    const watch = await screen.findByRole('checkbox', { name: 'To watch' }) as HTMLInputElement
-    expect(watch.checked).toBe(true)
-    expect((screen.getByRole('checkbox', { name: 'To download' }) as HTMLInputElement).disabled).toBe(false)
-    fireEvent.click(watch)
-    expect(await screen.findByText('Save failed')).toBeTruthy()
-    expect(watch.checked).toBe(true)
+    expect(await screen.findByText('No Oscar films found')).toBeTruthy()
+    expect(filmRequest).toHaveBeenCalledTimes(1)
   })
 
-  it('records Oscar origin on an existing catalog favorite without clearing download', async () => {
+  it('records Oscar origin on an existing catalog favorite and removes the film locally', async () => {
     const existing: FavoriteTitle = {
       imdbId: film.imdbId!, torrentMovieId: null, title: film.title, year: film.filmYear, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: film.imdbRating, posterUrl: null, toWatch: false, toDownload: true,
@@ -335,7 +327,7 @@ describe('OscarCatalogView', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add from Oscar' }))
     await waitFor(() => expect(addRequest).toHaveBeenCalledWith(film.imdbId, 'oscar'))
-    expect((screen.getByRole('checkbox', { name: 'To download' }) as HTMLInputElement).checked).toBe(true)
-    expect((screen.getByRole('checkbox', { name: 'To watch' }) as HTMLInputElement).checked).toBe(true)
+    expect(await screen.findByText('No Oscar films found')).toBeTruthy()
+    expect(filmRequest).toHaveBeenCalledTimes(1)
   })
 })

@@ -291,6 +291,7 @@ describe('GoldenGlobeCatalogView', () => {
     fireEvent.click(addButton)
 
     await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt12345678', 'catalog'))
-    expect(await screen.findByRole('checkbox', { name: 'To download' })).toBeTruthy()
+    expect(await screen.findByText('No Golden Globes films found')).toBeTruthy()
+    expect(getGoldenGlobeFilms).toHaveBeenCalledTimes(1)
   })
 })

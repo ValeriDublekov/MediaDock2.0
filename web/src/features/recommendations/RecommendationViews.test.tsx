@@ -461,9 +461,10 @@ describe('RecommendationsView', () => {
 
     await waitFor(() => expect(markRecommendationWatched).toHaveBeenCalledWith('tt12345678', 9, 'movie'))
     expect(await screen.findByText('No recommendations available')).toBeTruthy()
+    expect(getRecommendations).toHaveBeenCalledTimes(1)
   })
 
-  it('adds only unwatched movie recommendations to the watch list and refreshes results', async () => {
+  it('adds only unwatched movie recommendations to the watch list and removes the item locally', async () => {
     const savedFavorite: FavoriteTitle = {
       imdbId: 'tt12345678', torrentMovieId: null, title: 'Quiet River', year: 2004, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: 8.1, posterUrl: null, toWatch: true, toDownload: false,
@@ -473,31 +474,35 @@ describe('RecommendationsView', () => {
     }
     vi.mocked(getFavorites).mockResolvedValue(favoritePage())
     vi.mocked(addFavorite).mockResolvedValue(savedFavorite)
-    vi.mocked(getRecommendations)
-      .mockResolvedValueOnce(recommendationPage([
-        recommendation(),
-        recommendation({ imdbId: 'tt87654321', title: 'Already Watched', isWatched: true }),
-      ]))
-      .mockResolvedValueOnce(recommendationPage([]))
+    vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([
+      recommendation(),
+      recommendation({ imdbId: 'tt87654321', title: 'Already Watched', isWatched: true }),
+      recommendation({ imdbId: 'tt87654322', title: 'Another Candidate' }),
+    ]))
 
     render(<FavoriteProvider accountKey="test-account"><RecommendationsView mediaType="movie" /></FavoriteProvider>)
 
     const addButton = await screen.findByRole('button', { name: 'Add Quiet River to watch list' }) as HTMLButtonElement
-    const watchedCard = screen.getByRole('link', { name: 'Already Watched' }).closest('article')
+    const watchedCard = (await screen.findAllByRole('link', { name: 'Already Watched' }))[0]?.closest('article')
     expect(watchedCard).not.toBeNull()
     expect(within(watchedCard as HTMLElement).queryByRole('button', { name: 'Add Already Watched to watch list' })).toBeNull()
     await waitFor(() => expect(addButton.disabled).toBe(false))
     fireEvent.click(addButton)
 
     await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt12345678', 'recommendation'))
-    expect(await screen.findByText('No recommendations available')).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Quiet River' })).toBeNull()
+    expect(await screen.findAllByRole('link', { name: 'Already Watched' })).not.toHaveLength(0)
+    expect(await screen.findAllByRole('link', { name: 'Another Candidate' })).not.toHaveLength(0)
+    expect(getRecommendations).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps the current page when refreshing after marking a recommendation watched', async () => {
+  it('keeps the current page and remaining candidates when marking watched', async () => {
     vi.mocked(getRecommendations)
       .mockResolvedValueOnce(recommendationPage([recommendation()], 1, 51, 3))
-      .mockResolvedValueOnce(recommendationPage([recommendation({ title: 'Second page title' })], 2, 51, 3))
-      .mockResolvedValueOnce(recommendationPage([recommendation({ title: 'Updated second page title' })], 2, 50, 2))
+      .mockResolvedValueOnce(recommendationPage([
+        recommendation({ title: 'Second page title' }),
+        recommendation({ imdbId: 'tt87654322', title: 'Another second page title' }),
+      ], 2, 51, 3))
 
     render(<RecommendationsView mediaType="movie" />)
 
@@ -509,15 +514,10 @@ describe('RecommendationsView', () => {
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Your rating (1-10)' }), { target: { value: '9' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save rating and mark watched' }))
 
-    expect(await screen.findByRole('link', { name: 'Updated second page title' })).toBeTruthy()
-    expect(getRecommendations).toHaveBeenLastCalledWith({
-      mediaType: 'movie',
-      page: 2,
-      pageSize: 100,
-      ratingWeight: 0.5,
-      votesWeight: 0.25,
-      awardsWeight: 0.25,
-    })
+    await waitFor(() => expect(markRecommendationWatched).toHaveBeenCalledWith('tt12345678', 9, 'movie'))
+    expect(screen.queryByRole('link', { name: 'Second page title' })).toBeNull()
+    expect(await screen.findAllByRole('link', { name: 'Another second page title' })).not.toHaveLength(0)
+    expect(getRecommendations).toHaveBeenCalledTimes(2)
   })
 
   it('shows an empty state when the server returns no candidates', async () => {

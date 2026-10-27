@@ -6,12 +6,11 @@ import { titlePageSize } from '../../shared/titlePagination'
 interface IgnoredMoviesState {
   available: boolean
   movies: Record<string, IgnoredMovie>
-  revision: number
   pending: string | null
   loading: boolean
   error: string | null
   retry: () => void
-  ignore: (imdbId: string) => Promise<void>
+  ignore: (imdbId: string) => Promise<boolean>
   remove: (imdbId: string) => Promise<void>
 }
 
@@ -19,18 +18,16 @@ const IgnoredMoviesContext = createContext<IgnoredMoviesState | null>(null)
 const emptyState: IgnoredMoviesState = {
   available: false,
   movies: {},
-  revision: 0,
   pending: null,
   loading: false,
   error: null,
   retry: () => {},
-  ignore: async () => {},
+  ignore: async () => false,
   remove: async () => {},
 }
 
 export function IgnoredMoviesProvider({ children, accountKey }: { children: ReactNode; accountKey: string | null }) {
   const [movies, setMovies] = useState<Record<string, IgnoredMovie>>({})
-  const [revision, setRevision] = useState(0)
   const [pending, setPending] = useState<string | null>(null)
   const [loading, setLoading] = useState(accountKey !== null)
   const [error, setError] = useState<string | null>(null)
@@ -65,16 +62,17 @@ export function IgnoredMoviesProvider({ children, accountKey }: { children: Reac
     return () => { active = false }
   }, [accountKey, attempt])
 
-  async function ignore(imdbId: string) {
-    if (accountKey === null) return
+  async function ignore(imdbId: string): Promise<boolean> {
+    if (accountKey === null) return false
     setPending(imdbId)
     setError(null)
     try {
       const movie = await addIgnoredMovie(imdbId)
       setMovies((current) => ({ ...current, [movie.imdbId]: movie }))
-      setRevision((current) => current + 1)
+      return true
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not add this title to the ignore list.')
+      return false
     } finally {
       setPending(null)
     }
@@ -91,7 +89,6 @@ export function IgnoredMoviesProvider({ children, accountKey }: { children: Reac
         delete next[imdbId]
         return next
       })
-      setRevision((current) => current + 1)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not remove this title from the ignore list.')
     } finally {
@@ -102,7 +99,6 @@ export function IgnoredMoviesProvider({ children, accountKey }: { children: Reac
   return <IgnoredMoviesContext.Provider value={{
     available: accountKey !== null,
     movies,
-    revision,
     pending,
     loading,
     error,

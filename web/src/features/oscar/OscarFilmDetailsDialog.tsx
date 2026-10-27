@@ -11,9 +11,11 @@ import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 interface OscarFilmDetailsDialogProps {
   filmId: number
   onClose: () => void
+  onFavoriteAdded?: () => void
+  onIgnored?: () => void
 }
 
-export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDialogProps) {
+export function OscarFilmDetailsDialog({ filmId, onClose, onFavoriteAdded, onIgnored }: OscarFilmDetailsDialogProps) {
   const [film, setFilm] = useState<OscarFilm | null>(null)
   const [awards, setAwards] = useState<MovieAwardRecognition[]>([])
   const [loading, setLoading] = useState(true)
@@ -84,8 +86,8 @@ export function OscarFilmDetailsDialog({ filmId, onClose }: OscarFilmDetailsDial
                 <div><dt>Box office</dt><dd>{film.boxOffice ?? 'Not listed'}</dd></div>
                 {film.lastEnrichmentError && <div><dt>Last error</dt><dd>{film.lastEnrichmentError}</dd></div>}
               </dl>
-              <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} />
-              <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} />
+              <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} onAdded={onFavoriteAdded} />
+              <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} onIgnored={onIgnored} />
 
               <MovieAwardsList awards={awards} />
             </>

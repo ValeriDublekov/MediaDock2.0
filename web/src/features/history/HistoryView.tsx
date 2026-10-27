@@ -88,7 +88,6 @@ export function HistoryView({ scanRunId = null, onClearScanRun, showCleanupContr
     try {
       const result = await deleteOldOperationalHistory(days)
       setRetentionMessage(`Deleted ${result.deletedScanRuns} scan runs and ${result.deletedParseLogs} parse logs older than ${days} days.`)
-      setPage(1)
       setAttempt((current) => current + 1)
     } catch (requestError: unknown) {
       setRetentionError(requestError instanceof Error ? requestError.message : 'Could not delete old operation history.')
