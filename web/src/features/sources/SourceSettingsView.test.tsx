@@ -16,12 +16,14 @@ import {
   getSources,
   getVersion,
   importPersonalRatings,
+  removePersonalRating,
   removeSourceUrl,
   replaceSourceUrl,
   updateProviderSettings,
   updateSettings,
 } from '../../api/client'
 import type { BackgroundJob, OmdbDailyUsage, PersonalRating, ProviderSettings, Settings, SourceProfile, SystemVersion } from '../../api/types'
+import { titlePageSize } from '../../shared/titlePagination'
 import { OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './ConfigurationSettingsViews'
 import { SourceSettingsView } from './SourceSettingsView'
 
@@ -41,6 +43,7 @@ vi.mock('../../api/client', () => ({
   getSources: vi.fn(),
   getVersion: vi.fn(),
   importPersonalRatings: vi.fn(),
+  removePersonalRating: vi.fn(),
   removeSourceUrl: vi.fn(),
   replaceSourceUrl: vi.fn(),
   updateProviderSettings: vi.fn(),
@@ -59,16 +62,16 @@ const systemVersion: SystemVersion = {
   commitDateUtc: '2026-10-01T12:30:00+00:00',
 }
 
-function personalRating(imdbId: string, title: string, rating = 8, metadataStatus = 'enriched'): PersonalRating {
+function personalRating(imdbId: string, title: string, rating = 8, metadataStatus = 'enriched', isManuallyAdded = false): PersonalRating {
   return {
-    imdbId, title, rating, isManuallyAdded: false, year: 2024, mediaType: 'movie', imdbRating: 7.5, imdbVotes: 1000,
+    imdbId, title, rating, isManuallyAdded, year: 2024, mediaType: 'movie', imdbRating: 7.5, imdbVotes: 1000,
     metascore: null, genres: [], countries: [], director: null, plot: null, posterUrl: null,
     runtime: null, awards: null, boxOffice: null, metadataStatus,
   }
 }
 
 function personalRatingsPage(items: PersonalRating[], page = 1, totalPages = 1) {
-  return { items, page, pageSize: 100, totalCount: totalPages * 100, totalPages }
+  return { items, page, pageSize: titlePageSize, totalCount: totalPages * titlePageSize, totalPages }
 }
 
 const personalRatingsJob: BackgroundJob = {
@@ -98,7 +101,7 @@ describe('SourceSettingsView', () => {
     vi.mocked(getBackgroundJobEvents).mockReset().mockResolvedValue({ items: [], nextAfterId: 0 })
     vi.mocked(getOmdbDailyUsage).mockReset().mockResolvedValue([])
     vi.mocked(getPersonalRatings).mockReset().mockResolvedValue({
-      items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0,
+      items: [], page: 1, pageSize: titlePageSize, totalCount: 0, totalPages: 0,
     })
     vi.mocked(getPersonalRatingsEnrichmentJob).mockReset().mockResolvedValue(personalRatingsJob)
     vi.mocked(enqueuePersonalRatingsEnrichment).mockReset().mockResolvedValue(undefined)
@@ -118,6 +121,7 @@ describe('SourceSettingsView', () => {
     ] satisfies SourceProfile[])
     vi.mocked(getVersion).mockReset().mockResolvedValue(systemVersion)
     vi.mocked(importPersonalRatings).mockReset()
+    vi.mocked(removePersonalRating).mockReset()
     vi.mocked(updateProviderSettings).mockReset().mockResolvedValue(providerSettings)
     vi.mocked(updateSettings).mockReset()
     vi.mocked(removeSourceUrl).mockReset()
@@ -209,17 +213,43 @@ describe('SourceSettingsView', () => {
     render(<PersonalRatingsView />)
 
     expect(await screen.findByRole('link', { name: 'Rating page 1' })).toBeTruthy()
-    expect(getPersonalRatings).toHaveBeenLastCalledWith({ page: 1, pageSize: 100, sort: 'desc' })
+    expect(vi.mocked(getPersonalRatings).mock.calls.at(-1)?.[0]).toEqual({ page: 1, pageSize: titlePageSize, sort: 'desc' })
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
     expect(await screen.findByRole('link', { name: 'Rating page 2' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Lowest first' }))
     expect(await screen.findByRole('link', { name: 'Rating page 1' })).toBeTruthy()
-    expect(getPersonalRatings).toHaveBeenLastCalledWith({ page: 1, pageSize: 100, sort: 'asc' })
+    await waitFor(() => expect(getPersonalRatings).toHaveBeenLastCalledWith({ page: 1, pageSize: titlePageSize, sort: 'asc' }))
 
     const callsBeforeSelectedSort = vi.mocked(getPersonalRatings).mock.calls.length
     fireEvent.click(screen.getByRole('button', { name: 'Lowest first' }))
     expect(vi.mocked(getPersonalRatings).mock.calls).toHaveLength(callsBeforeSelectedSort)
     expect(screen.getByRole('button', { name: 'Lowest first' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('deletes manually added ratings and keeps imported ratings read-only', async () => {
+    const manualRating = personalRating('tt1234567', 'Manual title', 8, 'enriched', true)
+    const importedRating = personalRating('tt7654321', 'Imported title')
+    vi.mocked(getPersonalRatings)
+      .mockResolvedValueOnce(personalRatingsPage([manualRating, importedRating]))
+      .mockResolvedValueOnce(personalRatingsPage([importedRating]))
+    vi.mocked(removePersonalRating).mockResolvedValue(undefined)
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      render(<PersonalRatingsView />)
+
+      const deleteButton = await screen.findByRole('button', { name: 'Delete Manual title personal rating' })
+      expect(screen.queryByRole('button', { name: 'Delete Imported title personal rating' })).toBeNull()
+      fireEvent.click(deleteButton)
+
+      await waitFor(() => expect(removePersonalRating).toHaveBeenCalledWith('tt1234567'))
+      expect(await screen.findByRole('link', { name: 'Imported title' })).toBeTruthy()
+      expect(screen.queryByRole('link', { name: 'Manual title' })).toBeNull()
+      expect(getPersonalRatings).toHaveBeenCalledTimes(2)
+      expect(confirm).toHaveBeenCalledWith('Delete your manually added rating for Manual title? This cannot be undone.')
+    } finally {
+      confirm.mockRestore()
+    }
   })
 
   it('shows enrichment job status and refreshes ratings when the job completes', async () => {

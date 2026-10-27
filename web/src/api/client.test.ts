@@ -43,6 +43,7 @@ import {
   requestJson,
   requestRegistration,
   removeIgnoredMovie,
+  removePersonalRating,
   recalculateRecommendationVoteWeights,
   searchCatalogTitleImdbCandidates,
   searchParseLogImdbCandidates,
@@ -191,6 +192,15 @@ describe('typed API client', () => {
     expect(requestUrl.searchParams.get('page')).toBe('2')
     expect(requestUrl.searchParams.get('pageSize')).toBe('25')
     expect(requestUrl.searchParams.get('sort')).toBe('asc')
+  })
+
+  it('removes a personal rating by IMDb ID', async () => {
+    const stub = fetchStub(response(204, undefined))
+
+    await removePersonalRating('tt12345678', stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/personal-ratings/tt12345678')
+    expect(stub.calls[0]?.init?.method).toBe('DELETE')
   })
 
   it('loads and updates global recommendation settings', async () => {

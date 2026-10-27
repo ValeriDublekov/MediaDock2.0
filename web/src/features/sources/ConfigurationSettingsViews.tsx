@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { enqueuePersonalRatingsEnrichment, getOmdbDailyUsage, getPersonalRatings, getPersonalRatingsEnrichmentJob, getProviderSettings, getVersion, importPersonalRatings, testOmdbApi, updateProviderSettings } from '../../api/client'
+import { enqueuePersonalRatingsEnrichment, getOmdbDailyUsage, getPersonalRatings, getPersonalRatingsEnrichmentJob, getProviderSettings, getVersion, importPersonalRatings, removePersonalRating, testOmdbApi, updateProviderSettings } from '../../api/client'
 import type { BackgroundJob, OmdbDailyUsage, OmdbDiagnostic, PageResponse, PersonalRating, PersonalRatingsImportResult, PersonalRatingsSort, ProviderSettings, ProviderSettingsInput, SystemVersion } from '../../api/types'
 import { ErrorState, LoadingState } from '../../components/Feedback'
 import { EmptyState } from '../../components/Feedback'
@@ -42,6 +42,8 @@ export function PersonalRatingsView() {
   const [loadingRatings, setLoadingRatings] = useState(true)
   const [ratingsError, setRatingsError] = useState<string | null>(null)
   const [ratingsAttempt, setRatingsAttempt] = useState(0)
+  const [deletingRatingId, setDeletingRatingId] = useState<string | null>(null)
+  const [deleteRatingError, setDeleteRatingError] = useState<string | null>(null)
   const [enrichmentError, setEnrichmentError] = useState<string | null>(null)
   const [enrichmentJob, setEnrichmentJob] = useState<BackgroundJob | null>(null)
   const requestedEnrichment = useRef(new Set<string>())
@@ -135,6 +137,27 @@ export function PersonalRatingsView() {
     }
   }
 
+  async function deleteManualRating(rating: PersonalRating) {
+    if (!window.confirm(`Delete your manually added rating for ${rating.title}? This cannot be undone.`)) return
+
+    setDeletingRatingId(rating.imdbId)
+    setDeleteRatingError(null)
+    try {
+      await removePersonalRating(rating.imdbId)
+      setLoadingRatings(true)
+      setRatingsError(null)
+      if (page > 1 && ratings?.items.length === 1) {
+        setPage((current) => current - 1)
+      } else {
+        setRatingsAttempt((current) => current + 1)
+      }
+    } catch (requestError) {
+      setDeleteRatingError(requestError instanceof Error ? requestError.message : 'Could not delete the personal rating.')
+    } finally {
+      setDeletingRatingId(null)
+    }
+  }
+
   function changeRatingsSort(nextSort: PersonalRatingsSort) {
     if (sort === nextSort) return
     setSort(nextSort)
@@ -179,6 +202,7 @@ export function PersonalRatingsView() {
         {enrichmentJob.errorCode && <span className="form-error">{formatWords(enrichmentJob.errorCode)}</span>}
       </div>}
       {enrichmentError && <p className="form-error" role="alert">Metadata enrichment could not be queued: {enrichmentError}</p>}
+      {deleteRatingError && <p className="form-error" role="alert">{deleteRatingError}</p>}
       {loadingRatings && <LoadingState label="Loading personal IMDb ratings" />}
       {!loadingRatings && ratingsError && <ErrorState message={ratingsError} onRetry={() => {
         setRatingsError(null)
@@ -189,7 +213,7 @@ export function PersonalRatingsView() {
       {!loadingRatings && !ratingsError && ratings && ratings.items.length > 0 && <>
         <div className="table-wrap">
           <table className="data-table personal-ratings-table">
-            <thead><tr><th>TITLE</th><th>YOUR RATING</th><th>IMDb RATING</th><th>METADATA</th></tr></thead>
+            <thead><tr><th>TITLE</th><th>YOUR RATING</th><th>IMDb RATING</th><th>METADATA</th><th>ACTIONS</th></tr></thead>
             <tbody>{ratings.items.map((rating) => <tr key={rating.imdbId}>
               <td>
                 <a className="title-link" href={`https://www.imdb.com/title/${encodeURIComponent(rating.imdbId)}/`} rel="noreferrer" target="_blank">{rating.title}</a>
@@ -198,6 +222,13 @@ export function PersonalRatingsView() {
               <td><span className="rating-value">{rating.rating} / 10</span></td>
               <td>{rating.imdbRating === null ? 'Not rated' : rating.imdbRating.toFixed(1)}</td>
               <td><span className="type-label">{rating.metadataStatus.replaceAll('_', ' ')}</span></td>
+              <td>{rating.isManuallyAdded && <button
+                aria-label={`Delete ${rating.title} personal rating`}
+                className="button button-secondary"
+                disabled={deletingRatingId !== null}
+                onClick={() => void deleteManualRating(rating)}
+                type="button"
+              >{deletingRatingId === rating.imdbId ? 'Deleting...' : 'Delete'}</button>}</td>
             </tr>)}</tbody>
           </table>
         </div>

@@ -28,6 +28,85 @@ namespace MediaDock.IntegrationTests;
 public sealed class PersonalRatingsApiTests
 {
     [Fact]
+    public async Task DeleteRemovesOnlyManuallyAddedRatingsOwnedByTheActiveUser()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_personal_ratings_delete_api_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        long ownerId;
+        long otherOwnerId;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            var now = DateTimeOffset.UtcNow;
+
+            User CreateUser(string email, string subject)
+            {
+                var user = new User
+                {
+                    NormalizedEmail = email,
+                    GivenName = "Test",
+                    FamilyName = "User",
+                    Status = "active",
+                    Role = "user",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+                user.ExternalIdentities.Add(new ExternalIdentity
+                {
+                    User = user,
+                    Issuer = GoogleSignInSettings.GoogleIssuer,
+                    Subject = subject,
+                    CreatedAt = now
+                });
+                return user;
+            }
+
+            var owner = CreateUser("ratings-delete-owner@example.com", "ratings-delete-owner");
+            var otherOwner = CreateUser("ratings-delete-other@example.com", "ratings-delete-other");
+            db.Users.AddRange(owner, otherOwner);
+            await db.SaveChangesAsync();
+            ownerId = owner.Id;
+            otherOwnerId = otherOwner.Id;
+            db.ImdbTitles.AddRange(
+                new ImdbTitle { ImdbId = "tt1234567", MetadataStatus = "pending", UpdatedAt = now },
+                new ImdbTitle { ImdbId = "tt1234568", MetadataStatus = "pending", UpdatedAt = now },
+                new ImdbTitle { ImdbId = "tt1234569", MetadataStatus = "pending", UpdatedAt = now });
+            db.PersonalRatings.AddRange(
+                new PersonalRating { UserId = ownerId, ImdbId = "tt1234567", Rating = 8, IsManuallyAdded = true, UpdatedAt = now },
+                new PersonalRating { UserId = ownerId, ImdbId = "tt1234568", Rating = 7, UpdatedAt = now },
+                new PersonalRating { UserId = otherOwnerId, ImdbId = "tt1234569", Rating = 6, IsManuallyAdded = true, UpdatedAt = now });
+            await db.SaveChangesAsync();
+        }
+
+        using var anonymousFactory = new ApiFactory(connectionString);
+        using var anonymousClient = anonymousFactory.CreateClient();
+        using var anonymousResponse = await anonymousClient.DeleteAsync("/api/personal-ratings/tt1234567");
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
+
+        using var ownerFactory = new ApiFactory(
+            connectionString, CreatePrincipal("ratings-delete-owner", "ratings-delete-owner@example.com"));
+        using var ownerClient = ownerFactory.CreateClient();
+        using var importedDeleteResponse = await ownerClient.DeleteAsync("/api/personal-ratings/tt1234568");
+        Assert.Equal(HttpStatusCode.NotFound, importedDeleteResponse.StatusCode);
+        using var otherOwnerDeleteResponse = await ownerClient.DeleteAsync("/api/personal-ratings/tt1234569");
+        Assert.Equal(HttpStatusCode.NotFound, otherOwnerDeleteResponse.StatusCode);
+        using var manualDeleteResponse = await ownerClient.DeleteAsync("/api/personal-ratings/tt1234567");
+        Assert.Equal(HttpStatusCode.NoContent, manualDeleteResponse.StatusCode);
+
+        await using var verifyDb = new MediaDockDbContext(options);
+        var remainingRatings = await verifyDb.PersonalRatings.AsNoTracking().ToListAsync();
+        Assert.Equal(2, remainingRatings.Count);
+        Assert.Contains(remainingRatings, rating =>
+            rating.ImdbId == "tt1234568" && rating.UserId == ownerId && !rating.IsManuallyAdded);
+        Assert.Contains(remainingRatings, rating =>
+            rating.ImdbId == "tt1234569" && rating.UserId == otherOwnerId && rating.IsManuallyAdded);
+    }
+
+    [Fact]
     public async Task ListIsPagedSortedAndScopedToTheActiveUserInOpenMode()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_personal_ratings_list_api_test").Build();

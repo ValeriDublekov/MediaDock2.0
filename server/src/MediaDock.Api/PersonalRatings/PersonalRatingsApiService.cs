@@ -53,6 +53,16 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
         return new PageResponse<PersonalRatingResponse>(items, page, pageSize, totalCount, totalPages);
     }
 
+    public async Task<bool> DeleteManuallyAddedAsync(
+        long userId,
+        string imdbId,
+        CancellationToken cancellationToken) =>
+        await dbContext.PersonalRatings
+            .Where(rating => rating.UserId == userId
+                && rating.ImdbId == imdbId
+                && rating.IsManuallyAdded)
+            .ExecuteDeleteAsync(cancellationToken) > 0;
+
     public async Task<PersonalRatingsImportResponse> ImportAsync(
         long userId,
         PersonalRatingsImportForm form,

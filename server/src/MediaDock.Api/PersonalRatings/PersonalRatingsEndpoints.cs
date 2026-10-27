@@ -32,6 +32,29 @@ internal static class PersonalRatingsEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
+        app.MapDelete("/api/personal-ratings/{imdbId}", async Task<Results<NoContent, NotFound>> (
+            string imdbId,
+            ClaimsPrincipal principal,
+            CurrentUserContext currentUserContext,
+            PersonalRatingsApiService service,
+            CancellationToken cancellationToken) =>
+        {
+            var currentUser = await currentUserContext.ResolveAsync(principal, cancellationToken)
+                ?? throw new ApiForbiddenException("An active linked user is required.");
+            if (!await service.DeleteManuallyAddedAsync(currentUser.Id, imdbId, cancellationToken))
+            {
+                return TypedResults.NotFound();
+            }
+
+            return TypedResults.NoContent();
+        })
+            .WithName("DeletePersonalRating")
+            .WithSummary("Remove a personal IMDb rating added by the current user.")
+            .RequireAuthorization(AccessPolicies.OwnerScopedPersonalRatings)
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound);
+
         app.MapGet("/api/personal-ratings/enrichment/{jobId:long}", async Task<Ok<BackgroundJobResponse>> (
             long jobId,
             ClaimsPrincipal principal,

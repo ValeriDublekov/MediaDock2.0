@@ -200,6 +200,10 @@ export function getPersonalRatings(
   return requestJson<PageResponse<PersonalRating>>(withQuery('/personal-ratings', query), {}, fetcher)
 }
 
+export function removePersonalRating(imdbId: string, fetcher?: typeof fetch) {
+  return requestJson<void>(`/personal-ratings/${encodeURIComponent(imdbId)}`, { method: 'DELETE' }, fetcher)
+}
+
 export function addFavorite(imdbId: string, from: 'oscar' | 'catalog' | 'recommendation', fetcher?: typeof fetch) {
   return requestJson<FavoriteTitle>('/favorites', { method: 'POST', body: JSON.stringify({ imdbId, from }) }, fetcher)
 }
