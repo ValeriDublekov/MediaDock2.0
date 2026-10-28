@@ -264,7 +264,7 @@ public sealed class CatalogEndpointsApiTests
             Assert.True(feed.FetchDurationMs >= 0);
             Assert.True(feed.ParseDurationMs >= 0);
         });
-        Assert.Equal(2, transport.MaxConcurrentRequests);
+        Assert.Equal(1, transport.MaxConcurrentRequests);
         var initialRequestedUrls = transport.RequestedUrls;
         Assert.Equal(
             new[] { "https://feed.rutracker.cc/movies-secondary.atom", "https://feed.rutracker.cc/movies.atom" },

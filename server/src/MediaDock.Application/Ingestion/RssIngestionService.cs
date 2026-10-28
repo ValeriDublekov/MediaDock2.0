@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Text;
 using MediaDock.Application.Metadata;
 
 namespace MediaDock.Application.Ingestion;
@@ -39,6 +41,7 @@ public sealed class RssIngestionService
         var startedAt = _timeProvider.GetUtcNow();
         var runId = await _repository.StartRunAsync(trigger, startedAt, cancellationToken);
         var progress = new IngestionRunContext(runId);
+        var previewFeeds = new Dictionary<string, List<IngestionFeedSnapshot>>(StringComparer.Ordinal);
         await progress.ReportProgressAsync("started", reportProgress, cancellationToken);
 
         try
@@ -47,11 +50,20 @@ public sealed class RssIngestionService
             var settings = await _repository.GetMatchSettingsAsync(cancellationToken);
             foreach (var source in sources)
             {
-                await ProcessSourceAsync(source, settings, progress, reportProgress, cancellationToken);
+                await ProcessSourceAsync(source, settings, progress, previewFeeds, reportProgress, cancellationToken);
                 if (progress.OmdbBudgetExhausted)
                 {
                     break;
                 }
+            }
+
+            foreach (var (profileId, feeds) in previewFeeds)
+            {
+                await _repository.SavePreviewSnapshotAsync(
+                    profileId,
+                    _timeProvider.GetUtcNow(),
+                    feeds,
+                    cancellationToken);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -83,6 +95,7 @@ public sealed class RssIngestionService
         IngestionSource source,
         IngestionMatchSettings settings,
         IngestionRunContext progress,
+        Dictionary<string, List<IngestionFeedSnapshot>> previewFeeds,
         Func<IngestionProgressUpdate, CancellationToken, Task>? reportProgress,
         CancellationToken cancellationToken)
     {
@@ -90,8 +103,25 @@ public sealed class RssIngestionService
         await progress.ReportProgressAsync("source_started", reportProgress, cancellationToken);
         try
         {
+            var fetchStartedAt = Stopwatch.GetTimestamp();
             var body = await _feedTransport.FetchAsync(source.Url, cancellationToken);
+            var fetchDurationMs = Stopwatch.GetElapsedTime(fetchStartedAt).TotalMilliseconds;
+            var parseStartedAt = Stopwatch.GetTimestamp();
             var entries = RssFeedParser.Parse(body);
+            var parseDurationMs = Stopwatch.GetElapsedTime(parseStartedAt).TotalMilliseconds;
+            if (!previewFeeds.TryGetValue(source.FeedType, out var feeds))
+            {
+                feeds = [];
+                previewFeeds.Add(source.FeedType, feeds);
+            }
+
+            feeds.Add(new IngestionFeedSnapshot(
+                source.Id,
+                source.Url,
+                Encoding.UTF8.GetString(body),
+                fetchDurationMs,
+                parseDurationMs,
+                entries));
             progress.FeedsProcessed++;
             foreach (var entry in entries)
             {

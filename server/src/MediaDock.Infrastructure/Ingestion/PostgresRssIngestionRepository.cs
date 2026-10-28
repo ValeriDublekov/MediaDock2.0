@@ -6,11 +6,14 @@ using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using System.Text.Json;
 
 namespace MediaDock.Infrastructure.Ingestion;
 
 public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext) : IRssIngestionRepository
 {
+    private const int MaxCachedSnapshotsPerProfile = 5;
+
     public async Task<IReadOnlyList<IngestionSource>> GetEnabledSourcesAsync(
         CancellationToken cancellationToken = default)
     {
@@ -134,6 +137,32 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         dbContext.ScanRuns.Add(run);
         await dbContext.SaveChangesAsync(cancellationToken);
         return run.Id;
+    }
+
+    public async Task SavePreviewSnapshotAsync(
+        string profileId,
+        DateTimeOffset cachedAt,
+        IReadOnlyList<IngestionFeedSnapshot> feeds,
+        CancellationToken cancellationToken = default)
+    {
+        var utcTicks = cachedAt.UtcDateTime.Ticks;
+        var snapshot = new RssFeedPreviewSnapshot
+        {
+            ProfileId = profileId,
+            CachedAt = new DateTimeOffset(utcTicks - utcTicks % 10, TimeSpan.Zero),
+            FeedsJson = JsonSerializer.Serialize(feeds)
+        };
+        dbContext.RssFeedPreviewSnapshots.Add(snapshot);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var expiredSnapshots = await dbContext.RssFeedPreviewSnapshots
+            .Where(candidate => candidate.ProfileId == profileId && candidate.Id != snapshot.Id)
+            .OrderByDescending(candidate => candidate.CachedAt)
+            .ThenByDescending(candidate => candidate.Id)
+            .Skip(MaxCachedSnapshotsPerProfile - 1)
+            .ToListAsync(cancellationToken);
+        dbContext.RssFeedPreviewSnapshots.RemoveRange(expiredSnapshots);
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<IngestionUpsertResult> UpsertCatalogItemAsync(

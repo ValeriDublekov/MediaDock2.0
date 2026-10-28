@@ -41,6 +41,14 @@ public sealed record IngestionFeedItem(
     string? TorrentUrl,
     DateTimeOffset? PublishedAt);
 
+public sealed record IngestionFeedSnapshot(
+    long SourceId,
+    string SourceUrl,
+    string OriginalContent,
+    double FetchDurationMs,
+    double ParseDurationMs,
+    IReadOnlyList<IngestionFeedItem> Items);
+
 public sealed record IngestionRetryItem(
     IngestionSource Source,
     string SourceItemKey,
@@ -146,6 +154,12 @@ public interface IRssIngestionRepository
     Task<long> StartRunAsync(
         string trigger,
         DateTimeOffset startedAt,
+        CancellationToken cancellationToken = default);
+
+    Task SavePreviewSnapshotAsync(
+        string profileId,
+        DateTimeOffset cachedAt,
+        IReadOnlyList<IngestionFeedSnapshot> feeds,
         CancellationToken cancellationToken = default);
 
     Task<IngestionUpsertResult> UpsertCatalogItemAsync(

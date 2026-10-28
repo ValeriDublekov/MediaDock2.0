@@ -185,6 +185,46 @@ describe('CatalogView', () => {
     expect(await screen.findByText((content) => content.startsWith('Cached '))).toBeTruthy()
   })
 
+  it('loads and refreshes all RSS profiles sequentially', async () => {
+    catalogRequest.mockResolvedValue(page([]))
+    let activeReads = 0
+    let maxConcurrentReads = 0
+    let activeRefreshes = 0
+    let maxConcurrentRefreshes = 0
+    vi.mocked(getRssFeedPreview).mockImplementation(async (profileId) => {
+      activeReads++
+      maxConcurrentReads = Math.max(maxConcurrentReads, activeReads)
+      try {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+        return { profileId, profileName: profileId, cachedAt: null, feeds: [] }
+      } finally {
+        activeReads--
+      }
+    })
+    vi.mocked(refreshRssFeedPreview).mockImplementation(async (profileId) => {
+      activeRefreshes++
+      maxConcurrentRefreshes = Math.max(maxConcurrentRefreshes, activeRefreshes)
+      try {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+        return { profileId, profileName: profileId, cachedAt: '2026-10-27T09:00:00Z', feeds: [] }
+      } finally {
+        activeRefreshes--
+      }
+    })
+    render(<CatalogView />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'All' }))
+    fireEvent.click(screen.getByRole('button', { name: 'RSS contents' }))
+    await waitFor(() => expect(getRssFeedPreview).toHaveBeenCalledTimes(3))
+    expect(await screen.findAllByText('No cached RSS data yet.')).not.toHaveLength(0)
+    expect(maxConcurrentReads).toBe(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refetch RSS feeds' }))
+    await waitFor(() => expect(refreshRssFeedPreview).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Refetch RSS feeds' }).hasAttribute('disabled')).toBe(false))
+    expect(maxConcurrentRefreshes).toBe(1)
+  })
+
   it('shows parse log by default and lets admins switch to scan runs from the catalog', async () => {
     catalogRequest.mockResolvedValue(page([]))
     vi.mocked(getParseLogs).mockResolvedValue({ items: [], page: 1, pageSize: 20, totalCount: 0, totalPages: 0 })

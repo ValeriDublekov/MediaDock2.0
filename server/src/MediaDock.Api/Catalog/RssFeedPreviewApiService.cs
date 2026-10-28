@@ -40,7 +40,6 @@ internal sealed class RssFeedPreviewApiService(
     IRssFeedTransport feedTransport,
     TimeProvider timeProvider) : IRssFeedPreviewApiService
 {
-    private const int MaxConcurrentFeedRequests = 4;
     private const int MaxCachedSnapshotsPerProfile = 5;
 
     public async Task<RssFeedPreviewResponse> GetPreviewAsync(
@@ -115,37 +114,31 @@ internal sealed class RssFeedPreviewApiService(
         CancellationToken cancellationToken)
     {
         var feeds = new RssFeedPreviewSourceResponse[sources.Count];
-        await Parallel.ForEachAsync(
-            Enumerable.Range(0, sources.Count),
-            new ParallelOptions
-            {
-                CancellationToken = cancellationToken,
-                MaxDegreeOfParallelism = MaxConcurrentFeedRequests
-            },
-            async (index, token) =>
-            {
-                var source = sources[index];
-                var fetchStartedAt = Stopwatch.GetTimestamp();
-                var body = await feedTransport.FetchAsync(source.Url, token);
-                var fetchDurationMs = Stopwatch.GetElapsedTime(fetchStartedAt).TotalMilliseconds;
-                var parseStartedAt = Stopwatch.GetTimestamp();
-                var parsedItems = RssFeedParser.Parse(body);
-                var parseDurationMs = Stopwatch.GetElapsedTime(parseStartedAt).TotalMilliseconds;
-                var items = parsedItems
-                    .Select(item => new RssFeedPreviewItemResponse(
-                        item.Title,
-                        item.FeedEntryId,
-                        item.TorrentUrl,
-                        item.PublishedAt))
-                    .ToArray();
-                feeds[index] = new RssFeedPreviewSourceResponse(
-                    source.Id,
-                    source.Url,
-                    Encoding.UTF8.GetString(body),
-                    fetchDurationMs,
-                    parseDurationMs,
-                    items);
-            });
+        for (var index = 0; index < sources.Count; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var source = sources[index];
+            var fetchStartedAt = Stopwatch.GetTimestamp();
+            var body = await feedTransport.FetchAsync(source.Url, cancellationToken);
+            var fetchDurationMs = Stopwatch.GetElapsedTime(fetchStartedAt).TotalMilliseconds;
+            var parseStartedAt = Stopwatch.GetTimestamp();
+            var parsedItems = RssFeedParser.Parse(body);
+            var parseDurationMs = Stopwatch.GetElapsedTime(parseStartedAt).TotalMilliseconds;
+            var items = parsedItems
+                .Select(item => new RssFeedPreviewItemResponse(
+                    item.Title,
+                    item.FeedEntryId,
+                    item.TorrentUrl,
+                    item.PublishedAt))
+                .ToArray();
+            feeds[index] = new RssFeedPreviewSourceResponse(
+                source.Id,
+                source.Url,
+                Encoding.UTF8.GetString(body),
+                fetchDurationMs,
+                parseDurationMs,
+                items);
+        }
 
         return feeds;
     }

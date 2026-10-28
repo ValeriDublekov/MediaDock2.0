@@ -30,6 +30,37 @@ public sealed class RssFeedTransportTests
     }
 
     [Fact]
+    public async Task SerializesConcurrentFetchCalls()
+    {
+        var activeRequests = 0;
+        var maxConcurrentRequests = 0;
+        var sync = new object();
+        using var client = CreateClient(new FakeHttpHandler(async (_, cancellationToken) =>
+        {
+            var active = Interlocked.Increment(ref activeRequests);
+            lock (sync)
+            {
+                maxConcurrentRequests = Math.Max(maxConcurrentRequests, active);
+            }
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(20), cancellationToken);
+                return FeedResponse("<rss><channel /></rss>", "application/rss+xml");
+            }
+            finally
+            {
+                Interlocked.Decrement(ref activeRequests);
+            }
+        }));
+        var transport = new RssFeedTransport(client, new FakeDnsResolver());
+
+        await Task.WhenAll(Enumerable.Range(0, 3).Select(_ => transport.FetchAsync(FeedUrl)));
+
+        Assert.Equal(1, maxConcurrentRequests);
+    }
+
+    [Fact]
     public async Task RejectsInvalidSchemeHostAndCredentialsBeforeHttp()
     {
         var handler = new FakeHttpHandler((_, _) =>
@@ -203,7 +234,11 @@ public sealed class RssFeedTransportTests
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
-            Requests.Add(request.RequestUri!);
+            lock (Requests)
+            {
+                Requests.Add(request.RequestUri!);
+            }
+
             return send(request, cancellationToken);
         }
     }

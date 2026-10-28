@@ -30,6 +30,7 @@ public sealed class RssFeedTransport
     private readonly int _maxEntries;
     private readonly int _maxRedirects;
     private readonly int _chunkSize;
+    private readonly SemaphoreSlim _requestGate = new(1, 1);
 
     public RssFeedTransport(
         HttpClient httpClient,
@@ -63,11 +64,13 @@ public sealed class RssFeedTransport
     public async Task<byte[]> FetchAsync(string url, CancellationToken cancellationToken = default)
     {
         var currentUri = ValidateUrl(url);
-        using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutSource.CancelAfter(_requestTimeout);
+        await _requestGate.WaitAsync(cancellationToken);
 
         try
         {
+            using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutSource.CancelAfter(_requestTimeout);
+
             for (var redirectCount = 0; redirectCount <= _maxRedirects; redirectCount++)
             {
                 await RssFeedAddressPolicy.ResolvePublicAddressesAsync(
@@ -117,6 +120,8 @@ public sealed class RssFeedTransport
                 RssFeedXmlValidator.Validate(body, _maxEntries);
                 return body;
             }
+
+            throw new RssFeedResponseException("feed redirect limit exceeded");
         }
         catch (OperationCanceledException exception) when (!cancellationToken.IsCancellationRequested)
         {
@@ -126,8 +131,10 @@ public sealed class RssFeedTransport
         {
             throw new RssFeedResponseException("feed request failed", exception);
         }
-
-        throw new RssFeedResponseException("feed redirect limit exceeded");
+        finally
+        {
+            _requestGate.Release();
+        }
     }
 
     private async Task<byte[]> ReadBoundedBodyAsync(HttpContent content, CancellationToken cancellationToken)

@@ -41,12 +41,19 @@ export function RssFeedPreviewDialog({ profileId, onClose }: RssFeedPreviewDialo
     setError(null)
     setRefreshError(null)
     const profileIds = profileId === 'all' ? allFeedProfiles : [profileId]
-    Promise.all(profileIds.map((id) => getRssFeedPreview(id)))
-      .then((response) => { if (current) setPreviews(response) })
-      .catch((requestError: unknown) => {
+    void (async () => {
+      try {
+        const response: RssFeedPreview[] = []
+        for (const id of profileIds) {
+          response.push(await getRssFeedPreview(id))
+        }
+        if (current) setPreviews(response)
+      } catch (requestError: unknown) {
         if (current) setError(requestError instanceof Error ? requestError.message : 'The RSS preview request failed.')
-      })
-      .finally(() => { if (current) setLoading(false) })
+      } finally {
+        if (current) setLoading(false)
+      }
+    })()
     return () => { current = false }
   }, [profileId, attempt])
 
@@ -55,7 +62,11 @@ export function RssFeedPreviewDialog({ profileId, onClose }: RssFeedPreviewDialo
     setRefreshing(true)
     setRefreshError(null)
     try {
-      setPreviews(await Promise.all(profileIds.map((id) => refreshRssFeedPreview(id))))
+      const response: RssFeedPreview[] = []
+      for (const id of profileIds) {
+        response.push(await refreshRssFeedPreview(id))
+      }
+      setPreviews(response)
     } catch (requestError) {
       setRefreshError(requestError instanceof Error ? requestError.message : 'The RSS refresh request failed.')
     } finally {

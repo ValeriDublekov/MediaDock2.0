@@ -2,10 +2,13 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using MediaDock.Api.Catalog;
 using MediaDock.Api.BackgroundJobs;
 using MediaDock.Api.Common;
 using MediaDock.Api.GoldenGlobes;
+using MediaDock.Application.Ingestion;
 using MediaDock.Infrastructure.Persistence;
+using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -97,6 +100,73 @@ public sealed class BackgroundJobExecutionTests
         var scanRun = await verificationDb.ScanRuns.SingleAsync(run => run.Id == completed.ScanRunId);
         Assert.Equal("succeeded", scanRun.Status);
         Assert.Equal("manual", scanRun.Trigger);
+    }
+
+    [Fact]
+    public async Task ApiHostedDispatcherCachesScheduledRssFeedForCatalogPreview()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_scheduled_rss_preview_test").Build();
+        await postgres.StartAsync();
+
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        var feedXml = "<rss version='2.0'><channel /></rss>";
+        long jobId;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            db.Sources.Add(new Source
+            {
+                StableKey = "scheduled-preview-movie",
+                Name = "Movies",
+                FeedType = "movie",
+                Url = "https://feed.rutracker.cc/movies.atom",
+                IsEnabled = true
+            });
+            await ConfigureSettingsAsync(db, DateTimeOffset.UtcNow);
+            var job = new BackgroundJob
+            {
+                JobType = "rss_scan",
+                Trigger = "schedule",
+                Status = "queued",
+                EnqueuedAt = DateTimeOffset.UtcNow,
+                ScheduledSlotUtc = DateTimeOffset.UtcNow,
+                CurrentStage = "queued"
+            };
+            db.BackgroundJobs.Add(job);
+            await db.SaveChangesAsync();
+            jobId = job.Id;
+        }
+
+        using var factory = new BackgroundJobsApiFactory(
+            connectionString,
+            rssFeedTransport: new StaticRssFeedTransport(Encoding.UTF8.GetBytes(feedXml)));
+        using var client = factory.CreateClient();
+        BackgroundJobResponse? completed = null;
+        for (var attempt = 0; attempt < 60; attempt++)
+        {
+            completed = await client.GetFromJsonAsync<BackgroundJobResponse>($"/api/background-jobs/{jobId}");
+            if (completed?.Status is "succeeded" or "partial" or "failed")
+            {
+                break;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+        }
+
+        Assert.NotNull(completed);
+        Assert.Equal("succeeded", completed.Status);
+        using var previewResponse = await client.GetAsync("/api/catalog/rss/movie");
+        Assert.Equal(HttpStatusCode.OK, previewResponse.StatusCode);
+        var preview = await previewResponse.Content.ReadFromJsonAsync<RssFeedPreviewResponse>();
+        Assert.NotNull(preview);
+        Assert.NotNull(preview.CachedAt);
+        var feed = Assert.Single(preview.Feeds);
+        Assert.Equal("https://feed.rutracker.cc/movies.atom", feed.SourceUrl);
+        Assert.Equal(feedXml, feed.OriginalContent);
+        Assert.Empty(feed.Items);
     }
 
     [Fact]
@@ -591,7 +661,8 @@ public sealed class BackgroundJobExecutionTests
 
     private sealed class BackgroundJobsApiFactory(
         string connectionString,
-        HttpMessageHandler? messageHandler = null) : WebApplicationFactory<Program>
+        HttpMessageHandler? messageHandler = null,
+        IRssFeedTransport? rssFeedTransport = null) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -602,15 +673,25 @@ public sealed class BackgroundJobExecutionTests
                 }));
             builder.ConfigureTestServices(services =>
             {
-                if (messageHandler is null)
+                if (messageHandler is not null)
                 {
-                    return;
+                    services.RemoveAll<HttpClient>();
+                    services.AddSingleton(new HttpClient(messageHandler) { Timeout = Timeout.InfiniteTimeSpan });
                 }
 
-                services.RemoveAll<HttpClient>();
-                services.AddSingleton(new HttpClient(messageHandler) { Timeout = Timeout.InfiniteTimeSpan });
+                if (rssFeedTransport is not null)
+                {
+                    services.RemoveAll<IRssFeedTransport>();
+                    services.AddScoped(_ => rssFeedTransport);
+                }
             });
         }
+    }
+
+    private sealed class StaticRssFeedTransport(byte[] body) : IRssFeedTransport
+    {
+        public Task<byte[]> FetchAsync(string url, CancellationToken cancellationToken = default) =>
+            Task.FromResult(body);
     }
 
     private sealed class OmdbSuccessHandler : HttpMessageHandler
