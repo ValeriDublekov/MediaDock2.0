@@ -1,7 +1,7 @@
 import { useFavorites } from './FavoriteContext'
 import { BookmarkCheck, BookmarkPlus, Star } from 'lucide-react'
 
-export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, occurrenceCount, placement = 'inline', allowAddFromHere = true, alwaysShowRemove = false, onAdded, onRemoved, onUpdated }: {
+export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, placement = 'inline', allowAddFromHere = true, alwaysShowRemove = false, onAdded, onRemoved, onUpdated }: {
   imdbId: string | null
   metadataStatus: string | null
   from: 'oscar' | 'catalog'
@@ -17,11 +17,10 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, occu
   const { available, titles, pending, loading, error, add, update, remove, retry } = useFavorites()
   if (!available || !imdbId) return null
   const favoriteImdbId = imdbId
-  const isMovie = mediaType === 'movie'
   const favorite = titles[favoriteImdbId]
-  if (!favorite && (!isMovie || metadataStatus !== 'enriched')) return null
+  if (!favorite && (mediaType !== 'movie' || metadataStatus !== 'enriched')) return null
   const disabled = pending === favoriteImdbId || loading || Boolean(error)
-  const canAddFromHere = isMovie && metadataStatus === 'enriched'
+  const canAddFromHere = mediaType === 'movie' && metadataStatus === 'enriched'
   const selectedFromHere = from === 'oscar' ? favorite?.addedFromOscar : favorite?.addedFromCatalog
   function addFromHere() {
     void add(favoriteImdbId, from).then((added) => { if (added) onAdded?.() })
@@ -51,12 +50,7 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, occu
     return <div className="favorite-card-statuses">
       {favorite && <>
         <label><input checked={favorite.toWatch} disabled={disabled} onChange={(event) => updateFavorite({ toWatch: event.target.checked })} type="checkbox" /> To watch</label>
-        {isMovie && <>
-          <label title={occurrenceCount === 0 && favorite.occurrenceCount === 0 ? 'No torrent source available' : undefined}>
-            <input checked={favorite.toDownload} disabled={disabled} onChange={(event) => updateFavorite({ toDownload: event.target.checked })} type="checkbox" /> To download
-          </label>
-          {occurrenceCount === 0 && favorite.occurrenceCount === 0 && <span className="subtle-line">No torrent source available</span>}
-        </>}
+        <label><input checked={favorite.toDownload} disabled={disabled} onChange={(event) => updateFavorite({ toDownload: event.target.checked })} type="checkbox" /> To download</label>
         {allowAddFromHere && !selectedFromHere && canAddFromHere && <button className="text-button" disabled={disabled} onClick={addFromHere} type="button">
           Add from {from === 'oscar' ? 'Oscar' : 'catalog'}
         </button>}
@@ -73,12 +67,7 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, occu
     {favorite && <button className="text-button" disabled={disabled} onClick={removeFromFavorites} type="button">Remove from favorites</button>}
     {favorite && <>
       <label><input checked={favorite.toWatch} disabled={disabled} onChange={(event) => updateFavorite({ toWatch: event.target.checked })} type="checkbox" /> To watch</label>
-      {isMovie && <>
-        <label title={occurrenceCount === 0 && favorite.occurrenceCount === 0 ? 'No torrent source available' : undefined}>
-          <input checked={favorite.toDownload} disabled={disabled} onChange={(event) => updateFavorite({ toDownload: event.target.checked })} type="checkbox" /> To download
-        </label>
-        {occurrenceCount === 0 && favorite.occurrenceCount === 0 && <span className="subtle-line">No torrent source available</span>}
-      </>}
+      <label><input checked={favorite.toDownload} disabled={disabled} onChange={(event) => updateFavorite({ toDownload: event.target.checked })} type="checkbox" /> To download</label>
     </>}
     {error && <span role="alert">{error} <button className="text-button" onClick={retry} type="button">Retry</button></span>}
   </div>

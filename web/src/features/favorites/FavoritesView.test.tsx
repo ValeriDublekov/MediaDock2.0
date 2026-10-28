@@ -39,9 +39,8 @@ it('filters one canonical movie independently by watch and download status', asy
   render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
 
   expect(await screen.findByRole('button', { name: 'Shared Movie' })).toBeTruthy()
-  expect(screen.getAllByText('Oscar / Catalog')).toHaveLength(1)
   fireEvent.click(screen.getByRole('button', { name: 'Table' }))
-  expect(screen.getByRole('columnheader', { name: 'ORIGIN' })).toBeTruthy()
+  expect(screen.queryByRole('columnheader', { name: 'ORIGIN' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
   fireEvent.click(screen.getByRole('button', { name: 'To watch' }))
   await waitFor(() => expect(getFavorites).toHaveBeenCalledWith({ status: 'to_watch', page: 1, pageSize: titlePageSize }))
@@ -117,7 +116,7 @@ it('shares state by IMDb ID, blocks ineligible adds, and allows download before 
   await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith('tt12345678', { toDownload: true }))
 })
 
-it('shows series recommendations in the shared favorites list with watch-only controls', async () => {
+it('treats series favorites like movie favorites and omits empty metadata', async () => {
   const series: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: null, title: 'Shared Series', year: 2025, mediaType: 'series', metadataStatus: 'enriched',
     imdbRating: 8.4, posterUrl: null, toWatch: true, toDownload: false,
@@ -126,15 +125,28 @@ it('shows series recommendations in the shared favorites list with watch-only co
     oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
   }
   vi.mocked(getFavorites).mockResolvedValue({ items: [series], page: 1, pageSize: 100, totalCount: 1, totalPages: 1 })
-  vi.mocked(updateFavorite).mockResolvedValue({ ...series, toWatch: false })
+  vi.mocked(updateFavorite).mockImplementation(async (_imdbId, input) => ({ ...series, ...input }))
   render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
 
   expect(await screen.findAllByText('Shared Series')).toHaveLength(2)
-  expect(screen.getByText('Series watch list')).toBeTruthy()
+  expect(screen.queryByText('Series watch list')).toBeNull()
+  expect(screen.queryByText('Recommendations')).toBeNull()
+  expect(screen.queryByText('0 nominations')).toBeNull()
+  expect(screen.queryByText('No torrent source available')).toBeNull()
+  const downloadToggle = screen.getByRole('checkbox', { name: 'To download' }) as HTMLInputElement
+  expect(downloadToggle.checked).toBe(false)
+  fireEvent.click(downloadToggle)
+  await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith('tt12345678', { toDownload: true }))
   const watchToggle = screen.getByRole('checkbox', { name: 'To watch' }) as HTMLInputElement
   expect(watchToggle.checked).toBe(true)
   fireEvent.click(watchToggle)
   await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith('tt12345678', { toWatch: false }))
+
+  fireEvent.click(screen.getByRole('button', { name: 'View Shared Series details' }))
+  expect(await screen.findByText('Download status')).toBeTruthy()
+  expect(screen.queryByText('Oscar nominations')).toBeNull()
+  expect(screen.queryByText('Oscar wins')).toBeNull()
+  expect(screen.queryByText('Torrent sources')).toBeNull()
 })
 
 it('does not offer adding another origin from the favorites view', async () => {
@@ -159,7 +171,7 @@ it('does not offer adding another origin from the favorites view', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Close favorite details' }))
 
   fireEvent.click(screen.getByRole('button', { name: 'Table' }))
-  expect(screen.getByRole('columnheader', { name: 'ORIGIN' })).toBeTruthy()
+  expect(screen.queryByRole('columnheader', { name: 'ORIGIN' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Add from catalog' })).toBeNull()
 })
 

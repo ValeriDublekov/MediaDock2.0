@@ -314,10 +314,22 @@ public sealed class GoogleAuthenticationApiTests
         Assert.True(seriesFavorite.ToWatch);
         Assert.False(seriesFavorite.ToDownload);
 
+        using var seriesDownloadUpdateResponse = await firstClient.PatchAsJsonAsync(
+            $"/api/favorites/{seriesImdbId}",
+            new { toDownload = true });
+        Assert.Equal(HttpStatusCode.OK, seriesDownloadUpdateResponse.StatusCode);
+        var seriesDownloadFavorite = await seriesDownloadUpdateResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.NotNull(seriesDownloadFavorite);
+        Assert.True(seriesDownloadFavorite.ToDownload);
+
         using var seriesWatchFilterResponse = await firstClient.GetAsync("/api/favorites?status=to_watch");
         var seriesWatchFilter = await seriesWatchFilterResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
         Assert.Equal(HttpStatusCode.OK, seriesWatchFilterResponse.StatusCode);
         Assert.Contains(seriesWatchFilter?.Items, favorite => favorite.ImdbId == seriesImdbId && favorite.MediaType == "series");
+        using var seriesDownloadFilterResponse = await firstClient.GetAsync("/api/favorites?status=to_download");
+        var seriesDownloadFilter = await seriesDownloadFilterResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
+        Assert.Equal(HttpStatusCode.OK, seriesDownloadFilterResponse.StatusCode);
+        Assert.Contains(seriesDownloadFilter?.Items, favorite => favorite.ImdbId == seriesImdbId && favorite.MediaType == "series");
         using var seriesDeleteResponse = await firstClient.DeleteAsync($"/api/favorites/{seriesImdbId}");
         Assert.Equal(HttpStatusCode.NoContent, seriesDeleteResponse.StatusCode);
 

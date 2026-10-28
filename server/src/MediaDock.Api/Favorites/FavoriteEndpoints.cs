@@ -21,7 +21,7 @@ internal static class FavoriteEndpoints
             var currentUser = await ResolveCurrentUserAsync(principal, currentUserContext, cancellationToken);
             return TypedResults.Ok(await service.GetAsync(currentUser.Id, query, cancellationToken));
         })
-            .WithName("GetFavorites").WithSummary("List favorite movies and their current sources.")
+            .WithName("GetFavorites").WithSummary("List favorite titles and their current sources.")
             .RequireAuthorization(AccessPolicies.OwnerScopedFavorites)
             .ProducesProblem(StatusCodes.Status400BadRequest).ProducesProblem(StatusCodes.Status403Forbidden);
 
@@ -35,7 +35,7 @@ internal static class FavoriteEndpoints
             var currentUser = await ResolveCurrentUserAsync(principal, currentUserContext, cancellationToken);
             return TypedResults.Ok(await service.AddAsync(currentUser.Id, request, cancellationToken));
         })
-            .WithName("AddFavorite").WithSummary("Add a movie from a verified catalog.")
+            .WithName("AddFavorite").WithSummary("Add an enriched title from a supported source.")
             .RequireAuthorization(AccessPolicies.OwnerScopedFavorites)
             .ProducesProblem(StatusCodes.Status400BadRequest).ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
@@ -51,7 +51,7 @@ internal static class FavoriteEndpoints
             var currentUser = await ResolveCurrentUserAsync(principal, currentUserContext, cancellationToken);
             return TypedResults.Ok(await service.UpdateAsync(currentUser.Id, imdbId, request, cancellationToken));
         })
-            .WithName("UpdateFavorite").WithSummary("Update favorite movie markers.")
+            .WithName("UpdateFavorite").WithSummary("Update favorite title markers.")
             .RequireAuthorization(AccessPolicies.OwnerScopedFavorites)
             .ProducesProblem(StatusCodes.Status400BadRequest).ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
@@ -66,7 +66,7 @@ internal static class FavoriteEndpoints
             var currentUser = await ResolveCurrentUserAsync(principal, currentUserContext, cancellationToken);
             await service.DeleteAsync(currentUser.Id, imdbId, cancellationToken);
             return TypedResults.NoContent();
-        }).WithName("DeleteFavorite").WithSummary("Remove a movie from favorites.")
+        }).WithName("DeleteFavorite").WithSummary("Remove a title from favorites.")
             .RequireAuthorization(AccessPolicies.OwnerScopedFavorites)
             .ProducesProblem(StatusCodes.Status403Forbidden);
 

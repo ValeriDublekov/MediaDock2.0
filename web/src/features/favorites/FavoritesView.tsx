@@ -93,18 +93,17 @@ export function FavoritesView() {
           title={item.title}
           year={item.year}
         >
-          <div className="tile-observations">
-            <span>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog', item.addedFromRecommendations && 'Recommendations'].filter(Boolean).join(' / ')}</span>
-            <span>{item.mediaType === 'movie' ? item.winCount > 0 ? `${item.winCount} Oscar ${item.winCount === 1 ? 'win' : 'wins'}` : `${item.nominationCount} nominations` : 'Series watch list'}</span>
-            <span>{item.occurrenceCount ? `${item.occurrenceCount} torrent ${item.occurrenceCount === 1 ? 'source' : 'sources'}` : 'No torrent source available'}</span>
-          </div>
+          {(item.winCount > 0 || item.nominationCount > 0 || item.occurrenceCount > 0) && <div className="tile-observations">
+            {item.winCount > 0 && <span>{item.winCount} Oscar {item.winCount === 1 ? 'win' : 'wins'}</span>}
+            {item.nominationCount > 0 && <span>{item.nominationCount} Oscar {item.nominationCount === 1 ? 'nomination' : 'nominations'}</span>}
+            {item.occurrenceCount > 0 && <span>{item.occurrenceCount} torrent {item.occurrenceCount === 1 ? 'source' : 'sources'}</span>}
+          </div>}
         </MoviePosterCard>)}
-      </div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>TITLE</th><th>ORIGIN</th><th>OSCAR</th><th>TORRENTS</th><th>STATUS</th></tr></thead>
+      </div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>TITLE</th><th>OSCAR</th><th>TORRENTS</th><th>STATUS</th></tr></thead>
         <tbody>{result.items.map((item) => <tr key={item.imdbId}>
           <td><button className="title-link" onClick={() => setSelected(item)} type="button">{item.title}</button><span className="subtle-line">{item.year ?? 'Year unknown'}</span></td>
-          <td>{[item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog', item.addedFromRecommendations && 'Recommendations'].filter(Boolean).join(' / ')}</td>
-          <td>{item.mediaType === 'movie' ? `${item.nominationCount} nominations, ${item.winCount} wins` : 'No Oscar records'}</td>
-          <td>{item.occurrenceCount ? `${item.occurrenceCount} sources` : 'No source available'}</td>
+          <td>{[item.nominationCount > 0 && `${item.nominationCount} nominations`, item.winCount > 0 && `${item.winCount} wins`].filter(Boolean).join(', ')}</td>
+          <td>{item.occurrenceCount > 0 ? `${item.occurrenceCount} sources` : null}</td>
           <td><FavoriteControls allowAddFromHere={false} from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={() => removeFavoriteTitle(item.imdbId)} onUpdated={(input) => updateFavoriteTitle(item.imdbId, input)} /></td>
         </tr>)}</tbody>
       </table></div>}
@@ -138,7 +137,6 @@ function FavoriteDetailsDialog({ item, onClose, onRemoved, onUpdated }: {
   onRemoved: () => void
   onUpdated: (input: { toWatch?: boolean; toDownload?: boolean }) => void
 }) {
-  const origin = [item.addedFromOscar && 'Oscar', item.addedFromCatalog && 'Catalog', item.addedFromRecommendations && 'Recommendations'].filter(Boolean).join(' / ')
   return <div className="detail-backdrop" onMouseDown={(event) => {
     if (event.target === event.currentTarget) onClose()
   }}>
@@ -154,12 +152,11 @@ function FavoriteDetailsDialog({ item, onClose, onRemoved, onUpdated }: {
       <div className="detail-body">
         <MovieDetailsIntro imdbId={item.imdbId} imdbRating={item.imdbRating} posterLabel={item.mediaType.slice(0, 3).toUpperCase()} posterUrl={item.posterUrl} title={item.title} />
         <dl className="detail-facts">
-          <div><dt>Saved from</dt><dd>{origin || 'Favorites'}</dd></div>
-          <div><dt>Oscar nominations</dt><dd>{item.nominationCount}</dd></div>
-          <div><dt>Oscar wins</dt><dd>{item.winCount}</dd></div>
-          <div><dt>Torrent sources</dt><dd>{item.occurrenceCount}</dd></div>
+          {item.nominationCount > 0 && <div><dt>Oscar nominations</dt><dd>{item.nominationCount}</dd></div>}
+          {item.winCount > 0 && <div><dt>Oscar wins</dt><dd>{item.winCount}</dd></div>}
+          {item.occurrenceCount > 0 && <div><dt>Torrent sources</dt><dd>{item.occurrenceCount}</dd></div>}
           <div><dt>Watch status</dt><dd>{item.toWatch ? 'To watch' : 'Not marked to watch'}</dd></div>
-          {item.mediaType === 'movie' && <div><dt>Download status</dt><dd>{item.toDownload ? 'To download' : 'Not marked to download'}</dd></div>}
+          <div><dt>Download status</dt><dd>{item.toDownload ? 'To download' : 'Not marked to download'}</dd></div>
         </dl>
         <FavoriteControls allowAddFromHere={false} from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={onRemoved} onUpdated={onUpdated} />
         <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} />

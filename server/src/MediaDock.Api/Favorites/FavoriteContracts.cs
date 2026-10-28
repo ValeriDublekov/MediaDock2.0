@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace MediaDock.Api.Favorites;
 
-/// <summary>Filters the shared favorite movie list.</summary>
+/// <summary>Filters the shared favorite title list.</summary>
 public sealed record FavoriteQuery
 {
     [RegularExpression("^(all|to_watch|to_download)$")]
@@ -15,7 +15,7 @@ public sealed record FavoriteQuery
     public int? PageSize { get; init; }
 }
 
-/// <summary>Adds an enriched movie from a supported source.</summary>
+/// <summary>Adds an enriched title from a supported source.</summary>
 public sealed record CreateFavoriteRequest
 {
     [Required, RegularExpression("^[Tt][Tt][0-9]{7,10}$")]
@@ -32,7 +32,7 @@ public sealed record UpdateFavoriteRequest
     public bool? ToDownload { get; init; }
 }
 
-/// <summary>A movie and its current favorite, Oscar and torrent summaries.</summary>
+/// <summary>A favorite title and its current Oscar and torrent summaries.</summary>
 public sealed record FavoriteMovieResponse(
     string ImdbId,
     long? TorrentMovieId,
