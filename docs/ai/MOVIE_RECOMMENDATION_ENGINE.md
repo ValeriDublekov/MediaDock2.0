@@ -75,6 +75,8 @@ Candidates must be enriched IMDb rows of the requested media type with a nonempt
 
 The recommendations view can mark an eligible, not-yet-rated result as watched only after the user supplies an integer rating from `1` to `10`. The API rechecks eligibility for the selected media type, saves the rating as an owner-scoped personal record with `is_manually_added = true`, and the title is excluded from that user's next recommendation read. If already-rated titles are included, the API marks them with `isWatched` and the view omits both the Ignore and Mark watched actions. New imported ratings use `false`, while import updates preserve an existing marker; the personal-ratings response exposes it for future filtering.
 
+Recommendation responses include canonical IMDb metadata such as genres, director, plot, countries, runtime, Metascore, provider awards, and box office, so the browse cards and detail view can present the same title information as the other catalogs. Linked Oscar and Golden Globes records are loaded by IMDb ID for the award summary and details.
+
 The API resolves the active linked user on the server and never accepts a client-supplied owner ID. Personal ratings and taste profiles are scoped to that user. In enforced mode, recommendation settings and vote recalculation remain administrator-only.
 
 ## Freshness and verification

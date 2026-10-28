@@ -7,11 +7,14 @@ import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { MoviePosterCard } from '../../components/MoviePresentation'
 import { Pagination } from '../../components/Pagination'
 import { Poster } from '../../components/Poster'
+import { MovieMetadataDetailsDialog } from '../../components/MovieMetadataDetailsDialog'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { YearRangeFilter } from '../../components/YearRangeFilter'
 import { formatWords } from '../../shared/format'
 import { titlePageSize } from '../../shared/titlePagination'
 import { removePageItems } from '../../shared/removePageItems'
+import { combineMovieAwards, movieAwardsRequestKey } from '../../shared/movieAwards'
+import { useMovieAwards } from '../../shared/useMovieAwards'
 import { RecommendationWatchlistControl } from '../favorites/FavoriteControls'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 
@@ -97,10 +100,13 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const [selectedRecommendation, setSelectedRecommendation] = useState<Recommendation | null>(null)
   const [watchDialogItem, setWatchDialogItem] = useState<Recommendation | null>(null)
   const [watchRating, setWatchRating] = useState('')
   const [savingWatched, setSavingWatched] = useState(false)
   const [watchError, setWatchError] = useState<string | null>(null)
+  const awardsRequestKey = movieAwardsRequestKey(result?.items.map((item) => item.imdbId) ?? [])
+  const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
   function removeRecommendation(imdbId: string) {
     setResult((current) => removePageItems(current, (item) => item.imdbId === imdbId))
   }
@@ -200,6 +206,7 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
   }
 
   function openWatchDialog(item: Recommendation) {
+    setSelectedRecommendation(null)
     setWatchDialogItem(item)
     setWatchRating('')
     setWatchError(null)
@@ -327,41 +334,26 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
     {!loading && error && <ErrorState message={error} onRetry={retry} />}
     {!loading && !error && result?.items.length === 0 && <EmptyState title="No recommendations available" message={`No eligible award-nominated ${titleTypes} are available for this account yet.`} />}
     {!loading && !error && result && result.items.length > 0 && <>
+      {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
       {viewMode === 'posters' ? <div className="poster-grid recommendation-poster-grid">
         {result.items.map((item) => <MoviePosterCard
-          awards={[]}
+          awards={combineMovieAwards([], pageAwards, item.imdbId)}
           genres={item.genres}
           imdbId={item.imdbId}
           imdbRating={item.imdbRating}
           key={item.imdbId}
+          metadata={{ director: item.director, plot: item.plot }}
           mediaType={item.mediaType}
+          onOpen={() => setSelectedRecommendation(item)}
+          openLabel={`View ${item.title} details`}
           posterActions={renderPosterActions(item)}
           posterLabel={item.mediaType.slice(0, 3).toUpperCase()}
           posterUrl={item.posterUrl}
-          showAwards={false}
           title={item.title}
-          titleHref={`https://www.imdb.com/title/${encodeURIComponent(item.imdbId)}/`}
           year={item.year}
           yearLabel={`${titleTypeHeading} year`}
         >
-          <div className="recommendation-card-scores">
-            <div className="recommendation-card-final-score"><span>Final score</span><strong>{scoreValue(item.finalScore)} / 10</strong></div>
-            <dl className="recommendation-card-breakdown">
-              <div><dt>Rating</dt><dd>{scoreValue(item.ratingComponent)}<span>× {coefficientLabel(item.ratingWeight)}</span></dd></div>
-              <div><dt>Popularity</dt><dd>{scoreValue(item.popularityComponent)}<span>× {coefficientLabel(item.votesWeight)}</span></dd></div>
-              <div><dt>Awards</dt><dd>{scoreValue(item.awardComponent)}<span>× {coefficientLabel(item.awardsWeight)}</span></dd></div>
-            </dl>
-          </div>
-          <details className="recommendation-award-details recommendation-card-awards">
-            <summary>{item.awardEvents.length} {item.awardEvents.length === 1 ? 'award event' : 'award events'}</summary>
-            {item.awardEvents.length === 0 ? <p>No award points were applied.</p> : <ul className="recommendation-award-events">
-              {item.awardEvents.map((event, index) => <li key={`${event.awardSource}/${event.categoryKey}/${event.ceremony ?? event.ceremonyYear ?? index}`}>
-                <strong>{event.categoryName}</strong>
-                <span>{sourceLabel(event.awardSource)} · {formatWords(event.outcome)}{eventOccasion(event) ? ` · ${eventOccasion(event)}` : ''}</span>
-                <span>{scoreValue(event.basePoints)} base × {scoreValue(event.tasteMultiplier)} taste = {scoreValue(event.adjustedPoints)}</span>
-              </li>)}
-            </ul>}
-          </details>
+          <div className="recommendation-card-score"><span>Recommendation score</span><strong>{scoreValue(item.finalScore)} / 10</strong></div>
         </MoviePosterCard>)}
       </div> : <div className="table-wrap">
         <table className="data-table recommendations-table">
@@ -444,5 +436,32 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
         </div>
       </section>
     </div>}
+    {selectedRecommendation && <MovieMetadataDetailsDialog
+      eyebrow="RECOMMENDATION"
+      onClose={() => setSelectedRecommendation(null)}
+      title={selectedRecommendation}
+    >
+      <RecommendationScoreDetails item={selectedRecommendation} />
+      {renderTableActions(selectedRecommendation)}
+    </MovieMetadataDetailsDialog>}
+  </section>
+}
+
+function RecommendationScoreDetails({ item }: { item: Recommendation }) {
+  return <section aria-label="Recommendation score details" className="recommendation-detail-score">
+    <h3>Recommendation score <strong>{scoreValue(item.finalScore)} / 10</strong></h3>
+    <dl className="recommendation-detail-breakdown">
+      <div><dt>IMDb rating</dt><dd>{scoreValue(item.ratingComponent)} × {coefficientLabel(item.ratingWeight)}</dd></div>
+      <div><dt>Popularity</dt><dd>{scoreValue(item.popularityComponent)} × {coefficientLabel(item.votesWeight)}</dd></div>
+      <div><dt>Award points</dt><dd>{scoreValue(item.awardComponent)} × {coefficientLabel(item.awardsWeight)}</dd></div>
+    </dl>
+    <h4>Award scoring events</h4>
+    {item.awardEvents.length === 0 ? <p>No award points were applied.</p> : <ul className="recommendation-award-events">
+      {item.awardEvents.map((event, index) => <li key={`${event.awardSource}/${event.categoryKey}/${event.ceremony ?? event.ceremonyYear ?? index}`}>
+        <strong>{event.categoryName}</strong>
+        <span>{sourceLabel(event.awardSource)} · {formatWords(event.outcome)}{eventOccasion(event) ? ` · ${eventOccasion(event)}` : ''}</span>
+        <span>{scoreValue(event.basePoints)} base × {scoreValue(event.tasteMultiplier)} taste = {scoreValue(event.adjustedPoints)}</span>
+      </li>)}
+    </ul>}
   </section>
 }

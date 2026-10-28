@@ -189,6 +189,17 @@ button:disabled { cursor: not-allowed; }
 .recommendation-card-scores { display: grid; width: 100%; gap: 7px; border-top: 1px solid #414844; padding-top: 8px; }
 .recommendation-card-final-score { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: #b9c2bc; font-size: 10px; }
 .recommendation-card-final-score strong { color: #f0bd62; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.recommendation-card-score { display: flex; width: 100%; align-items: baseline; justify-content: space-between; gap: 8px; border-top: 1px solid #414844; padding-top: 7px; color: #b9c2bc; font-size: 10px; }
+.recommendation-card-score strong { color: #f0bd62; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.recommendation-detail-score { border-top: 1px solid #d4ded5; padding-top: 14px; }
+.recommendation-detail-score h3 { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 12px; margin: 0 0 10px; color: #30473a; font-size: 15px; }
+.recommendation-detail-score h3 strong { color: #8a5428; font-variant-numeric: tabular-nums; }
+.recommendation-detail-score h4 { margin: 14px 0 5px; color: #30473a; font-size: 12px; }
+.recommendation-detail-score > p { color: #78847d; font-size: 12px; }
+.recommendation-detail-breakdown { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 8px; margin: 0; }
+.recommendation-detail-breakdown > div { min-width: 0; border-left: 2px solid #cbd6cd; padding-left: 8px; }
+.recommendation-detail-breakdown dt { color: #78847d; font-size: 11px; }
+.recommendation-detail-breakdown dd { margin: 3px 0 0; color: #263b31; font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 700; }
 .recommendation-card-breakdown { display: grid; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin: 0; }
 .recommendation-card-breakdown > div { min-width: 0; }
 .recommendation-card-breakdown dt { color: #aeb8b1; font-size: 9px; overflow-wrap: anywhere; }

@@ -4,6 +4,7 @@ import {
   addFavorite,
   getFavorites,
   getIgnoredMovies,
+  getMovieAwards,
   getRecommendationGenres,
   getRecommendations,
   getRecommendationSettings,
@@ -23,6 +24,7 @@ vi.mock('../../api/client', () => ({
   addIgnoredMovie: vi.fn(),
   getFavorites: vi.fn(),
   getIgnoredMovies: vi.fn(),
+  getMovieAwards: vi.fn().mockResolvedValue([]),
   getRecommendationGenres: vi.fn(),
   getRecommendations: vi.fn(),
   getRecommendationSettings: vi.fn(),
@@ -57,6 +59,13 @@ function recommendation(overrides: Partial<Recommendation> = {}): Recommendation
     imdbVotes: 2500,
     posterUrl: null,
     genres: ['Drama'],
+    metascore: 75,
+    countries: ['USA'],
+    director: 'A Director',
+    plot: 'A quiet story by the water.',
+    runtime: '100 min',
+    awards: '1 win and 3 nominations.',
+    boxOffice: '$10 million',
     ratingComponent: 8.0,
     popularityComponent: 7.2,
     awardComponent: 3.5,
@@ -246,6 +255,7 @@ describe('RecommendationsView', () => {
     vi.mocked(getRecommendationGenres).mockReset()
     vi.mocked(getRecommendationGenres).mockResolvedValue(['Comedy', 'Drama'])
     vi.mocked(getRecommendations).mockReset()
+    vi.mocked(getMovieAwards).mockReset().mockResolvedValue([])
     vi.mocked(getIgnoredMovies).mockReset()
     vi.mocked(markRecommendationWatched).mockReset().mockResolvedValue(undefined)
     vi.mocked(getRecommendationSettings).mockReset()
@@ -260,13 +270,48 @@ describe('RecommendationsView', () => {
 
     render(<RecommendationsView mediaType="movie" />)
 
-    expect(await screen.findByRole('link', { name: 'Quiet River' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Posters' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.queryByRole('columnheader', { name: 'MOVIE' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(screen.getByRole('columnheader', { name: 'MOVIE' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
     expect(screen.getByRole('button', { name: 'Posters' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('shows catalog-style metadata and opens full recommendation details', async () => {
+    vi.mocked(getMovieAwards).mockResolvedValue([{
+      id: 1,
+      imdbId: 'tt12345678',
+      source: 'oscars',
+      filmYear: 2004,
+      ceremonyYear: null,
+      ceremony: 77,
+      award: 'Best Picture',
+      name: 'Producer',
+      nominees: 'Producer',
+      detail: '',
+      isWinner: true,
+    }])
+    vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()]))
+
+    render(<RecommendationsView mediaType="movie" />)
+
+    const detailsButton = await screen.findByRole('button', { name: 'View Quiet River details' })
+    const card = detailsButton.closest('article') as HTMLElement
+    expect(within(card).getByText('Director: A Director')).toBeTruthy()
+    expect(within(card).getByText('Drama')).toBeTruthy()
+    expect(await within(card).findByText('1 win · 1 nomination')).toBeTruthy()
+    expect(within(card).queryByText('3.00 base × 1.20 taste = 3.60')).toBeNull()
+
+    fireEvent.click(detailsButton)
+
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('A quiet story by the water.')).toBeTruthy()
+    expect(screen.getByText('Director')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Best Picture' })).toBeTruthy()
+    expect(within(dialog).getByRole('region', { name: 'Recommendation score details' })).toBeTruthy()
+    expect(screen.getByText('3.00 base × 1.20 taste = 3.60')).toBeTruthy()
   })
 
   it('renders all three recommendation actions as buttons on poster cards', async () => {
@@ -286,7 +331,7 @@ describe('RecommendationsView', () => {
 
     render(<RecommendationsView mediaType="movie" />)
 
-    expect(await screen.findByRole('link', { name: 'Quiet River' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     expect(screen.queryByText('Unrated feature')).toBeNull()
     expect(screen.queryByText('Series candidate')).toBeNull()
     const scoreWeights = within(screen.getByRole('group', { name: 'Recommendation score weights' }))
@@ -302,8 +347,8 @@ describe('RecommendationsView', () => {
       awardsWeight: 0.25,
     })
     expect(screen.getByLabelText('Movie year selected years').textContent).toBe('2000 – 2025')
-    expect(screen.getByText('Best Picture')).toBeTruthy()
-    expect(screen.getByText('3.00 base × 1.20 taste = 3.60')).toBeTruthy()
+    expect(screen.queryByText('Best Picture')).toBeNull()
+    expect(screen.queryByText('3.00 base × 1.20 taste = 3.60')).toBeNull()
 
     fireEvent.change(sliders[0]!, { target: { value: '80' } })
     await waitFor(() => expect(getRecommendations).toHaveBeenLastCalledWith({
@@ -426,8 +471,8 @@ describe('RecommendationsView', () => {
       excludeWatched: false,
     }))
     expect(watchedCheckbox.checked).toBe(false)
-    const watchedMovieLink = await screen.findByRole('link', { name: 'Quiet River' })
-    const watchedMovieCard = watchedMovieLink.closest('article')
+    const watchedMovieButton = await screen.findByRole('button', { name: 'View Quiet River details' })
+    const watchedMovieCard = watchedMovieButton.closest('article')
     expect(watchedMovieCard).not.toBeNull()
     expect(within(watchedMovieCard as HTMLElement).queryByRole('button', { name: 'Mark Quiet River as watched' })).toBeNull()
     expect(within(watchedMovieCard as HTMLElement).queryByRole('button', { name: 'Ignore movie' })).toBeNull()
@@ -484,16 +529,16 @@ describe('RecommendationsView', () => {
     render(<FavoriteProvider accountKey="test-account"><RecommendationsView mediaType="movie" /></FavoriteProvider>)
 
     const addButton = await screen.findByRole('button', { name: 'Add Quiet River to watch list' }) as HTMLButtonElement
-    const watchedCard = (await screen.findAllByRole('link', { name: 'Already Watched' }))[0]?.closest('article')
+    const watchedCard = (await screen.findAllByRole('button', { name: 'View Already Watched details' }))[0]?.closest('article')
     expect(watchedCard).not.toBeNull()
     expect(within(watchedCard as HTMLElement).queryByRole('button', { name: 'Add Already Watched to watch list' })).toBeNull()
     await waitFor(() => expect(addButton.disabled).toBe(false))
     fireEvent.click(addButton)
 
     await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt12345678', 'recommendation'))
-    expect(screen.queryByRole('link', { name: 'Quiet River' })).toBeNull()
-    expect(await screen.findAllByRole('link', { name: 'Already Watched' })).not.toHaveLength(0)
-    expect(await screen.findAllByRole('link', { name: 'Another Candidate' })).not.toHaveLength(0)
+    expect(screen.queryByRole('button', { name: 'View Quiet River details' })).toBeNull()
+    expect(await screen.findAllByRole('button', { name: 'View Already Watched details' })).not.toHaveLength(0)
+    expect(await screen.findAllByRole('button', { name: 'View Another Candidate details' })).not.toHaveLength(0)
     expect(getRecommendations).toHaveBeenCalledTimes(1)
   })
 
@@ -507,17 +552,17 @@ describe('RecommendationsView', () => {
 
     render(<RecommendationsView mediaType="movie" />)
 
-    expect(await screen.findByRole('link', { name: 'Quiet River' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
-    expect(await screen.findByRole('link', { name: 'Second page title' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'View Second page title details' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Mark Second page title as watched' }))
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Your rating (1-10)' }), { target: { value: '9' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save rating and mark watched' }))
 
     await waitFor(() => expect(markRecommendationWatched).toHaveBeenCalledWith('tt12345678', 9, 'movie'))
-    expect(screen.queryByRole('link', { name: 'Second page title' })).toBeNull()
-    expect(await screen.findAllByRole('link', { name: 'Another second page title' })).not.toHaveLength(0)
+    expect(screen.queryByRole('button', { name: 'View Second page title details' })).toBeNull()
+    expect(await screen.findAllByRole('button', { name: 'View Another second page title details' })).not.toHaveLength(0)
     expect(getRecommendations).toHaveBeenCalledTimes(2)
   })
 
@@ -539,7 +584,7 @@ describe('RecommendationsView', () => {
 
     expect((await screen.findByRole('alert')).textContent).toContain('Recommendations offline')
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByRole('link', { name: 'Quiet River' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     expect(getRecommendations).toHaveBeenLastCalledWith({
       mediaType: 'movie',
       page: 1,

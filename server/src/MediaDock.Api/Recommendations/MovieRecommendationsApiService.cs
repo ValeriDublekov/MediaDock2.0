@@ -62,7 +62,14 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                 title.ImdbVotes,
                 title.NormalizedVoteWeight,
                 title.PosterUrl,
-                title.Genres))
+                title.Genres,
+                title.Metascore,
+                title.Countries,
+                title.Director,
+                title.Plot,
+                title.Runtime,
+                title.Awards,
+                title.BoxOffice))
             .ToListAsync(cancellationToken);
 
         var candidateYears = allCandidates
@@ -242,6 +249,13 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                     candidate.ImdbVotes,
                     candidate.PosterUrl,
                     candidate.Genres,
+                    candidate.Metascore,
+                    candidate.Countries,
+                    candidate.Director,
+                    candidate.Plot,
+                    candidate.Runtime,
+                    candidate.Awards,
+                    candidate.BoxOffice,
                     score.RatingComponent,
                     score.PopularityComponent,
                     score.AwardComponent,
@@ -388,7 +402,14 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
         long? ImdbVotes,
         double NormalizedVoteWeight,
         string? PosterUrl,
-        string[] Genres);
+        string[] Genres,
+        decimal? Metascore,
+        string[] Countries,
+        string? Director,
+        string? Plot,
+        string? Runtime,
+        string? Awards,
+        string? BoxOffice);
 
     private sealed record UserRating(string ImdbId, int Rating);
 

@@ -3,9 +3,12 @@ import { getFavorites } from '../../api/client'
 import type { FavoriteTitle, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
-import { MovieDetailsIntro, MoviePosterCard } from '../../components/MoviePresentation'
+import { MoviePosterCard } from '../../components/MoviePresentation'
+import { MovieMetadataDetailsDialog } from '../../components/MovieMetadataDetailsDialog'
 import { titlePageSize } from '../../shared/titlePagination'
 import { removePageItems } from '../../shared/removePageItems'
+import { combineMovieAwards, movieAwardsRequestKey } from '../../shared/movieAwards'
+import { useMovieAwards } from '../../shared/useMovieAwards'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 import { TitleDetailsDialog } from '../catalog/TitleDetailsDialog'
@@ -24,6 +27,8 @@ export function FavoritesView() {
   const [attempt, setAttempt] = useState(0)
   const [selected, setSelected] = useState<FavoriteTitle | null>(null)
   const { available } = useFavorites()
+  const awardsRequestKey = movieAwardsRequestKey(result?.items.map((item) => item.imdbId) ?? [])
+  const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
 
   useEffect(() => {
     if (!available) return
@@ -74,13 +79,16 @@ export function FavoritesView() {
     {available && !loading && error && <ErrorState message={error} onRetry={() => { setLoading(true); setError(null); setAttempt((value) => value + 1) }} />}
     {available && !loading && !error && result?.items.length === 0 && <EmptyState title="No favorites here" message="Add movies from supported catalogs or titles from recommendations." />}
     {available && !loading && !error && result && result.items.length > 0 && <>
+      {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
       {viewMode === 'posters' ? <div className="poster-grid">
         {result.items.map((item) => <MoviePosterCard
-          awards={[]}
+          awards={combineMovieAwards([], pageAwards, item.imdbId)}
           footer={<FavoriteControls allowAddFromHere={false} alwaysShowRemove from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={() => removeFavoriteTitle(item.imdbId)} onUpdated={(input) => updateFavoriteTitle(item.imdbId, input)} placement="status" />}
+          genres={item.genres}
           imdbId={item.imdbId}
           imdbRating={item.imdbRating}
           key={item.imdbId}
+          metadata={{ director: item.director ?? null, plot: item.plot ?? null }}
           mediaType={item.mediaType}
           onOpen={() => setSelected(item)}
           openLabel={`View ${item.title} details`}
@@ -89,15 +97,10 @@ export function FavoritesView() {
           </>}
           posterLabel={item.mediaType.slice(0, 3).toUpperCase()}
           posterUrl={item.posterUrl}
-          showAwards={false}
           title={item.title}
           year={item.year}
         >
-          {(item.winCount > 0 || item.nominationCount > 0 || item.occurrenceCount > 0) && <div className="tile-observations">
-            {item.winCount > 0 && <span>{item.winCount} Oscar {item.winCount === 1 ? 'win' : 'wins'}</span>}
-            {item.nominationCount > 0 && <span>{item.nominationCount} Oscar {item.nominationCount === 1 ? 'nomination' : 'nominations'}</span>}
-            {item.occurrenceCount > 0 && <span>{item.occurrenceCount} torrent {item.occurrenceCount === 1 ? 'source' : 'sources'}</span>}
-          </div>}
+          {item.occurrenceCount > 0 && <div className="tile-observations"><span>{item.occurrenceCount} torrent {item.occurrenceCount === 1 ? 'source' : 'sources'}</span></div>}
         </MoviePosterCard>)}
       </div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>TITLE</th><th>OSCAR</th><th>TORRENTS</th><th>STATUS</th></tr></thead>
         <tbody>{result.items.map((item) => <tr key={item.imdbId}>
@@ -137,30 +140,15 @@ function FavoriteDetailsDialog({ item, onClose, onRemoved, onUpdated }: {
   onRemoved: () => void
   onUpdated: (input: { toWatch?: boolean; toDownload?: boolean }) => void
 }) {
-  return <div className="detail-backdrop" onMouseDown={(event) => {
-    if (event.target === event.currentTarget) onClose()
-  }}>
-    <section aria-labelledby="favorite-title-details-heading" aria-modal="true" className="detail-dialog" role="dialog">
-      <header className="detail-header">
-        <div>
-          <p className="eyebrow">FAVORITE</p>
-          <h2 id="favorite-title-details-heading">{item.title}</h2>
-          <div className="detail-meta">{item.year ?? 'Year unknown'} | {item.mediaType}</div>
-        </div>
-        <button aria-label="Close favorite details" className="button button-secondary" onClick={onClose} type="button">Close</button>
-      </header>
-      <div className="detail-body">
-        <MovieDetailsIntro imdbId={item.imdbId} imdbRating={item.imdbRating} posterLabel={item.mediaType.slice(0, 3).toUpperCase()} posterUrl={item.posterUrl} title={item.title} />
-        <dl className="detail-facts">
-          {item.nominationCount > 0 && <div><dt>Oscar nominations</dt><dd>{item.nominationCount}</dd></div>}
-          {item.winCount > 0 && <div><dt>Oscar wins</dt><dd>{item.winCount}</dd></div>}
-          {item.occurrenceCount > 0 && <div><dt>Torrent sources</dt><dd>{item.occurrenceCount}</dd></div>}
-          <div><dt>Watch status</dt><dd>{item.toWatch ? 'To watch' : 'Not marked to watch'}</dd></div>
-          <div><dt>Download status</dt><dd>{item.toDownload ? 'To download' : 'Not marked to download'}</dd></div>
-        </dl>
-        <FavoriteControls allowAddFromHere={false} from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={onRemoved} onUpdated={onUpdated} />
-        <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} />
-      </div>
-    </section>
-  </div>
+  return <MovieMetadataDetailsDialog eyebrow="FAVORITE" onClose={onClose} title={item}>
+    <dl className="detail-facts">
+    {item.nominationCount > 0 && <div><dt>Oscar nominations</dt><dd>{item.nominationCount}</dd></div>}
+    {item.winCount > 0 && <div><dt>Oscar wins</dt><dd>{item.winCount}</dd></div>}
+    {item.occurrenceCount > 0 && <div><dt>Torrent sources</dt><dd>{item.occurrenceCount}</dd></div>}
+    <div><dt>Watch status</dt><dd>{item.toWatch ? 'To watch' : 'Not marked to watch'}</dd></div>
+    <div><dt>Download status</dt><dd>{item.toDownload ? 'To download' : 'Not marked to download'}</dd></div>
+    </dl>
+    <FavoriteControls allowAddFromHere={false} from={item.addedFromOscar ? 'oscar' : 'catalog'} imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={onRemoved} onUpdated={onUpdated} />
+    <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} />
+  </MovieMetadataDetailsDialog>
 }

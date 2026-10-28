@@ -82,6 +82,15 @@ public sealed class GoogleAuthenticationApiTests
                     Year = 2025,
                     MediaType = "movie",
                     ImdbRating = 9.1m,
+                    ImdbVotes = 1200,
+                    Metascore = 88m,
+                    Genres = ["Drama", "Mystery"],
+                    Countries = ["USA"],
+                    Director = "Mira Director",
+                    Plot = "A story about a changing city.",
+                    Runtime = "110 min",
+                    Awards = "1 win and 3 nominations.",
+                    BoxOffice = "$12 million",
                     PosterUrl = "https://example.test/canonical-shared.jpg",
                     MetadataStatus = "enriched",
                     UpdatedAt = now
@@ -210,6 +219,15 @@ public sealed class GoogleAuthenticationApiTests
         Assert.False(firstAdded.AddedFromOscar);
         Assert.True(firstAdded.AddedFromCatalog);
         Assert.Equal(9.1m, firstAdded.ImdbRating);
+        Assert.Equal(1200, firstAdded.ImdbVotes);
+        Assert.Equal(88m, firstAdded.Metascore);
+        Assert.Equal(["Drama", "Mystery"], firstAdded.Genres);
+        Assert.Equal(["USA"], firstAdded.Countries);
+        Assert.Equal("Mira Director", firstAdded.Director);
+        Assert.Equal("A story about a changing city.", firstAdded.Plot);
+        Assert.Equal("110 min", firstAdded.Runtime);
+        Assert.Equal("1 win and 3 nominations.", firstAdded.Awards);
+        Assert.Equal("$12 million", firstAdded.BoxOffice);
         Assert.Equal("https://example.test/canonical-shared.jpg", firstAdded.PosterUrl);
         Assert.Equal(1, firstAdded.OscarFilmCount);
         Assert.Equal(0, firstAdded.OccurrenceCount);

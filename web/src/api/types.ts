@@ -323,6 +323,13 @@ export interface Recommendation {
   imdbVotes: number | null
   posterUrl: string | null
   genres: string[]
+  metascore: number | null
+  countries: string[]
+  director: string | null
+  plot: string | null
+  runtime: string | null
+  awards: string | null
+  boxOffice: string | null
   ratingComponent: number
   popularityComponent: number
   awardComponent: number
@@ -534,6 +541,15 @@ export interface FavoriteTitle {
   mediaType: MediaType
   metadataStatus: string | null
   imdbRating: number | null
+  imdbVotes?: number | null
+  metascore?: number | null
+  genres?: string[]
+  countries?: string[]
+  director?: string | null
+  plot?: string | null
+  runtime?: string | null
+  awards?: string | null
+  boxOffice?: string | null
   posterUrl: string | null
   toWatch: boolean
   toDownload: boolean

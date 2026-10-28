@@ -1,16 +1,17 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { addFavorite, getFavorites, removeFavorite, updateFavorite } from '../../api/client'
+import { addFavorite, getFavorites, getMovieAwards, removeFavorite, updateFavorite } from '../../api/client'
 import type { FavoriteTitle, PageResponse } from '../../api/types'
 import { titlePageSize } from '../../shared/titlePagination'
 import { FavoriteControls } from './FavoriteControls'
 import { FavoriteProvider } from './FavoriteContext'
 import { FavoritesView } from './FavoritesView'
 
-vi.mock('../../api/client', () => ({ getFavorites: vi.fn(), addFavorite: vi.fn(), updateFavorite: vi.fn(), removeFavorite: vi.fn() }))
+vi.mock('../../api/client', () => ({ getFavorites: vi.fn(), getMovieAwards: vi.fn().mockResolvedValue([]), addFavorite: vi.fn(), updateFavorite: vi.fn(), removeFavorite: vi.fn() }))
 afterEach(() => {
   cleanup()
   vi.mocked(getFavorites).mockReset()
+  vi.mocked(getMovieAwards).mockReset().mockResolvedValue([])
   vi.mocked(addFavorite).mockReset()
   vi.mocked(removeFavorite).mockReset()
   vi.mocked(updateFavorite).mockReset()
@@ -179,19 +180,29 @@ it('uses the shared poster card and opens details for a favorite without a torre
   const movie: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: null, title: 'Award Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: 8.2, posterUrl: null, toWatch: true, toDownload: false,
+    director: 'Mira Director', plot: 'A story about a changing city.', genres: ['Drama', 'Mystery'],
     addedFromOscar: true, addedFromCatalog: false, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 2,
     winCount: 1, occurrenceCount: 0, lastSeenAt: null,
   }
+  vi.mocked(getMovieAwards).mockResolvedValue([
+    { id: 1, imdbId: movie.imdbId, source: 'oscars', filmYear: 2025, ceremonyYear: null, ceremony: 97, award: 'Best Picture', name: null, nominees: null, detail: null, isWinner: true },
+    { id: 2, imdbId: movie.imdbId, source: 'oscars', filmYear: 2025, ceremonyYear: null, ceremony: 97, award: 'Best Director', name: null, nominees: null, detail: null, isWinner: false },
+  ])
   vi.mocked(getFavorites).mockResolvedValue({ items: [movie], page: 1, pageSize: 100, totalCount: 1, totalPages: 1 })
   render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
 
-  expect(await screen.findByRole('button', { name: 'View Award Film details' })).toBeTruthy()
-  expect(screen.getByText('1 Oscar win')).toBeTruthy()
-  fireEvent.click(screen.getByText('1 Oscar win'))
+  const detailsButton = await screen.findByRole('button', { name: 'View Award Film details' })
+  const card = detailsButton.closest('article') as HTMLElement
+  expect(within(card).getByText('Director: Mira Director')).toBeTruthy()
+  expect(within(card).getByText('Drama')).toBeTruthy()
+  expect(await within(card).findByText('1 win · 2 nominations')).toBeTruthy()
+  fireEvent.click(detailsButton)
 
-  expect(await screen.findByRole('dialog')).toBeTruthy()
-  expect(screen.getByRole('heading', { name: 'Award Film' })).toBeTruthy()
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByRole('heading', { name: 'Award Film' })).toBeTruthy()
+  expect(within(dialog).getByText('A story about a changing city.')).toBeTruthy()
+  expect(within(dialog).getByRole('heading', { name: 'Best Picture' })).toBeTruthy()
   expect(screen.getByText('2', { selector: 'dd' })).toBeTruthy()
 })
 
