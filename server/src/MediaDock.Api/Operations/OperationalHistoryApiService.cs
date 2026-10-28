@@ -51,6 +51,11 @@ internal sealed class OperationalHistoryApiService(
             logs = logs.Where(log => log.Ignored == ignored);
         }
 
+        if (query.Ignored is true)
+        {
+            logs = logs.Where(log => log.EventKind != "feed");
+        }
+
         if (query.RetryState is not null)
         {
             logs = logs.Where(log => log.RetryState == query.RetryState);

@@ -7,7 +7,7 @@ import { ImdbCandidatePicker, type ImdbCandidateTarget } from '../../components/
 import { formatDate, formatWords } from '../../shared/format'
 
 type HistoryTab = 'scans' | 'parses'
-type ParseLogOutcome = 'success' | 'failed'
+type ParseLogOutcome = 'success' | 'failed' | 'all'
 
 export function HistoryView({ scanRunId = null, onClearScanRun, showCleanupControls = true }: {
   scanRunId?: number | null
@@ -46,7 +46,7 @@ export function HistoryView({ scanRunId = null, onClearScanRun, showCleanupContr
       : getParseLogs({
         page,
         pageSize: 20,
-        ignored: parseLogOutcome === 'failed',
+        ...(parseLogOutcome === 'all' ? {} : { ignored: parseLogOutcome === 'failed' }),
         ...(search ? { search } : {}),
         ...(scanRunId === null ? {} : { scanRunId }),
       })
@@ -115,7 +115,7 @@ export function HistoryView({ scanRunId = null, onClearScanRun, showCleanupContr
           </div>
         ) : (
           <form className="history-filters" onSubmit={applySearch}>
-            <div className="field"><label htmlFor="parse-outcome-filter">Outcome</label><select id="parse-outcome-filter" onChange={(event) => { setPage(1); setParseLogOutcome(event.target.value as ParseLogOutcome) }} value={parseLogOutcome}><option value="failed">Failed</option><option value="success">Success</option></select></div>
+            <div className="field"><label htmlFor="parse-outcome-filter">Outcome</label><select id="parse-outcome-filter" onChange={(event) => { setPage(1); setParseLogOutcome(event.target.value as ParseLogOutcome) }} value={parseLogOutcome}><option value="failed">Failed</option><option value="success">Success</option><option value="all">All</option></select></div>
             <div className="field field-search"><label htmlFor="parse-search">Search entries</label><input id="parse-search" onChange={(event) => setSearchDraft(event.target.value)} placeholder="Title or feed" value={searchDraft} /></div>
             <button className="button" type="submit">Search</button>
           </form>

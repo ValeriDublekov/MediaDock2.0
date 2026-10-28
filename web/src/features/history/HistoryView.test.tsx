@@ -89,7 +89,7 @@ describe('HistoryView parse diagnosis', () => {
     expect(screen.getByText('Lookup names: English Title → Локално име')).toBeTruthy()
   })
 
-  it('opens on failed parse entries by default and offers only success and failed outcomes', async () => {
+  it('opens on failed parse entries by default and offers success and all outcomes', async () => {
     vi.mocked(getParseLogs).mockResolvedValue(createPage([createLog({
       retryState: 'terminal',
       feedType: 'movie',
@@ -104,7 +104,7 @@ describe('HistoryView parse diagnosis', () => {
     }))
     const outcomeFilter = screen.getByLabelText('Outcome') as HTMLSelectElement
     expect(outcomeFilter.value).toBe('failed')
-    expect(within(outcomeFilter).getAllByRole('option').map((option) => option.textContent)).toEqual(['Failed', 'Success'])
+    expect(within(outcomeFilter).getAllByRole('option').map((option) => option.textContent)).toEqual(['Failed', 'Success', 'All'])
     expect(screen.getByRole('columnheader', { name: 'TYPE' })).toBeTruthy()
     expect(getScanRuns).not.toHaveBeenCalled()
 
@@ -113,6 +113,11 @@ describe('HistoryView parse diagnosis', () => {
       page: 1,
       pageSize: 20,
       ignored: false,
+    }))
+    fireEvent.change(outcomeFilter, { target: { value: 'all' } })
+    await waitFor(() => expect(getParseLogs).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
     }))
   })
 
@@ -212,21 +217,25 @@ describe('HistoryView parse diagnosis', () => {
     expect(screen.queryByRole('button', { name: /Retry IMDb match/ })).toBeNull()
   })
 
-  it('does not offer retry matching for feed-level errors without a torrent URL', async () => {
-    vi.mocked(getParseLogs).mockResolvedValue(createPage([createLog({
-      id: 43,
-      rawTitle: '',
-      parsedSuccessfully: false,
-      parsedTitle: null,
-      retryState: 'retryable',
-      ignoreReason: 'feed_error',
-      eventKind: 'feed',
-      canRetryMatch: false,
-    })]))
+  it('shows feed-level errors in the all view without offering retry matching', async () => {
+    vi.mocked(getParseLogs)
+      .mockResolvedValueOnce(createPage<ParseLog>([]))
+      .mockResolvedValueOnce(createPage([createLog({
+        id: 43,
+        rawTitle: '',
+        parsedSuccessfully: false,
+        parsedTitle: null,
+        retryState: 'retryable',
+        ignoreReason: 'feed_error',
+        eventKind: 'feed',
+        canRetryMatch: false,
+      })]))
     vi.mocked(getScanRuns).mockResolvedValue(createPage<ScanRun>([]))
 
     render(<HistoryView scanRunId={100} />)
 
+    expect(await screen.findByText('No parse entries found')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Outcome'), { target: { value: 'all' } })
     expect(await screen.findByText('RSS feed error')).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Retry IMDb match/ })).toBeNull()
   })

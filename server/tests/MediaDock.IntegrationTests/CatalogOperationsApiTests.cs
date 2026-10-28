@@ -132,7 +132,7 @@ public sealed class CatalogOperationsApiTests
                 FeedName = "Movies",
                 ParsedSuccessfully = false,
                 OmdbStatus = "feed_error",
-                Ignored = false,
+                Ignored = true,
                 IgnoreReason = "feed_error",
                 ProcessedAt = firstSeen.AddMinutes(3),
                 RetryState = "retryable",
