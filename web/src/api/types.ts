@@ -421,6 +421,7 @@ export interface ParseLog {
   sourceId: number | null
   sourceName: string | null
   sourceItemKey: string | null
+  torrentUrl: string | null
   rawTitle: string
   feedName: string
   parsedSuccessfully: boolean

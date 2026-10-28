@@ -59,6 +59,7 @@ public sealed class CatalogOperationsApiTests
             {
                 SourceId = source.Id,
                 SourceItemKey = "bad-entry",
+                TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=99",
                 RawTitle = "Malformed entry",
                 FeedName = "Movies",
                 ParsedSuccessfully = false,
@@ -170,7 +171,9 @@ public sealed class CatalogOperationsApiTests
         var logs = await logsResponse.Content.ReadFromJsonAsync<PageResponse<ParseLogResponse>>();
         Assert.NotNull(logs);
         Assert.Equal(1, logs.TotalCount);
-        Assert.Equal("bad-entry", Assert.Single(logs.Items).SourceItemKey);
+        var failedLog = Assert.Single(logs.Items);
+        Assert.Equal("bad-entry", failedLog.SourceItemKey);
+        Assert.Equal("https://rutracker.org/forum/viewtopic.php?t=99", failedLog.TorrentUrl);
 
         using var resolvedLogsResponse = await client.GetAsync(
             "/api/parse-logs?page=1&pageSize=1&ignored=false&search=The%20Matrix");

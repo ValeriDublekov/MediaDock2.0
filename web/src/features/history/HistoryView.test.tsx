@@ -19,6 +19,7 @@ function createLog(overrides: Partial<ParseLog>): ParseLog {
     sourceId: 1,
     sourceName: 'Movies',
     sourceItemKey: 'item-1',
+    torrentUrl: null,
     rawTitle: 'Example Film (2024)',
     feedName: 'Movies',
     parsedSuccessfully: true,
@@ -150,6 +151,23 @@ describe('HistoryView parse diagnosis', () => {
     expect(cells[0].textContent).toBe(entry.rawTitle)
     expect(cells[1].textContent).toBe(entry.parsedTitle)
     expect(cells[2].textContent).toBe('2024')
+  })
+
+  it('links raw RSS titles to HTTP torrent URLs only', async () => {
+    const torrentUrl = 'https://rutracker.org/forum/viewtopic.php?t=123'
+    vi.mocked(getParseLogs).mockResolvedValue(createPage([
+      createLog({ rawTitle: 'Linked Film (2024)', torrentUrl }),
+      createLog({ id: 2, rawTitle: 'Unsafe Film (2024)', torrentUrl: 'javascript:alert(1)' }),
+    ]))
+    vi.mocked(getScanRuns).mockResolvedValue(createPage<ScanRun>([]))
+
+    render(<HistoryView />)
+
+    const link = await screen.findByRole('link', { name: 'Linked Film (2024)' })
+    expect(link.getAttribute('href')).toBe(torrentUrl)
+    expect(link.getAttribute('target')).toBe('_blank')
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer')
+    expect(screen.queryByRole('link', { name: 'Unsafe Film (2024)' })).toBeNull()
   })
 
   it('confirms deletion of history older than the selected days and refreshes scans', async () => {

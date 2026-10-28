@@ -118,7 +118,10 @@ internal sealed class OperationalHistoryApiService(
                     log.FeedType,
                     log.SourcePublishedAt,
                     log.ObservedAt,
-                    log.EventKind),
+                    log.EventKind)
+                {
+                    TorrentUrl = log.TorrentUrl
+                },
                 log.TorrentUrl,
                 HasSource = log.Source != null,
                 SourceFeedType = log.Source == null ? null : log.Source.FeedType,

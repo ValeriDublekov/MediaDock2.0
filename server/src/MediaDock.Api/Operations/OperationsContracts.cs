@@ -88,6 +88,7 @@ public sealed record ParseLogResponse(
     string? EventKind)
 {
     public bool CanRetryMatch { get; init; }
+    public string? TorrentUrl { get; init; }
 }
 
 /// <summary>One ingestion scan summary returned from history.</summary>

@@ -185,7 +185,9 @@ function ParseLogTable({ items, onRetry }: { items: ParseLog[]; onRetry: (entry:
         <thead><tr><th>RAW TITLE</th><th>PARSED TITLE</th><th>YEAR</th><th>FEED</th><th>RESULT</th><th>TYPE</th><th>PROCESSED</th><th>ACTION</th></tr></thead>
         <tbody>{items.map((entry) => (
           <tr key={entry.id}>
-            <td>{entry.rawTitle || '—'}</td>
+            <td>{entry.rawTitle && isHttpUrl(entry.torrentUrl)
+              ? <a href={entry.torrentUrl!} rel="noopener noreferrer" target="_blank">{entry.rawTitle}</a>
+              : entry.rawTitle || '—'}</td>
             <td>{entry.parsedTitle ?? 'No normalized title'}</td>
             <td>{entry.parsedYear ?? '—'}</td>
             <td>{entry.sourceName ?? entry.feedName}<span className="subtle-line">{entry.feedType ?? 'Unknown feed type'}</span></td>
@@ -210,6 +212,16 @@ function ParseLogTable({ items, onRetry }: { items: ParseLog[]; onRetry: (entry:
       </table>
     </div>
   )
+}
+
+function isHttpUrl(value: string | null) {
+  if (!value) return false
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
 }
 
 function getParseLogStatus(entry: Pick<ParseLog, 'parsedSuccessfully' | 'decision'>) {
