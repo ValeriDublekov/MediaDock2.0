@@ -12,6 +12,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace MediaDock.Api.BackgroundJobs;
 
+internal interface IBackgroundJobServiceFactory<out TService> where TService : class
+{
+    TService GetRequired();
+}
+
+internal sealed class BackgroundJobServiceFactory<TService>(IServiceProvider services)
+    : IBackgroundJobServiceFactory<TService> where TService : class
+{
+    public TService GetRequired() => services.GetRequiredService<TService>();
+}
+
 internal interface IBackgroundJobHandler
 {
     Task<BackgroundJobExecutionResult> ExecuteAsync(
@@ -45,14 +56,15 @@ internal sealed class BackgroundJobExecutionContext(
         saveIngestionProgressAsync(progress, cancellationToken);
 }
 
-internal sealed class RssScanBackgroundJobHandler(IServiceProvider services) : IBackgroundJobHandler
+internal sealed class RssScanBackgroundJobHandler(
+    IBackgroundJobServiceFactory<RssIngestionService> ingestionFactory) : IBackgroundJobHandler
 {
     public async Task<BackgroundJobExecutionResult> ExecuteAsync(
         BackgroundJobExecutionContext context,
         CancellationToken cancellationToken)
     {
         await context.LoadProviderSettingsAsync(cancellationToken);
-        var ingestion = services.GetRequiredService<RssIngestionService>();
+        var ingestion = ingestionFactory.GetRequired();
         if (IsFailedRecheck(context.Job.ResultSummary))
         {
             var recheck = await ingestion.RecheckFailedAsync(
@@ -166,7 +178,8 @@ internal sealed class ImdbTitleImportBackgroundJobHandler(
     }
 }
 
-internal sealed class OscarEnrichmentBackgroundJobHandler(IServiceProvider services)
+internal sealed class OscarEnrichmentBackgroundJobHandler(
+    IBackgroundJobServiceFactory<OscarEnrichmentService> enrichmentServiceFactory)
     : IBackgroundJobHandler
 {
     public async Task<BackgroundJobExecutionResult> ExecuteAsync(
@@ -178,7 +191,7 @@ internal sealed class OscarEnrichmentBackgroundJobHandler(IServiceProvider servi
             "oscar_enrichment",
             "Oscar enrichment started.",
             cancellationToken);
-        var enrichmentService = services.GetRequiredService<OscarEnrichmentService>();
+        var enrichmentService = enrichmentServiceFactory.GetRequired();
         var enrichment = await enrichmentService.RunAsync(context.Job.Trigger, cancellationToken);
         var status = enrichment.Status == OscarEnrichmentRunStatuses.Succeeded
             ? "succeeded"
@@ -189,7 +202,9 @@ internal sealed class OscarEnrichmentBackgroundJobHandler(IServiceProvider servi
     }
 }
 
-internal sealed class GoldenGlobeEnrichmentBackgroundJobHandler(IServiceProvider services) : IBackgroundJobHandler
+internal sealed class GoldenGlobeEnrichmentBackgroundJobHandler(
+    IBackgroundJobServiceFactory<GoldenGlobeEnrichmentService> enrichmentServiceFactory)
+    : IBackgroundJobHandler
 {
     public async Task<BackgroundJobExecutionResult> ExecuteAsync(
         BackgroundJobExecutionContext context,
@@ -200,13 +215,15 @@ internal sealed class GoldenGlobeEnrichmentBackgroundJobHandler(IServiceProvider
             "golden_globe_enrichment",
             "Golden Globes enrichment started.",
             cancellationToken);
-        var enrichmentService = services.GetRequiredService<GoldenGlobeEnrichmentService>();
+        var enrichmentService = enrichmentServiceFactory.GetRequired();
         var result = await enrichmentService.RunAsync(cancellationToken);
         return new BackgroundJobExecutionResult(result.Status, result.Summary);
     }
 }
 
-internal sealed class ImdbTitleEnrichmentBackgroundJobHandler(IServiceProvider services) : IBackgroundJobHandler
+internal sealed class ImdbTitleEnrichmentBackgroundJobHandler(
+    IBackgroundJobServiceFactory<ImdbTitleEnrichmentService> enrichmentServiceFactory)
+    : IBackgroundJobHandler
 {
     public async Task<BackgroundJobExecutionResult> ExecuteAsync(
         BackgroundJobExecutionContext context,
@@ -222,13 +239,14 @@ internal sealed class ImdbTitleEnrichmentBackgroundJobHandler(IServiceProvider s
             "imdb_title_enrichment",
             "IMDb metadata enrichment started.",
             cancellationToken);
-        var enrichmentService = services.GetRequiredService<ImdbTitleEnrichmentService>();
+        var enrichmentService = enrichmentServiceFactory.GetRequired();
         var result = await enrichmentService.RunAsync(ownerUserId, cancellationToken);
         return new BackgroundJobExecutionResult(result.Status);
     }
 }
 
-internal sealed class ImdbCatalogEnrichmentBackgroundJobHandler(IServiceProvider services)
+internal sealed class ImdbCatalogEnrichmentBackgroundJobHandler(
+    IBackgroundJobServiceFactory<ImdbTitleEnrichmentService> enrichmentServiceFactory)
     : IBackgroundJobHandler
 {
     public async Task<BackgroundJobExecutionResult> ExecuteAsync(
@@ -240,13 +258,14 @@ internal sealed class ImdbCatalogEnrichmentBackgroundJobHandler(IServiceProvider
             "imdb_catalog_enrichment",
             "IMDb catalog enrichment started.",
             cancellationToken);
-        var enrichmentService = services.GetRequiredService<ImdbTitleEnrichmentService>();
+        var enrichmentService = enrichmentServiceFactory.GetRequired();
         var result = await enrichmentService.RunCatalogAsync(cancellationToken);
         return new BackgroundJobExecutionResult(result.Status, result.Summary);
     }
 }
 
-internal sealed class GoldenGlobeManualRefreshBackgroundJobHandler(IServiceProvider services)
+internal sealed class GoldenGlobeManualRefreshBackgroundJobHandler(
+    IBackgroundJobServiceFactory<GoldenGlobeEnrichmentService> enrichmentServiceFactory)
     : IBackgroundJobHandler
 {
     public async Task<BackgroundJobExecutionResult> ExecuteAsync(
@@ -275,7 +294,7 @@ internal sealed class GoldenGlobeManualRefreshBackgroundJobHandler(IServiceProvi
             "golden_globe_manual_refresh",
             "Manual Golden Globes metadata refresh started.",
             cancellationToken);
-        var enrichmentService = services.GetRequiredService<GoldenGlobeEnrichmentService>();
+        var enrichmentService = enrichmentServiceFactory.GetRequired();
         var result = await enrichmentService.RefreshManualAsync(candidate, cancellationToken);
         var status = !result.Applied || result.Status == GoldenGlobeEnrichmentStatuses.Enriched
             ? "succeeded"

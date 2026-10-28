@@ -46,6 +46,7 @@ public static class ApiServiceCollectionExtensions
 		services.AddScoped<ImdbTitleDatasetImporter>();
 		services.AddScoped<BackgroundJobApiService>();
 		services.AddScoped<BackgroundJobScheduler>();
+		services.AddScoped(typeof(IBackgroundJobServiceFactory<>), typeof(BackgroundJobServiceFactory<>));
 		services.AddKeyedScoped<IBackgroundJobHandler, RssScanBackgroundJobHandler>("rss_scan");
 		services.AddKeyedScoped<IBackgroundJobHandler, OscarImportBackgroundJobHandler>("oscar_import");
 		services.AddKeyedScoped<IBackgroundJobHandler, GoldenGlobeImportBackgroundJobHandler>("golden_globe_import");

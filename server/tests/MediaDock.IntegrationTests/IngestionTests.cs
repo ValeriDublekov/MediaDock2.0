@@ -23,6 +23,8 @@ public sealed class IngestionTests
     private const string SuccessfulFeedUrl = "https://feed.rutracker.cc/success.atom";
     private const string PartialFeedUrl = "https://feed.rutracker.cc/partial.atom";
 
+    #region Repository metadata cache lookup
+
     [Fact]
     public async Task TitleCacheLookupReturnsConfirmedNotFoundEntries()
     {
@@ -53,6 +55,10 @@ public sealed class IngestionTests
         Assert.Equal(MetadataLookupStatus.ConfirmedNotFound, result.Status);
         Assert.Null(result.Metadata);
     }
+
+    #endregion
+
+    #region Failed-entry rechecks
 
     [Fact]
     public async Task FailedEntryRecheckUsesStoredFeedPayloadAndOverridesProcessedState()
@@ -239,6 +245,10 @@ public sealed class IngestionTests
         Assert.Equal("resolved", repairedLog.RetryState);
     }
 
+    #endregion
+
+    #region RSS scans
+
     [Fact]
     public async Task AmbiguousHitIsNotPersistedAndAlternateTitleIsBoundedAndAudited()
     {
@@ -423,6 +433,10 @@ public sealed class IngestionTests
         Assert.Contains("series_season_year_unknown", log.Decision);
         Assert.Contains("y_season", log.Decision);
     }
+
+    #endregion
+
+    #region Repository upserts
 
     [Fact]
     public async Task UpsertDoesNotMergeSameTitleAndYearWithDifferentImdbIds()
@@ -698,6 +712,10 @@ public sealed class IngestionTests
         Assert.Equal(2, await db.Sources.CountAsync());
     }
 
+    #endregion
+
+    #region Cross-profile scan and URL upsert
+
     [Fact]
     [Trait("Category", "Ingestion")]
     public async Task KnownTorrentUrlRefreshesAcrossFeedProfilesWithoutMetadataLookup()
@@ -819,6 +837,10 @@ public sealed class IngestionTests
         Assert.Equal(1981, (await db.TorrentMovies.SingleAsync()).Year);
     }
 
+    #endregion
+
+    #region Concurrent repository upserts
+
     [Fact]
     public async Task ConcurrentUpsertsForOneImdbIdReuseTheCanonicalTitle()
     {
@@ -878,6 +900,8 @@ public sealed class IngestionTests
         Assert.Equal("tt33333333", (await verifyDb.TorrentMovies.SingleAsync()).ImdbId);
         Assert.Equal(2, await verifyDb.TorrentReleases.CountAsync());
     }
+
+    #endregion
 
     private static RssIngestionService CreateService(
         MediaDockDbContext db,
