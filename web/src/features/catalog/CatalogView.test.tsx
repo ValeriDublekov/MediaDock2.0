@@ -236,7 +236,7 @@ describe('CatalogView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'History' }))
 
     expect(await screen.findByText('No parse entries found')).toBeTruthy()
-    expect(getParseLogs).toHaveBeenCalledWith({ page: 1, pageSize: 20, unresolvedMoviesOnly: true })
+    expect(getParseLogs).toHaveBeenCalledWith({ page: 1, pageSize: 20, ignored: true })
     expect(screen.getByRole('button', { name: 'Parse log' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByRole('button', { name: 'Scan runs' })).toBeTruthy()
 

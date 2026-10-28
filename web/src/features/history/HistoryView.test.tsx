@@ -89,7 +89,7 @@ describe('HistoryView parse diagnosis', () => {
     expect(screen.getByText('Lookup names: English Title → Локално име')).toBeTruthy()
   })
 
-  it('opens on unresolved movie parse entries by default', async () => {
+  it('opens on failed parse entries by default and offers only success and failed outcomes', async () => {
     vi.mocked(getParseLogs).mockResolvedValue(createPage([createLog({
       retryState: 'terminal',
       feedType: 'movie',
@@ -100,10 +100,20 @@ describe('HistoryView parse diagnosis', () => {
     await waitFor(() => expect(getParseLogs).toHaveBeenCalledWith({
       page: 1,
       pageSize: 20,
-      unresolvedMoviesOnly: true,
+      ignored: true,
     }))
-    expect(screen.getByLabelText('Retry state')).toHaveProperty('value', 'unresolvedMovies')
+    const outcomeFilter = screen.getByLabelText('Outcome') as HTMLSelectElement
+    expect(outcomeFilter.value).toBe('failed')
+    expect(within(outcomeFilter).getAllByRole('option').map((option) => option.textContent)).toEqual(['Failed', 'Success'])
+    expect(screen.getByRole('columnheader', { name: 'TYPE' })).toBeTruthy()
     expect(getScanRuns).not.toHaveBeenCalled()
+
+    fireEvent.change(outcomeFilter, { target: { value: 'success' } })
+    await waitFor(() => expect(getParseLogs).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
+      ignored: false,
+    }))
   })
 
   it('shows known torrent URLs as skipped instead of parsing failures', async () => {

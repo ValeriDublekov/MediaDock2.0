@@ -7,7 +7,7 @@ import { ImdbCandidatePicker, type ImdbCandidateTarget } from '../../components/
 import { formatDate, formatWords } from '../../shared/format'
 
 type HistoryTab = 'scans' | 'parses'
-type ParseLogFilter = '' | 'retryable' | 'terminal' | 'resolved' | 'unresolvedMovies'
+type ParseLogOutcome = 'success' | 'failed'
 
 export function HistoryView({ scanRunId = null, onClearScanRun, showCleanupControls = true }: {
   scanRunId?: number | null
@@ -18,7 +18,7 @@ export function HistoryView({ scanRunId = null, onClearScanRun, showCleanupContr
   const [page, setPage] = useState(1)
   const [scanStatus, setScanStatus] = useState('')
   const [scanTrigger, setScanTrigger] = useState('')
-  const [retryState, setRetryState] = useState<ParseLogFilter>(() => scanRunId === null ? 'unresolvedMovies' : '')
+  const [parseLogOutcome, setParseLogOutcome] = useState<ParseLogOutcome>('failed')
   const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
   const [scanResult, setScanResult] = useState<PageResponse<ScanRun> | null>(null)
@@ -46,9 +46,7 @@ export function HistoryView({ scanRunId = null, onClearScanRun, showCleanupContr
       : getParseLogs({
         page,
         pageSize: 20,
-        ...(retryState === 'unresolvedMovies'
-          ? { unresolvedMoviesOnly: true }
-          : retryState ? { retryState } : {}),
+        ignored: parseLogOutcome === 'failed',
         ...(search ? { search } : {}),
         ...(scanRunId === null ? {} : { scanRunId }),
       })
@@ -64,7 +62,7 @@ export function HistoryView({ scanRunId = null, onClearScanRun, showCleanupContr
       })
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
-  }, [tab, page, scanStatus, scanTrigger, retryState, search, scanRunId, attempt])
+  }, [tab, page, scanStatus, scanTrigger, parseLogOutcome, search, scanRunId, attempt])
 
   function changeTab(nextTab: HistoryTab) {
     setTab(nextTab)
@@ -117,7 +115,7 @@ export function HistoryView({ scanRunId = null, onClearScanRun, showCleanupContr
           </div>
         ) : (
           <form className="history-filters" onSubmit={applySearch}>
-            <div className="field"><label htmlFor="parse-retry-filter">Retry state</label><select id="parse-retry-filter" onChange={(event) => { setPage(1); setRetryState(event.target.value as ParseLogFilter) }} value={retryState}><option value="unresolvedMovies">Unresolved movies</option><option value="">All states</option><option value="retryable">Retryable</option><option value="terminal">Terminal</option><option value="resolved">Resolved</option></select></div>
+            <div className="field"><label htmlFor="parse-outcome-filter">Outcome</label><select id="parse-outcome-filter" onChange={(event) => { setPage(1); setParseLogOutcome(event.target.value as ParseLogOutcome) }} value={parseLogOutcome}><option value="failed">Failed</option><option value="success">Success</option></select></div>
             <div className="field field-search"><label htmlFor="parse-search">Search entries</label><input id="parse-search" onChange={(event) => setSearchDraft(event.target.value)} placeholder="Title or feed" value={searchDraft} /></div>
             <button className="button" type="submit">Search</button>
           </form>
@@ -184,7 +182,7 @@ function ParseLogTable({ items, onRetry }: { items: ParseLog[]; onRetry: (entry:
   return (
     <div className="table-wrap">
       <table className="data-table">
-        <thead><tr><th>RAW TITLE</th><th>PARSED TITLE</th><th>YEAR</th><th>FEED</th><th>RESULT</th><th>RETRY</th><th>PROCESSED</th><th>ACTION</th></tr></thead>
+        <thead><tr><th>RAW TITLE</th><th>PARSED TITLE</th><th>YEAR</th><th>FEED</th><th>RESULT</th><th>TYPE</th><th>PROCESSED</th><th>ACTION</th></tr></thead>
         <tbody>{items.map((entry) => (
           <tr key={entry.id}>
             <td>{entry.rawTitle || '—'}</td>
