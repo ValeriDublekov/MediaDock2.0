@@ -96,7 +96,7 @@ describe('CatalogView', () => {
     expect(catalogRequest).toHaveBeenCalledTimes(1)
   })
 
-  it('removes a newly favorited title locally without reloading the catalog', async () => {
+  it('keeps a newly favorited title in both catalog views without reloading it', async () => {
     const movie = { ...title, mediaType: 'movie' as const }
     catalogRequest.mockResolvedValue(page([movie]))
     vi.mocked(getFavorites).mockResolvedValue({ items: [], page: 1, pageSize: 60, totalCount: 0, totalPages: 0 })
@@ -111,7 +111,10 @@ describe('CatalogView', () => {
     fireEvent.click(addButton)
 
     await waitFor(() => expect(addFavorite).toHaveBeenCalledWith(movie.imdbId, 'catalog'))
-    expect(screen.queryByRole('button', { name: 'View Quiet River details' })).toBeNull()
+    expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Remove from favorites' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+    expect(screen.getByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     expect(catalogRequest).toHaveBeenCalledTimes(1)
   })
 

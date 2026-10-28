@@ -14,13 +14,12 @@ interface TitleDetailsDialogProps {
   onClose: () => void
   onFindImdbMatch?: (titleId: number, title: string, rawTitle: string) => void
   onDeleted?: (result: DeleteTitleResponse, deleteImdbInfo: boolean, hadImdbInfo: boolean) => void
-  onFavoriteAdded?: () => void
   onFavoriteRemoved?: () => void
   onFavoriteUpdated?: (input: { toWatch?: boolean; toDownload?: boolean }) => void
   onIgnored?: () => void
 }
 
-export function TitleDetailsDialog({ titleId, initialSection = 'details', onClose, onFindImdbMatch, onDeleted, onFavoriteAdded, onFavoriteRemoved, onFavoriteUpdated, onIgnored }: TitleDetailsDialogProps) {
+export function TitleDetailsDialog({ titleId, initialSection = 'details', onClose, onFindImdbMatch, onDeleted, onFavoriteRemoved, onFavoriteUpdated, onIgnored }: TitleDetailsDialogProps) {
   const [title, setTitle] = useState<TitleDetails | null>(null)
   const [occurrences, setOccurrences] = useState<PageResponse<Occurrence> | null>(null)
   const [oscars, setOscars] = useState<OscarFilm[]>([])
@@ -138,7 +137,7 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
                   </div>
                 )}
               </div>}
-              <FavoriteControls from={oscars.length ? 'oscar' : 'catalog'} imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} onAdded={onFavoriteAdded} onRemoved={onFavoriteRemoved} onUpdated={onFavoriteUpdated} />
+              <FavoriteControls from={oscars.length ? 'oscar' : 'catalog'} imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} onRemoved={onFavoriteRemoved} onUpdated={onFavoriteUpdated} />
               <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} onIgnored={onIgnored} />
               {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
               <MovieAwardsList awards={awards} />

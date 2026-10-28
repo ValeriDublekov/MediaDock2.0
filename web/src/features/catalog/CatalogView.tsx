@@ -140,7 +140,7 @@ function CatalogRow({ title, onSelect, onRemoved, awards }: { title: CatalogTitl
       <td>{title.genres.slice(0, 2).join(', ') || 'Not tagged'}</td>
       <td>{formatDate(title.sourcePublishedAt ?? null)}</td>
       <td>
-        <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} onAdded={onRemoved} />
+        <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} />
         <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} onIgnored={onRemoved} />
       </td>
     </tr>
@@ -363,7 +363,7 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
           {viewMode === 'posters' ? <div className="poster-grid">
             {result.items.map((title) => <MoviePosterCard
               awards={combineMovieAwards([], pageAwards, title.imdbId)}
-                footer={<FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} onAdded={() => removeCatalogTitle(title.id)} placement="status" />}
+                footer={<FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} placement="status" />}
               genres={title.genres}
                 metadata={{ director: title.director, plot: title.plot }}
               imdbId={title.imdbId}
@@ -374,7 +374,7 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
               openLabel={`View ${title.title} details`}
               posterLabel={title.mediaType.slice(0, 3).toUpperCase()}
               posterActions={<>
-                <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} onAdded={() => removeCatalogTitle(title.id)} placement="poster" />
+                <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} placement="poster" />
                 <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} onIgnored={() => removeCatalogTitle(title.id)} placement="poster" />
                 <button
                   aria-label={`View torrent sources for ${title.title} (${title.occurrenceCount})`}
@@ -405,7 +405,6 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
       {selectedTitleId !== null && <TitleDetailsDialog
         initialSection={detailsSection}
         onClose={() => setSelectedTitleId(null)}
-        onFavoriteAdded={() => removeCatalogTitle(selectedTitleId)}
         onIgnored={() => removeCatalogTitle(selectedTitleId)}
         onFindImdbMatch={(id, title, rawTitle) => {
           setSelectedTitleId(null)
