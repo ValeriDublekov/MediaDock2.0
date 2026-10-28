@@ -64,6 +64,15 @@ internal sealed class OperationalHistoryApiService(
                     || (log.FeedType == null && log.Source != null && log.Source.FeedType == "movie")));
         }
 
+        if (query.Ignored is true || query.UnresolvedMoviesOnly is true)
+        {
+            logs = logs.Where(log => log.SourceId == null || log.SourceItemKey == null
+                || !dbContext.ParseLogs.Any(newer => newer.SourceId == log.SourceId
+                    && newer.SourceItemKey == log.SourceItemKey
+                    && (newer.ProcessedAt > log.ProcessedAt
+                        || (newer.ProcessedAt == log.ProcessedAt && newer.Id > log.Id))));
+        }
+
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var pattern = $"%{query.Search.Trim()}%";
@@ -107,7 +116,12 @@ internal sealed class OperationalHistoryApiService(
                     log.EventKind),
                 log.TorrentUrl,
                 HasSource = log.Source != null,
-                SourceFeedType = log.Source == null ? null : log.Source.FeedType
+                SourceFeedType = log.Source == null ? null : log.Source.FeedType,
+                HasNewerLog = log.SourceId != null && log.SourceItemKey != null
+                    && dbContext.ParseLogs.Any(newer => newer.SourceId == log.SourceId
+                        && newer.SourceItemKey == log.SourceItemKey
+                        && (newer.ProcessedAt > log.ProcessedAt
+                            || (newer.ProcessedAt == log.ProcessedAt && newer.Id > log.Id)))
             })
             .ToListAsync(cancellationToken);
         var items = rows.Select(row => row.Response with
@@ -115,6 +129,7 @@ internal sealed class OperationalHistoryApiService(
             CanRetryMatch = CanRetryMatch(
                 row.Response,
                 row.HasSource,
+                row.HasNewerLog,
                 row.TorrentUrl,
                 row.SourceFeedType)
         }).ToList();
@@ -201,11 +216,13 @@ internal sealed class OperationalHistoryApiService(
     private static bool CanRetryMatch(
         ParseLogResponse response,
         bool hasSource,
+        bool hasNewerLog,
         string? torrentUrl,
         string? sourceFeedType)
     {
         var feedType = response.FeedType ?? sourceFeedType;
         return response.RetryState != "resolved"
+            && !hasNewerLog
             && hasSource
             && feedType is "movie" or "series_complete" or "series_ongoing"
             && IsHttpUrl(torrentUrl);

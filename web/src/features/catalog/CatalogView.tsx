@@ -138,7 +138,7 @@ function CatalogRow({ title, onSelect, onRemoved, awards }: { title: CatalogTitl
       <td><MovieImdbLink imdbId={title.imdbId} rating={title.imdbRating} title={title.title} /></td>
       <td><MovieAwardsSummary awards={awards} compact /></td>
       <td>{title.genres.slice(0, 2).join(', ') || 'Not tagged'}</td>
-      <td>{formatDate(title.lastSeenAt)}</td>
+      <td>{formatDate(title.sourcePublishedAt ?? null)}</td>
       <td>
         <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} onAdded={onRemoved} />
         <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} onIgnored={onRemoved} />
@@ -390,12 +390,12 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
             >
               <div className="tile-observations">
                 <span>{title.occurrenceCount} feed observations</span>
-                <span>Last seen {formatDate(title.lastSeenAt)}</span>
+                <span>RSS date {formatDate(title.sourcePublishedAt ?? null)}</span>
               </div>
             </MoviePosterCard>)}
           </div> : <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th>TITLE</th><th>TYPE</th><th>IMDB</th><th>AWARDS</th><th>GENRES</th><th>LAST SEEN</th><th>ACTIONS</th></tr></thead>
+              <thead><tr><th>TITLE</th><th>TYPE</th><th>IMDB</th><th>AWARDS</th><th>GENRES</th><th>RSS DATE</th><th>ACTIONS</th></tr></thead>
               <tbody>{result.items.map((title) => <CatalogRow awards={combineMovieAwards([], pageAwards, title.imdbId)} key={title.id} onRemoved={() => removeCatalogTitle(title.id)} onSelect={(id) => openTitle(id, 'details')} title={title} />)}</tbody>
             </table>
           </div>}

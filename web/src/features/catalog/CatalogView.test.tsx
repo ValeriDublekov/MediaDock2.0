@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addFavorite, addIgnoredMovie, ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getFavorites, getIgnoredMovies, getMovieAwards, getParseLogs, getRssFeedPreview, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, refreshRssFeedPreview, searchCatalogTitleImdbCandidates } from '../../api/client'
 import type { CatalogTitle, ImdbCandidateSearch, MovieAwardRecognition, PageResponse, RssFeedPreview, TitleDetails } from '../../api/types'
+import { formatDate } from '../../shared/format'
 import { titlePageSize } from '../../shared/titlePagination'
 import { FavoriteProvider } from '../favorites/FavoriteContext'
 import { IgnoredMoviesProvider } from '../ignored-movies/IgnoredMoviesContext'
@@ -54,6 +55,7 @@ const title: CatalogTitle = {
   genres: ['Drama'],
   countries: ['Canada'],
   lastSeenAt: '2026-09-28T12:00:00Z',
+  sourcePublishedAt: '2026-09-27T12:00:00Z',
   occurrenceCount: 3,
   metadataStatus: 'enriched',
   director: 'Tanya Davis',
@@ -80,13 +82,15 @@ describe('CatalogView', () => {
     expect(await screen.findByRole('img', { name: 'Poster for Quiet River' })).toBeTruthy()
     expect(screen.getByText('Director: Tanya Davis')).toBeTruthy()
     expect(screen.getByText('A retired cartographer returns home.')).toBeTruthy()
+    expect(screen.getByText(`RSS date ${formatDate(title.sourcePublishedAt!)}`)).toBeTruthy()
     fireEvent.error(screen.getByRole('img', { name: 'Poster for Quiet River' }))
     expect(screen.queryByRole('img', { name: 'Poster for Quiet River' })).toBeNull()
     expect(screen.getByText('SER')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(screen.getByRole('img', { name: 'Poster for Quiet River' })).toBeTruthy()
     expect(screen.getByText('Director: Tanya Davis')).toBeTruthy()
-    expect(screen.getByRole('columnheader', { name: 'LAST SEEN' })).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: 'RSS DATE' })).toBeTruthy()
+    expect(screen.getByText(formatDate(title.sourcePublishedAt!))).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
     expect(screen.getByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     expect(catalogRequest).toHaveBeenCalledTimes(1)

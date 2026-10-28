@@ -203,17 +203,23 @@ internal sealed class TorrentTitleMatchApiService(
             throw new ApiConflictException("This parse-log entry has no stable source item identity.");
         }
 
+        var normalizedTorrentUrl = TorrentUrlIdentity.Normalize(log.TorrentUrl);
         var latestLog = await dbContext.ParseLogs.AsNoTracking()
             .Where(value => value.SourceId == source.Id && value.SourceItemKey == sourceItemKey)
             .OrderByDescending(value => value.ProcessedAt)
             .ThenByDescending(value => value.Id)
-            .Select(value => new { value.Id, value.RetryState })
+            .Select(value => new { value.Id, value.RetryState, value.TorrentUrl })
             .FirstOrDefaultAsync(cancellationToken);
         if (latestLog is not null && latestLog.Id != log.Id)
         {
-            throw new ApiConflictException(latestLog.RetryState == "resolved"
-                ? "This torrent entry has already been resolved."
-                : "A newer parse-log entry exists for this torrent.");
+            var latestTorrentUrl = latestLog.TorrentUrl;
+            if (latestTorrentUrl is null || !string.Equals(
+                    TorrentUrlIdentity.Normalize(latestTorrentUrl), normalizedTorrentUrl, StringComparison.Ordinal))
+            {
+                throw new ApiConflictException(latestLog.RetryState == "resolved"
+                    ? "This torrent entry has already been resolved."
+                    : "A newer parse-log entry exists for this torrent.");
+            }
         }
 
         var parsed = RutrackerTitleParser.Parse(log.RawTitle, feedType);
@@ -222,14 +228,25 @@ internal sealed class TorrentTitleMatchApiService(
             parsed = RutrackerTitleParser.Parse(log.ParsedTitle, feedType) with { Year = log.ParsedYear };
         }
 
-        if (string.IsNullOrWhiteSpace(parsed.Title))
-        {
-            throw ValidationError(nameof(log.RawTitle), "The torrent title could not be parsed into a film name.");
-        }
-
         var normalizedImdbId = NormalizeImdbId(imdbId);
         var metadata = await ResolveMetadataAsync(normalizedImdbId, cancellationToken);
         ValidateSourceType(sourceType, metadata.SourceType);
+        if (string.IsNullOrWhiteSpace(parsed.Title))
+        {
+            var metadataTitle = metadata.Title.Trim();
+            if (string.IsNullOrWhiteSpace(metadataTitle))
+            {
+                throw ValidationError(nameof(log.RawTitle), "The selected IMDb record does not provide a usable title.");
+            }
+
+            parsed = parsed with
+            {
+                Title = metadataTitle,
+                NormalizedTitle = metadataTitle.ToLowerInvariant(),
+                Year = metadata.Year,
+                IsSeries = metadata.SourceType == "series"
+            };
+        }
 
         var now = timeProvider.GetUtcNow();
         var ingestionSource = new IngestionSource(source.Id, source.Name, feedType, source.Url);
@@ -245,18 +262,32 @@ internal sealed class TorrentTitleMatchApiService(
             cancellationToken);
 
         var attemptCount = checked(log.AttemptCount + 1);
-        log.ParsedSuccessfully = true;
-        log.ParsedTitle = parsed.Title;
-        log.ParsedYear = parsed.Year;
-        log.LookupTitles = [parsed.Title];
-        log.OmdbStatus = "found";
-        log.Ignored = false;
-        log.IgnoreReason = null;
-        log.ErrorMessage = null;
-        log.Decision = "manual_imdb_match";
-        log.RetryState = "resolved";
-        log.AttemptCount = attemptCount;
-        log.LastAttemptAt = now;
+        var pendingLogs = await dbContext.ParseLogs
+            .Where(value => value.RetryState != "resolved"
+                && value.TorrentUrl != null
+                && (value.TorrentUrl == normalizedTorrentUrl
+                    || (EF.Functions.ILike(value.TorrentUrl, "%rutracker%")
+                        && EF.Functions.ILike(value.TorrentUrl, "%/forum/viewtopic.php%"))))
+            .ToListAsync(cancellationToken);
+        foreach (var pendingLog in pendingLogs.Where(value =>
+                     string.Equals(
+                         TorrentUrlIdentity.Normalize(value.TorrentUrl!),
+                         normalizedTorrentUrl,
+                         StringComparison.Ordinal)))
+        {
+            pendingLog.ParsedSuccessfully = true;
+            pendingLog.ParsedTitle = parsed.Title;
+            pendingLog.ParsedYear = parsed.Year;
+            pendingLog.LookupTitles = [parsed.Title];
+            pendingLog.OmdbStatus = "found";
+            pendingLog.Ignored = false;
+            pendingLog.IgnoreReason = null;
+            pendingLog.ErrorMessage = null;
+            pendingLog.Decision = "manual_imdb_match";
+            pendingLog.RetryState = "resolved";
+            pendingLog.AttemptCount = checked(pendingLog.AttemptCount + 1);
+            pendingLog.LastAttemptAt = now;
+        }
 
         dbContext.ParseLogs.Add(new ParseLog
         {

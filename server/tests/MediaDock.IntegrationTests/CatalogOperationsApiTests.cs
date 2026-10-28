@@ -89,6 +89,45 @@ public sealed class CatalogOperationsApiTests
             new ParseLog
             {
                 SourceId = source.Id,
+                SourceItemKey = "superseded-entry",
+                RawTitle = "Resolved Film (2024)",
+                FeedName = "Movies",
+                ParsedSuccessfully = true,
+                ParsedTitle = "Resolved Film",
+                ParsedYear = 2024,
+                OmdbStatus = "confirmed_not_found",
+                Ignored = true,
+                IgnoreReason = "metadata_not_found",
+                ProcessedAt = firstSeen.AddMinutes(5),
+                RetryState = "terminal",
+                AttemptCount = 1,
+                FeedType = source.FeedType,
+                EventKind = "ingestion",
+                TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=101"
+            },
+            new ParseLog
+            {
+                SourceId = source.Id,
+                SourceItemKey = "superseded-entry",
+                RawTitle = "Resolved Film (2024)",
+                FeedName = "Movies",
+                ParsedSuccessfully = true,
+                ParsedTitle = "Resolved Film",
+                ParsedYear = 2024,
+                LookupTitles = ["Resolved Film"],
+                OmdbStatus = "found",
+                Ignored = false,
+                Decision = "manual_imdb_match",
+                ProcessedAt = firstSeen.AddMinutes(6),
+                RetryState = "resolved",
+                AttemptCount = 2,
+                FeedType = source.FeedType,
+                EventKind = "manual_retry",
+                TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=101"
+            },
+            new ParseLog
+            {
+                SourceId = source.Id,
                 RawTitle = string.Empty,
                 FeedName = "Movies",
                 ParsedSuccessfully = false,
@@ -131,7 +170,7 @@ public sealed class CatalogOperationsApiTests
         var logs = await logsResponse.Content.ReadFromJsonAsync<PageResponse<ParseLogResponse>>();
         Assert.NotNull(logs);
         Assert.Equal(1, logs.TotalCount);
-        Assert.True(Assert.Single(logs.Items).Ignored);
+        Assert.Equal("bad-entry", Assert.Single(logs.Items).SourceItemKey);
 
         using var resolvedLogsResponse = await client.GetAsync(
             "/api/parse-logs?page=1&pageSize=1&ignored=false&search=The%20Matrix");
@@ -143,6 +182,8 @@ public sealed class CatalogOperationsApiTests
         var allLogs = await allLogsResponse.Content.ReadFromJsonAsync<PageResponse<ParseLogResponse>>();
         Assert.NotNull(allLogs);
         Assert.True(allLogs.Items.Single(log => log.SourceItemKey == "matchable-entry").CanRetryMatch);
+        Assert.False(allLogs.Items.Single(log => log.SourceItemKey == "superseded-entry"
+            && log.RetryState == "terminal").CanRetryMatch);
         Assert.False(allLogs.Items.Single(log => log.EventKind == "feed").CanRetryMatch);
 
         using var unresolvedMoviesResponse = await client.GetAsync(

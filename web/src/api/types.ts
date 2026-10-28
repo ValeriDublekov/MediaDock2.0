@@ -35,6 +35,7 @@ export interface CatalogTitle {
   genres: string[]
   countries: string[]
   lastSeenAt: string | null
+  sourcePublishedAt?: string | null
   occurrenceCount: number
   metadataStatus: string | null
   director: string | null

@@ -73,9 +73,11 @@ public sealed class CatalogEndpointsApiTests
         await db.SaveChangesAsync();
 
         var firstSeen = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var matrixPublishedAt = firstSeen.AddDays(1);
+        var reloadedPublishedAt = firstSeen;
         db.TorrentReleases.AddRange(
-            CreateRelease(olderTitle.Id, source.Id, "matrix-1999", "The Matrix (1999)", firstSeen, quality: "1080p", ripType: "BDRip"),
-            CreateRelease(newerTitle.Id, source.Id, "matrix-2003", "The Matrix Reloaded (2003)", firstSeen.AddDays(1)),
+            CreateRelease(olderTitle.Id, source.Id, "matrix-1999", "The Matrix (1999)", firstSeen, quality: "1080p", ripType: "BDRip", sourcePublishedAt: matrixPublishedAt),
+            CreateRelease(newerTitle.Id, source.Id, "matrix-2003", "The Matrix Reloaded (2003)", firstSeen.AddDays(1), sourcePublishedAt: reloadedPublishedAt),
             CreateRelease(yearlessTitle.Id, source.Id, "year-unknown", "Year Unknown", firstSeen.AddDays(2)));
         var completeSeriesSource = new Source
         {
@@ -109,9 +111,10 @@ public sealed class CatalogEndpointsApiTests
         Assert.Equal(2, firstPage.TotalPages);
         Assert.Equal(new YearBounds(1999, 2010), firstPage.YearBounds);
         Assert.Equal(new ImdbRatingBounds(6.8m, 8.5m), firstPage.ImdbRatingBounds);
-        Assert.Equal("The Matrix Reloaded", Assert.Single(firstPage.Items).Title);
-        Assert.Equal("tt2003", Assert.Single(firstPage.Items).ImdbId);
-        Assert.Equal(8.5m, Assert.Single(firstPage.Items).ImdbRating);
+        Assert.Equal("The Matrix", Assert.Single(firstPage.Items).Title);
+        Assert.Equal("tt1999", Assert.Single(firstPage.Items).ImdbId);
+        Assert.Equal(7.2m, Assert.Single(firstPage.Items).ImdbRating);
+        Assert.Equal(matrixPublishedAt, Assert.Single(firstPage.Items).SourcePublishedAt);
 
         using var canonicalSearchResponse = await client.GetAsync("/api/catalog?search=Canonical%20Matrix");
         var canonicalSearch = await canonicalSearchResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
@@ -128,8 +131,12 @@ public sealed class CatalogEndpointsApiTests
         var unfilteredCatalog = await unfilteredCatalogResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
         Assert.NotNull(unfilteredCatalog);
         Assert.Equal(new YearBounds(1999, 2010), unfilteredCatalog.YearBounds);
+        Assert.Equal(
+            new[] { "The Matrix", "The Matrix Reloaded", "Year Unknown", "Example Series" },
+            unfilteredCatalog.Items.Select(title => title.Title));
         var yearlessCatalogTitle = Assert.Single(unfilteredCatalog.Items, title => title.Title == "Year Unknown");
         Assert.Null(yearlessCatalogTitle.Year);
+        Assert.Null(yearlessCatalogTitle.SourcePublishedAt);
         Assert.Null(yearlessCatalogTitle.ImdbRating);
         Assert.Empty(yearlessCatalogTitle.Genres);
         Assert.Null(yearlessCatalogTitle.PosterUrl);
@@ -152,7 +159,7 @@ public sealed class CatalogEndpointsApiTests
             "/api/catalog?page=2&pageSize=1&search=matrix&mediaType=movie");
         var secondPage = await secondPageResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
         Assert.NotNull(secondPage);
-        Assert.Equal("The Matrix", Assert.Single(secondPage.Items).Title);
+        Assert.Equal("The Matrix Reloaded", Assert.Single(secondPage.Items).Title);
 
         using var reversedYearsResponse = await client.GetAsync("/api/catalog?yearFrom=2005&yearTo=1999");
         Assert.Equal(HttpStatusCode.BadRequest, reversedYearsResponse.StatusCode);
@@ -451,7 +458,8 @@ public sealed class CatalogEndpointsApiTests
         string feedType = "movie",
         string sourceFeedName = "Movies",
         string? quality = null,
-        string? ripType = null) => new()
+        string? ripType = null,
+        DateTimeOffset? sourcePublishedAt = null) => new()
     {
         TorrentMovieId = torrentMovieId,
         SourceId = sourceId,
@@ -460,6 +468,7 @@ public sealed class CatalogEndpointsApiTests
         RawTitle = rawTitle,
         SourceFeedName = sourceFeedName,
         FeedType = feedType,
+        SourcePublishedAt = sourcePublishedAt,
         Quality = quality,
         RipType = ripType,
         FirstSeenAt = lastSeenAt,

@@ -193,6 +193,205 @@ public sealed class TorrentTitleMatchApiTests
         Assert.Equal(1, await db.ParseLogs.CountAsync(log => log.EventKind == "manual_retry"));
     }
 
+    [Fact]
+    public async Task ApplyingParseLogMatchResolvesSameUrlLogsAndRejectsChangedNewerUrl()
+    {
+        const string imdbId = "tt12345678";
+        await using var host = await CatalogApiTestHost.CreateAsync(
+            "mediadock_torrent_title_match_duplicate_url_test",
+            omdbClientFactory: new StubOmdbClientFactory(new StubOmdbClient(imdbId)));
+        var db = host.Db;
+        var observedAt = new DateTimeOffset(2026, 10, 21, 12, 0, 0, TimeSpan.Zero);
+        var source = new Source
+        {
+            StableKey = "movies-duplicate-url-test",
+            Name = "Movies",
+            FeedType = "movie",
+            Url = "https://feed.rutracker.cc/movies.atom",
+            IsEnabled = true
+        };
+        var scanRun = new ScanRun
+        {
+            StartedAt = observedAt.AddMinutes(-10),
+            FinishedAt = observedAt.AddMinutes(-9),
+            Status = "succeeded",
+            Trigger = "manual"
+        };
+        var settings = await db.Settings.SingleAsync();
+        settings.OmdbApiKey = "test-omdb-key";
+        settings.OmdbDailyRequestLimit = 40;
+        settings.UpdatedAt = observedAt;
+        db.Sources.Add(source);
+        db.ScanRuns.Add(scanRun);
+        await db.SaveChangesAsync();
+
+        var urls = new[]
+        {
+            "https://rutracker.org/forum/viewtopic.php?t=200",
+            "http://www.rutracker.org/forum/viewtopic.php?start=0&t=0200",
+            "https://rutracker.cc/forum/viewtopic.php?t=200",
+            "https://www.rutracker.cc/forum/viewtopic.php?t=200"
+        };
+        var logs = urls.Select((url, index) => new ParseLog
+        {
+            ScanRunId = scanRun.Id,
+            SourceId = source.Id,
+            SourceItemKey = $"entry:duplicate-url-{index}",
+            RawTitle = "Quiet River (2004)",
+            FeedName = source.Name,
+            ParsedSuccessfully = false,
+            OmdbStatus = "not_requested",
+            ProcessedAt = observedAt.AddMinutes(index - urls.Length),
+            RetryState = "retryable",
+            AttemptCount = index,
+            FeedType = source.FeedType,
+            ObservedAt = observedAt.AddMinutes(index - urls.Length),
+            EventKind = "ingestion",
+            FeedEntryId = $"duplicate-{index}",
+            TorrentUrl = url
+        }).ToArray();
+        db.ParseLogs.AddRange(logs);
+        await db.SaveChangesAsync();
+
+        using var response = await host.Client.PostAsJsonAsync(
+            $"/api/parse-logs/{logs[0].Id}/imdb-match",
+            new ApplyImdbCandidateRequest(imdbId));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updatedLogs = await db.ParseLogs.AsNoTracking()
+            .Where(log => logs.Select(item => item.Id).Contains(log.Id))
+            .ToListAsync();
+        Assert.Equal(urls.Length, updatedLogs.Count);
+        Assert.All(updatedLogs, log =>
+        {
+            Assert.Equal("resolved", log.RetryState);
+            Assert.Equal("manual_imdb_match", log.Decision);
+            Assert.False(log.Ignored);
+        });
+        Assert.Equal(1, await db.ParseLogs.CountAsync(log => log.EventKind == "manual_retry"));
+        var release = await db.TorrentReleases.Include(item => item.TorrentMovie).SingleAsync();
+        Assert.Equal(imdbId, release.TorrentMovie.ImdbId);
+        Assert.Equal("https://rutracker.org/forum/viewtopic.php?t=200", release.TorrentUrl);
+
+        using var historyResponse = await host.Client.GetAsync("/api/parse-logs?page=1&pageSize=10");
+        Assert.Equal(HttpStatusCode.OK, historyResponse.StatusCode);
+        var history = await historyResponse.Content.ReadFromJsonAsync<MediaDock.Api.Common.PageResponse<MediaDock.Api.Operations.ParseLogResponse>>();
+        Assert.NotNull(history);
+        Assert.All(history.Items.Where(log => logs.Select(item => item.Id).Contains(log.Id)),
+            log => Assert.False(log.CanRetryMatch));
+
+        var changedUrlLogs = new[]
+        {
+            new ParseLog
+            {
+                ScanRunId = scanRun.Id,
+                SourceId = source.Id,
+                SourceItemKey = "entry:changed-url",
+                RawTitle = "Quiet River (2004)",
+                FeedName = source.Name,
+                OmdbStatus = "not_requested",
+                ProcessedAt = observedAt.AddMinutes(-2),
+                RetryState = "retryable",
+                FeedType = source.FeedType,
+                EventKind = "ingestion",
+                TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=300"
+            },
+            new ParseLog
+            {
+                ScanRunId = scanRun.Id,
+                SourceId = source.Id,
+                SourceItemKey = "entry:changed-url",
+                RawTitle = "Quiet River (2004)",
+                FeedName = source.Name,
+                OmdbStatus = "not_requested",
+                ProcessedAt = observedAt.AddMinutes(-1),
+                RetryState = "retryable",
+                FeedType = source.FeedType,
+                EventKind = "ingestion",
+                TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=301"
+            }
+        };
+        db.ParseLogs.AddRange(changedUrlLogs);
+        await db.SaveChangesAsync();
+
+        using var staleMatch = await host.Client.PostAsJsonAsync(
+            $"/api/parse-logs/{changedUrlLogs[0].Id}/imdb-match",
+            new ApplyImdbCandidateRequest(imdbId));
+        Assert.Equal(HttpStatusCode.Conflict, staleMatch.StatusCode);
+        Assert.All(await db.ParseLogs.AsNoTracking()
+                .Where(log => changedUrlLogs.Select(item => item.Id).Contains(log.Id))
+                .ToListAsync(),
+            log => Assert.Equal("retryable", log.RetryState));
+        Assert.Equal(1, await db.ParseLogs.CountAsync(log => log.EventKind == "manual_retry"));
+    }
+
+    [Fact]
+    public async Task ApplyingParseLogMatchUsesImdbMetadataWhenFeedTitleCannotBeParsed()
+    {
+        const string imdbId = "tt12345678";
+        await using var host = await CatalogApiTestHost.CreateAsync(
+            "mediadock_torrent_title_match_unparsed_title_test",
+            omdbClientFactory: new StubOmdbClientFactory(new StubOmdbClient(imdbId)));
+        var db = host.Db;
+        var observedAt = new DateTimeOffset(2026, 10, 21, 12, 0, 0, TimeSpan.Zero);
+        var source = new Source
+        {
+            StableKey = "movies-unparsed-title-test",
+            Name = "Movies",
+            FeedType = "movie",
+            Url = "https://feed.rutracker.cc/movies.atom",
+            IsEnabled = true
+        };
+        var scanRun = new ScanRun
+        {
+            StartedAt = observedAt.AddMinutes(-10),
+            FinishedAt = observedAt.AddMinutes(-9),
+            Status = "succeeded",
+            Trigger = "manual"
+        };
+        var settings = await db.Settings.SingleAsync();
+        settings.OmdbApiKey = "test-omdb-key";
+        settings.OmdbDailyRequestLimit = 40;
+        settings.UpdatedAt = observedAt;
+        db.Sources.Add(source);
+        db.ScanRuns.Add(scanRun);
+        await db.SaveChangesAsync();
+
+        var log = new ParseLog
+        {
+            ScanRunId = scanRun.Id,
+            SourceId = source.Id,
+            SourceItemKey = "entry:unparsed-title",
+            RawTitle = string.Empty,
+            FeedName = source.Name,
+            ParsedSuccessfully = false,
+            OmdbStatus = "not_requested",
+            ErrorMessage = "empty_title",
+            ProcessedAt = observedAt,
+            RetryState = "terminal",
+            FeedType = source.FeedType,
+            EventKind = "ingestion",
+            FeedEntryId = "unparsed-title",
+            TorrentUrl = "https://rutracker.org/forum/viewtopic.php?t=400"
+        };
+        db.ParseLogs.Add(log);
+        await db.SaveChangesAsync();
+
+        using var response = await host.Client.PostAsJsonAsync(
+            $"/api/parse-logs/{log.Id}/imdb-match",
+            new ApplyImdbCandidateRequest(imdbId));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var resolvedLog = await db.ParseLogs.AsNoTracking().SingleAsync(value => value.Id == log.Id);
+        Assert.Equal("Quiet River", resolvedLog.ParsedTitle);
+        Assert.Equal(2004, resolvedLog.ParsedYear);
+        Assert.Equal("resolved", resolvedLog.RetryState);
+        var release = await db.TorrentReleases.Include(item => item.TorrentMovie).SingleAsync();
+        Assert.Equal("Quiet River", release.TorrentMovie.TitleText);
+        Assert.Equal(2004, release.TorrentMovie.Year);
+        Assert.Equal(imdbId, release.TorrentMovie.ImdbId);
+    }
+
     private sealed class StubOmdbClient(string imdbId) : IOmdbClient
     {
         public int SearchCalls { get; private set; }

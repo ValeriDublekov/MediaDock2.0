@@ -72,6 +72,7 @@ public sealed record CatalogTitleResponse(
     IReadOnlyList<string> Genres,
     IReadOnlyList<string> Countries,
     DateTimeOffset? LastSeenAt,
+    DateTimeOffset? SourcePublishedAt,
     int OccurrenceCount,
     string? MetadataStatus,
     string? Director,

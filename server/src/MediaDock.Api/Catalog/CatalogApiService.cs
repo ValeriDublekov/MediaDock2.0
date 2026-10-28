@@ -139,7 +139,9 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
 
         var totalCount = await movies.CountAsync(cancellationToken);
         var items = await movies
-            .OrderByDescending(movie => movie.LastSeenAt)
+            .OrderBy(movie => movie.Releases.Max(release => release.SourcePublishedAt) == null)
+            .ThenByDescending(movie => movie.Releases.Max(release => release.SourcePublishedAt))
+            .ThenByDescending(movie => movie.LastSeenAt)
             .ThenByDescending(movie => movie.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -156,6 +158,7 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
                 movie.ImdbTitle == null ? Array.Empty<string>() : movie.ImdbTitle.Genres,
                 movie.ImdbTitle == null ? Array.Empty<string>() : movie.ImdbTitle.Countries,
                 movie.LastSeenAt,
+                movie.Releases.Max(release => release.SourcePublishedAt),
                 movie.Releases.Count,
                 movie.ImdbTitle == null ? null : movie.ImdbTitle.MetadataStatus,
                 movie.ImdbTitle == null ? null : movie.ImdbTitle.Director,
