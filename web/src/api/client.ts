@@ -150,7 +150,11 @@ function withQuery(path: string, query: object, repeatedKeys: readonly string[] 
 }
 
 export function getCatalog(query: CatalogQuery, fetcher?: typeof fetch) {
-  return requestJson<PageResponse<CatalogTitle>>(withQuery('/catalog', query), {}, fetcher)
+  return requestJson<PageResponse<CatalogTitle>>(withQuery('/catalog', query, ['genres']), {}, fetcher)
+}
+
+export function getCatalogGenres(fetcher?: typeof fetch) {
+  return requestJson<string[]>('/catalog/genres', {}, fetcher)
 }
 
 export function getRssFeedPreview(profileId: FeedType, fetcher?: typeof fetch) {

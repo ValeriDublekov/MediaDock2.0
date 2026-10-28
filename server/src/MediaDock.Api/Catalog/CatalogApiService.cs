@@ -13,6 +13,8 @@ internal interface ICatalogApiService
         long? userId,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<string>> GetGenresAsync(long? userId, CancellationToken cancellationToken);
+
     Task<TitleDetailsResponse> GetTitleAsync(long id, CancellationToken cancellationToken);
 
     Task<DeleteTitleResponse> DeleteTitleAsync(
@@ -120,7 +122,17 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
             movies = movies.Where(movie => movie.ImdbTitle != null && movie.ImdbTitle.ImdbRating <= maximumRating);
         }
 
-        if (!string.IsNullOrWhiteSpace(query.Genre))
+        var selectedGenres = (query.Genres ?? [])
+            .Where(genre => !string.IsNullOrWhiteSpace(genre))
+            .Select(genre => genre.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (selectedGenres.Length > 0)
+        {
+            movies = movies.Where(movie => movie.ImdbTitle != null
+                && movie.ImdbTitle.Genres.Any(genre => selectedGenres.Contains(genre)));
+        }
+        else if (!string.IsNullOrWhiteSpace(query.Genre))
         {
             var genre = query.Genre.Trim();
             movies = movies.Where(movie => movie.ImdbTitle != null && movie.ImdbTitle.Genres.Contains(genre));
@@ -167,6 +179,15 @@ internal sealed class CatalogApiService(MediaDockDbContext dbContext) : ICatalog
 
         return CreatePage(items, page, pageSize, totalCount, yearBounds, imdbRatingBounds);
     }
+
+    public async Task<IReadOnlyList<string>> GetGenresAsync(long? userId, CancellationToken cancellationToken) =>
+        await GetVisibleMovies(userId)
+            .Where(movie => movie.ImdbTitle != null)
+            .SelectMany(movie => movie.ImdbTitle!.Genres)
+            .Where(genre => genre != string.Empty)
+            .Distinct()
+            .OrderBy(genre => genre)
+            .ToListAsync(cancellationToken);
 
     private IQueryable<TorrentMovie> GetVisibleMovies(long? userId)
     {

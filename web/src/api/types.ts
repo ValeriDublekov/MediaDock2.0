@@ -474,6 +474,7 @@ export interface CatalogQuery {
   imdbRatingFrom?: number
   imdbRatingTo?: number
   genre?: string
+  genres?: string[]
   country?: string
   sourceId?: number
 }

@@ -26,6 +26,19 @@ internal static class CatalogEndpoints
             .Produces<PageResponse<CatalogTitleResponse>>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        app.MapGet("/api/catalog/genres", async Task<Ok<IReadOnlyList<string>>> (
+            ClaimsPrincipal principal,
+            CurrentUserContext currentUserContext,
+            ICatalogApiService catalogService,
+            CancellationToken cancellationToken) =>
+        {
+            var currentUser = await currentUserContext.ResolveAsync(principal, cancellationToken);
+            return TypedResults.Ok(await catalogService.GetGenresAsync(currentUser?.Id, cancellationToken));
+        })
+            .WithName("GetCatalogGenres")
+            .WithSummary("List distinct genres in the visible torrent catalog.")
+            .Produces<IReadOnlyList<string>>(StatusCodes.Status200OK);
+
         app.MapGet("/api/catalog/rss/{profileId}", async Task<Ok<RssFeedPreviewResponse>> (
             string profileId,
             IRssFeedPreviewApiService previewService,

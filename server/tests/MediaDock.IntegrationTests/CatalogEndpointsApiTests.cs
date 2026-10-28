@@ -153,6 +153,19 @@ public sealed class CatalogEndpointsApiTests
         Assert.NotNull(mainFeeds);
         Assert.Equal(4, mainFeeds.TotalCount);
 
+        using var genresResponse = await client.GetAsync("/api/catalog/genres");
+        var genres = await genresResponse.Content.ReadFromJsonAsync<string[]>();
+        Assert.NotNull(genres);
+        Assert.Equal(new[] { "Action", "Drama", "Sci-Fi" }, genres);
+
+        using var multiGenreResponse = await client.GetAsync("/api/catalog?pageSize=100&genres=Action&genres=Drama");
+        var multiGenreCatalog = await multiGenreResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();
+        Assert.NotNull(multiGenreCatalog);
+        Assert.Equal(3, multiGenreCatalog.TotalCount);
+        Assert.Equal(
+            new[] { "Example Series", "The Matrix", "The Matrix Reloaded" },
+            multiGenreCatalog.Items.Select(title => title.Title).OrderBy(title => title));
+
         using var secondPageResponse = await client.GetAsync(
             "/api/catalog?page=2&pageSize=1&search=matrix&mediaType=movie");
         var secondPage = await secondPageResponse.Content.ReadFromJsonAsync<PageResponse<CatalogTitleResponse>>();

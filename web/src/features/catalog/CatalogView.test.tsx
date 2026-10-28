@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { addFavorite, addIgnoredMovie, ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getFavorites, getIgnoredMovies, getMovieAwards, getParseLogs, getRssFeedPreview, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, refreshRssFeedPreview, searchCatalogTitleImdbCandidates } from '../../api/client'
+import { addFavorite, addIgnoredMovie, ApiError, applyCatalogTitleImdbCandidate, deleteCatalogTitle, getCatalog, getCatalogGenres, getFavorites, getIgnoredMovies, getMovieAwards, getParseLogs, getRssFeedPreview, getScanRuns, getTitle, getTitleOccurrences, lookupCatalogTitleImdbCandidate, refreshRssFeedPreview, searchCatalogTitleImdbCandidates } from '../../api/client'
 import type { CatalogTitle, ImdbCandidateSearch, MovieAwardRecognition, PageResponse, RssFeedPreview, TitleDetails } from '../../api/types'
 import { formatDate } from '../../shared/format'
 import { titlePageSize } from '../../shared/titlePagination'
@@ -11,6 +11,7 @@ import { CatalogView } from './CatalogView'
 vi.mock('../../api/client', () => ({
   ApiError: class ApiError extends Error {},
   getCatalog: vi.fn(),
+  getCatalogGenres: vi.fn(),
   getFavorites: vi.fn(),
   addFavorite: vi.fn(),
   getIgnoredMovies: vi.fn(),
@@ -69,6 +70,8 @@ function renderCatalogWithActions() {
 describe('CatalogView', () => {
   beforeEach(() => {
     catalogRequest.mockReset()
+    vi.mocked(getCatalogGenres).mockReset()
+    vi.mocked(getCatalogGenres).mockResolvedValue(['Action', 'Drama'])
     vi.mocked(getRssFeedPreview).mockReset()
     vi.mocked(refreshRssFeedPreview).mockReset()
     window.localStorage.clear()
@@ -619,23 +622,31 @@ describe('CatalogView', () => {
     expect(screen.getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('applies search and filters and renders an empty result state', async () => {
+  it('uses the year sliders and genre multiselect while removing duplicate filter controls', async () => {
     catalogRequest.mockResolvedValue(page([]))
     render(<CatalogView />)
 
+    expect(await screen.findByText('All genres (2)')).toBeTruthy()
+    expect(getCatalogGenres).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByText('More filters'))
+    expect(screen.queryByLabelText('Year from')).toBeNull()
+    expect(screen.queryByLabelText('Year to')).toBeNull()
+    expect(screen.queryByLabelText('Feed type')).toBeNull()
+    expect(screen.queryByLabelText('Content kind')).toBeNull()
+
     fireEvent.change(screen.getByLabelText('Search titles'), { target: { value: 'quiet river' } })
     expect(catalogRequest).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('button', { name: 'Apply filters' })).toBeNull()
     fireEvent.change(screen.getByLabelText('Media type'), { target: { value: 'series' } })
-    expect(catalogRequest).toHaveBeenLastCalledWith({
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
       page: 1, pageSize: titlePageSize, feedTypes: ['movie'], mediaType: 'series',
-    })
-    fireEvent.change(screen.getByLabelText('Genre'), { target: { value: 'drama' } })
+    }))
+    fireEvent.click(screen.getByText('All genres (2)'))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Drama' }))
     expect(screen.getByText('More filters (2 active)')).toBeTruthy()
-    expect(catalogRequest).toHaveBeenLastCalledWith({
-      page: 1, pageSize: titlePageSize, feedTypes: ['movie'], mediaType: 'series', genre: 'drama',
-    })
+    await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
+      page: 1, pageSize: titlePageSize, feedTypes: ['movie'], mediaType: 'series', genres: ['Action'],
+    }))
 
     expect(await screen.findByText('No titles found')).toBeTruthy()
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
@@ -644,7 +655,7 @@ describe('CatalogView', () => {
       feedTypes: ['movie'],
       search: 'quiet river',
       mediaType: 'series',
-      genre: 'drama',
+      genres: ['Action'],
     }))
   })
 

@@ -42,6 +42,9 @@ public sealed record CatalogQuery
     public string? Genre { get; init; }
 
     [MaxLength(100)]
+    public string[]? Genres { get; init; }
+
+    [MaxLength(100)]
     public string? Country { get; init; }
 
     [Range(1L, long.MaxValue)]

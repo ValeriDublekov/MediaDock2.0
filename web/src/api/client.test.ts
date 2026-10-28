@@ -166,7 +166,7 @@ describe('typed API client', () => {
     const page: PageResponse<CatalogTitle> = { items: [], page: 2, pageSize: 20, totalCount: 0, totalPages: 0 }
     const stub = fetchStub(response(200, page))
 
-    await getCatalog({ page: 2, pageSize: 20, feedTypes: ['series_complete', 'series_ongoing'], search: 'quiet river', mediaType: 'series', yearFrom: 1998, imdbRatingFrom: 6.5, imdbRatingTo: 8.4, genre: 'drama' }, stub.fetcher)
+    await getCatalog({ page: 2, pageSize: 20, feedTypes: ['series_complete', 'series_ongoing'], search: 'quiet river', mediaType: 'series', yearFrom: 1998, imdbRatingFrom: 6.5, imdbRatingTo: 8.4, genre: 'drama', genres: ['Action', 'Drama'] }, stub.fetcher)
 
     const requestUrl = new URL(String(stub.calls[0]?.input), 'http://localhost')
     expect(requestUrl.pathname).toBe('/api/catalog')
@@ -179,6 +179,7 @@ describe('typed API client', () => {
     expect(requestUrl.searchParams.get('imdbRatingFrom')).toBe('6.5')
     expect(requestUrl.searchParams.get('imdbRatingTo')).toBe('8.4')
     expect(requestUrl.searchParams.get('genre')).toBe('drama')
+    expect(requestUrl.searchParams.getAll('genres')).toEqual(['Action', 'Drama'])
   })
 
   it('serializes personal ratings pagination and rating sort', async () => {

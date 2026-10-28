@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Download } from 'lucide-react'
-import { getCatalog } from '../../api/client'
+import { getCatalog, getCatalogGenres } from '../../api/client'
 import type { CatalogQuery, CatalogTitle, FeedType, MediaType, PageResponse } from '../../api/types'
+import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { ImdbRatingRangeFilter } from '../../components/ImdbRatingRangeFilter'
 import { Pagination } from '../../components/Pagination'
@@ -23,13 +24,11 @@ import { HistoryView } from '../history/HistoryView'
 interface CatalogFilters {
   search: string
   mediaType: string
-  sourceType: string
-  contentKind: string
   yearFrom: string
   yearTo: string
   imdbRatingFrom: string
   imdbRatingTo: string
-  genre: string
+  genres: string[] | null
 }
 
 type CatalogCategory = 'movie' | 'series' | 'series_ongoing' | 'all'
@@ -51,7 +50,7 @@ const categories: Array<{ id: CatalogCategory; label: string }> = [
 ]
 
 const emptyFilters: CatalogFilters = {
-  search: '', mediaType: '', sourceType: '', contentKind: '', yearFrom: '', yearTo: '', imdbRatingFrom: '', imdbRatingTo: '', genre: '',
+  search: '', mediaType: '', yearFrom: '', yearTo: '', imdbRatingFrom: '', imdbRatingTo: '', genres: null,
 }
 const emptyImdbRatingRange: ImdbRatingRange = { imdbRatingFrom: '', imdbRatingTo: '' }
 const emptyImdbRatingRanges: CatalogRatingRanges = {
@@ -110,13 +109,11 @@ function buildQuery(page: number, filters: CatalogFilters, category: CatalogCate
     ...(category !== 'all' ? { feedTypes: categoryFeedTypes[category] } : {}),
     ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
     ...(filters.mediaType ? { mediaType: filters.mediaType as MediaType } : {}),
-    ...(filters.sourceType ? { sourceType: filters.sourceType as 'movie' | 'series' } : {}),
-    ...(filters.contentKind ? { contentKind: filters.contentKind as 'standard' | 'documentary' | 'short' } : {}),
     ...(filters.yearFrom ? { yearFrom: Number(filters.yearFrom) } : {}),
     ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}),
     ...(filters.imdbRatingFrom ? { imdbRatingFrom: Number(filters.imdbRatingFrom) } : {}),
     ...(filters.imdbRatingTo ? { imdbRatingTo: Number(filters.imdbRatingTo) } : {}),
-    ...(filters.genre.trim() ? { genre: filters.genre.trim() } : {}),
+    ...(filters.genres?.length ? { genres: filters.genres } : {}),
   }
 }
 
@@ -156,6 +153,9 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
   const [draftFilters, setDraftFilters] = useState<CatalogFilters>(() => ({ ...emptyFilters, ...ratingRanges.movie }))
   const [appliedFilters, setAppliedFilters] = useState<CatalogFilters>(() => ({ ...emptyFilters, ...ratingRanges.movie }))
   const [result, setResult] = useState<PageResponse<CatalogTitle> | null>(null)
+  const [genreOptions, setGenreOptions] = useState<string[]>([])
+  const [genresLoading, setGenresLoading] = useState(true)
+  const [genresError, setGenresError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -166,7 +166,8 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
   const [detailsSection, setDetailsSection] = useState<'details' | 'torrents'>('details')
   const awardsRequestKey = movieAwardsRequestKey(result?.items.map((title) => title.imdbId) ?? [])
   const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
-  const activeFilterCount = Object.entries(draftFilters).filter(([key, value]) => key !== 'search' && value !== '').length
+  const activeFilterCount = Object.entries(draftFilters).filter(([key, value]) => key !== 'search' && key !== 'genres' && value !== '').length
+    + (draftFilters.genres?.length ? 1 : 0)
 
   function removeCatalogTitle(titleId: number) {
     setResult((current) => removePageItems(current, (title) => title.id === titleId))
@@ -190,6 +191,17 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
       .finally(() => { if (current) setLoading(false) })
     return () => { current = false }
   }, [page, appliedFilters, category, attempt])
+
+  useEffect(() => {
+    let current = true
+    getCatalogGenres()
+      .then((options) => { if (current) setGenreOptions(options) })
+      .catch((requestError: unknown) => {
+        if (current) setGenresError(requestError instanceof Error ? requestError.message : 'Could not load genres.')
+      })
+      .finally(() => { if (current) setGenresLoading(false) })
+    return () => { current = false }
+  }, [])
 
   useEffect(() => {
     if (draftFilters.search === appliedFilters.search) return
@@ -279,6 +291,15 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
           <label htmlFor="catalog-search">Search titles</label>
           <input id="catalog-search" onChange={(event) => updateFilter('search', event.target.value)} placeholder="Title or year" type="search" value={draftFilters.search} />
         </div>
+        <CategoryMultiSelect
+          error={genresError}
+          label="Genres"
+          loading={genresLoading}
+          onChange={(values) => updateFilter('genres', values)}
+          options={genreOptions}
+          optionsLabel="genres"
+          selectedValues={draftFilters.genres}
+        />
         {result?.yearBounds && <YearRangeFilter
           bounds={result.yearBounds}
           id="catalog-year-range"
@@ -304,30 +325,6 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
               <select id="catalog-media-type" onChange={(event) => updateFilter('mediaType', event.target.value)} value={draftFilters.mediaType}>
                 <option value="">All types</option><option value="movie">Movie</option><option value="series">Series</option><option value="documentary">Documentary</option><option value="short">Short</option>
               </select>
-            </div>
-            <div className="field">
-              <label htmlFor="catalog-feed-type">Feed type</label>
-              <select id="catalog-feed-type" onChange={(event) => updateFilter('sourceType', event.target.value)} value={draftFilters.sourceType}>
-                <option value="">All feeds</option><option value="movie">Movie feed</option><option value="series">Series feed</option>
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="catalog-content-kind">Content kind</label>
-              <select id="catalog-content-kind" onChange={(event) => updateFilter('contentKind', event.target.value)} value={draftFilters.contentKind}>
-                <option value="">All content</option><option value="standard">Standard</option><option value="documentary">Documentary</option><option value="short">Short</option>
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="catalog-year-from">Year from</label>
-              <input id="catalog-year-from" max="2200" min="1800" onChange={(event) => updateFilter('yearFrom', event.target.value)} type="number" value={draftFilters.yearFrom} />
-            </div>
-            <div className="field">
-              <label htmlFor="catalog-year-to">Year to</label>
-              <input id="catalog-year-to" max="2200" min="1800" onChange={(event) => updateFilter('yearTo', event.target.value)} type="number" value={draftFilters.yearTo} />
-            </div>
-            <div className="field">
-              <label htmlFor="catalog-genre">Genre</label>
-              <input id="catalog-genre" onChange={(event) => updateFilter('genre', event.target.value)} placeholder="e.g. drama" value={draftFilters.genre} />
             </div>
           </div>
         </details>
