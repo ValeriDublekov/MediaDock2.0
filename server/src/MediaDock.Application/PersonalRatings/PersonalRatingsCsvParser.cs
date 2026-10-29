@@ -9,7 +9,7 @@ public static class PersonalRatingsCsvParser
 
     private static readonly UTF8Encoding StrictUtf8 = new(false, true);
 
-    public static PersonalRatingsParseResult Parse(ReadOnlySpan<byte> csvBytes)
+    public static PersonalRatingsParseResult Parse(ReadOnlySpan<byte> csvBytes, DateOnly currentDate)
     {
         string csv;
         try
@@ -66,7 +66,7 @@ public static class PersonalRatingsCsvParser
             }
 
             var imdbId = NormalizeImdbId(row[idColumn]);
-            var dateRated = ParseDate(row[modifiedDateColumn]);
+            var dateRated = ParseDate(row[modifiedDateColumn]) ?? currentDate;
             var ratingText = row[ratingColumn].Trim();
             if (ratingText.Length == 0 || ratingText == "0")
             {
@@ -266,6 +266,6 @@ public sealed record PersonalRatingsParseResult(
     IReadOnlyDictionary<string, PersonalRatingImportEntry> Ratings,
     IReadOnlyList<string> MissingRatingIds);
 
-public sealed record PersonalRatingImportEntry(int Rating, DateOnly? DateRated);
+public sealed record PersonalRatingImportEntry(int Rating, DateOnly DateRated);
 
 public sealed class PersonalRatingsImportException(string message) : Exception(message);

@@ -8,6 +8,50 @@ public sealed class PersistenceTests
 {
     [Fact]
     [Trait("Category", "Persistence")]
+    public async Task PersonalRatingDateMigrationBackfillsExistingNullDatesAndRequiresDate()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_personal_rating_date_migration_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync("20261027133503_AddPersonalRatingsVoteDate");
+
+        var now = DateTimeOffset.UtcNow;
+        var user = CreateUser("rating-date-migration@example.com", now);
+        db.Users.Add(user);
+        db.ImdbTitles.Add(new ImdbTitle
+        {
+            ImdbId = "tt98765432",
+            MetadataStatus = "pending",
+            UpdatedAt = now
+        });
+        await db.SaveChangesAsync();
+
+        await db.Database.ExecuteSqlRawAsync(
+            "INSERT INTO personal_ratings (user_id, imdb_id, rating, date_rated, is_manually_added, updated_at) VALUES ({0}, {1}, 8, NULL, TRUE, {2})",
+            user.Id,
+            "tt98765432",
+            now);
+        var currentDate = await db.Database.SqlQuery<DateOnly>(
+            $"SELECT CURRENT_DATE AS \"Value\"")
+            .SingleAsync();
+
+        await db.Database.MigrateAsync();
+        db.ChangeTracker.Clear();
+
+        var rating = await db.PersonalRatings.AsNoTracking().SingleAsync();
+        Assert.Equal(currentDate, rating.DateRated);
+        var isNullable = await db.Database.SqlQuery<string>(
+            $"SELECT is_nullable AS \"Value\" FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'personal_ratings' AND column_name = 'date_rated'")
+            .SingleAsync();
+        Assert.Equal("NO", isNullable);
+    }
+
+    [Fact]
+    [Trait("Category", "Persistence")]
     public async Task MovieRecommendationMigrationSeedsDefaultsAndPreservesOwnedData()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_movie_recommendation_migration_test").Build();

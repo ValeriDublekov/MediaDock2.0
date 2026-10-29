@@ -27,12 +27,10 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
         {
             "asc" => ratings.OrderBy(rating => rating.Rating).ThenBy(rating => rating.ImdbId),
             "vote_date_asc" => ratings
-                .OrderBy(rating => rating.DateRated.HasValue)
-                .ThenBy(rating => rating.DateRated)
+                .OrderBy(rating => rating.DateRated)
                 .ThenBy(rating => rating.ImdbId),
             "vote_date_desc" => ratings
-                .OrderByDescending(rating => rating.DateRated.HasValue)
-                .ThenByDescending(rating => rating.DateRated)
+                .OrderByDescending(rating => rating.DateRated)
                 .ThenBy(rating => rating.ImdbId),
             _ => ratings.OrderByDescending(rating => rating.Rating).ThenBy(rating => rating.ImdbId)
         };
@@ -103,10 +101,13 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
             throw ValidationError($"The ratings file cannot exceed {MaximumUploadBytes / (1024 * 1024)} MiB.");
         }
 
+        var importedAt = DateTimeOffset.UtcNow;
         PersonalRatingsParseResult parsedFile;
         try
         {
-            parsedFile = PersonalRatingsCsvParser.Parse(buffer.GetBuffer().AsSpan(0, (int)buffer.Length));
+            parsedFile = PersonalRatingsCsvParser.Parse(
+                buffer.GetBuffer().AsSpan(0, (int)buffer.Length),
+                DateOnly.FromDateTime(importedAt.UtcDateTime));
         }
         catch (PersonalRatingsImportException exception)
         {
@@ -119,7 +120,6 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
         var existingRatings = await dbContext.PersonalRatings
             .Where(rating => rating.UserId == userId && ids.Contains(rating.ImdbId))
             .ToDictionaryAsync(rating => rating.ImdbId, cancellationToken);
-        var importedAt = DateTimeOffset.UtcNow;
         await ImdbTitleMetadataMapper.EnsureAsync(dbContext, ids, importedAt, cancellationToken);
         var added = 0;
         var updated = 0;

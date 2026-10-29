@@ -473,6 +473,7 @@ public sealed class MovieRecommendationsApiTests
         var manuallyAddedRating = await verifyDb.PersonalRatings.AsNoTracking()
             .SingleAsync(rating => rating.UserId == firstUserId && rating.ImdbId == "tt3000005");
         Assert.Equal(9, manuallyAddedRating.Rating);
+        Assert.Equal(DateOnly.FromDateTime(manuallyAddedRating.UpdatedAt.UtcDateTime), manuallyAddedRating.DateRated);
         Assert.True(manuallyAddedRating.IsManuallyAdded);
     }
 

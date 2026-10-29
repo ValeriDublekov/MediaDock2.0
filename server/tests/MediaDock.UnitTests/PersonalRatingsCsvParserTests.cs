@@ -13,7 +13,7 @@ public sealed class PersonalRatingsCsvParserTests
             + "tt1172049,6,2026-08-13T16:26:49.541Z\r\n"
             + "tt1535109,8,2026-08-09T21:21:23.099Z";
 
-        var result = PersonalRatingsCsvParser.Parse(Encoding.UTF8.GetBytes(csv));
+        var result = Parse(csv);
 
         Assert.Equal(3, result.Ratings.Count);
         Assert.Equal(new PersonalRatingImportEntry(8, new DateOnly(2026, 8, 30)), result.Ratings["tt14452776"]);
@@ -28,7 +28,7 @@ public sealed class PersonalRatingsCsvParserTests
             + "8,2026-08-30T21:09:30.554Z, TT14452776 \n"
             + "8,2026-08-30T21:09:30.554Z,tt14452776";
 
-        var result = PersonalRatingsCsvParser.Parse(Encoding.UTF8.GetBytes(csv));
+        var result = Parse(csv);
 
         Assert.Single(result.Ratings);
         Assert.Equal(8, result.Ratings["tt14452776"].Rating);
@@ -42,10 +42,20 @@ public sealed class PersonalRatingsCsvParserTests
             + "tt1234567,,\n"
             + "tt7654321,0,";
 
-        var result = PersonalRatingsCsvParser.Parse(Encoding.UTF8.GetBytes(csv));
+        var result = Parse(csv);
 
         Assert.Single(result.Ratings);
         Assert.Equal(new[] { "tt1234567", "tt7654321" }, result.MissingRatingIds);
+    }
+
+    [Fact]
+    public void ParseUsesCurrentDateWhenLastModifiedDateIsMissing()
+    {
+        const string csv = "Title ID,Rating,Last Modified Date\ntt1234567,8,";
+
+        var result = Parse(csv);
+
+        Assert.Equal(new DateOnly(2026, 10, 29), result.Ratings["tt1234567"].DateRated);
     }
 
     [Theory]
@@ -59,7 +69,7 @@ public sealed class PersonalRatingsCsvParserTests
     public void ParseRejectsInvalidFiles(string csv)
     {
         Assert.Throws<PersonalRatingsImportException>(() =>
-            PersonalRatingsCsvParser.Parse(Encoding.UTF8.GetBytes(csv)));
+            Parse(csv));
     }
 
     [Fact]
@@ -70,6 +80,9 @@ public sealed class PersonalRatingsCsvParserTests
             + "TT1234567,8,2026-08-30T21:09:30Z";
 
         Assert.Throws<PersonalRatingsImportException>(() =>
-            PersonalRatingsCsvParser.Parse(Encoding.UTF8.GetBytes(csv)));
+            Parse(csv));
     }
+
+    private static PersonalRatingsParseResult Parse(string csv) =>
+        PersonalRatingsCsvParser.Parse(Encoding.UTF8.GetBytes(csv), new DateOnly(2026, 10, 29));
 }

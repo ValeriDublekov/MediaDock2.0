@@ -323,13 +323,15 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             return false;
         }
 
+        var now = DateTimeOffset.UtcNow;
         dbContext.PersonalRatings.Add(new PersonalRating
         {
             UserId = userId,
             ImdbId = imdbId,
             Rating = rating,
+            DateRated = DateOnly.FromDateTime(now.UtcDateTime),
             IsManuallyAdded = true,
-            UpdatedAt = DateTimeOffset.UtcNow
+            UpdatedAt = now
         });
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
