@@ -68,7 +68,7 @@ public static class PersonalRatingsCsvParser
             var imdbId = NormalizeImdbId(row[idColumn]);
             var dateRated = ParseDate(row[modifiedDateColumn]);
             var ratingText = row[ratingColumn].Trim();
-            if (ratingText.Length == 0)
+            if (ratingText.Length == 0 || ratingText == "0")
             {
                 missingRatingIds.Add(imdbId);
                 continue;

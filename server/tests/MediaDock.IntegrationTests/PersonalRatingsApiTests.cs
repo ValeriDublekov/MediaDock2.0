@@ -570,6 +570,21 @@ public sealed class PersonalRatingsApiTests
             firstToken);
         Assert.Equal(HttpStatusCode.BadRequest, invalidImportResponse.StatusCode);
 
+        using var missingRatingsResponse = await ImportAsync(
+            firstClient,
+            "/api/personal-ratings/import",
+            "Title ID,Rating,Last Modified Date\ntt1234567,8,2018-03-04T00:00:00Z\ntt9999998,,\ntt9999997,0,",
+            firstToken);
+        Assert.Equal(HttpStatusCode.OK, missingRatingsResponse.StatusCode);
+        var missingRatingsImport = await missingRatingsResponse.Content.ReadFromJsonAsync<PersonalRatingsImportResponse>();
+        Assert.NotNull(missingRatingsImport);
+        Assert.Equal(1, missingRatingsImport.RatingsInFile);
+        Assert.Equal(0, missingRatingsImport.Added);
+        Assert.Equal(1, missingRatingsImport.Unchanged);
+        Assert.Equal(2, missingRatingsImport.TotalRatings);
+        Assert.Equal(["tt9999998", "tt9999997"], missingRatingsImport.Errors.Select(error => error.Id));
+        Assert.All(missingRatingsImport.Errors, error => Assert.Equal("Missing rating.", error.Message));
+
         var oversizedCsv = "Title ID,Rating,Last Modified Date\n" + new string('x', 1_048_577);
         using var oversizedImportResponse = await ImportAsync(
             firstClient,

@@ -28,6 +28,7 @@ import type { BackgroundJob, OmdbDailyUsage, PersonalRating, ProviderSettings, S
 import { titlePageSize } from '../../shared/titlePagination'
 import { FavoriteProvider } from '../favorites/FavoriteContext'
 import { IgnoredMoviesProvider } from '../ignored-movies/IgnoredMoviesContext'
+import { PersonalRatingsImportView } from '../personal-ratings/PersonalRatingsImportView'
 import { OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './ConfigurationSettingsViews'
 import { SourceSettingsView } from './SourceSettingsView'
 
@@ -199,7 +200,7 @@ describe('SourceSettingsView', () => {
       errors: [{ id: 'tt1234567', message: 'Missing rating.' }],
     })
 
-    render(<PersonalRatingsView />)
+    render(<PersonalRatingsImportView />)
 
     expect(screen.getByText(/download your full Amazon data archive/)).toBeTruthy()
     expect(screen.getByText('All Data Categories.zip\\Additional Data\\IMDbRatings.UserRatingsData')).toBeTruthy()
@@ -217,8 +218,16 @@ describe('SourceSettingsView', () => {
     expect((await screen.findByText(/Skipped entries with missing ratings:/)).textContent).toContain('tt1234567 (Missing rating.)')
   })
 
-  it('rejects personal ratings CSV files larger than 1 MiB before upload', async () => {
+  it('keeps the import form off the personal ratings list', async () => {
     render(<PersonalRatingsView />)
+
+    expect(await screen.findByText('No personal ratings yet')).toBeTruthy()
+    expect(screen.queryByLabelText('IMDb ratings CSV')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Import ratings' })).toBeNull()
+  })
+
+  it('rejects personal ratings CSV files larger than 1 MiB before upload', async () => {
+    render(<PersonalRatingsImportView />)
 
     const file = new File([new Uint8Array(1024 * 1024 + 1)], 'ratings.csv', { type: 'text/csv' })
     const fileInput = await screen.findByLabelText('IMDb ratings CSV')
@@ -381,7 +390,7 @@ describe('SourceSettingsView', () => {
   ])('shows API %s errors on the personal ratings form', async (status, message) => {
     vi.mocked(importPersonalRatings).mockRejectedValue(Object.assign(new Error(message), { status }))
 
-    render(<PersonalRatingsView />)
+    render(<PersonalRatingsImportView />)
 
     const file = new File(['Title ID,Rating,Last Modified Date\ntt1234567,8,'], 'ratings.csv', { type: 'text/csv' })
     const fileInput = await screen.findByLabelText('IMDb ratings CSV')

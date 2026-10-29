@@ -12,6 +12,7 @@ import { IgnoredMoviesProvider } from './features/ignored-movies/IgnoredMoviesCo
 import { IgnoredMoviesView } from './features/ignored-movies/IgnoredMoviesView'
 import { SourceSettingsView } from './features/sources/SourceSettingsView'
 import { IngestionSettingsView, OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './features/sources/ConfigurationSettingsViews'
+import { PersonalRatingsImportView } from './features/personal-ratings/PersonalRatingsImportView'
 import { AuthStatus } from './features/auth/AuthStatus'
 import { UsersView } from './features/users/UsersView'
 import { RecommendationSettingsView } from './features/recommendations/RecommendationSettingsView'
@@ -251,6 +252,7 @@ function AppContent() {
     ? `${session.identity.issuer}:${session.identity.subject}`
     : null
   const isAdmin = isActiveAccount && session?.user?.role === 'admin'
+  const isPersonalRatingsPath = location.pathname === '/account/personal-ratings' || location.pathname === '/account/personal-ratings/import'
   const mainNavigation: { path: string; label: string }[] = [
     { path: '/catalog', label: 'Torents catalog' },
     ...(isActiveAccount ? [
@@ -275,11 +277,15 @@ function AppContent() {
     ? requestedScanRunId
     : null
   const content = sectionContent[section]
-  const pageContent = location.pathname === '/account/ignored-movies'
-    ? { eyebrow: 'PERSONAL', title: 'Ignored titles', description: '' }
-    : recommendationPage
-      ? { eyebrow: 'PERSONAL', title: recommendationPage.label, description: '' }
-      : content
+  const pageContent = location.pathname === '/account/personal-ratings'
+    ? { eyebrow: 'PERSONAL', title: 'Personal ratings', description: '' }
+    : location.pathname === '/account/personal-ratings/import'
+      ? { eyebrow: 'PERSONAL', title: 'Import ratings', description: '' }
+      : location.pathname === '/account/ignored-movies'
+        ? { eyebrow: 'PERSONAL', title: 'Ignored titles', description: '' }
+        : recommendationPage
+          ? { eyebrow: 'PERSONAL', title: recommendationPage.label, description: '' }
+          : content
   const title = administrationPage?.label ?? pageContent.title
   const description = administrationPage?.description ?? pageContent.description
   const registrationSession = session?.authenticated && session.accountState === 'unmatched' ? session : null
@@ -299,7 +305,25 @@ function AppContent() {
 
         <div className="sidebar-label sidebar-label-first">MAIN MENU</div>
         <nav className="primary-nav" aria-label="Main navigation">
-          {mainNavigation.map((item, index) => (
+          {mainNavigation.map((item, index) => item.path === '/account/personal-ratings' ? (
+            <div className="account-nav-group" key={item.path}>
+              <NavLink
+                aria-label={item.label}
+                className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
+                to={item.path}
+              >
+                <span className="nav-number">{String(index + 1).padStart(2, '0')}</span>
+                <span>{item.label}</span>
+              </NavLink>
+              {isPersonalRatingsPath && <div className="configuration-nav">
+                <NavLink
+                  className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
+                  end
+                  to="/account/personal-ratings/import"
+                >Import ratings</NavLink>
+              </div>}
+            </div>
+          ) : (
             <NavLink
               aria-label={item.label}
               className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
@@ -424,6 +448,15 @@ function AppContent() {
                 title="Personal ratings unavailable"
               >
                 <PersonalRatingsView key={accountKey ?? 'no-active-account'} />
+              </ActiveAccountArea>
+            )} />
+            <Route path="/account/personal-ratings/import" element={(
+              <ActiveAccountArea
+                isActiveAccount={isActiveAccount}
+                message="Sign in with an active linked account to import personal IMDb ratings."
+                title="Personal ratings import unavailable"
+              >
+                <PersonalRatingsImportView key={accountKey ?? 'no-active-account'} />
               </ActiveAccountArea>
             )} />
             <Route path="/configuration" element={<AdminArea isAdmin={isAdmin}><Navigate replace to="/configuration/system" /></AdminArea>} />

@@ -39,12 +39,13 @@ public sealed class PersonalRatingsCsvParserTests
     {
         const string csv = "\"Title ID\",Rating,\"Last Modified Date\"\n"
             + "tt14452776,8,2026-08-30T21:09:30.554Z\n"
-            + "tt1234567,,";
+            + "tt1234567,,\n"
+            + "tt7654321,0,";
 
         var result = PersonalRatingsCsvParser.Parse(Encoding.UTF8.GetBytes(csv));
 
         Assert.Single(result.Ratings);
-        Assert.Equal(new[] { "tt1234567" }, result.MissingRatingIds);
+        Assert.Equal(new[] { "tt1234567", "tt7654321" }, result.MissingRatingIds);
     }
 
     [Theory]

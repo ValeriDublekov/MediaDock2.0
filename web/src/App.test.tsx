@@ -80,6 +80,9 @@ vi.mock('./features/sources/ConfigurationSettingsViews', () => ({
   },
   SystemSettingsView: () => <div>System route content</div>,
 }))
+vi.mock('./features/personal-ratings/PersonalRatingsImportView', () => ({
+  PersonalRatingsImportView: () => <div>Ratings import route content</div>,
+}))
 vi.mock('./features/history/HistoryView', () => ({
   HistoryView: ({ scanRunId, onClearScanRun }: { scanRunId: number | null; onClearScanRun: () => void }) => (
     <div>History scan: {scanRunId ?? 'all'}<button onClick={onClearScanRun} type="button">Clear scan</button></div>
@@ -199,7 +202,7 @@ describe('App routes', () => {
 
     expect(await screen.findByText('Ratings route content')).toBeTruthy()
     const mainNavigation = screen.getByRole('navigation', { name: 'Main navigation' })
-    expect(Array.from(mainNavigation.querySelectorAll('a'), (link) => link.getAttribute('aria-label'))).toEqual([
+    expect(Array.from(mainNavigation.querySelectorAll(':scope > a, :scope > .account-nav-group > a'), (link) => link.getAttribute('aria-label'))).toEqual([
       'Torents catalog',
       'Movie recommendations',
       'Series recommendations',
@@ -211,6 +214,22 @@ describe('App routes', () => {
     ])
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Users' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Import ratings' }).closest('.account-nav-group')).toBeTruthy()
+  })
+
+  it('opens the separate ratings import screen from its nested menu item', async () => {
+    authMock.session = activeUserSession
+
+    renderAt('/account/personal-ratings')
+
+    expect(await screen.findByText('Ratings route content')).toBeTruthy()
+    fireEvent.click(screen.getByRole('link', { name: 'Import ratings' }))
+
+    expect(await screen.findByText('Ratings import route content')).toBeTruthy()
+    expect(screen.getByTestId('location').textContent).toBe('/account/personal-ratings/import')
+    expect(screen.getByRole('heading', { name: 'Import ratings' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Personal ratings' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: 'Import ratings' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('shows personal recommendations to active users but keeps administration hidden', async () => {
