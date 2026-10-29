@@ -226,7 +226,6 @@ export function PersonalRatingsView() {
           >
             <div className="tile-observations">
               <time dateTime={rating.dateRated ?? undefined}>{rating.dateRated ? `Voted ${rating.dateRated}` : 'Vote date unknown'}</time>
-              <span>{rating.imdbId}</span>
             </div>
           </MoviePosterCard>)}
         </div> : <div className="table-wrap">
@@ -235,7 +234,7 @@ export function PersonalRatingsView() {
             <tbody>{ratings.items.map((rating) => <tr key={rating.imdbId}>
               <td>
                 <a className="title-link" href={`https://www.imdb.com/title/${encodeURIComponent(rating.imdbId)}/`} rel="noreferrer" target="_blank">{rating.title}</a>
-                <span className="subtle-line">{rating.imdbId} <span aria-hidden="true">·</span> {rating.year ?? 'Year unknown'}</span>
+                <span className="subtle-line">{rating.year ?? 'Year unknown'}</span>
               </td>
               <td><span className="rating-value">{rating.rating} / 10</span></td>
               <td>{rating.imdbRating === null ? 'Not rated' : rating.imdbRating.toFixed(1)}</td>

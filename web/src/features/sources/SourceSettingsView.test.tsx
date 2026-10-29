@@ -300,11 +300,13 @@ describe('SourceSettingsView', () => {
     expect(await screen.findByRole('link', { name: 'Poster title' })).toBeTruthy()
     expect(screen.getByText('Your rating 8 / 10')).toBeTruthy()
     expect(screen.getByText('Voted 2020-06-02')).toBeTruthy()
+    expect(screen.queryByText('tt1234567')).toBeNull()
     expect(screen.getByRole('button', { name: 'Posters' }).getAttribute('aria-pressed')).toBe('true')
 
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(screen.getByRole('columnheader', { name: 'VOTED' })).toBeTruthy()
     expect(screen.getByText('2020-06-02')).toBeTruthy()
+    expect(screen.queryByText('tt1234567')).toBeNull()
   })
 
   it('places favorite and ignore controls over personal rating posters', async () => {

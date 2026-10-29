@@ -11,6 +11,7 @@ Start here for work in this repository. Use the [local operations runbook](../..
 | Task | Read |
 | --- | --- |
 | Frontend | [Architecture](ARCHITECTURE.md) for the web/API boundary and request flow; [Testing](TESTING.md) for frontend tests and commands. |
+| Frontend design review | [UI design improvement backlog](plans/ui-design-improvements.md) for catalog and personal screens; [administration screen backlog](plans/ui-design-improvements-administration.md) for admin screens. |
 | API | [Shared API conventions](API_CONTRACTS.md); [catalogs and awards](API_CATALOGS_AND_AWARDS.md), [identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md), or [operations and jobs](API_OPERATIONS_AND_JOBS.md) for route-specific contracts; [Architecture](ARCHITECTURE.md) for cross-layer flows. |
 | Golden Globes IMDb imports | [Import procedure](GOLDEN_GLOBES_IMPORT.md) for page capture, category scope, audit output, and the reusable SQL template. |
 | Persistence | [Data contracts](DATA_CONTRACTS.md) for canonical ownership and migration cautions; [Data schema](DATA_SCHEMA.md) for entities and constraints; [Data behavior](DATA_BEHAVIOR.md) for transactions and idempotency; [Architecture](ARCHITECTURE.md) for cross-layer flows. |
