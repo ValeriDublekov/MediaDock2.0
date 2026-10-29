@@ -14,6 +14,8 @@ import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
 import { DeploymentControlPanel } from './DeploymentControlPanel'
 
+const maximumPersonalRatingsUploadBytes = 1024 * 1024
+
 interface ProviderSettingsDraft {
   omdbApiKey: string
   clearOmdbApiKey: boolean
@@ -127,7 +129,11 @@ export function PersonalRatingsView() {
     const fileInput = form.elements.namedItem('personal-ratings-file') as HTMLInputElement | null
     const file = fileInput?.files?.[0]
     if (!file) {
-      setRatingsImportError('Select a JSON file to import.')
+      setRatingsImportError('Select a CSV file to import.')
+      return
+    }
+    if (file.size > maximumPersonalRatingsUploadBytes) {
+      setRatingsImportError('The CSV file cannot exceed 1 MiB.')
       return
     }
 
@@ -181,11 +187,11 @@ export function PersonalRatingsView() {
   return (
     <section aria-labelledby="personal-ratings-heading" className="management-section">
       <h2 id="personal-ratings-heading">Personal IMDb ratings</h2>
-      <p className="section-caption">Upload one JSON export at a time. Re-imports add or update ratings by IMDb ID and keep ratings not included in the file.</p>
+      <p className="section-caption">Upload one IMDb CSV export at a time. Re-imports add or update ratings by IMDb ID and keep ratings not included in the file. Maximum file size: 1 MiB.</p>
       <form className="settings-form" onSubmit={importRatings}>
         <div className="field">
-          <label htmlFor="personal-ratings-file">IMDb ratings JSON</label>
-          <input accept=".json,application/json" id="personal-ratings-file" name="personal-ratings-file" required type="file" />
+          <label htmlFor="personal-ratings-file">IMDb ratings CSV</label>
+          <input accept=".csv,text/csv" id="personal-ratings-file" name="personal-ratings-file" required type="file" />
         </div>
         {ratingsImportError && <p className="form-error" role="alert">{ratingsImportError}</p>}
         {ratingsImportResult && <>

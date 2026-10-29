@@ -10,7 +10,7 @@ namespace MediaDock.Api.PersonalRatings;
 
 internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
 {
-    public const int MaximumUploadBytes = 5 * 1024 * 1024;
+    public const int MaximumUploadBytes = 1024 * 1024;
 
     public async Task<PageResponse<PersonalRatingResponse>> GetAsync(
         long userId,
@@ -83,7 +83,7 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
         var file = form.File;
         if (file is null || file.Length == 0)
         {
-            throw ValidationError("Select a non-empty JSON ratings file.");
+            throw ValidationError("Select a non-empty CSV ratings file.");
         }
 
         if (file.Length > MaximumUploadBytes)
@@ -91,9 +91,9 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
             throw ValidationError($"The ratings file cannot exceed {MaximumUploadBytes / (1024 * 1024)} MiB.");
         }
 
-        if (!string.Equals(Path.GetExtension(file.FileName), ".json", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(Path.GetExtension(file.FileName), ".csv", StringComparison.OrdinalIgnoreCase))
         {
-            throw ValidationError("The selected file must have a .json extension.");
+            throw ValidationError("The selected file must have a .csv extension.");
         }
 
         await using var buffer = new MemoryStream((int)file.Length);
@@ -106,7 +106,7 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
         PersonalRatingsParseResult parsedFile;
         try
         {
-            parsedFile = PersonalRatingsJsonParser.Parse(buffer.GetBuffer().AsSpan(0, (int)buffer.Length));
+            parsedFile = PersonalRatingsCsvParser.Parse(buffer.GetBuffer().AsSpan(0, (int)buffer.Length));
         }
         catch (PersonalRatingsImportException exception)
         {

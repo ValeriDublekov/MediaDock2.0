@@ -201,8 +201,8 @@ describe('SourceSettingsView', () => {
 
     render(<PersonalRatingsView />)
 
-    const file = new File(['[{"id":"tt14452776","rating":8}]'], 'ratings.json', { type: 'application/json' })
-    const fileInput = await screen.findByLabelText('IMDb ratings JSON')
+    const file = new File(['"Title ID",Rating,"Last Modified Date"\ntt14452776,8,2026-08-30T21:09:30.554Z'], 'ratings.csv', { type: 'text/csv' })
+    const fileInput = await screen.findByLabelText('IMDb ratings CSV')
     Object.defineProperty(fileInput, 'files', { configurable: true, value: [file] })
     fireEvent.submit(fileInput.closest('form')!)
 
@@ -211,6 +211,18 @@ describe('SourceSettingsView', () => {
       element?.getAttribute('role') === 'status' && (element.textContent ?? '').includes('Imported'))
     expect(importStatus.textContent).toContain('1 added, 1 updated, 1 unchanged. 12 ratings stored.')
     expect((await screen.findByText(/Skipped entries with missing ratings:/)).textContent).toContain('tt1234567 (Missing rating.)')
+  })
+
+  it('rejects personal ratings CSV files larger than 1 MiB before upload', async () => {
+    render(<PersonalRatingsView />)
+
+    const file = new File([new Uint8Array(1024 * 1024 + 1)], 'ratings.csv', { type: 'text/csv' })
+    const fileInput = await screen.findByLabelText('IMDb ratings CSV')
+    Object.defineProperty(fileInput, 'files', { configurable: true, value: [file] })
+    fireEvent.submit(fileInput.closest('form')!)
+
+    expect((await screen.findByRole('alert')).textContent).toContain('1 MiB')
+    expect(importPersonalRatings).not.toHaveBeenCalled()
   })
 
   it('lists personal ratings, paginates, and resets to page one when sorting changes', async () => {
@@ -367,8 +379,8 @@ describe('SourceSettingsView', () => {
 
     render(<PersonalRatingsView />)
 
-    const file = new File(['[]'], 'ratings.json', { type: 'application/json' })
-    const fileInput = await screen.findByLabelText('IMDb ratings JSON')
+    const file = new File(['Title ID,Rating,Last Modified Date\ntt1234567,8,'], 'ratings.csv', { type: 'text/csv' })
+    const fileInput = await screen.findByLabelText('IMDb ratings CSV')
     Object.defineProperty(fileInput, 'files', { configurable: true, value: [file] })
     fireEvent.submit(fileInput.closest('form')!)
 

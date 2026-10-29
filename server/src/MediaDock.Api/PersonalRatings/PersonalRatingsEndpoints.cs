@@ -130,7 +130,7 @@ internal static class PersonalRatingsEndpoints
             return TypedResults.Ok(result);
         })
             .WithName("ImportPersonalRatings")
-            .WithSummary("Merge personal IMDb ratings from a JSON export.")
+            .WithSummary("Merge personal IMDb ratings from a CSV export.")
             .WithDescription("Repeated imports add new IMDb IDs and update changed ratings; ratings absent from the file are retained.")
             .RequireAuthorization(AccessPolicies.OwnerScopedPersonalRatings)
             .WithMetadata(new RequestSizeLimitAttribute(PersonalRatingsApiService.MaximumUploadBytes + 1024 * 1024))

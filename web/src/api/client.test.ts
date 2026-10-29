@@ -588,7 +588,7 @@ describe('typed API client', () => {
     expect((body as FormData).get('File')).toBe(file)
   })
 
-  it('sends one personal ratings JSON file as multipart', async () => {
+  it('sends one personal ratings CSV file as multipart', async () => {
     const tokenStub = fetchStub(response(200, { requestToken: 'ratings-csrf' }))
     const importStub = fetchStub(response(200, {
       ratingsInFile: 1,
@@ -603,7 +603,7 @@ describe('typed API client', () => {
       String(input) === '/api/auth/antiforgery'
         ? tokenStub.fetcher(input, init)
         : importStub.fetcher(input, init)
-    const file = new File(['[{"id":"tt14452776","rating":8}]'], 'ratings.json', { type: 'application/json' })
+    const file = new File(['Title ID,Rating,Last Modified Date\ntt14452776,8,2026-08-30T21:09:30.554Z'], 'ratings.csv', { type: 'text/csv' })
 
     await importPersonalRatings(file, fetcher)
 

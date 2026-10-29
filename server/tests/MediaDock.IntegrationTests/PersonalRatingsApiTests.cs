@@ -517,21 +517,21 @@ public sealed class PersonalRatingsApiTests
         using var anonymousFactory = new ApiFactory(connectionString);
         using var anonymousClient = anonymousFactory.CreateClient();
         using var anonymousResponse = await anonymousClient.PostAsync(
-            "/api/personal-ratings/import", CreateUpload("[{\"id\":\"tt1234567\",\"rating\":8}]"));
+            "/api/personal-ratings/import", CreateUpload("Title ID,Rating,Last Modified Date\ntt1234567,8,"));
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
 
         using var unknownFactory = new ApiFactory(
             connectionString, CreatePrincipal("ratings-unknown", "unknown@example.com"));
         using var unknownClient = unknownFactory.CreateClient();
         using var unknownResponse = await unknownClient.PostAsync(
-            "/api/personal-ratings/import", CreateUpload("[{\"id\":\"tt1234567\",\"rating\":8}]"));
+            "/api/personal-ratings/import", CreateUpload("Title ID,Rating,Last Modified Date\ntt1234567,8,"));
         Assert.Equal(HttpStatusCode.Forbidden, unknownResponse.StatusCode);
 
         using var deactivatedFactory = new ApiFactory(
             connectionString, CreatePrincipal("ratings-disabled", "disabled@example.com"));
         using var deactivatedClient = deactivatedFactory.CreateClient();
         using var deactivatedResponse = await deactivatedClient.PostAsync(
-            "/api/personal-ratings/import", CreateUpload("[{\"id\":\"tt1234567\",\"rating\":8}]"));
+            "/api/personal-ratings/import", CreateUpload("Title ID,Rating,Last Modified Date\ntt1234567,8,"));
         Assert.Equal(HttpStatusCode.Forbidden, deactivatedResponse.StatusCode);
 
         using var firstFactory = new ApiFactory(
@@ -548,12 +548,12 @@ public sealed class PersonalRatingsApiTests
         var adminToken = await GetAntiforgeryTokenAsync(adminClient);
 
         using var missingTokenResponse = await firstClient.PostAsync(
-            "/api/personal-ratings/import", CreateUpload("[{\"id\":\"tt1234567\",\"rating\":8}]"));
+            "/api/personal-ratings/import", CreateUpload("Title ID,Rating,Last Modified Date\ntt1234567,8,"));
         Assert.Equal(HttpStatusCode.BadRequest, missingTokenResponse.StatusCode);
 
         using var firstImportResponse = await ImportAsync(firstClient,
             $"/api/personal-ratings/import?userId={secondUserId}",
-            "[{\"id\":\"tt1234567\",\"rating\":8,\"dateRated\":\"2018-03-04\"},{\"id\":\"tt7654321\",\"rating\":6}]",
+            "Title ID,Rating,Last Modified Date\ntt1234567,8,2018-03-04T00:00:00Z\ntt7654321,6,",
             firstToken,
             secondUserId);
         Assert.Equal(HttpStatusCode.OK, firstImportResponse.StatusCode);
@@ -565,12 +565,23 @@ public sealed class PersonalRatingsApiTests
         using var invalidImportResponse = await ImportAsync(
             firstClient,
             "/api/personal-ratings/import",
-            "[{\"id\":\"tt9999999\",\"rating\":5},{\"id\":\"tt8888888\",\"rating\":11}]",
+            "Title ID,Rating,Last Modified Date\ntt9999999,5,\ntt8888888,11,",
             firstToken);
         Assert.Equal(HttpStatusCode.BadRequest, invalidImportResponse.StatusCode);
 
+        var oversizedCsv = "Title ID,Rating,Last Modified Date\n" + new string('x', 1_048_577);
+        using var oversizedImportResponse = await ImportAsync(
+            firstClient,
+            "/api/personal-ratings/import",
+            oversizedCsv,
+            firstToken);
+        Assert.Equal(HttpStatusCode.BadRequest, oversizedImportResponse.StatusCode);
+
         using var secondImportResponse = await ImportAsync(
-            secondClient, "/api/personal-ratings/import", "[{\"id\":\"tt1234567\",\"rating\":9}]", secondToken);
+            secondClient,
+            "/api/personal-ratings/import",
+            "Title ID,Rating,Last Modified Date\ntt1234567,9,",
+            secondToken);
         Assert.Equal(HttpStatusCode.OK, secondImportResponse.StatusCode);
         var secondImport = await secondImportResponse.Content.ReadFromJsonAsync<PersonalRatingsImportResponse>();
         Assert.NotNull(secondImport);
@@ -579,7 +590,10 @@ public sealed class PersonalRatingsApiTests
         Assert.Equal(1, secondImport.TotalRatings);
 
         using var adminImportResponse = await ImportAsync(
-            adminClient, "/api/personal-ratings/import", "[{\"id\":\"tt1234567\",\"rating\":10}]", adminToken);
+            adminClient,
+            "/api/personal-ratings/import",
+            "Title ID,Rating,Last Modified Date\ntt1234567,10,",
+            adminToken);
         Assert.Equal(HttpStatusCode.OK, adminImportResponse.StatusCode);
         var adminImport = await adminImportResponse.Content.ReadFromJsonAsync<PersonalRatingsImportResponse>();
         Assert.NotNull(adminImport);
@@ -589,12 +603,13 @@ public sealed class PersonalRatingsApiTests
         using var repeatImportResponse = await ImportAsync(
             firstClient,
             "/api/personal-ratings/import",
-            "[{\"id\":\"tt1234567\",\"rating\":8,\"dateRated\":\"2018-03-04\"},{\"id\":\"tt7654321\",\"rating\":6}]",
+            "Title ID,Rating,Last Modified Date\ntt1234567,9,2018-03-05T18:45:00Z\ntt7654321,6,",
             firstToken);
         Assert.Equal(HttpStatusCode.OK, repeatImportResponse.StatusCode);
         var repeatImport = await repeatImportResponse.Content.ReadFromJsonAsync<PersonalRatingsImportResponse>();
         Assert.NotNull(repeatImport);
-        Assert.Equal(2, repeatImport.Unchanged);
+        Assert.Equal(1, repeatImport.Updated);
+        Assert.Equal(1, repeatImport.Unchanged);
         Assert.Equal(2, repeatImport.TotalRatings);
 
         await using var verifyDb = new MediaDockDbContext(options);
@@ -604,9 +619,9 @@ public sealed class PersonalRatingsApiTests
             .ToListAsync();
         Assert.Equal(4, ratings.Count);
         Assert.DoesNotContain(ratings, rating => rating.ImdbId == "tt9999999");
-        Assert.Equal(8, Assert.Single(ratings, rating =>
+        Assert.Equal(9, Assert.Single(ratings, rating =>
             rating.UserId == firstUserId && rating.ImdbId == "tt1234567").Rating);
-        Assert.Equal(new DateOnly(2018, 3, 4), Assert.Single(ratings, rating =>
+        Assert.Equal(new DateOnly(2018, 3, 5), Assert.Single(ratings, rating =>
             rating.UserId == firstUserId && rating.ImdbId == "tt1234567").DateRated);
         Assert.Equal(6, Assert.Single(ratings, rating =>
             rating.UserId == firstUserId && rating.ImdbId == "tt7654321").Rating);
@@ -622,12 +637,12 @@ public sealed class PersonalRatingsApiTests
         Assert.All(imdbTitles, title => Assert.Equal("pending", title.MetadataStatus));
     }
 
-    private static MultipartFormDataContent CreateUpload(string json, long? userId = null)
+    private static MultipartFormDataContent CreateUpload(string csv, long? userId = null)
     {
         var content = new MultipartFormDataContent();
-        var file = new ByteArrayContent(Encoding.UTF8.GetBytes(json));
-        file.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-        content.Add(file, "File", "ratings.json");
+        var file = new ByteArrayContent(Encoding.UTF8.GetBytes(csv));
+        file.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
+        content.Add(file, "File", "ratings.csv");
         if (userId.HasValue) content.Add(new StringContent(userId.Value.ToString()), "userId");
         return content;
     }
@@ -635,13 +650,13 @@ public sealed class PersonalRatingsApiTests
     private static async Task<HttpResponseMessage> ImportAsync(
         HttpClient client,
         string path,
-        string json,
+        string csv,
         string requestToken,
         long? userId = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, path)
         {
-            Content = CreateUpload(json, userId)
+            Content = CreateUpload(csv, userId)
         };
         request.Headers.Add("RequestVerificationToken", requestToken);
         return await client.SendAsync(request);
