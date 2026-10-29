@@ -53,7 +53,7 @@ button:disabled { cursor: not-allowed; }
 .auth-unavailable { color: #6b7770; font-size: 11px; }
 .auth-message { max-width: 260px; color: #895038; font-size: 11px; }
 .auth-request-state { color: #496852; font-size: 11px; font-weight: 700; }
-.open-mode-warning { position: sticky; z-index: 5; top: 0; border-bottom: 1px solid #ddc88c; border-left: 4px solid #c28b32; padding: 10px 42px; color: #56431d; background: #fff4d4; font-size: 12px; line-height: 1.45; }
+.open-mode-warning { border-bottom: 1px solid #ddc88c; border-left: 4px solid #c28b32; padding: 10px 42px; color: #56431d; background: #fff4d4; font-size: 12px; line-height: 1.45; }
 .page-content { width: min(1370px, 100%); margin: 0 auto; padding: 36px 42px 64px; }
 .session-check, .registration-gate, .account-state-gate { width: min(640px, calc(100% - 48px)); margin: clamp(52px, 12vh, 128px) auto; }
 .welcome-page { width: min(680px, calc(100% - 48px)); margin: clamp(72px, 17vh, 180px) auto; border-top: 4px solid #e0573e; padding: 28px 0 64px; }

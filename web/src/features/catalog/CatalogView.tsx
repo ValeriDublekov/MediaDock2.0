@@ -269,13 +269,22 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
     setAppliedFilters((current) => ({ ...current, ...nextRatingRange }))
   }
 
+  const showingCatalogHistory = canViewHistory && catalogView === 'history'
+
   return (
     <section aria-label="Catalog" className="media-view">
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">{showingCatalogHistory ? 'CATALOG HISTORY' : 'LIBRARY'}</p>
+          <h1>{showingCatalogHistory ? 'Catalog history' : 'Torents catalog'}</h1>
+          <p className="page-description">{showingCatalogHistory ? 'Review parse decisions and scan activity for catalog feeds.' : 'Browse titles collected from your configured feeds.'}</p>
+        </div>
+      </div>
       {canViewHistory && <div aria-label="Catalog view" className="catalog-screen-switch segment-control" role="group">
         <button aria-pressed={catalogView === 'titles'} onClick={() => setCatalogView('titles')} type="button">Titles</button>
         <button aria-pressed={catalogView === 'history'} onClick={() => setCatalogView('history')} type="button">History</button>
       </div>}
-      {canViewHistory && catalogView === 'history' ? <HistoryView showCleanupControls={false} /> : <>
+      {showingCatalogHistory ? <HistoryView showCleanupControls={false} /> : <>
       {deleteNotice && <p className="form-message" role="status">{deleteNotice}</p>}
       <nav aria-label="Catalog categories" className="catalog-category-nav">
         {categories.map((item) => <button

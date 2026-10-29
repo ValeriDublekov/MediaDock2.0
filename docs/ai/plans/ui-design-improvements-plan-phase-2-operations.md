@@ -4,7 +4,7 @@
 
 ## Entry and Implementation Order
 
-Proposed, not started. Use Phase 1 offsets for sticky controls; non-layout safety work may proceed independently after approval. Verify each operation's request, persistence, status reads, errors, and direct consumers locally; add actual owner/test paths before editing. Do not create a universal job abstraction: deployment, CSV parsing, settings writes, and background jobs may have different owners.
+Current status belongs in the [progress tracker](ui-design-improvements-plan-progress.md). Use Phase 1 offsets for sticky controls; non-layout safety work may proceed independently after approval. Verify each operation's request, persistence, status reads, errors, and direct consumers locally; add actual owner/test paths before editing. Do not create a universal job abstraction: deployment, CSV parsing, settings writes, and background jobs may have different owners.
 
 Deliver UI-02 intent with UI-03 lifecycle for one workflow at a time: deployment; ratings import; credential/account/feed changes; scan/retry/recalculation/provider test; remaining settings/statistics operations. Include UI-04 validation with the relevant save slice and UI-05 diagnostic semantics with the relevant job/retry slice. Test each coherent slice before the next.
 
@@ -83,6 +83,6 @@ Deliver UI-02 intent with UI-03 lifecycle for one workflow at a time: deployment
 
 ## Validation and Exit
 
-Use the common responsive/accessibility gate plus synthetic long category names, expanded logs, sparse/all-error histories, credential keep/replace/clear drafts, and off-screen validation errors. Test deployed-contract assumptions locally with stubbed providers, never real keys or production mutations. Focus web checks on each changed owner; affected backend contracts require their unit/integration gates through the repository runner.
+Use the [common validation gate](ui-design-improvements-plan-validation.md) plus synthetic long category names, expanded logs, sparse/all-error histories, credential keep/replace/clear drafts, and off-screen validation errors. Test deployed-contract assumptions locally with stubbed providers, never real keys or production mutations. Focus web checks on each changed owner; affected backend contracts require their unit/integration gates through the repository runner.
 
 Exit when each approved workflow's intent, validity, pending/completion/uncertainty behavior, and failure recovery meet its criteria; diagnostic links and classifications are verified rather than inferred. Defer unsupported API additions explicitly.

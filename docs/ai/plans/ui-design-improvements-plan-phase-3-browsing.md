@@ -4,7 +4,7 @@
 
 ## Entry and Tasks
 
-Proposed, not started. Use Phase 1 shell/scroll rules and Phase 2 action conventions where lists mutate. Add verified renderers, query owners, API fields, direct consumers, and tests to this file before implementation.
+Current status belongs in the [progress tracker](ui-design-improvements-plan-progress.md). Use Phase 1 shell/scroll rules and Phase 2 action conventions where lists mutate. Add verified renderers, query owners, API fields, direct consumers, and tests to this file before implementation.
 
 1. Establish card/table hierarchy using Catalog as the first local slice; inspect actual shared consumers before applying it elsewhere.
 2. Extend verified shared behavior to recommendation, award, and personal lists without erasing screen-specific meaning. Apply UI-07 result context and UI-08 personal semantics in separate coherent slices.
@@ -67,6 +67,6 @@ Proposed, not started. Use Phase 1 shell/scroll rules and Phase 2 action convent
 
 ## Validation and Exit
 
-Use synthetic mixed movie/series collections, unavailable metadata/posters, long titles, equal and missing rating values, imported/local/unknown provenance, and multi-page libraries. Apply the common responsive/accessibility gate and focused tests per verified component/query owner; preserve all existing mutation and query semantics.
+Use synthetic mixed movie/series collections, unavailable metadata/posters, long titles, equal and missing rating values, imported/local/unknown provenance, and multi-page libraries. Apply the [common validation gate](ui-design-improvements-plan-validation.md) and focused tests per verified component/query owner; preserve all existing mutation and query semantics.
 
 Exit when finding a known fixture title, comparing primary signals, reaching details/actions by keyboard, and retaining filter/page context pass without layout overlap. Document unsupported provenance/search data separately rather than presenting a misleading UI.

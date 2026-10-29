@@ -42,7 +42,7 @@ vi.mock('./features/auth/AuthStatus', async () => {
   }
 })
 vi.mock('./features/catalog/CatalogView', () => ({
-  CatalogView: ({ canDeleteTitles, canViewHistory }: { canDeleteTitles: boolean; canViewHistory: boolean }) => <div data-can-delete-titles={canDeleteTitles} data-can-view-history={canViewHistory}>Catalog route content</div>,
+  CatalogView: ({ canDeleteTitles, canViewHistory }: { canDeleteTitles: boolean; canViewHistory: boolean }) => <div data-can-delete-titles={canDeleteTitles} data-can-view-history={canViewHistory}><h1>Torents catalog</h1>Catalog route content</div>,
 }))
 vi.mock('./features/oscar/OscarCatalogView', () => ({ OscarCatalogView: () => <div>Oscar route content</div> }))
 vi.mock('./features/golden-globes/GoldenGlobeCatalogView', () => ({ GoldenGlobeCatalogView: () => <div>Golden Globes route content</div> }))
@@ -293,6 +293,8 @@ describe('App routes', () => {
     expect(administrationNavigation.textContent).toContain('Recommendation settings')
     expect(administrationNavigation.textContent).not.toContain('Personal ratings')
     expect(screen.getByRole('navigation', { name: 'Administration section navigation' }).textContent).toContain('Administration')
+    expect(screen.getByRole('complementary', { name: 'Site navigation' })).toBeTruthy()
+    expect(screen.getByRole('note').textContent).toContain('Access control is disabled')
   })
 
   it('opens recommendation settings for administrators', async () => {
@@ -363,7 +365,7 @@ describe('App routes', () => {
 
     renderAt('/catalog')
 
-    expect(await screen.findByRole('heading', { name: 'Torents catalog' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Torents catalog', level: 1 })).toBeTruthy()
     expect(screen.queryByRole('note')).toBeNull()
   })
 

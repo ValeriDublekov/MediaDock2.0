@@ -270,6 +270,8 @@ describe('RecommendationsView', () => {
 
     render(<RecommendationsView mediaType="movie" />)
 
+    expect(await screen.findByRole('heading', { level: 2, name: 'Ranking and results' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { level: 2, name: 'Recommendations' })).toBeNull()
     expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Posters' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.queryByRole('columnheader', { name: 'MOVIE' })).toBeNull()

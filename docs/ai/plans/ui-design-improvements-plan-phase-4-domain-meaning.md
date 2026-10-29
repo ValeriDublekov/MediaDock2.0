@@ -4,7 +4,7 @@
 
 ## Entry and Tasks
 
-Proposed, not started. Complete relevant Phase 3 hierarchy work before display changes; data feasibility can be checked earlier. Read only the controlling recommendation/award view, contract, and nearby fixture/test for the selected slice, then add verified paths and direct consumers here.
+Current status belongs in the [progress tracker](ui-design-improvements-plan-progress.md). Complete relevant Phase 3 hierarchy work before display changes; data feasibility can be checked earlier. Read only the controlling recommendation/award view, contract, and nearby fixture/test for the selected slice, then add verified paths and direct consumers here.
 
 1. Establish which score/category fields are already available and whether category discovery is present in collapsed filters. Record unavailable data as a decision requiring approval, not an implied backend task.
 2. Deliver UI-09 separately for common presentation and each verified movie/series difference; retain global-settings and personal-controls ownership boundaries.
@@ -49,6 +49,6 @@ Proposed, not started. Complete relevant Phase 3 hierarchy work before display c
 
 ## Validation and Exit
 
-Apply the master responsive/accessibility gate with long category names, missing fields, varied weights, equal scores, and multiple ceremonies. Use focused web checks; if a separately approved API slice is necessary, map all direct readers and run affected backend unit/integration checks through the repository runner, with Docker availability established for integration.
+Apply the [common validation gate](ui-design-improvements-plan-validation.md) with long category names, missing fields, varied weights, equal scores, and multiple ceremonies. Use focused web checks; if a separately approved API slice is necessary, map all direct readers and run affected backend unit/integration checks through the repository runner, with Docker availability established for integration.
 
 Exit when a user can identify recommendation versus IMDb rating, understand supported ranking signals, and reach source-specific category outcomes accurately in the approved fixture scenarios. Preserve existing formulas, defaults, category facts, and movie/series semantics; document unavailable data as an unresolved dependency, not a completed feature.

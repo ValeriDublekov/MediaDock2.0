@@ -247,9 +247,12 @@ describe('CatalogView', () => {
     const view = render(<CatalogView />)
 
     expect(screen.queryByRole('button', { name: 'History' })).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Torents catalog', level: 1 })).toBeTruthy()
     view.rerender(<CatalogView canViewHistory />)
     fireEvent.click(screen.getByRole('button', { name: 'History' }))
 
+    expect(await screen.findByRole('heading', { name: 'Catalog history', level: 1 })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Torents catalog', level: 1 })).toBeNull()
     expect(await screen.findByText('No parse entries found')).toBeTruthy()
     expect(getParseLogs).toHaveBeenCalledWith({ page: 1, pageSize: 20, ignored: true })
     expect(screen.getByRole('button', { name: 'Parse log' }).getAttribute('aria-pressed')).toBe('true')

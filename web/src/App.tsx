@@ -297,7 +297,7 @@ function AppContent() {
     <IgnoredMoviesProvider accountKey={accountKey} key={accountKey ?? 'no-active-owner'}>
     <FavoriteProvider accountKey={accountKey} key={accountKey ?? 'no-active-owner'}>
     <div className={`app-shell${isAccessGated ? ' is-gated' : ''}`}>
-      {!isAccessGated && <aside className="sidebar">
+      {!isAccessGated && <aside aria-label="Site navigation" className="sidebar">
         <NavLink className="brand" to="/catalog">
           <span className="brand-mark" aria-hidden="true">MD</span>
           <span className="brand-name">MediaDock</span>
@@ -404,13 +404,13 @@ function AppContent() {
               <AuthDiagnosticDetails diagnostic={authDiagnostic} />
             </section>
           )}
-          <div className="page-heading">
+          {location.pathname !== '/catalog' && <div className="page-heading">
             <div>
               <p className="eyebrow">{content.eyebrow}</p>
               <h1>{title}</h1>
               {description && <p className="page-description">{description}</p>}
             </div>
-          </div>
+          </div>}
 
           <Routes>
             <Route path="/" element={<Navigate replace to="/catalog" />} />

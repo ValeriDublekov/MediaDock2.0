@@ -1,0 +1,12 @@
+# UI Design Plan: Common Validation Gate
+
+[Plan index](ui-design-improvements-plan.md). Read when planning or validating an implementation slice, together with that phase's acceptance criteria.
+
+- Use synthetic/local fixtures, not production mutations or captured personal data. Cover default, empty, missing-metadata, loading, validation-error, service-failure, and long-content states relevant to the slice.
+- Compare the reviewed 1458 x 816 viewport with 1024 x 768, 768 x 1024, 390 x 844, 320 x 800, and a wide desktop such as 1920 x 1080. These are proposed validation targets, not already reviewed evidence. Check 200% zoom and narrow reflow.
+- No alert, sticky toolbar, header, or save bar may obscure text, a focused control, the first visible data row, or another sticky surface. No unintended page-level horizontal overflow; genuinely tabular data may use a labeled, keyboard-operable horizontal region.
+- Validate keyboard order, visible focus, accessible names and control grouping, table/disclosure semantics, and announced asynchronous results. Do not rely on color alone. Target WCAG 2.2 AA: text contrast 4.5:1 (3:1 for large text), control/state contrast 3:1, and 24 CSS-pixel minimum targets or compliant spacing; prefer 44-pixel primary touch targets.
+- Preserve existing filter/view behavior, result counts, ranking semantics, personal data ownership, security information, and available detail. A layout change must not silently change a query or mutation.
+- After approved web changes, run the narrowest relevant `python -B scripts/run_tests.py web --filter <verified-file-pattern>`, plus web lint/build per the [testing guide](../TESTING.md). Use affected server unit/integration suites only when contracts/backend behavior are touched; check Docker availability for integration and report a blocker if unavailable. Include affected integration suites for substantial functional changes. Use stubbed external providers and the existing runner for every test.
+- Record a concise pass/fail summary and any blocker in the [progress tracker](ui-design-improvements-plan-progress.md), referring to the active initiative's criteria and this gate; do not duplicate the plan or accumulate a command history. Stop that slice if a contract or required validation cannot be established; do not substitute deployment for testing.
+- For documentation-only changes, run `python -B scripts/check_markdown_links.py`; do not run application tests without application-code changes.

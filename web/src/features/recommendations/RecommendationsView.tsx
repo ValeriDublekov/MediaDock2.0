@@ -272,7 +272,7 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
   }
 
   return <section aria-labelledby="recommendations-heading" className="management-section recommendations-view">
-    <h2 id="recommendations-heading">Recommendations</h2>
+    <h2 id="recommendations-heading">Ranking and results</h2>
     <p className="section-caption">A personal ranking of eligible award-nominated {titleTypes}, based on your ratings and the shared metadata catalog.</p>
 
     <div className="recommendation-filter-controls">
