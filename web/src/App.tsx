@@ -152,7 +152,7 @@ function RegistrationGate({
       <h1 id="registration-heading">Hello{firstName ? ` ${firstName}` : ''}</h1>
       {profileComplete ? (
         <>
-          <p>Your Google account is not registered yet. Send a request to create your MediaDock account.</p>
+          <p>Your Google account is not registered yet. Request an account to begin administrator review. You can access MediaDock after your registration is approved.</p>
           <button className="button" disabled={busy} onClick={() => void submitRequest()} type="button">
             {busy ? 'Submitting request...' : 'Request registration'}
           </button>
@@ -161,6 +161,51 @@ function RegistrationGate({
         <p className="registration-note">Your Google profile needs both given and family names before you can request registration.</p>
       )}
       {error && <p className="registration-error" role="alert">{error}</p>}
+    </section>
+  )
+}
+
+function WelcomePage({ signInEnabled }: { signInEnabled: boolean }) {
+  return (
+    <section aria-labelledby="welcome-heading" className="welcome-page">
+      <p className="registration-eyebrow">YOUR MOVIE LIBRARY</p>
+      <h1 id="welcome-heading">MediaDock</h1>
+      <p>Explore award catalogs, discover movies and series, and keep your personal collection in one place.</p>
+      {signInEnabled
+        ? <a className="button" href="/api/auth/google/login">Sign in with Google</a>
+        : <p className="registration-note" role="status">Google sign-in is currently unavailable.</p>}
+    </section>
+  )
+}
+
+function AccountAccessGate({ session }: { session: CurrentSession }) {
+  const isPending = session.user?.status === 'pending' || session.registrationRequest?.status === 'pending'
+  const isRejected = session.user?.status === 'deactivated' || session.registrationRequest?.status === 'rejected'
+  const title = isPending
+    ? 'Registration pending approval'
+    : isRejected
+      ? 'Account access unavailable'
+      : session.accountState === 'link_confirmation_required'
+        ? 'Confirm your account'
+        : session.accountState === 'account_conflict'
+          ? 'Account link needs assistance'
+          : 'Account approval required'
+  const message = isPending
+    ? 'Your registration is awaiting administrator approval. MediaDock will be available after your account is approved.'
+    : isRejected
+      ? 'This account has not been approved for MediaDock. Contact the administrator if you believe this is a mistake.'
+      : session.accountState === 'link_confirmation_required'
+        ? 'An existing MediaDock account matches your Google email. Confirm the account link using the button above to continue.'
+        : session.accountState === 'account_conflict'
+          ? 'This email is already linked to another Google identity. Contact the administrator for help.'
+          : 'An active, approved account is required to use MediaDock.'
+
+  return (
+    <section aria-labelledby="account-access-heading" className="account-state-gate">
+      <p className="registration-eyebrow">ACCOUNT ACCESS</p>
+      <h1 id="account-access-heading">{title}</h1>
+      <p>{message}</p>
+      {session.identity?.email && <p className="account-state-email">Signed in as {session.identity.email}</p>}
     </section>
   )
 }
@@ -239,7 +284,8 @@ function AppContent() {
   const description = administrationPage?.description ?? pageContent.description
   const registrationSession = session?.authenticated && session.accountState === 'unmatched' ? session : null
   const recoveryDiagnostic = session === null ? authDiagnostic : null
-  const isAccessGated = !authChecked || registrationSession !== null || recoveryDiagnostic !== null
+  const showAuthStatus = !authChecked || Boolean(session?.authenticated) || recoveryDiagnostic !== null
+  const isAccessGated = !authChecked || !isActiveAccount
 
   return (
     <IgnoredMoviesProvider accountKey={accountKey} key={accountKey ?? 'no-active-owner'}>
@@ -307,11 +353,11 @@ function AppContent() {
 
       <main className="main-shell">
         <header className="topbar">
-          <div className="breadcrumb">MEDIADOCK <span>/</span> {recoveryDiagnostic ? 'SIGN-IN DIAGNOSTICS' : registrationSession ? 'ACCOUNT ACCESS' : !authChecked ? 'SIGN-IN CHECK' : <>{content.eyebrow}{administrationPage && <> <span>/</span> {administrationPage.label.toUpperCase()}</>}</>}</div>
-          <AuthStatus onSessionChange={onSessionChange} />
+          <div className="breadcrumb">MEDIADOCK <span>/</span> {recoveryDiagnostic ? 'SIGN-IN DIAGNOSTICS' : !authChecked ? 'SIGN-IN CHECK' : !isActiveAccount ? session?.authenticated ? 'ACCOUNT ACCESS' : 'WELCOME' : <>{content.eyebrow}{administrationPage && <> <span>/</span> {administrationPage.label.toUpperCase()}</>}</>}</div>
+          {showAuthStatus && <AuthStatus onSessionChange={onSessionChange} />}
         </header>
 
-        {(!authChecked || session?.authorizationEnforced !== true) && (
+        {authChecked && isActiveAccount && session?.authorizationEnforced !== true && (
           <aside className="open-mode-warning" role="note">
             Access control is disabled: shared, system, and administration APIs are not authorization-protected. Keep the API within its configured network boundary. Favorites, ignored movies, and personal ratings still require an active linked account and remain owner-scoped.
           </aside>
@@ -321,8 +367,12 @@ function AppContent() {
           <div className="session-check" role="status">Checking sign-in status</div>
         ) : recoveryDiagnostic ? (
           <AuthRecoveryScreen diagnostic={recoveryDiagnostic} />
+        ) : !session?.authenticated ? (
+          <WelcomePage signInEnabled={Boolean(session?.signInEnabled)} />
         ) : registrationSession ? (
           <RegistrationGate onSessionChange={onSessionChange} session={registrationSession} />
+        ) : !isActiveAccount ? (
+          <AccountAccessGate session={session} />
         ) : <div className="page-content">
           {authDiagnostic && (
             <section aria-label="Sign-in diagnostic" className="auth-diagnostic-notice" role="alert">

@@ -55,14 +55,19 @@ button:disabled { cursor: not-allowed; }
 .auth-request-state { color: #496852; font-size: 11px; font-weight: 700; }
 .open-mode-warning { position: sticky; z-index: 5; top: 0; border-bottom: 1px solid #ddc88c; border-left: 4px solid #c28b32; padding: 10px 42px; color: #56431d; background: #fff4d4; font-size: 12px; line-height: 1.45; }
 .page-content { width: min(1370px, 100%); margin: 0 auto; padding: 36px 42px 64px; }
-.session-check, .registration-gate { width: min(640px, calc(100% - 48px)); margin: clamp(52px, 12vh, 128px) auto; }
+.session-check, .registration-gate, .account-state-gate { width: min(640px, calc(100% - 48px)); margin: clamp(52px, 12vh, 128px) auto; }
+.welcome-page { width: min(680px, calc(100% - 48px)); margin: clamp(72px, 17vh, 180px) auto; border-top: 4px solid #e0573e; padding: 28px 0 64px; }
+.welcome-page h1 { margin: 0 0 16px; color: #171e1e; font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 46px; font-weight: 800; line-height: 1.05; }
+.welcome-page > p:not(.registration-eyebrow) { max-width: 520px; color: #596560; font-size: 14px; line-height: 1.6; }
+.welcome-page .button { margin-top: 14px; min-height: 44px; text-decoration: none; }
 .session-check { border-top: 1px solid #cbd6cd; padding-top: 18px; color: #596560; font-size: 13px; }
-.registration-gate { border-top: 4px solid #e0573e; padding: 28px 0 64px; }
+.registration-gate, .account-state-gate { border-top: 4px solid #e0573e; padding: 28px 0 64px; }
 .registration-eyebrow { margin: 0 0 12px; color: #bd4e38; font-size: 10px; font-weight: 800; letter-spacing: 1px; }
-.registration-gate h1 { margin: 0 0 16px; color: #171e1e; font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 46px; font-weight: 800; line-height: 1.05; }
-.registration-gate > p:not(.registration-eyebrow) { max-width: 520px; color: #596560; font-size: 14px; line-height: 1.6; }
+.registration-gate h1, .account-state-gate h1 { margin: 0 0 16px; color: #171e1e; font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 46px; font-weight: 800; line-height: 1.05; }
+.registration-gate > p:not(.registration-eyebrow), .account-state-gate > p:not(.registration-eyebrow) { max-width: 520px; color: #596560; font-size: 14px; line-height: 1.6; }
 .registration-gate .button { margin-top: 24px; min-height: 44px; }
 .registration-gate .registration-error { margin-top: 16px; color: #895038; font-size: 12px; }
+.account-state-email { overflow-wrap: anywhere; }
 .auth-recovery { width: min(720px, calc(100% - 48px)); margin: clamp(42px, 9vh, 96px) auto; border-top: 4px solid #b74430; padding: 28px 0 54px; }
 .auth-recovery h1 { margin: 0 0 16px; color: #171e1e; font-family: "Bahnschrift", "Trebuchet MS", sans-serif; font-size: 38px; font-weight: 800; line-height: 1.08; }
 .auth-recovery-message { max-width: 600px; color: #653b2e; font-size: 14px; line-height: 1.6; }
@@ -599,8 +604,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offs
   .auth-controls { justify-content: flex-start; }
   .open-mode-warning { padding: 9px 16px; font-size: 11px; }
   .page-content { padding: 25px 16px 36px; }
-  .session-check, .registration-gate { width: calc(100% - 32px); margin: 44px auto; }
-  .registration-gate h1 { font-size: 36px; }
+  .session-check, .registration-gate, .account-state-gate { width: calc(100% - 32px); margin: 44px auto; }
+  .welcome-page { width: calc(100% - 32px); margin: 56px auto; }
+  .welcome-page h1, .registration-gate h1, .account-state-gate h1 { font-size: 36px; }
   .auth-recovery { width: calc(100% - 32px); margin: 36px auto; }
   .auth-recovery h1 { font-size: 32px; }
   .auth-diagnostic-details > div { grid-template-columns: minmax(85px, 0.35fr) minmax(0, 1fr); gap: 8px; }

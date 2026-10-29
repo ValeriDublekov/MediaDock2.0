@@ -146,48 +146,49 @@ describe('App routes', () => {
   afterEach(() => cleanup())
 
   it.each([
-    ['/catalog', 'Torents catalog'],
-    ['/oscar', 'Oscar catalog'],
-    ['/golden-globes', 'Golden Globes catalog'],
-  ])('opens %s directly', async (path, heading) => {
+    '/catalog',
+    '/oscar',
+    '/golden-globes',
+  ])('shows the welcome page instead of %s to anonymous visitors', async (path) => {
     renderAt(path)
 
-    expect(await screen.findByRole('heading', { name: heading })).toBeTruthy()
-    expect(screen.getByRole('note').textContent).toContain('Access control is disabled')
+    expect(await screen.findByRole('heading', { name: 'MediaDock' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Sign in with Google' }).getAttribute('href')).toBe('/api/auth/google/login')
+    expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull()
+    expect(screen.queryByRole('note')).toBeNull()
     expect(screen.getByTestId('location').textContent).toBe(path)
   })
 
   it('blocks anonymous visitors from opening favorites directly', async () => {
     renderAt('/favorites')
 
-    expect(await screen.findByRole('heading', { name: 'Favorites unavailable' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'MediaDock' })).toBeTruthy()
     expect(screen.queryByText('Favorites route content')).toBeNull()
   })
 
   it('blocks anonymous visitors from opening the ignore list directly', async () => {
     renderAt('/account/ignored-movies')
 
-    expect(await screen.findByRole('heading', { name: 'Ignore list unavailable' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'MediaDock' })).toBeTruthy()
     expect(screen.queryByText('Ignored movies route content')).toBeNull()
   })
 
   it('blocks anonymous visitors from opening recommendations directly', async () => {
     renderAt('/account/recommendations')
 
-    expect(await screen.findByRole('heading', { name: 'Recommendations unavailable' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'MediaDock' })).toBeTruthy()
     expect(screen.queryByText('Recommendations route content')).toBeNull()
   })
 
-  it('shows only shared pages in the main navigation to anonymous visitors', async () => {
+  it('hides all navigation and site content from anonymous visitors', async () => {
     renderAt('/catalog')
 
-    const mainNavigation = await screen.findByRole('navigation', { name: 'Main navigation' })
-    expect(Array.from(mainNavigation.querySelectorAll('a'), (link) => link.getAttribute('aria-label'))).toEqual([
-      'Torents catalog',
-      'Oscar catalog',
-      'Golden Globes catalog',
-    ])
-    expect(screen.queryByRole('link', { name: /Favorites/ })).toBeNull()
+    expect(await screen.findByRole('heading', { name: 'MediaDock' })).toBeTruthy()
+    expect(screen.queryByRole('navigation')).toBeNull()
+    expect(screen.queryByText('Catalog route content')).toBeNull()
+    expect(screen.queryByText('Oscar route content')).toBeNull()
+    expect(screen.queryByText('Golden Globes route content')).toBeNull()
+    expect(screen.getByRole('link', { name: 'Sign in with Google' })).toBeTruthy()
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
   })
 
@@ -314,8 +315,8 @@ describe('App routes', () => {
   it('requires an active linked account for personal ratings and redirects the old route', async () => {
     renderAt('/configuration/personal-ratings')
 
-    expect(await screen.findByRole('heading', { name: 'Personal ratings unavailable' })).toBeTruthy()
-    expect(screen.getByTestId('location').textContent).toBe('/account/personal-ratings')
+    expect(await screen.findByRole('heading', { name: 'MediaDock' })).toBeTruthy()
+    expect(screen.getByTestId('location').textContent).toBe('/configuration/personal-ratings')
     expect(screen.queryByText('Ratings route content')).toBeNull()
   })
 
@@ -339,7 +340,7 @@ describe('App routes', () => {
   })
 
   it('hides the open-mode warning only when the server confirms enforcement', async () => {
-    authMock.session = { ...anonymousSession, authorizationEnforced: true }
+    authMock.session = { ...activeUserSession, authorizationEnforced: true }
 
     renderAt('/catalog')
 
@@ -409,8 +410,24 @@ describe('App routes', () => {
     expect(requestRegistration).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Request registration' }))
 
-    expect(await screen.findByText('Catalog route content')).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Registration pending approval' })).toBeTruthy()
+    expect(screen.queryByText('Catalog route content')).toBeNull()
+    expect(screen.queryByRole('navigation')).toBeNull()
     expect(requestRegistration).toHaveBeenCalledOnce()
+  })
+
+  it('keeps pending accounts on the approval screen for direct URLs', async () => {
+    authMock.session = {
+      ...activeUserSession,
+      user: { ...activeUserSession.user!, status: 'pending', role: null },
+      registrationRequest: { status: 'pending', requestedAt: '2026-10-09T10:00:00Z', decidedAt: null },
+    }
+
+    renderAt('/configuration/users')
+
+    expect(await screen.findByRole('heading', { name: 'Registration pending approval' })).toBeTruthy()
+    expect(screen.queryByText('Users route content')).toBeNull()
+    expect(screen.queryByRole('navigation')).toBeNull()
   })
 
   it('keeps the registration screen open when the request fails', async () => {
