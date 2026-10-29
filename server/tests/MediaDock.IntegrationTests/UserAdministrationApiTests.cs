@@ -285,9 +285,9 @@ public sealed class UserAdministrationApiTests
         Assert.Equal(HttpStatusCode.OK, userFavoritesResponse.StatusCode);
         using var ratingsContent = new MultipartFormDataContent();
         var ratingsFile = new ByteArrayContent(
-            System.Text.Encoding.UTF8.GetBytes("[{\"id\":\"tt1234567\",\"rating\":8}]"));
-        ratingsFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
-        ratingsContent.Add(ratingsFile, "File", "ratings.json");
+            System.Text.Encoding.UTF8.GetBytes("Title ID,Rating,Last Modified Date\ntt1234567,8,"));
+        ratingsFile.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("text/csv");
+        ratingsContent.Add(ratingsFile, "File", "ratings.csv");
         var adminRatingsToken = await GetAntiforgeryTokenAsync(adminClient);
         using var adminRatingsRequest = new HttpRequestMessage(
             HttpMethod.Post,

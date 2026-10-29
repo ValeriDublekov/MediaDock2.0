@@ -192,6 +192,9 @@ export function PersonalRatingsView() {
         <div className="field">
           <label htmlFor="personal-ratings-file">IMDb ratings CSV</label>
           <input accept=".csv,text/csv" id="personal-ratings-file" name="personal-ratings-file" required type="file" />
+          <p className="section-caption">If your IMDb account is linked to an Amazon account, download your full Amazon data archive. The ratings file is located at <code>All Data Categories.zip\Additional Data\IMDbRatings.UserRatingsData</code> inside the archive.</p>
+          <p className="section-caption">CSV format example:</p>
+          <pre><code>{'Title ID,Rating,Last Modified Date\ntt14452776,8,2026-08-30T21:09:30.554Z'}</code></pre>
         </div>
         {ratingsImportError && <p className="form-error" role="alert">{ratingsImportError}</p>}
         {ratingsImportResult && <>

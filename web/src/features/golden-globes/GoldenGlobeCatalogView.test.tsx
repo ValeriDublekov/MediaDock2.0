@@ -295,4 +295,34 @@ describe('GoldenGlobeCatalogView', () => {
     expect(await screen.findByText('No Golden Globes films found')).toBeTruthy()
     expect(getGoldenGlobeFilms).toHaveBeenCalledTimes(1)
   })
+
+  it('adds enriched Golden Globes series to shared favorites by IMDb ID', async () => {
+    const enrichedSeries = {
+      ...film,
+      filmId: '2025:series:A Series',
+      title: 'A Series',
+      nomineeType: 'series' as const,
+      imdbId: 'tt87654321',
+      enrichmentStatus: 'enriched' as const,
+      metadataStatus: 'enriched',
+    }
+    const favorite: FavoriteTitle = {
+      imdbId: 'tt87654321', torrentMovieId: null, title: 'A Series', year: 2025, mediaType: 'series', metadataStatus: 'enriched',
+      imdbRating: null, posterUrl: null, toWatch: false, toDownload: true,
+      addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-10-29T00:00:00Z',
+      updatedAt: '2026-10-29T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
+      winCount: 0, occurrenceCount: 0, lastSeenAt: null,
+    }
+    vi.mocked(getGoldenGlobeFilms).mockResolvedValue({ ...page, items: [enrichedSeries] })
+    vi.mocked(addFavorite).mockResolvedValue(favorite)
+    render(<FavoriteProvider accountKey="test-account"><GoldenGlobeCatalogView /></FavoriteProvider>)
+
+    const addButton = await screen.findByRole('button', { name: 'Add to favorites' }) as HTMLButtonElement
+    await waitFor(() => expect(addButton.disabled).toBe(false))
+    fireEvent.click(addButton)
+
+    await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt87654321', 'catalog'))
+    expect(await screen.findByText('No Golden Globes films found')).toBeTruthy()
+    expect(getGoldenGlobeFilms).toHaveBeenCalledTimes(1)
+  })
 })

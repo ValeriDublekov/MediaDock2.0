@@ -164,7 +164,21 @@ public sealed class FavoritesApiTests
         using var seriesCatalogAddResponse = await firstClient.PostAsJsonAsync(
             "/api/favorites",
             new { imdbId = seriesImdbId, from = "catalog" });
-        Assert.Equal(HttpStatusCode.NotFound, seriesCatalogAddResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, seriesCatalogAddResponse.StatusCode);
+        var seriesCatalogFavorite = await seriesCatalogAddResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.NotNull(seriesCatalogFavorite);
+        Assert.Equal("series", seriesCatalogFavorite.MediaType);
+        Assert.False(seriesCatalogFavorite.ToWatch);
+        Assert.True(seriesCatalogFavorite.ToDownload);
+        Assert.True(seriesCatalogFavorite.AddedFromCatalog);
+
+        using var seriesOscarAddResponse = await firstClient.PostAsJsonAsync(
+            "/api/favorites",
+            new { imdbId = seriesImdbId, from = "oscar" });
+        Assert.Equal(HttpStatusCode.NotFound, seriesOscarAddResponse.StatusCode);
+
+        using var removeSeriesCatalogFavoriteResponse = await firstClient.DeleteAsync($"/api/favorites/{seriesImdbId}");
+        Assert.Equal(HttpStatusCode.NoContent, removeSeriesCatalogFavoriteResponse.StatusCode);
 
         using var recommendationAddResponse = await firstClient.PostAsJsonAsync(
             "/api/favorites",

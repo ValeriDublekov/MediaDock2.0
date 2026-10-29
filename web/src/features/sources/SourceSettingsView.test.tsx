@@ -201,6 +201,10 @@ describe('SourceSettingsView', () => {
 
     render(<PersonalRatingsView />)
 
+    expect(screen.getByText(/download your full Amazon data archive/)).toBeTruthy()
+    expect(screen.getByText('All Data Categories.zip\\Additional Data\\IMDbRatings.UserRatingsData')).toBeTruthy()
+    expect(screen.getByText((_, element) => element?.tagName === 'CODE' && element.textContent === 'Title ID,Rating,Last Modified Date\ntt14452776,8,2026-08-30T21:09:30.554Z')).toBeTruthy()
+
     const file = new File(['"Title ID",Rating,"Last Modified Date"\ntt14452776,8,2026-08-30T21:09:30.554Z'], 'ratings.csv', { type: 'text/csv' })
     const fileInput = await screen.findByLabelText('IMDb ratings CSV')
     Object.defineProperty(fileInput, 'files', { configurable: true, value: [file] })

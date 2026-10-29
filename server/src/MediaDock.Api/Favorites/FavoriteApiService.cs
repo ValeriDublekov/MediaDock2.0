@@ -45,7 +45,7 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
             FROM imdb_titles
             WHERE imdb_id = {imdbId}
                 AND metadata_status = 'enriched'
-                AND (media_type = 'movie' OR ({fromRecommendations} AND media_type = 'series'))
+                AND (media_type = 'movie' OR (media_type = 'series' AND ({fromCatalog} OR {fromRecommendations})))
             ON CONFLICT (user_id, imdb_id) DO UPDATE SET
                 to_watch = favorite_movies.to_watch OR EXCLUDED.added_from_recommendations OR (EXCLUDED.added_from_oscar AND NOT favorite_movies.added_from_oscar),
                 to_download = favorite_movies.to_download OR (EXCLUDED.added_from_catalog AND NOT favorite_movies.added_from_catalog),

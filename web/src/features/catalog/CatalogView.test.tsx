@@ -99,23 +99,28 @@ describe('CatalogView', () => {
     expect(catalogRequest).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps a newly favorited title in both catalog views without reloading it', async () => {
+  it('keeps newly favorited movies and series in both catalog views without reloading them', async () => {
     const movie = { ...title, mediaType: 'movie' as const }
-    catalogRequest.mockResolvedValue(page([movie]))
+    const series = { ...title, id: 8, imdbId: 'tt7654321', title: 'Another Quiet River', sourceType: 'series' as const }
+    catalogRequest.mockResolvedValue(page([movie, series]))
     vi.mocked(getFavorites).mockResolvedValue({ items: [], page: 1, pageSize: 60, totalCount: 0, totalPages: 0 })
     vi.mocked(getIgnoredMovies).mockResolvedValue({ items: [], page: 1, pageSize: 60, totalCount: 0, totalPages: 0 })
-    vi.mocked(addFavorite).mockResolvedValue({ imdbId: movie.imdbId! } as Awaited<ReturnType<typeof addFavorite>>)
+    vi.mocked(addFavorite).mockImplementation(async (imdbId) => ({ imdbId } as Awaited<ReturnType<typeof addFavorite>>))
 
     renderCatalogWithActions()
 
     expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
-    const addButton = await screen.findByRole('button', { name: 'Add to favorites' }) as HTMLButtonElement
-    await waitFor(() => expect(addButton.disabled).toBe(false))
-    fireEvent.click(addButton)
+    const addButtons = await screen.findAllByRole('button', { name: 'Add to favorites' })
+    expect(addButtons).toHaveLength(2)
+    await waitFor(() => expect((addButtons[0] as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(addButtons[0] as HTMLButtonElement)
 
     await waitFor(() => expect(addFavorite).toHaveBeenCalledWith(movie.imdbId, 'catalog'))
     expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     expect(await screen.findByRole('button', { name: 'Remove from favorites' })).toBeTruthy()
+    fireEvent.click(addButtons[1] as HTMLButtonElement)
+    await waitFor(() => expect(addFavorite).toHaveBeenCalledWith(series.imdbId, 'catalog'))
+    expect(screen.getAllByRole('button', { name: 'Remove from favorites' })).toHaveLength(2)
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(screen.getByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     expect(catalogRequest).toHaveBeenCalledTimes(1)

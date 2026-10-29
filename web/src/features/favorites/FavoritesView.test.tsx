@@ -117,6 +117,30 @@ it('shares state by IMDb ID, blocks ineligible adds, and allows download before 
   await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith('tt12345678', { toDownload: true }))
 })
 
+it('allows enriched series from the catalog but not from Oscar', async () => {
+  const series: FavoriteTitle = {
+    imdbId: 'tt99887766', torrentMovieId: null, title: 'Shared Series', year: 2025, mediaType: 'series', metadataStatus: 'enriched',
+    imdbRating: 8.4, posterUrl: null, toWatch: false, toDownload: true,
+    addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false,
+    createdAt: '2026-10-29T00:00:00Z', updatedAt: '2026-10-29T00:00:00Z',
+    oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
+  }
+  vi.mocked(getFavorites).mockResolvedValue({ items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0 })
+  vi.mocked(addFavorite).mockResolvedValue(series)
+  render(<FavoriteProvider accountKey="test-account">
+    <>
+      <FavoriteControls from="oscar" imdbId={series.imdbId} metadataStatus="enriched" mediaType="series" occurrenceCount={0} />
+      <FavoriteControls from="catalog" imdbId={series.imdbId} metadataStatus="enriched" mediaType="series" occurrenceCount={0} />
+    </>
+  </FavoriteProvider>)
+
+  const addButton = await screen.findByRole('button', { name: 'Add to favorites' })
+  expect(screen.getAllByRole('button', { name: 'Add to favorites' })).toHaveLength(1)
+  fireEvent.click(addButton)
+
+  await waitFor(() => expect(addFavorite).toHaveBeenCalledWith(series.imdbId, 'catalog'))
+})
+
 it('treats series favorites like movie favorites and omits empty metadata', async () => {
   const series: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: null, title: 'Shared Series', year: 2025, mediaType: 'series', metadataStatus: 'enriched',

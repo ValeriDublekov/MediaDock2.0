@@ -18,9 +18,10 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, plac
   if (!available || !imdbId) return null
   const favoriteImdbId = imdbId
   const favorite = titles[favoriteImdbId]
-  if (!favorite && (mediaType !== 'movie' || metadataStatus !== 'enriched')) return null
+  const canAddFromHere = metadataStatus === 'enriched'
+    && (mediaType === 'movie' || (from === 'catalog' && mediaType === 'series'))
+  if (!favorite && !canAddFromHere) return null
   const disabled = pending === favoriteImdbId || loading || Boolean(error)
-  const canAddFromHere = mediaType === 'movie' && metadataStatus === 'enriched'
   const selectedFromHere = from === 'oscar' ? favorite?.addedFromOscar : favorite?.addedFromCatalog
   function addFromHere() {
     void add(favoriteImdbId, from).then((added) => { if (added) onAdded?.() })
