@@ -618,6 +618,25 @@ describe('typed API client', () => {
     expect((body as FormData).get('File')).toBe(file)
   })
 
+  it('gives actionable guidance when ratings import returns only a generic validation title', async () => {
+    const tokenStub = fetchStub(response(200, { requestToken: 'ratings-csrf' }))
+    const importStub = fetchStub(response(400, {
+      title: 'One or more validation errors occurred.',
+      errors: {},
+    }))
+    const fetcher: typeof fetch = async (input, init) =>
+      String(input) === '/api/auth/antiforgery'
+        ? tokenStub.fetcher(input, init)
+        : importStub.fetcher(input, init)
+    const file = new File(['invalid'], 'IMDbRatings.UserRatings.csv', { type: 'text/csv' })
+
+    await expect(importPersonalRatings(file, fetcher)).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 400,
+      message: 'The IMDb ratings file could not be validated. Check that the selected CSV includes Title ID, Rating, and Last Modified Date columns.',
+    })
+  })
+
   it('treats an empty active-job response as no active job', async () => {
     const stub = fetchStub(response(204, undefined))
     await expect(getActiveBackgroundJob(stub.fetcher)).resolves.toBeNull()

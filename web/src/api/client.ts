@@ -111,9 +111,15 @@ export async function requestJson<T>(
     } catch {
       problem = responseText
     }
+    const apiMessage = problemMessage(problem)
+    const genericRatingsImportValidationError = response.status === 400
+      && path === '/personal-ratings/import'
+      && apiMessage === 'One or more validation errors occurred.'
     const message = response.status === 502 && !responseText
       ? 'The local API is unavailable. Check the server connection and retry.'
-      : problemMessage(problem) ?? `The API request failed with status ${response.status}.`
+      : genericRatingsImportValidationError
+        ? 'The IMDb ratings file could not be validated. Check that the selected CSV includes Title ID, Rating, and Last Modified Date columns.'
+        : apiMessage ?? `The API request failed with status ${response.status}.`
     throw new ApiError(message,
     response.status,
     `${API_ROOT}${path}`,

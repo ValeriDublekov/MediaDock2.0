@@ -555,7 +555,8 @@ public sealed class PersonalRatingsApiTests
             $"/api/personal-ratings/import?userId={secondUserId}",
             "Title ID,Rating,Last Modified Date\ntt1234567,8,2018-03-04T00:00:00Z\ntt7654321,6,",
             firstToken,
-            secondUserId);
+            secondUserId,
+            "IMDbRatings.UserRatings.csv");
         Assert.Equal(HttpStatusCode.OK, firstImportResponse.StatusCode);
         var firstImport = await firstImportResponse.Content.ReadFromJsonAsync<PersonalRatingsImportResponse>();
         Assert.NotNull(firstImport);
@@ -637,12 +638,15 @@ public sealed class PersonalRatingsApiTests
         Assert.All(imdbTitles, title => Assert.Equal("pending", title.MetadataStatus));
     }
 
-    private static MultipartFormDataContent CreateUpload(string csv, long? userId = null)
+    private static MultipartFormDataContent CreateUpload(
+        string csv,
+        long? userId = null,
+        string fileName = "ratings.csv")
     {
         var content = new MultipartFormDataContent();
         var file = new ByteArrayContent(Encoding.UTF8.GetBytes(csv));
         file.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
-        content.Add(file, "File", "ratings.csv");
+        content.Add(file, "File", fileName);
         if (userId.HasValue) content.Add(new StringContent(userId.Value.ToString()), "userId");
         return content;
     }
@@ -652,11 +656,12 @@ public sealed class PersonalRatingsApiTests
         string path,
         string csv,
         string requestToken,
-        long? userId = null)
+        long? userId = null,
+        string fileName = "ratings.csv")
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, path)
         {
-            Content = CreateUpload(csv, userId)
+            Content = CreateUpload(csv, userId, fileName)
         };
         request.Headers.Add("RequestVerificationToken", requestToken);
         return await client.SendAsync(request);
