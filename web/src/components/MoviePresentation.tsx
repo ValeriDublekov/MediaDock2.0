@@ -166,6 +166,15 @@ const sourceLabels: Record<MovieAwardSource, string> = {
   golden_globes: 'Golden Globes',
 }
 
+function awardOutcome(award: MovieAwardRecognition): string {
+  const context = [
+    award.ceremonyYear === null ? null : `Ceremony year ${award.ceremonyYear}`,
+    award.ceremony === null ? null : `Ceremony ${award.ceremony}`,
+    award.filmYear === null ? null : `Film year ${award.filmYear}`,
+  ].filter(Boolean).join(' · ')
+  return `${award.isWinner ? 'Winner' : 'Nominee'} · ${context || 'Ceremony not listed'}`
+}
+
 export function MovieAwardsSummary({ awards, compact = false }: { awards: MovieAwardRecognition[]; compact?: boolean }) {
   const className = `movie-awards-summary${compact ? ' is-compact' : ''}`
   if (awards.length === 0) {
@@ -197,6 +206,15 @@ export function MovieAwardsSummary({ awards, compact = false }: { awards: MovieA
           <strong>{sourceLabels[source]}</strong>
           <span>{wins} {wins === 1 ? 'win' : 'wins'} · {records.length} {records.length === 1 ? 'nomination' : 'nominations'}</span>
         </div>
+        <details className="movie-awards-source-details">
+          <summary>View {sourceLabels[source]} details ({records.length})</summary>
+          <ul className="movie-awards-category-list">
+            {records.map((award, index) => <li key={`${award.id}/${index}`}>
+              <strong>{award.award}</strong>
+              <span>{awardOutcome(award)}</span>
+            </li>)}
+          </ul>
+        </details>
       </div>
     })}
   </div>

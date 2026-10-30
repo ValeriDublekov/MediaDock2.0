@@ -428,6 +428,11 @@ button:disabled { cursor: not-allowed; }
 .movie-awards-source-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3px 8px; }
 .movie-awards-source-heading strong { color: #f3f2ec; }
 .movie-awards-source-heading span, .movie-awards-categories { color: #b9c2bc; }
+.movie-awards-source-details { margin-top: 2px; }
+.movie-awards-source-details summary { width: fit-content; color: #f0bd62; cursor: pointer; }
+.movie-awards-category-list { display: grid; gap: 4px; margin: 5px 0 0; padding-left: 16px; }
+.movie-awards-category-list li { display: grid; min-width: 0; gap: 2px; overflow-wrap: anywhere; }
+.movie-awards-category-list li span { color: #b9c2bc; }
 .movie-awards-summary.is-compact { min-width: 145px; border-top: 0; padding-top: 0; }
 .movie-awards-summary.is-compact .movie-awards-summary-title { display: none; }
 .movie-awards-warning { border-left: 3px solid #c58a35; padding: 7px 10px; color: #58441f; background: #fff5df; font-size: 12px; }

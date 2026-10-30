@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { addFavorite, getFavorites, getOscarCategories, getOscarFilm, getOscarFilms } from '../../api/client'
+import { addFavorite, getFavorites, getMovieAwards, getOscarCategories, getOscarFilm, getOscarFilms } from '../../api/client'
 import type { FavoriteTitle, OscarFilm, OscarNomination, PageResponse } from '../../api/types'
 import { titlePageSize } from '../../shared/titlePagination'
 import { FavoriteProvider } from '../favorites/FavoriteContext'
@@ -96,6 +96,7 @@ describe('OscarCatalogView', () => {
     detailsRequest.mockReset()
     favoritesRequest.mockReset()
     addRequest.mockReset()
+    vi.mocked(getMovieAwards).mockReset().mockResolvedValue([])
   })
   afterEach(() => cleanup())
 
@@ -142,6 +143,27 @@ describe('OscarCatalogView', () => {
     expect(awardCount.closest('.movie-awards-source')?.getAttribute('title')).toContain('Nominee · Best Picture')
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(within(screen.getByLabelText('Awards and nominations')).getByText('0 wins · 2 nominations')).toBeTruthy()
+  })
+
+  it('reveals source-specific categories, outcomes, and ceremony context from the summary', async () => {
+    vi.mocked(getMovieAwards).mockResolvedValue([{
+      id: 21, imdbId: film.imdbId, source: 'golden_globes', filmYear: null, ceremonyYear: 2018,
+      ceremony: null, award: 'Best Motion Picture - Drama', name: null, nominees: null, detail: null, isWinner: false,
+    }])
+    filmRequest.mockResolvedValue(page([film]))
+    render(<OscarCatalogView />)
+
+    const summary = within(await screen.findByLabelText('Awards and nominations'))
+    const oscarGroup = within(summary.getByRole('group', { name: 'Oscars awards and nominations' }))
+    fireEvent.click(oscarGroup.getByText('View Oscars details (2)'))
+    expect(oscarGroup.getByText('Best Picture')).toBeTruthy()
+    expect(oscarGroup.getByText('Winner · Ceremony 90 · Film year 2017')).toBeTruthy()
+    expect(oscarGroup.getByText('Nominee · Ceremony 90 · Film year 2017')).toBeTruthy()
+
+    const globeGroup = within(summary.getByRole('group', { name: 'Golden Globes awards and nominations' }))
+    fireEvent.click(globeGroup.getByText('View Golden Globes details (1)'))
+    expect(globeGroup.getByText('Best Motion Picture - Drama')).toBeTruthy()
+    expect(globeGroup.getByText('Nominee · Ceremony year 2018')).toBeTruthy()
   })
 
   it('applies award filters and renders the empty state', async () => {

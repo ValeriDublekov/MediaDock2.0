@@ -23,7 +23,10 @@ const film: GoldenGlobeFilm = {
   genres: [],
   director: null,
   plot: null,
-  nominations: [{ id: 1, year: 2025, award: 'Best Picture', isWinner: true }],
+  nominations: [
+    { id: 1, year: 2025, award: 'Best Picture', isWinner: true },
+    { id: 2, year: 2024, award: 'Best Director', isWinner: false },
+  ],
 }
 
 const page: PageResponse<GoldenGlobeFilm> = {
@@ -61,7 +64,12 @@ describe('GoldenGlobeCatalogView', () => {
     expect(screen.getByTitle('Ceremony year 2025')).toBeTruthy()
     const awardSummary = within(screen.getByLabelText('Awards and nominations'))
     expect(awardSummary.getByText('Golden Globes')).toBeTruthy()
-    expect(awardSummary.getByText('1 win · 1 nomination')).toBeTruthy()
+    expect(awardSummary.getByText('1 win · 2 nominations')).toBeTruthy()
+    fireEvent.click(awardSummary.getByText('View Golden Globes details (2)'))
+    expect(awardSummary.getByText('Best Picture')).toBeTruthy()
+    expect(awardSummary.getByText('Winner · Ceremony year 2025')).toBeTruthy()
+    expect(awardSummary.getByText('Best Director')).toBeTruthy()
+    expect(awardSummary.getByText('Nominee · Ceremony year 2024')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(screen.getByRole('img', { name: 'Poster for A Film' })).toBeTruthy()
