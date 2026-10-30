@@ -4,28 +4,15 @@
 
 Keep the public path HTTPS-only, close origin bypasses, add browser/cache protections, and prevent development or host tooling from widening access.
 
-## Tasks
+## Remaining Checks (2026-10-30)
 
-- Inspect the actual deployed SHA, Compose port bindings, Docker networks, Cloudflare Tunnel and Access policies, public DNS/hostnames, host firewall, and router forwarding. Do not infer live state from repository configuration.
-- Restrict the API origin to the dedicated Tunnel and explicitly approved operator paths. Retain the specific-interface bind and source allowlist if LAN access remains; do not publish PostgreSQL. Trust only `X-Forwarded-Proto` from the dedicated proxy CIDR and one hop.
-- Configure and verify HSTS after confirming HTTPS coverage. Trial CSP in report-only mode before enforcement; add frame, MIME-sniffing, referrer, and permissions policies. Set private session/API responses to `no-store`; ensure public caches cannot store user data.
-- Verify ASP.NET Data Protection key-ring location, persistence, encryption, permissions, and behavior across restart/recreation. Review `.env`, OMDb key and SQL backups, host credentials, deploy socket access, database privileges, logs, backup protection, image pinning/scanning, and patch cadence.
-- Keep the restored-data workflow local-only: bind Vite explicitly to loopback, retain the API's loopback binding, prohibit tunneling/port-forwarding while mock auth is enabled, and prefer sanitized data for shared development. Test or document the proxy boundary; a proxy makes the API's immediate peer local.
-- Verify outbound URLs displayed from feed data use only approved schemes and cannot introduce scriptable links.
-
-## Worktree Implementation (2026-10-30)
-
-The current worktree adds API security and cache headers, opt-in HTTPS-only Production HSTS, report-only CSP, a persistent Compose Data Protection key volume, a loopback-only Vite server guard, and HTTP(S)-only feed links. These are source changes, not deployment evidence.
-
-The following operational gates remain open: inspect the deployed SHA and live Compose/network/Tunnel/Access/DNS/firewall/router configuration; verify external and untrusted-LAN denial plus HTTPS/OIDC behavior; inspect key-volume ownership, encryption, and backup/restore; confirm local development ports are unreachable from untrusted interfaces; and review host secrets, image provenance, and patch cadence. Do not mark Phase 3 complete until those checks are recorded.
-
-## Verification
-
-- Use host-side read-only inspection first; changes to production networks, firewall, secrets, images, or services require separate operator approval.
-- From an external network, confirm direct origin IP/port and alternate hostnames are denied. From an untrusted LAN source, confirm the API port is denied. Confirm only intended routes pass Cloudflare Access and the OIDC callback remains functional.
-- Inspect responses for HTTPS, security headers, cache behavior, cookie flags, and absence of public version/data endpoints. Test CSP in a real browser before enforcement.
-- Verify ports 5173 and 5280 are not reachable from untrusted interfaces during restored-data development. Confirm Production rejects local mock authentication.
-- Perform a controlled backup restore and verify Data Protection keys and application startup behavior without printing secrets or production data.
+- Record the exact deployed SHA and inspect effective Compose bindings, Docker networks, Tunnel and Access policies, DNS/hostnames, firewall, and router forwarding. Repository configuration is not live-state evidence.
+- From an external network, verify direct-origin and alternate-host denial. From an untrusted LAN source, verify the API port is denied. Confirm only approved routes pass Cloudflare Access and the Google OIDC callback works.
+- In a browser, verify HTTPS, HSTS, report-only CSP behavior, security headers, cookie flags, private-response `no-store`, and absence of public version/data endpoints. Do not enforce CSP until compatibility is checked.
+- Verify Data Protection key persistence, encryption, permissions, and behavior after restart/recreation; perform a controlled backup restore without printing secrets or production data.
+- Review host secret and backup protection, database privileges, deploy-socket access, image provenance/scanning, and patch cadence.
+- During restored-data development, verify ports 5173 and 5280 are unreachable from untrusted interfaces and Production rejects local mock authentication.
+- Use read-only host inspection first. Obtain separate operator approval before changing production networks, firewall rules, secrets, images, or services.
 
 ## Exit Criteria
 

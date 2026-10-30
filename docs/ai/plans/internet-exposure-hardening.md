@@ -8,14 +8,12 @@ The security findings and current evidence are in the [reassessed internet expos
 
 ## Planning Layout
 
-| Phase | Scope | Detailed plan |
-| --- | --- | --- |
-| 1 | Application access and login-only UI | [Phase 1](internet-exposure-phase-1-access.md) |
-| 2 | API error handling, CSRF, and abuse controls | [Phase 2](internet-exposure-phase-2-api-defenses.md) |
-| 3 | Origin, browser, host, and development safeguards | [Phase 3](internet-exposure-phase-3-runtime-host.md) |
-| 4 | Deployment and external launch gate | [Phase 4](internet-exposure-phase-4-launch-gate.md) |
+| Remaining scope | Detailed checklist |
+| --- | --- |
+| Runtime and host verification | [Phase 3](internet-exposure-phase-3-runtime-host.md) |
+| Deployment and external launch gate | [Phase 4](internet-exposure-phase-4-launch-gate.md) |
 
-Phase 1 defines the authorization and anonymous-route contract. Phases 2 and 3 can proceed independently once that contract is agreed. Phase 4 depends on all remediation phases and operator approval.
+Core application-access and API-defense controls are present in the candidate. Their remaining route, identity, CSRF, and abuse-control checks are listed below; this does not mean Phases 1 or 2 are accepted. Phases 3 and 4 remain open operational gates.
 
 ## Scope and Constraints
 
@@ -24,15 +22,7 @@ Phase 1 defines the authorization and anonymous-route contract. Phases 2 and 3 c
 - Do not expand the origin bind or firewall allowlist as a workaround. Keep PostgreSQL unpublished; trust forwarded headers only from the dedicated proxy network.
 - Do not expose the restored-data Vite/API development workflow. Mock authentication is development-only and must remain loopback-only.
 - Keep production secrets, host addresses, and real identity values out of Git. Do not run production migrations, deployments, firewall changes, or credential rotation as part of implementation without separate operator approval.
-- The active-account UI gate is currently an uncommitted worktree change. Inspect and preserve it; do not assume it is deployed. Browser-delivered assets need not be private unless hiding application code is an explicit requirement; API data and actions must be protected regardless.
-
-## Dependencies and Decisions
-
-- Before implementation, agree on the exact anonymous route allowlist and whether Cloudflare Access remains a separate required gate.
-- Decide rate-limit values from expected legitimate traffic and the edge provider's capabilities; do not choose arbitrary production thresholds in code.
-- Confirm whether public registration requests remain enabled. If retained, require Google authentication, admin approval, abuse limits, and a documented account recovery path.
-- Confirm a protected host-only administrator recovery procedure before making enforced authorization mandatory.
-- Verify current deployed SHA and host configuration from the host; repository state is not deployment evidence.
+- The active-account UI gate is present in the local candidate but is not deployed. Do not treat source code or passing tests as deployment evidence. Browser-delivered assets need not be private unless hiding application code is an explicit requirement; API data and actions must be protected regardless.
 
 ## Master Acceptance Criteria
 
@@ -44,8 +34,15 @@ Phase 1 defines the authorization and anonymous-route contract. Phases 2 and 3 c
 - Cloudflare/TLS/origin/firewall checks pass from both an external network and an untrusted LAN source, and the deployed SHA is recorded.
 - All applicable repository test suites and deployment gates pass. No production exposure change proceeds without backup, operator approval, and a verified recovery path.
 
-## Current State
+## Current Blocker (2026-10-30)
 
-The 2026-10-30 audit found API enforcement still defaults off, the application UI gate present only in uncommitted changes, direct-origin exposure unverified, incomplete CSRF coverage, raw unhandled-exception details in 500 responses, no application rate limiting, and host/browser controls requiring verification. The local Development mock-auth/Vite proxy combination is a conditional risk when the dev server is exposed. Focused UI and authentication tests passed during that audit; production host state was not inspected.
+Production runs image `33327386c4351a95f4b7d4f495ffbebd7636be91`; the local candidate `e6b1a415a49dbd3fbc2715a54ce3db5852d1f18b` is not deployed. The production API has Google sign-in enabled but `AccessControl:Enforced=false`. Unauthenticated direct GET requests to catalog, admin users, deployment, and version returned HTTP 200 from the host. No production configuration or service was changed. The host checks and remaining launch gates are recorded in [Phase 4](internet-exposure-phase-4-launch-gate.md#preflight-status-2026-10-30).
 
-Phase 1 repository implementation has started; no production operation has started under this plan. Do not create a progress tracker unless work spans sessions.
+## Next Steps
+
+1. Confirm the anonymous-route allowlist, registration policy, Cloudflare Access policy, rate-limit values, exact Google callback, and host-only administrator recovery/bootstrap procedure.
+2. Verify the candidate's access behavior with anonymous, unlinked, pending, conflicted, deactivated, active-user, and active-admin identities. Check UI deep links, account status, sign-out, and account switching; API authorization must independently enforce the same roles.
+3. Inventory every cookie-authenticated mutation, including multipart uploads, settings, admin, jobs, and deployment. Verify valid and invalid CSRF/origin cases; generic 500 responses with trace IDs; rate/concurrency limits and recovery; 413/429 contracts; request bounds; and resistance to spoofed forwarded client IPs. Fix only gaps found and rerun affected suites.
+4. Complete the open Phase 3 host checks in [Phase 3](internet-exposure-phase-3-runtime-host.md), including direct-origin/network boundaries, HTTPS/OIDC and response behavior, Data Protection keys and restore, secrets/backups, image provenance, and loopback-only development access. Obtain separate approval before production network, firewall, secret, or service changes.
+5. Run the repository deployment gate and current npm, NuGet, and container-image scans against the exact clean candidate SHA. Confirm migration state and a validated backup/restore and rollback path. With explicit operator approval, configure Google sign-in and `AccessControl:Enforced=true`, provision the first administrator, and deploy while retaining Cloudflare Access.
+6. On the deployed SHA, run the remaining Phase 4 browser/API and external/untrusted-network checks and record dated evidence. Do not widen origin access or remove Cloudflare Access until every master acceptance criterion passes and the operator explicitly approves the change.

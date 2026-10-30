@@ -11,6 +11,14 @@ Prove the approved security design on the exact release and host before broadeni
 - Current deployed SHA, migration state, validated backup, recovery steps, and rollback owner are recorded. Obtain explicit approval for production deployment and any migration/network/secret operation.
 - The release is from a clean, trusted checkout and passes the repository's deployment test gate.
 
+## Preflight Status (2026-10-30)
+
+**NO-GO.** Phase 3 host checks are incomplete, and the deployed API currently allows anonymous access to protected routes.
+
+Read-only host checks found the running API image is `33327386c4351a95f4b7d4f495ffbebd7636be91`, not the local candidate. It runs in Production with Google sign-in enabled but `AccessControl__Enforced=false`. Unauthenticated direct GETs to `/api/catalog`, `/api/admin/users`, `/api/deployment`, and `/api/version` returned HTTP 200; `/health/ready` also returned HTTP 200. PostgreSQL is loopback-bound; the API is bound to the LAN interface. No production settings or services were changed.
+
+Do not widen exposure. The deployed release fails the anonymous validation matrix. External and untrusted-LAN checks, the browser/API identity matrix, Cloudflare/TLS/OIDC verification, backup restore, exact-release deployment gate, image scanning, and operator sign-off remain outstanding. No production settings or services were changed.
+
 ## Validation Matrix
 
 - Anonymous: only approved login/session/anti-forgery/account-request protocol paths work; catalog, awards, personal data, settings, administration, jobs, deployment, and version are unavailable.
@@ -22,7 +30,6 @@ Prove the approved security design on the exact release and host before broadeni
 
 ## Verification
 
-- Run affected suites with `python -B scripts/run_tests.py`; include the complete affected API integration suite and web suite. Docker is required for server integration tests; do not skip them if relevant.
 - Run the repository deployment gate on the clean trusted release. Run current npm and NuGet vulnerability checks and record their sources/date; include container image scanning.
 - Perform browser checks and direct HTTP checks from both trusted and untrusted network locations. Keep dated evidence tied to the deployed SHA without storing secrets or sensitive response bodies.
 - Verify `/health/ready`, sign-in/OIDC, user approval, role denial, logout, and recovery using the deployed configuration. Do not call readiness alone proof of authorization or correct migrations.
