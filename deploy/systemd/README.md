@@ -133,9 +133,11 @@ The deployment unit fetches only the exact public GitHub repository
 `https://github.com/ValeriDublekov/MediaDock2.0.git` and only its `main` branch.
 It creates a clean worktree without `.env`, runs `deploy/test.sh`, builds
 images tagged with the full commit SHA, and embeds `YYYY.MM.DD+<7-character-SHA>`
-from the commit's UTC committer date. After readiness, it verifies `/api/version`
-reports the exact target SHA and version before recording success. Python 3 is
-required on the host to parse that response. It creates and validates a database dump
+from the commit's UTC committer date. After readiness, it verifies that the running
+API container uses the target image and has the exact target SHA and version in
+its build metadata before recording success. The protected `/api/version` route
+remains available to authorized callers. Python 3 is required on the host for
+the container metadata check. It creates and validates a database dump
 before the migration command, and checks `/health/ready` plus the configured
 API bind after startup. It records the deployed SHA in
 `/var/lib/mediadock-deploy`; that directory is root-owned and group-readable by

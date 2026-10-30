@@ -163,6 +163,7 @@ target_sha=''
 staging_dir=''
 gate_log=''
 gate_failure_tmp=''
+gate_failed=0
 
 cleanup() {
     status=$?
@@ -175,7 +176,7 @@ cleanup() {
     if (( status != 0 )); then
         printf '%s deployment failed; production was not automatically rolled back. old_sha=%s target_sha=%s\n' \
             "$(date --iso-8601=seconds)" "$previous_sha" "$target_sha" | tee -a "$log_file" >&2
-        if [[ -n "$gate_log" ]]; then
+        if (( gate_failed )); then
             tail -n 80 "$gate_log" >&2 || true
         fi
     fi
@@ -287,6 +288,7 @@ gate_log="/var/log/mediadock-next-gate-$target_tag.log"
 install -o root -g root -m 0600 /dev/null "$gate_log"
 if ! runuser -u mediadock -g docker -- env -u DOCKER_CONFIG HOME=/var/lib/mediadock DEPLOY_COMMIT="$target_sha" \
     bash "$staging_dir/deploy/test.sh" > "$gate_log" 2>&1; then
+    gate_failed=1
     gate_failure_tmp="$(mktemp "${gate_failure_file}.XXXXXX")"
     printf '%s\n' "$target_sha" > "$gate_failure_tmp"
     install -o root -g mediadock -m 0640 "$gate_failure_tmp" "$gate_failure_file"
@@ -357,17 +359,10 @@ systemctl restart mediadock-next-firewall.service
 health_url="http://$APP_BIND_ADDRESS:$APP_PORT/health/ready"
 curl --fail --silent --show-error --retry 30 --retry-all-errors --retry-delay 2 --max-time 10 \
     "$health_url" -o /dev/null
-version_url="http://$APP_BIND_ADDRESS:$APP_PORT/api/version"
-version_response="$(curl --fail --silent --show-error "$version_url")"
-if ! python3 -c '
-import json
-import sys
-
-version = json.load(sys.stdin)
-matches_target = version.get("commitSha") == sys.argv[1] and version.get("version") == sys.argv[2]
-sys.exit(0 if matches_target else 1)
-' "$target_sha" "$build_version" <<< "$version_response"; then
-    printf 'The deployed API version does not match target commit %s.\n' "$target_sha" >&2
+api_container="$(docker compose "${compose_args[@]}" ps -q api)"
+if ! python3 "$staging_dir/deploy/verify_deployed_image.py" \
+    "$api_container" "$api_image" "$target_sha" "$build_version"; then
+    printf 'The running API image or version metadata does not match target commit %s.\n' "$target_sha" >&2
     exit 1
 fi
 resolved_api="$(env API_IMAGE="$api_image" docker compose "${compose_args[@]}" port api 8080)"

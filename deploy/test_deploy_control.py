@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import subprocess
 import tempfile
 import unittest
@@ -11,6 +12,56 @@ SPEC = importlib.util.spec_from_file_location("deploy_control", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 deploy_control = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(deploy_control)
+
+VERIFY_SPEC = importlib.util.spec_from_file_location("verify_deployed_image", Path(__file__).with_name("verify_deployed_image.py"))
+assert VERIFY_SPEC is not None and VERIFY_SPEC.loader is not None
+verify_deployed_image = importlib.util.module_from_spec(VERIFY_SPEC)
+VERIFY_SPEC.loader.exec_module(verify_deployed_image)
+
+
+class DeployedImageVerificationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.container = {
+            "State": {"Running": True},
+            "Image": "sha256:expected",
+            "Config": {"Image": "mediadock-next-api:commit", "Env": [
+                "MediaDock__CommitSha=commit", "MediaDock__Version=version", "SECRET=not-for-logs"
+            ]},
+        }
+        self.image = {"Id": "sha256:expected"}
+
+    def verify(self) -> bool:
+        results = [
+            subprocess.CompletedProcess([], 0, json.dumps([self.container]), ""),
+            subprocess.CompletedProcess([], 0, json.dumps([self.image]), ""),
+        ]
+        with patch.object(verify_deployed_image.subprocess, "run", side_effect=results):
+            return verify_deployed_image.verify_deployed_image("container", "mediadock-next-api:commit", "commit", "version")
+
+    def test_running_container_with_matching_build_is_accepted(self) -> None:
+        self.assertTrue(self.verify())
+
+    def test_mismatched_or_stopped_container_is_rejected(self) -> None:
+        for field in ("image", "tag", "sha", "version", "duplicate", "stopped"):
+            with self.subTest(field=field):
+                self.setUp()
+                if field == "image":
+                    self.image["Id"] = "sha256:other"
+                elif field == "tag":
+                    self.container["Config"]["Image"] = "other"
+                elif field == "sha":
+                    self.container["Config"]["Env"][0] = "MediaDock__CommitSha=other"
+                elif field == "version":
+                    self.container["Config"]["Env"][1] = "MediaDock__Version=other"
+                elif field == "duplicate":
+                    self.container["Config"]["Env"].append("mediadock__version=other")
+                else:
+                    self.container["State"]["Running"] = False
+                self.assertFalse(self.verify())
+
+    def test_docker_failure_is_rejected(self) -> None:
+        with patch.object(verify_deployed_image.subprocess, "run", side_effect=subprocess.CalledProcessError(1, "docker")):
+            self.assertFalse(verify_deployed_image.verify_deployed_image("container", "image", "commit", "version"))
 
 
 class DeploymentControlTests(unittest.TestCase):
