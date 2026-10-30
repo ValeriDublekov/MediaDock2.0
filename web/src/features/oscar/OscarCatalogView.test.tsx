@@ -100,6 +100,15 @@ describe('OscarCatalogView', () => {
   })
   afterEach(() => cleanup())
 
+  it('places result controls before catalog filters', async () => {
+    filmRequest.mockResolvedValue(page([film]))
+    const view = render(<OscarCatalogView />)
+
+    expect(await screen.findByRole('button', { name: 'View The Shape of Water Oscar details' })).toBeTruthy()
+    const catalogSections = [...view.container.querySelectorAll('.catalog-section-toolbar, .oscar-filter-form')]
+    expect(catalogSections.map((element) => element.classList.contains('catalog-section-toolbar'))).toEqual([true, false])
+  })
+
   it('shows the common award summary, film details, and IMDb link in both list modes', async () => {
     filmRequest.mockResolvedValue(page([{ ...film, posterUrl: 'https://example.test/poster.jpg' }]))
     const view = render(<OscarCatalogView />)

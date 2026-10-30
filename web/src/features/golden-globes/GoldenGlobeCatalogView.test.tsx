@@ -52,6 +52,14 @@ describe('GoldenGlobeCatalogView', () => {
 
   afterEach(() => cleanup())
 
+  it('places result controls before catalog filters', async () => {
+    render(<GoldenGlobeCatalogView />)
+
+    expect(await screen.findByRole('button', { name: 'A Film' })).toBeTruthy()
+    const catalogSections = [...document.querySelectorAll('.catalog-section-toolbar, .oscar-filter-form')]
+    expect(catalogSections.map((element) => element.classList.contains('catalog-section-toolbar'))).toEqual([true, false])
+  })
+
   it('loads grouped film records and applies the supported filters', async () => {
     render(<GoldenGlobeCatalogView />)
 

@@ -425,7 +425,7 @@ function AppContent() {
               <AuthDiagnosticDetails diagnostic={authDiagnostic} />
             </section>
           )}
-          {location.pathname !== '/catalog' && <div className="page-heading">
+          {location.pathname !== '/catalog' && <div className={section === 'oscar' || section === 'golden-globes' ? 'page-heading catalog-page-heading' : 'page-heading'}>
             <div>
               <p className="eyebrow">{content.eyebrow}</p>
               <h1>{title}</h1>

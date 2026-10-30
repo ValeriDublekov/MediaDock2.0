@@ -387,7 +387,7 @@ button:disabled { cursor: not-allowed; }
 .movie-tile.is-clickable:hover { border-color: #6d7971; box-shadow: 0 4px 14px rgba(13, 18, 15, 0.28); }
 .poster-stage { position: relative; }
 .poster-action { position: relative; display: block; width: 100%; border: 0; padding: 0; background: transparent; text-align: left; }
-.poster-overlay-actions { position: absolute; z-index: 4; top: 8px; right: 8px; display: flex; align-items: center; gap: 5px; }
+.poster-overlay-actions { position: absolute; z-index: 4; top: 8px; right: 8px; display: flex; align-items: center; gap: 5px; opacity: 0; pointer-events: none; transition: opacity 140ms ease; }
 .tile-icon-action { position: relative; display: grid; width: 32px; height: 32px; flex: 0 0 32px; place-items: center; border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 4px; padding: 0; color: #f2f1e9; background: rgba(24, 29, 27, 0.92); cursor: pointer; }
 .tile-icon-action:hover, .tile-icon-action:focus-visible { border-color: #f0aa32; color: #ffc45f; background: #202524; }
 .tile-icon-action:disabled { cursor: not-allowed; opacity: 0.55; }
@@ -395,7 +395,9 @@ button:disabled { cursor: not-allowed; }
 .tile-icon-action[data-tooltip]::after { position: absolute; z-index: 8; top: calc(100% + 6px); right: 0; width: max-content; max-width: 190px; border: 1px solid #59645d; border-radius: 3px; padding: 5px 7px; color: #f3f2ec; background: #202524; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35); content: attr(data-tooltip); font-size: 10px; font-weight: 600; line-height: 1.25; opacity: 0; pointer-events: none; transform: translateY(-2px); transition: opacity 120ms ease, transform 120ms ease; }
 .tile-icon-action[data-tooltip]:hover::after, .tile-icon-action[data-tooltip]:focus-visible::after { opacity: 1; transform: translateY(0); }
 .tile-action-error { position: absolute; top: calc(100% + 6px); right: 0; display: flex; max-width: 240px; align-items: center; gap: 6px; border: 1px solid #7a473c; border-radius: 3px; padding: 5px; color: #ffd1c5; background: #382a27; font-size: 10px; }
-.poster-type-badge { position: absolute; top: 10px; left: 10px; border: 1px solid rgba(255, 255, 255, 0.32); border-radius: 3px; padding: 4px 7px; color: #fff; background: rgba(20, 24, 23, 0.88); font-size: 10px; font-weight: 700; }
+.poster-type-badge { position: absolute; top: 10px; left: 10px; border: 1px solid rgba(255, 255, 255, 0.32); border-radius: 3px; padding: 4px 7px; color: #fff; background: rgba(20, 24, 23, 0.88); font-size: 10px; font-weight: 700; opacity: 0; pointer-events: none; transition: opacity 140ms ease; }
+.poster-stage:hover .poster-overlay-actions, .poster-stage:focus-within .poster-overlay-actions, .poster-stage:hover .poster-type-badge, .poster-stage:focus-within .poster-type-badge { opacity: 1; pointer-events: auto; }
+@media (hover: none), (pointer: coarse) { .poster-overlay-actions, .poster-type-badge { opacity: 1; pointer-events: auto; } }
 .winner-badge { position: absolute; right: 8px; bottom: 8px; max-width: calc(100% - 16px); border-radius: 3px; padding: 5px 8px; color: #fff4d4; background: #624421; font-size: 11px; font-weight: 700; overflow-wrap: anywhere; }
 .nominee-badge { color: #f0f2ec; background: #394c43; }
 .oscar-award-tooltip { position: absolute; z-index: 3; display: grid; gap: 8px; visibility: hidden; border: 1px solid #59665d; border-radius: 4px; padding: 10px; color: #f3f2ec; background: rgba(25, 32, 29, 0.98); box-shadow: 0 5px 16px rgba(0, 0, 0, 0.38); font-size: 11px; line-height: 1.35; text-align: left; opacity: 0; pointer-events: none; transition: opacity 120ms ease, visibility 120ms ease; }
@@ -478,6 +480,9 @@ button:disabled { cursor: not-allowed; }
 .filter-form.browse-filters { grid-template-columns: minmax(150px, 0.95fr) minmax(180px, 1.1fr) minmax(150px, 0.8fr) auto; gap: 10px; margin-bottom: 14px; border: 0; padding: 0; }
 .catalog-page-heading { align-items: center; margin-bottom: 14px; }
 .catalog-page-heading h1 { font-size: 30px; }
+.catalog-page-heading .eyebrow { margin-bottom: 4px; }
+.catalog-page-heading .page-description { margin-top: 4px; font-size: 12px; }
+.catalog-section-toolbar { margin-bottom: 8px; }
 .catalog-heading-copy { display: flex; min-width: 0; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
 .catalog-result-count { white-space: nowrap; }
 .catalog-heading-action { flex: 0 0 auto; min-height: 36px; }

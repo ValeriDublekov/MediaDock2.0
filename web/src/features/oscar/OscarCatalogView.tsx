@@ -229,6 +229,16 @@ export function OscarCatalogView() {
 
   return (
     <section aria-label="Oscar catalog" className="media-view">
+      <div className="section-toolbar catalog-section-toolbar">
+        <span className="result-count">
+          {result ? `${result.totalCount.toLocaleString()} Oscar films` : 'Oscar records'}
+        </span>
+        <div className="toolbar-actions">
+          <ViewModeControl onChange={setViewMode} value={viewMode} />
+          <button className="text-button" onClick={refresh} type="button">Refresh results</button>
+        </div>
+      </div>
+
       <form className="filter-form oscar-filter-form browse-filters" onSubmit={applyFilters}>
         <div className="field filter-search">
           <label htmlFor="oscar-search">Search films</label>
@@ -292,16 +302,6 @@ export function OscarCatalogView() {
           <button className="button button-secondary" onClick={clearFilters} type="button">Clear</button>
         </div>
       </form>
-
-      <div className="section-toolbar">
-        <span className="result-count">
-          {result ? `${result.totalCount.toLocaleString()} Oscar films` : 'Oscar records'}
-        </span>
-        <div className="toolbar-actions">
-          <ViewModeControl onChange={setViewMode} value={viewMode} />
-          <button className="text-button" onClick={refresh} type="button">Refresh results</button>
-        </div>
-      </div>
 
       {loading && <LoadingState label="Loading Oscar catalog" />}
       {!loading && error && <ErrorState message={error} onRetry={refresh} />}

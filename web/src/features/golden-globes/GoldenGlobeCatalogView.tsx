@@ -156,6 +156,7 @@ export function GoldenGlobeCatalogView() {
   }
 
   return <section aria-label="Golden Globes catalog" className="media-view">
+    <div className="section-toolbar catalog-section-toolbar"><span className="result-count">{result ? `${result.totalCount.toLocaleString()} Golden Globes films` : 'Golden Globes records'}</span><div className="toolbar-actions"><ViewModeControl onChange={setViewMode} value={viewMode} /><button className="text-button" onClick={refresh} type="button">Refresh results</button></div></div>
     <form className="filter-form oscar-filter-form browse-filters" onSubmit={apply}>
       <div className="field filter-search"><label htmlFor="golden-globe-search">Search films</label><input id="golden-globe-search" onChange={(event) => update('search', event.target.value)} placeholder="Film title" type="search" value={draft.search} /></div>
       {result?.yearBounds && <YearRangeFilter
@@ -182,7 +183,6 @@ export function GoldenGlobeCatalogView() {
       </div></details>
       <div className="filter-actions"><button className="button button-secondary" onClick={clear} type="button">Clear</button></div>
     </form>
-    <div className="section-toolbar"><span className="result-count">{result ? `${result.totalCount.toLocaleString()} Golden Globes films` : 'Golden Globes records'}</span><div className="toolbar-actions"><ViewModeControl onChange={setViewMode} value={viewMode} /><button className="text-button" onClick={refresh} type="button">Refresh results</button></div></div>
     {loading && <LoadingState label="Loading Golden Globes catalog" />}
     {!loading && error && <ErrorState message={error} onRetry={refresh} />}
     {!loading && !error && result && result.items.length === 0 && <EmptyState title="No Golden Globes films found" message="Try changing the search or filters, or import the Golden Globes dataset." />}

@@ -14,6 +14,7 @@ The original screen reviews were performed on 2026-10-29, primarily at 1458 x 81
 - UI-02 clarified ignored-title actions and accessible names. Other consequential operations were not assessed.
 - UI-08 corrected Favorites context and empty-state wording for mixed movie and series content.
 - UI-10 added source-separated Oscar and Golden Globes category disclosures with category, outcome, and ceremony context. The local Oscar view showed these disclosures.
+- Catalog headers and toolbars: applied the Torrents catalog's compact heading and pre-filter result controls to the Oscar and Golden Globes catalogs. Card width, metadata hierarchy, Table density, and long-scan context remain open.
 
 ## P1: Verification and Operational Safety
 
@@ -25,7 +26,7 @@ The original screen reviews were performed on 2026-10-29, primarily at 1458 x 81
 
 ## P2: Browsing and Domain Meaning
 
-- **Catalog and award catalogs:** Improve first-viewport access to title and primary signals. Evaluate card width and metadata hierarchy at more than one desktop width; descriptions and award details remain dense. Make Table mode more compact without losing access to secondary details, and keep result context and column labels available during long scans. Preserve a legible missing-poster treatment and avoid repetitive unavailable metadata. The catalog heading and navigation currently say "Torents catalog"; correct both to "Torrents catalog".
+- **Catalog and award catalogs:** Evaluate card width and metadata hierarchy at more than one desktop width; descriptions and award details remain dense. Make Table mode more compact without losing access to secondary details, and keep result context and column labels available during long scans. Preserve a legible missing-poster treatment and avoid repetitive unavailable metadata. The catalog heading and navigation currently say "Torents catalog"; correct both to "Torrents catalog".
 - **Movie and series recommendations:** Make recommendation score prominent and distinct from IMDb rating; make the existing scoring explanation discoverable and state only verified per-title signals. Keep weight values, total, validity, keyboard behavior, and ranking context clear. Recheck first-viewport density. Hide unavailable director values; show series spans or lifecycle only when reliable data exists.
 - **Personal ratings:** Add title lookup if supported; distinguish personal and IMDb ratings consistently; clarify the actual MediaDock-only inclusion rule and supported date provenance. Keep IMDb identifiers available as secondary details.
 - **Favorites:** Bring watch/download state nearer the title, review layout for small collections, use consistent count wording, and omit useless pagination controls on a single page. Keep the poster action's accessible purpose distinct from removing a favorite. The mixed-content wording is already corrected.
