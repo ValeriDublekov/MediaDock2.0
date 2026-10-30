@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -82,6 +83,53 @@ public sealed class GoogleAuthenticationApiTests
         cookieMutation.Headers.Add("Cookie", $"{GoogleSignInSettings.SessionCookieName}=test-session");
         using var cookieMutationResponse = await client.SendAsync(cookieMutation);
         Assert.Equal(HttpStatusCode.BadRequest, cookieMutationResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task ProductionResponsesSetSecurityAndPrivateCacheHeadersOnlyOverHttps()
+    {
+        using var factory = new ApiFactory(
+            "Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test",
+            accessControlEnforced: true,
+            environmentName: "Production",
+            googleSignInEnabled: true,
+            additionalConfiguration: new Dictionary<string, string?>
+            {
+                ["SecurityHeaders:Hsts:Enabled"] = "true",
+                ["AbuseControls:RateLimits:Authentication:PermitLimit"] = "120",
+                ["AbuseControls:RateLimits:Authentication:WindowSeconds"] = "60",
+                ["AbuseControls:RateLimits:Registration:PermitLimit"] = "5",
+                ["AbuseControls:RateLimits:Registration:WindowSeconds"] = "3600",
+                ["AbuseControls:RateLimits:Search:PermitLimit"] = "60",
+                ["AbuseControls:RateLimits:Search:WindowSeconds"] = "60",
+                ["AbuseControls:RateLimits:Uploads:PermitLimit"] = "10",
+                ["AbuseControls:RateLimits:Uploads:WindowSeconds"] = "60",
+                ["AbuseControls:RateLimits:Uploads:ConcurrencyLimit"] = "2",
+                ["AbuseControls:RateLimits:JobDispatch:PermitLimit"] = "30",
+                ["AbuseControls:RateLimits:JobDispatch:WindowSeconds"] = "60",
+                ["AbuseControls:RateLimits:JobDispatch:ConcurrencyLimit"] = "4"
+            });
+        using var httpsClient = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://mediadock.example")
+        });
+
+        using var httpsResponse = await httpsClient.GetAsync("/api/auth/session");
+
+        Assert.Equal(HttpStatusCode.OK, httpsResponse.StatusCode);
+        Assert.Equal("no-store", httpsResponse.Headers.CacheControl?.ToString());
+        Assert.Equal("max-age=31536000", Assert.Single(httpsResponse.Headers.GetValues("Strict-Transport-Security")));
+        Assert.Equal("nosniff", Assert.Single(httpsResponse.Headers.GetValues("X-Content-Type-Options")));
+        Assert.Equal("DENY", Assert.Single(httpsResponse.Headers.GetValues("X-Frame-Options")));
+        Assert.Equal("strict-origin-when-cross-origin", Assert.Single(httpsResponse.Headers.GetValues("Referrer-Policy")));
+        Assert.Equal("camera=(), microphone=(), geolocation=()", Assert.Single(httpsResponse.Headers.GetValues("Permissions-Policy")));
+        Assert.Contains("frame-ancestors 'none'", Assert.Single(httpsResponse.Headers.GetValues("Content-Security-Policy-Report-Only")));
+
+        using var httpClient = factory.CreateClient();
+        using var httpResponse = await httpClient.GetAsync("/api/auth/session");
+
+        Assert.Equal(HttpStatusCode.OK, httpResponse.StatusCode);
+        Assert.False(httpResponse.Headers.Contains("Strict-Transport-Security"));
     }
 
     [Fact]

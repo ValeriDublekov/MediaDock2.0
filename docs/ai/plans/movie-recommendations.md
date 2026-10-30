@@ -6,7 +6,7 @@ Rank recommendation candidates for the active user using personal ratings, award
 
 ## Planning Layout
 
-This master plan records scope, constraints, architecture decisions, remaining implementation inputs, phase dependencies, and acceptance criteria. Each implementation phase has its own tasks, checks, and exit criteria because the phases are independently verifiable. This follows the [repository plan-file instructions](../WORKFLOW.md#plans-and-evidence).
+This master plan records scope, constraints, architecture decisions, remaining implementation inputs, phase dependencies, and acceptance criteria. Each implementation phase has its own tasks, checks, and exit criteria because the phases are independently verifiable. This follows the [repository plan-file instructions](../../../.github/instructions/mediadock.instructions.md#plan-files).
 
 | Phase | Scope | Detailed plan |
 | --- | --- | --- |

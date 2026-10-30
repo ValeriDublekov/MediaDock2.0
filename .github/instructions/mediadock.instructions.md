@@ -1,16 +1,37 @@
 ---
-description: "Essential MediaDock repository rules; task-specific details live in docs/ai."
 applyTo: "**"
 ---
 
 # MediaDock 2.0
 
 Respond only in English or Bulgarian.
+Reuse existing SSH sessions whenever practical to reduce repeated password prompts; follow [Server access](../../docs/ai/SERVER_ACCESS.md).
+Before changing project files, read the [AI documentation index](../../docs/ai/README.md) and follow its task-specific references. Treat source and tests under `server/` and `web/` as authoritative. The root [README](../../README.md) is the local operations entrypoint. Keep the API loopback-bound by default; LAN deployment is unauthenticated and must retain its specific-interface bind and host firewall allowlist.
 
-- Before edits, inspect `git status --short` and preserve user changes. Read the [AI index](../../docs/ai/README.md), then only the references needed for the task. Source and tests in `server/` and `web/` are authoritative.
-- Follow the [task workflow](../../docs/ai/WORKFLOW.md) for implementation, cross-layer changes, migrations, and multi-session plans; do not load unrelated plans or historical documents.
-- Use `python -B scripts/run_tests.py <suite>` for every test run, not direct test commands. Choose the narrowest suite/filter; changes to helpers require `runner`. Relevant integration tests require Docker; check availability and report blockers rather than silently skipping. See [Testing](../../docs/ai/TESTING.md).
-- Store selectable logs/reports in ignored `.test-tmp/`. Use `python -B scripts/inspect_diff.py` for bounded diff output and `python -B scripts/check_markdown_links.py` after Markdown edits. See [Development tools](../../docs/ai/DEVELOPMENT_TOOLS.md).
-- Make the smallest coherent edit and immediately run its focused check. Keep required migration preflights and repository gates; read only failure excerpts, fix locally, and rerun the same check. Stop once relevant checks pass; report unverified requirements.
-- Keep the API loopback-bound by default. LAN deployments must retain the specific-interface bind and firewall allowlist. Production state must be verified, not inferred from source; never deploy or migrate production as part of routine coding. Follow [Security](../../docs/ai/SECURITY.md) and [Operations](../../docs/ai/OPERATIONS.md) when relevant.
-- Reuse existing SSH sessions when practical; load [Server access](../../docs/ai/SERVER_ACCESS.md) only for host work. Never print secrets. Do not stage, commit, push, or bypass approvals without explicit authorization.
+For every test run in this repository, use `python -B scripts/run_tests.py <suite>` rather than invoking `dotnet test`, Vitest, or `unittest` directly. Choose the narrowest relevant suite and `--filter`; use `all` when full-suite verification is needed. When integration tests are relevant, check Docker availability and run `server-integration`; do not skip them just because they require Docker. If Docker is unavailable, report that blocker. When changing the runner, run the `runner` suite. See the [testing guide](../../docs/ai/TESTING.md) for suite names and examples.
+
+Store temporary command output and generated inspection artifacts under the repository-root `.test-tmp/`, which is gitignored and created on demand; do not use the user profile or an external temp directory when the destination is selectable. For large Git diffs, use `python -B scripts/inspect_diff.py`: it prints small diffs directly and reports per-file change sizes plus an ignored snapshot when the whole diff or an individual file exceeds its limit. Use `--list`, repeatable `--file PATH`, and `--start-line N --lines N` to inspect the relevant portion without dumping the full diff.
+
+## Efficient Task Workflow
+
+- Start from the named file, symbol, failing behavior, or test. Inspect `git status --short` before editing and preserve existing user changes. Read the AI documentation index and only the task-specific references that apply.
+- For Markdown changes, run `python -B scripts/check_markdown_links.py` to validate local links and anchors; use `python -B scripts/report_file_lines.py` when a file-line inventory is needed.
+- Before the first edit, identify the code or document that directly controls the behavior. State one falsifiable local hypothesis and the cheapest check that could disconfirm it. If one nearby dependency is unclear, read that boundary, then choose the smallest testable change.
+- For cross-layer changes, make a compact impact map from the requested behavior or contract before editing: identify the decision owner, direct readers and writers, affected boundary contracts, and focused tests/fixtures. Use targeted symbol or contract searches to find direct consumers, classify adjacent paths as changed or intentionally unchanged, and avoid inventorying unrelated historical code. Implement one coherent vertical slice, including its fixtures, then run the narrowest relevant check. On failure, fix that slice and rerun the same check; widen verification only after it passes.
+- For persistence identity migrations, settle canonical ownership, fallback/data-loss policy, and legacy-table transition before the first model edit. Include raw SQL and all import, ingestion, API, and web readers/writers in the touchpoint map. Scaffold schema changes with EF `migrations add`; keep custom SQL for intentional data transfer and preflight checks. Before removing/regenerating a migration, inspect its snapshot state and establish what the EF command will access or modify; do not use `migrations remove` as a routine rollback when the configured database or command effects are uncertain.
+- Plan regression scenarios and verification commands before editing. Make the first patch a coherent, compileable slice, then immediately run its narrowest check; do not validate a refactor while knowingly leaving coupled call sites or fixtures incomplete. Keep required migration preflights, integration tests, and repository gates; do not trade correctness for fewer tool calls.
+- For substantial functional changes, run all integration tests affected by the change before declaring the work complete. Keep scope proportional: a backend-only change needs the relevant backend integration tests; a cross-layer change needs each affected suite. If it is unclear whether broader coverage is warranted, ask the user rather than relying on deployment to catch test gaps.
+- Keep reads and edits local: batch independent reads, group related edits per file, and avoid rereading unchanged files. If a patch fails, inspect only the exact failed hunk and retry with its current context instead of rescanning unaffected surfaces. Add tests before the relevant suite run; after it passes, add more only when a newly identified risk justifies it, and rerun only the affected suite after a change.
+- Make the smallest focused edit. After the first substantive edit, run the narrowest available check before further exploration or edits. For documentation-only changes, use `git diff --check` only when no more specific check exists.
+- Minimize tool and approval overhead: prefer workspace file/search tools for read-only inspection, batch related safe terminal actions and final checks into one concise invocation, and keep command output bounded. Do not repeat a passing check without a change or required gate, and never bypass an approval prompt.
+- If a test fails, start with the runner summary. Read only the relevant excerpt from the reported artifact, fix the cause, and rerun the same focused command. Do not repeat a passing suite without a source change or a required gate.
+- At handoff, identify relevant unstaged task changes and, when useful, suggest the next `git add <paths>`, commit, and `git push` steps. Include relevant unstaged files in the suggested staging paths. Do not stage, commit, or push unless explicitly requested.
+- Stop when the task-specific checks and required repository gates pass. Report what changed, checks run, and any blocker; do not add a retrospective to routine or single-step work.
+
+## Plan Files
+
+- Keep short and single-phase tasks in one task or plan. Do not create a progress file just to record commands.
+- For work spanning multiple sessions or multiple independently verifiable phases, use one master plan with the goal, constraints, dependencies, phase links, and acceptance criteria.
+- Add a phase file only when that phase needs its own tasks, checks, or exit criteria. Add one concise progress file only for multi-session work; track the active phase, completed checks, blockers, and next action without copying the plan.
+- At session start, inspect the worktree and read the master, active phase, progress tracker if present, and relevant task documentation. Read other phase files only when a dependency requires them.
+- Mention workflow friction only when it is concrete and actionable. Report approval prompts only when directly observed; do not estimate token savings or require a retrospective for every task.

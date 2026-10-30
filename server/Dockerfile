@@ -15,6 +15,9 @@ RUN dotnet publish server/src/MediaDock.Api/MediaDock.Api.csproj --configuration
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS api
 WORKDIR /app
 COPY --from=build /app/api/ ./
+RUN mkdir -p /var/lib/aspnet/DataProtection-Keys \
+    && chown -R $APP_UID:$APP_UID /var/lib/aspnet/DataProtection-Keys \
+    && chmod 0700 /var/lib/aspnet/DataProtection-Keys
 ARG MEDIADOCK_VERSION=local
 ARG MEDIADOCK_COMMIT_SHA=unknown
 ARG MEDIADOCK_COMMIT_DATE_UTC=unknown

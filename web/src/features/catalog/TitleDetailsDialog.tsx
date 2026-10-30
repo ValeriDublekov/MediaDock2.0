@@ -5,6 +5,7 @@ import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { MovieAwardsList, MovieDetailsIntro } from '../../components/MoviePresentation'
 import { formatDate, formatWords } from '../../shared/format'
 import { combineMovieAwards, getOscarRecognitions } from '../../shared/movieAwards'
+import { isHttpUrl } from '../../shared/urls'
 import { FavoriteControls } from '../favorites/FavoriteControls'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 
@@ -158,6 +159,8 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
 }
 
 function OccurrenceRow({ item }: { item: Occurrence }) {
+  const torrentUrl = isHttpUrl(item.torrentUrl) ? item.torrentUrl : null
+
   return (
     <div className="occurrence-row">
       <div>
@@ -165,7 +168,7 @@ function OccurrenceRow({ item }: { item: Occurrence }) {
         <span>{item.rawTitle}</span>
         <span>Last seen {formatDate(item.lastSeenAt)}</span>
       </div>
-      <a href={item.torrentUrl} rel="noreferrer" target="_blank">Open source</a>
+      {torrentUrl && <a href={torrentUrl} rel="noopener noreferrer" target="_blank">Open source</a>}
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
 import { ImdbCandidatePicker, type ImdbCandidateTarget } from '../../components/ImdbCandidatePicker'
 import { formatDate, formatWords } from '../../shared/format'
+import { isHttpUrl } from '../../shared/urls'
 
 type HistoryTab = 'scans' | 'parses'
 type ParseLogOutcome = 'success' | 'failed' | 'all'
@@ -212,16 +213,6 @@ function ParseLogTable({ items, onRetry }: { items: ParseLog[]; onRetry: (entry:
       </table>
     </div>
   )
-}
-
-function isHttpUrl(value: string | null) {
-  if (!value) return false
-  try {
-    const url = new URL(value)
-    return url.protocol === 'http:' || url.protocol === 'https:'
-  } catch {
-    return false
-  }
 }
 
 function getParseLogStatus(entry: Pick<ParseLog, 'parsedSuccessfully' | 'decision'>) {

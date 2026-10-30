@@ -25,7 +25,7 @@ MAX_DETAIL_LINES = 16
 MAX_DIAGNOSTIC_LENGTH = 2000
 EF_COMMAND_LOG_LEVEL = "Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command"
 DIAGNOSTIC_PATTERNS = (
-    re.compile(r"\b(?:fatal )?error\s+(?:CS|MSB|NETSDK|NU|TS)\d+\s*:", re.IGNORECASE),
+    re.compile(r"\b(?:fatal )?error\s+(?:CS|MSB|NETSDK|NU)\d+\s*:", re.IGNORECASE),
     re.compile(r"\b(?:fatal )?error:", re.IGNORECASE),
     re.compile(r"^\s*(?:build failed|test run failed|test run aborted)\b", re.IGNORECASE),
     re.compile(r"^\s*(?:failed|fail|error)\b", re.IGNORECASE),
@@ -186,13 +186,13 @@ def find_log_diagnostics(path: Path) -> list[str]:
     return diagnostics
 
 
-def create_run_artifact_dir(base_dir: Path | None = None, *, prefix: str = "mediadock-tests-") -> Path:
+def create_run_artifact_dir(base_dir: Path | None = None) -> Path:
     if base_dir is None:
         base_dir = ROOT / ".test-tmp"
     elif not base_dir.is_absolute():
         base_dir = ROOT / base_dir
     base_dir.mkdir(parents=True, exist_ok=True)
-    return Path(tempfile.mkdtemp(prefix=prefix, dir=base_dir))
+    return Path(tempfile.mkdtemp(prefix="mediadock-tests-", dir=base_dir))
 
 
 def run_suite(name: str, filter_value: str | None, report_dir: Path, restore: bool) -> SuiteResult:
@@ -254,8 +254,13 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def print_results(results: list[SuiteResult], report_dir: Path, *, title: str = "Test results:") -> int:
-    print(title)
+def main() -> int:
+    args = parse_args()
+    suites = ALL_SUITES if args.suite == "all" else (args.suite,)
+    report_dir = create_run_artifact_dir(args.artifacts_dir)
+    results = [run_suite(name, args.filter, report_dir, args.restore) for name in suites]
+
+    print("Test results:")
     for result in results:
         status = "PASS" if result.passed else "FAIL"
         print(f"{status:4} {result.name}: {result.summary} ({result.duration:.1f}s)")
@@ -267,14 +272,6 @@ def print_results(results: list[SuiteResult], report_dir: Path, *, title: str = 
                 print(f"  ... {remaining} more failures; see full log")
     print(f"Full logs and reports: {report_dir}")
     return 0 if all(result.passed for result in results) else 1
-
-
-def main() -> int:
-    args = parse_args()
-    suites = ALL_SUITES if args.suite == "all" else (args.suite,)
-    report_dir = create_run_artifact_dir(args.artifacts_dir)
-    results = [run_suite(name, args.filter, report_dir, args.restore) for name in suites]
-    return print_results(results, report_dir)
 
 
 if __name__ == "__main__":

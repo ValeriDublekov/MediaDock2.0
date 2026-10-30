@@ -4,6 +4,7 @@ import { getRssFeedPreview, refreshRssFeedPreview } from '../../api/client'
 import type { FeedType, RssFeedPreview } from '../../api/types'
 import { ErrorState, LoadingState } from '../../components/Feedback'
 import { formatDate } from '../../shared/format'
+import { isHttpUrl } from '../../shared/urls'
 
 interface RssFeedPreviewDialogProps {
   profileId: FeedType | 'all'
@@ -19,7 +20,7 @@ function formatDuration(durationMs: number): string {
 function FeedPreviewMeta({ feed }: { feed: RssFeedPreview['feeds'][number] }) {
   return (
     <div className="rss-preview-feed-meta">
-      <a href={feed.sourceUrl} rel="noopener noreferrer" target="_blank">Open original RSS</a>
+      {isHttpUrl(feed.sourceUrl) && <a href={feed.sourceUrl} rel="noopener noreferrer" target="_blank">Open original RSS</a>}
       <span>Fetch: {formatDuration(feed.fetchDurationMs)}</span>
       <span>Parse: {formatDuration(feed.parseDurationMs)}</span>
     </div>

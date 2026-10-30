@@ -39,6 +39,8 @@ services:
       Authentication__Google__CallbackUri: "${GOOGLE_AUTH_CALLBACK_URI:-http://localhost:8080/signin-oidc}"
       AccessControl__Enforced: ${ACCESS_CONTROL_ENFORCED:-false}
       ForwardedHeaders__TrustedNetwork: ${FORWARDED_HEADERS_TRUSTED_NETWORK:-}
+      SecurityHeaders__Hsts__Enabled: ${HSTS_ENABLED:-false}
+      DataProtection__KeysPath: /var/lib/aspnet/DataProtection-Keys
       AbuseControls__RateLimits__Authentication__PermitLimit: ${API_RATE_LIMIT_AUTHENTICATION_PERMIT_LIMIT:-}
       AbuseControls__RateLimits__Authentication__WindowSeconds: ${API_RATE_LIMIT_AUTHENTICATION_WINDOW_SECONDS:-}
       AbuseControls__RateLimits__Registration__PermitLimit: ${API_RATE_LIMIT_REGISTRATION_PERMIT_LIMIT:-}
@@ -53,6 +55,7 @@ services:
       AbuseControls__RateLimits__JobDispatch__ConcurrencyLimit: ${API_RATE_LIMIT_JOB_DISPATCH_CONCURRENCY_LIMIT:-}
       DeploymentControl__SocketPath: /run/mediadock-next-deploy-control/control.sock
     volumes:
+      - data_protection_keys:/var/lib/aspnet/DataProtection-Keys
       - type: bind
         source: ${DEPLOY_CONTROL_SOCKET_DIR:-./.deploy-control}
         target: /run/mediadock-next-deploy-control
@@ -110,3 +113,4 @@ services:
 
 volumes:
   postgres_data:
+  data_protection_keys:

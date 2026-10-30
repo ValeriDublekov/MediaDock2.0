@@ -17,13 +17,21 @@ using MediaDock.Api.Sources;
 using MediaDock.Api.Versioning;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Users;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
 builder.Services.AddMediaDockApi(builder.Configuration, builder.Environment);
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName("MediaDock");
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+	dataProtection.PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
+}
+
 var app = builder.Build();
 var isOneShotHostOperation = app.Configuration.GetValue<bool>("migrate")
 	|| app.Configuration.GetValue<bool>("bootstrap-admin");

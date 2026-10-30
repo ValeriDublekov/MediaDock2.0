@@ -158,6 +158,13 @@ describe('CatalogView', () => {
         fetchDurationMs: 20000,
         parseDurationMs: 1.5,
         items: [],
+      }, {
+        sourceId: 2,
+        sourceUrl: 'javascript:alert(1)',
+        originalContent: '<rss />',
+        fetchDurationMs: 1,
+        parseDurationMs: 1,
+        items: [],
       }],
     } satisfies RssFeedPreview))
     render(<CatalogView />)
@@ -167,6 +174,7 @@ describe('CatalogView', () => {
     const originalFeedLink = await screen.findByRole('link', { name: 'Open original RSS' })
     expect(originalFeedLink.getAttribute('href')).toBe('https://feed.rutracker.cc/movies.atom')
     expect(originalFeedLink.getAttribute('target')).toBe('_blank')
+    expect(screen.getAllByRole('link', { name: 'Open original RSS' })).toHaveLength(1)
     expect(screen.getByText((content) => content.startsWith('Cached ')).textContent).toContain('2026')
     expect(screen.getByText('Fetch: 20.00 s')).toBeTruthy()
     expect(screen.getByText('Parse: 1.5 ms')).toBeTruthy()
@@ -390,8 +398,13 @@ describe('CatalogView', () => {
         torrentUrl: 'https://example.test/torrent/1', rawTitle: 'Quiet River (2004) 1080p', sourceFeedName: 'Movies',
         feedType: 'movie', sourcePublishedAt: null, observedAt: null, quality: null, ripType: null,
         firstSeenAt: '2026-09-28T12:00:00Z', lastSeenAt: '2026-09-28T12:00:00Z',
+      }, {
+        id: 2, titleId: title.id, sourceId: 1, sourceName: 'Movies', sourceItemKey: 'entry:2', feedEntryId: 'entry:2',
+        torrentUrl: 'javascript:alert(1)', rawTitle: 'Unsafe source', sourceFeedName: 'Movies',
+        feedType: 'movie', sourcePublishedAt: null, observedAt: null, quality: null, ripType: null,
+        firstSeenAt: '2026-09-28T12:00:00Z', lastSeenAt: '2026-09-28T12:00:00Z',
       }],
-      page: 1, pageSize: 5, totalCount: 1, totalPages: 1,
+      page: 1, pageSize: 5, totalCount: 2, totalPages: 1,
     })
     vi.mocked(searchCatalogTitleImdbCandidates).mockResolvedValue(candidates)
     vi.mocked(lookupCatalogTitleImdbCandidate).mockResolvedValue(candidates)
@@ -399,6 +412,10 @@ describe('CatalogView', () => {
 
     render(<CatalogView />)
     fireEvent.click(await screen.findByRole('button', { name: 'View Quiet River details' }))
+    const sourceLinks = await screen.findAllByRole('link', { name: 'Open source' })
+    expect(sourceLinks).toHaveLength(1)
+    expect(sourceLinks[0].getAttribute('href')).toBe('https://example.test/torrent/1')
+    expect(sourceLinks[0].getAttribute('rel')).toBe('noopener noreferrer')
     fireEvent.click(await screen.findByRole('button', { name: 'Find IMDb match' }))
 
     expect(await screen.findByRole('heading', { name: 'Change IMDb match' })).toBeTruthy()

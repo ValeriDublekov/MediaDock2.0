@@ -16,6 +16,12 @@ The host-only `bootstrap-admin` tool trusts operator-supplied identity values an
 
 The optional Configuration deployment panel lets any client inside the same LAN boundary trigger the full host deployment pipeline, including migrations. The host service exposes only fixed actions over a Unix socket, but this remains a high-impact unauthenticated control. Keep the API inaccessible outside the trusted LAN; see [operations and jobs](API_OPERATIONS_AND_JOBS.md) and the [systemd runbook](../../deploy/systemd/README.md#web-deployment-control).
 
+## Browser And Cache Policy
+
+The API adds `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, a restrictive referrer and permissions policy, and a `Content-Security-Policy-Report-Only` policy. CSP remains report-only while browser behavior is assessed; this policy has no report collection endpoint. HSTS is disabled by default. After HTTPS coverage for every public hostname is verified, set `HSTS_ENABLED=true`; the API then emits HSTS only in Production when ASP.NET sees an HTTPS request, including HTTPS established by a trusted forwarded-proto header. It uses a one-year max age without `includeSubDomains`. All `/api/` responses and the `/signin-oidc` callback use `Cache-Control: no-store`. These application headers do not establish what Cloudflare or another edge returns to clients.
+
+Feed-derived source links are rendered only for absolute HTTP or HTTPS URLs, and links opened in a new tab use `noopener noreferrer`.
+
 ## Application Rate Limits
 
 The API uses per-client-IP sliding windows for authentication/session/token routes, registration, expensive searches and reads, uploads, and job dispatch. Upload and dispatch requests also use no-queue concurrency limits. A rejected request receives a generic 429 Problem Details response and `Retry-After`; upload size overruns receive a generic 413. Existing upload byte caps, paging limits, and job-level duplicate protection remain in force.
@@ -41,6 +47,12 @@ Start the restored-data development API only with [`run_local_restored.ps1`](../
 The API rejects the mock flag outside `Development`, when Google sign-in is enabled, or when the database connection is not loopback. The mock scheme is registered only in `Development` and rejects non-loopback client addresses. If the flag is accidentally configured for production, service registration fails rather than enabling the mock.
 
 Stop the API with **Ctrl+C** in the terminal running the script. This stops only the local API; the Vite server and local PostgreSQL container remain running, and the restored database is retained. The restored database contains production data and settings, including the plaintext OMDb key; keep it local and replace that key before enabling background jobs.
+
+The Vite development server explicitly binds to `127.0.0.1` and rejects non-loopback host overrides. The API remains bound to `localhost:5280`. Do not tunnel or port-forward either service while mock authentication is enabled; a separate forwarding process can expose a loopback listener even when the application itself binds only to loopback. Use sanitized data for shared development.
+
+## Data Protection Keys
+
+The Production Compose API persists ASP.NET Data Protection keys in the `data_protection_keys` Docker volume at `/var/lib/aspnet/DataProtection-Keys`, with the application name fixed to `MediaDock`. The image initializes the directory for its non-root application UID with mode `0700`. The volume is separate from the PostgreSQL dump and must be included in protected host backups and restore drills. The application does not encrypt this key ring at rest; verify host volume permissions and configure/protect the storage or backup encryption before internet exposure. Do not copy key material into Git.
 
 ## Secrets
 

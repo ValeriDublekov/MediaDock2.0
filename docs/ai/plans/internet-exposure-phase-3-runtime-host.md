@@ -13,6 +13,12 @@ Keep the public path HTTPS-only, close origin bypasses, add browser/cache protec
 - Keep the restored-data workflow local-only: bind Vite explicitly to loopback, retain the API's loopback binding, prohibit tunneling/port-forwarding while mock auth is enabled, and prefer sanitized data for shared development. Test or document the proxy boundary; a proxy makes the API's immediate peer local.
 - Verify outbound URLs displayed from feed data use only approved schemes and cannot introduce scriptable links.
 
+## Worktree Implementation (2026-10-30)
+
+The current worktree adds API security and cache headers, opt-in HTTPS-only Production HSTS, report-only CSP, a persistent Compose Data Protection key volume, a loopback-only Vite server guard, and HTTP(S)-only feed links. These are source changes, not deployment evidence.
+
+The following operational gates remain open: inspect the deployed SHA and live Compose/network/Tunnel/Access/DNS/firewall/router configuration; verify external and untrusted-LAN denial plus HTTPS/OIDC behavior; inspect key-volume ownership, encryption, and backup/restore; confirm local development ports are unreachable from untrusted interfaces; and review host secrets, image provenance, and patch cadence. Do not mark Phase 3 complete until those checks are recorded.
+
 ## Verification
 
 - Use host-side read-only inspection first; changes to production networks, firewall, secrets, images, or services require separate operator approval.
