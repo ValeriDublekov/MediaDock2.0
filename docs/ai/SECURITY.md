@@ -6,7 +6,7 @@ This page records security boundaries for the standalone application. See [proje
 
 Compose publishes the API on `${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8080}` and PostgreSQL on loopback ([Compose](../../compose.yaml)). The API endpoints use HTTP, not TLS. Loopback limits remote network access but does not authenticate local callers. A LAN deployment must bind the API to a specific trusted interface and use an API-port-only `DOCKER-USER` source allowlist; PostgreSQL remains loopback-only. Do not publish or forward the API to untrusted clients.
 
-Forwarded-header processing is disabled when `ForwardedHeaders:TrustedNetwork` is empty. When configured, the API trusts only `X-Forwarded-Proto` from that CIDR and accepts one hop. For Cloudflare Tunnel, use the dedicated bridge containing only the API and Tunnel connector, not the default Compose network or a wildcard CIDR. This setting handles the Tunnel's HTTP origin connection; it does not authorize requests.
+Forwarded-header processing is disabled when `ForwardedHeaders:TrustedNetwork` is empty. When configured, the API trusts `X-Forwarded-Proto` and `X-Forwarded-For` only from that CIDR and accepts one hop. The forwarded client address is used for application rate-limit partitions; untrusted client-supplied forwarding headers do not change the rate-limit identity. For Cloudflare Tunnel, use the dedicated bridge containing only the API and Tunnel connector, not the default Compose network or a wildcard CIDR. Forwarded headers do not authorize requests.
 
 Google sign-in and `AccessControl:Enforced` may be disabled in Development. A normal Production API startup fails unless Google sign-in is enabled with valid client credentials and callback configuration and access enforcement is enabled. The Production Compose API therefore does not start with the disabled values in `.env.example`; configure the approved Google client and `ACCESS_CONTROL_ENFORCED=true` first. The migration and administrator-bootstrap one-shot commands remain available without browser-auth settings. `/api/version` is protected by the authorization fallback policy; only the sign-in/session/account protocol and internal health probes are anonymous. A Google session or Cloudflare Access does not replace application-level authorization; Cloudflare Access remains a separate edge control. Keep Development open mode loopback-bound.
 
@@ -15,6 +15,22 @@ Enable sign-in only after the HTTPS route, Cloudflare Access policy, and exact G
 The host-only `bootstrap-admin` tool trusts operator-supplied identity values and does not verify Google claims. Obtain them from an authenticated `/api/auth/session` response and remove the bootstrap values from `.env` after success. See the [bootstrap procedure](../../README.md#initial-administrator-bootstrap).
 
 The optional Configuration deployment panel lets any client inside the same LAN boundary trigger the full host deployment pipeline, including migrations. The host service exposes only fixed actions over a Unix socket, but this remains a high-impact unauthenticated control. Keep the API inaccessible outside the trusted LAN; see [operations and jobs](API_OPERATIONS_AND_JOBS.md) and the [systemd runbook](../../deploy/systemd/README.md#web-deployment-control).
+
+## Application Rate Limits
+
+The API uses per-client-IP sliding windows for authentication/session/token routes, registration, expensive searches and reads, uploads, and job dispatch. Upload and dispatch requests also use no-queue concurrency limits. A rejected request receives a generic 429 Problem Details response and `Retry-After`; upload size overruns receive a generic 413. Existing upload byte caps, paging limits, and job-level duplicate protection remain in force.
+
+Every non-Development API startup requires explicit rate-limit settings; no production thresholds are embedded in source or supplied by `.env.example`. Configure these ignored `.env` variables only after reviewing expected legitimate traffic and coordinating with the Cloudflare policy:
+
+| Route category | Required `.env` values |
+| --- | --- |
+| Authentication, session, and token issuance | `API_RATE_LIMIT_AUTHENTICATION_PERMIT_LIMIT`, `API_RATE_LIMIT_AUTHENTICATION_WINDOW_SECONDS` |
+| Registration requests | `API_RATE_LIMIT_REGISTRATION_PERMIT_LIMIT`, `API_RATE_LIMIT_REGISTRATION_WINDOW_SECONDS` |
+| Expensive search and read routes | `API_RATE_LIMIT_SEARCH_PERMIT_LIMIT`, `API_RATE_LIMIT_SEARCH_WINDOW_SECONDS` |
+| Uploads | `API_RATE_LIMIT_UPLOADS_PERMIT_LIMIT`, `API_RATE_LIMIT_UPLOADS_WINDOW_SECONDS`, `API_RATE_LIMIT_UPLOADS_CONCURRENCY_LIMIT` |
+| Job dispatch | `API_RATE_LIMIT_JOB_DISPATCH_PERMIT_LIMIT`, `API_RATE_LIMIT_JOB_DISPATCH_WINDOW_SECONDS`, `API_RATE_LIMIT_JOB_DISPATCH_CONCURRENCY_LIMIT` |
+
+The Compose API maps these values to `AbuseControls:RateLimits:*`. Permit limits and windows must be positive; upload and dispatch concurrency limits must also be positive. When `ForwardedHeaders:TrustedNetwork` is empty, the remote TCP peer is the client key. Configure and verify the dedicated proxy network before relying on per-user IP partitions behind a proxy.
 
 ## Local Development Mock Authentication
 

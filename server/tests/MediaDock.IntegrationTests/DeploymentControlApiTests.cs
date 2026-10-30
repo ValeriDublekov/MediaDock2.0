@@ -38,6 +38,30 @@ public sealed class DeploymentControlApiTests
         Assert.Equal("retry_failed_gate", handler.LastAction);
     }
 
+    [Fact]
+    public async Task DispatchConcurrencyLimitRejectsParallelRequestAndReleasesPermit()
+    {
+        var handler = new DeploymentControlHandler(blockActions: true);
+        using var factory = new DeploymentControlApiFactory(handler);
+        using var client = factory.CreateClient();
+        var firstRequest = client.PostAsJsonAsync(
+            "/api/deployment/run", new DeploymentActionRequest("check"));
+        await handler.ActionStarted.WaitAsync(TimeSpan.FromSeconds(5));
+
+        using var limitedResponse = await client.PostAsJsonAsync(
+            "/api/deployment/run", new DeploymentActionRequest("retry_failed_gate"));
+        Assert.Equal(HttpStatusCode.TooManyRequests, limitedResponse.StatusCode);
+        Assert.Equal("no-store", limitedResponse.Headers.CacheControl?.ToString());
+
+        handler.ReleaseAction();
+        using var firstResponse = await firstRequest;
+        Assert.Equal(HttpStatusCode.Accepted, firstResponse.StatusCode);
+
+        using var recoveredResponse = await client.PostAsJsonAsync(
+            "/api/deployment/run", new DeploymentActionRequest("retry_failed_gate"));
+        Assert.Equal(HttpStatusCode.Accepted, recoveredResponse.StatusCode);
+    }
+
     private sealed class DeploymentControlApiFactory(DeploymentControlHandler handler) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -45,7 +69,10 @@ public sealed class DeploymentControlApiTests
             builder.ConfigureAppConfiguration((_, configuration) =>
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["ConnectionStrings:MediaDock"] = "Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test"
+                    ["ConnectionStrings:MediaDock"] = "Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test",
+                    ["AbuseControls:RateLimits:JobDispatch:PermitLimit"] = "100",
+                    ["AbuseControls:RateLimits:JobDispatch:WindowSeconds"] = "60",
+                    ["AbuseControls:RateLimits:JobDispatch:ConcurrencyLimit"] = "1"
                 }));
             builder.ConfigureTestServices(services =>
             {
@@ -59,9 +86,15 @@ public sealed class DeploymentControlApiTests
         }
     }
 
-    private sealed class DeploymentControlHandler : HttpMessageHandler
+    private sealed class DeploymentControlHandler(bool blockActions = false) : HttpMessageHandler
     {
+        private readonly TaskCompletionSource<bool> _actionStarted = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<bool> _releaseAction = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public string? LastAction { get; private set; }
+        public Task ActionStarted => _actionStarted.Task;
+
+        public void ReleaseAction() => _releaseAction.TrySetResult(true);
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -85,6 +118,12 @@ public sealed class DeploymentControlApiTests
 
             var action = await request.Content!.ReadFromJsonAsync<DeploymentActionRequest>(cancellationToken);
             LastAction = action?.Action;
+            if (blockActions)
+            {
+                _actionStarted.TrySetResult(true);
+                await _releaseAction.Task.WaitAsync(cancellationToken);
+            }
+
             return new HttpResponseMessage(HttpStatusCode.Accepted)
             {
                 Content = JsonContent.Create(new DeploymentActionResponse("Deployment check queued."))

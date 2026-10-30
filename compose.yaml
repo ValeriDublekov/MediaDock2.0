@@ -39,6 +39,18 @@ services:
       Authentication__Google__CallbackUri: "${GOOGLE_AUTH_CALLBACK_URI:-http://localhost:8080/signin-oidc}"
       AccessControl__Enforced: ${ACCESS_CONTROL_ENFORCED:-false}
       ForwardedHeaders__TrustedNetwork: ${FORWARDED_HEADERS_TRUSTED_NETWORK:-}
+      AbuseControls__RateLimits__Authentication__PermitLimit: ${API_RATE_LIMIT_AUTHENTICATION_PERMIT_LIMIT:-}
+      AbuseControls__RateLimits__Authentication__WindowSeconds: ${API_RATE_LIMIT_AUTHENTICATION_WINDOW_SECONDS:-}
+      AbuseControls__RateLimits__Registration__PermitLimit: ${API_RATE_LIMIT_REGISTRATION_PERMIT_LIMIT:-}
+      AbuseControls__RateLimits__Registration__WindowSeconds: ${API_RATE_LIMIT_REGISTRATION_WINDOW_SECONDS:-}
+      AbuseControls__RateLimits__Search__PermitLimit: ${API_RATE_LIMIT_SEARCH_PERMIT_LIMIT:-}
+      AbuseControls__RateLimits__Search__WindowSeconds: ${API_RATE_LIMIT_SEARCH_WINDOW_SECONDS:-}
+      AbuseControls__RateLimits__Uploads__PermitLimit: ${API_RATE_LIMIT_UPLOADS_PERMIT_LIMIT:-}
+      AbuseControls__RateLimits__Uploads__WindowSeconds: ${API_RATE_LIMIT_UPLOADS_WINDOW_SECONDS:-}
+      AbuseControls__RateLimits__Uploads__ConcurrencyLimit: ${API_RATE_LIMIT_UPLOADS_CONCURRENCY_LIMIT:-}
+      AbuseControls__RateLimits__JobDispatch__PermitLimit: ${API_RATE_LIMIT_JOB_DISPATCH_PERMIT_LIMIT:-}
+      AbuseControls__RateLimits__JobDispatch__WindowSeconds: ${API_RATE_LIMIT_JOB_DISPATCH_WINDOW_SECONDS:-}
+      AbuseControls__RateLimits__JobDispatch__ConcurrencyLimit: ${API_RATE_LIMIT_JOB_DISPATCH_CONCURRENCY_LIMIT:-}
       DeploymentControl__SocketPath: /run/mediadock-next-deploy-control/control.sock
     volumes:
       - type: bind

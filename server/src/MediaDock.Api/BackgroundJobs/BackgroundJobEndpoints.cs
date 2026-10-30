@@ -1,5 +1,6 @@
 using MediaDock.Api.Common;
 using MediaDock.Api.Authentication;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -117,9 +118,16 @@ internal static class BackgroundJobEndpoints
 
         app.MapPost("/api/background-jobs/oscar-import", async (
             [FromForm] OscarImportForm form,
+            HttpContext context,
+            IAntiforgery antiforgery,
             BackgroundJobApiService service,
             CancellationToken token) =>
         {
+            if (await ValidateAntiforgeryAsync(context, antiforgery) is { } problem)
+            {
+                return problem;
+            }
+
             var job = await service.EnqueueOscarImportAsync(form, token);
             var statusUrl = $"/api/background-jobs/{job.Id}";
             return Results.Accepted(statusUrl, new BackgroundJobAcceptedResponse(job.Id, job.Status, statusUrl));
@@ -134,9 +142,16 @@ internal static class BackgroundJobEndpoints
 
         app.MapPost("/api/background-jobs/golden-globe-import", async (
             [FromForm] GoldenGlobeImportForm form,
+            HttpContext context,
+            IAntiforgery antiforgery,
             BackgroundJobApiService service,
             CancellationToken token) =>
         {
+            if (await ValidateAntiforgeryAsync(context, antiforgery) is { } problem)
+            {
+                return problem;
+            }
+
             var job = await service.EnqueueGoldenGlobeImportAsync(form, token);
             var statusUrl = $"/api/background-jobs/{job.Id}";
             return Results.Accepted(statusUrl, new BackgroundJobAcceptedResponse(job.Id, job.Status, statusUrl));
@@ -151,9 +166,16 @@ internal static class BackgroundJobEndpoints
 
         app.MapPost("/api/background-jobs/imdb-title-import", async (
             [FromForm] ImdbTitleImportForm form,
+            HttpContext context,
+            IAntiforgery antiforgery,
             BackgroundJobApiService service,
             CancellationToken token) =>
         {
+            if (await ValidateAntiforgeryAsync(context, antiforgery) is { } problem)
+            {
+                return problem;
+            }
+
             var job = await service.EnqueueImdbTitleImportAsync(form, token);
             var statusUrl = $"/api/background-jobs/{job.Id}";
             return Results.Accepted(statusUrl, new BackgroundJobAcceptedResponse(job.Id, job.Status, statusUrl));
@@ -189,4 +211,11 @@ internal static class BackgroundJobEndpoints
 
         return app;
     }
+
+    private static async Task<IResult?> ValidateAntiforgeryAsync(HttpContext context, IAntiforgery antiforgery) =>
+        await antiforgery.IsRequestValidAsync(context)
+            ? null
+            : TypedResults.Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "A valid anti-forgery token is required.");
 }

@@ -275,6 +275,11 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
     <h2 id="recommendations-heading">Ranking and results</h2>
     <p className="section-caption">A personal ranking of eligible award-nominated {titleTypes}, based on your ratings and the shared metadata catalog.</p>
 
+    <div className="section-toolbar catalog-section-toolbar">
+      <span className="result-count">{result ? `${result.totalCount.toLocaleString()} recommendations` : 'Recommendations'}</span>
+      <ViewModeControl onChange={setViewMode} value={viewMode} />
+    </div>
+
     <div className="recommendation-filter-controls">
       {result?.yearBounds && <YearRangeFilter
         bounds={result.yearBounds}
@@ -324,11 +329,6 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
       <summary>How recommendation scores are calculated</summary>
       <p>The API combines a Bayesian IMDb rating, capped time-normalized vote popularity, and capped points from distinct award events. Award points use the configured win or nomination value multiplied by your winner-derived category taste. The sliders set the three request coefficients; candidate eligibility and all score calculations remain server-side.</p>
     </details>
-
-    <div className="section-toolbar">
-      <span className="result-count">{result ? `${result.totalCount.toLocaleString()} recommendations` : 'Recommendations'}</span>
-      <ViewModeControl onChange={setViewMode} value={viewMode} />
-    </div>
 
     {loading && <LoadingState label="Loading recommendations" />}
     {!loading && error && <ErrorState message={error} onRetry={retry} />}

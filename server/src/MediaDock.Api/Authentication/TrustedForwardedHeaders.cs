@@ -23,7 +23,7 @@ public static class TrustedForwardedHeaders
 
         var options = new ForwardedHeadersOptions
         {
-            ForwardedHeaders = ForwardedHeaders.XForwardedProto,
+            ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor,
             ForwardLimit = 1
         };
         options.KnownIPNetworks.Clear();

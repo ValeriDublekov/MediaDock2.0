@@ -5,6 +5,7 @@ using MediaDock.Api.Common;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -46,6 +47,7 @@ public sealed class GoogleAuthenticationApiTests
 
         using var tokenResponse = await client.GetAsync("/api/auth/antiforgery");
         Assert.Equal(HttpStatusCode.OK, tokenResponse.StatusCode);
+        Assert.Equal("no-store", tokenResponse.Headers.CacheControl?.ToString());
         Assert.Contains(
             tokenResponse.Headers.GetValues("Set-Cookie"),
             value => value.StartsWith("MediaDock.Antiforgery=", StringComparison.Ordinal)
@@ -54,10 +56,121 @@ public sealed class GoogleAuthenticationApiTests
         var token = await tokenResponse.Content.ReadFromJsonAsync<AntiforgeryTokenResponse>();
         Assert.NotNull(token);
 
+        using var sameSiteCrossOriginRequest = new HttpRequestMessage(HttpMethod.Post, "/api/auth/logout");
+        sameSiteCrossOriginRequest.Headers.Add("RequestVerificationToken", token.RequestToken);
+        sameSiteCrossOriginRequest.Headers.Add("Origin", "http://attacker.localhost");
+        sameSiteCrossOriginRequest.Headers.Add("Sec-Fetch-Site", "same-site");
+        using var sameSiteCrossOriginResponse = await client.SendAsync(sameSiteCrossOriginRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, sameSiteCrossOriginResponse.StatusCode);
+
+        using var invalidTokenRequest = new HttpRequestMessage(HttpMethod.Post, "/api/auth/logout");
+        invalidTokenRequest.Headers.Add("RequestVerificationToken", "invalid-token");
+        invalidTokenRequest.Headers.Add("Origin", client.BaseAddress!.GetLeftPart(UriPartial.Authority));
+        using var invalidTokenResponse = await client.SendAsync(invalidTokenRequest);
+        Assert.Equal(HttpStatusCode.BadRequest, invalidTokenResponse.StatusCode);
+
         using var logoutRequest = new HttpRequestMessage(HttpMethod.Post, "/api/auth/logout");
         logoutRequest.Headers.Add("RequestVerificationToken", token.RequestToken);
+        logoutRequest.Headers.Add("Origin", client.BaseAddress!.GetLeftPart(UriPartial.Authority));
         using var validLogoutResponse = await client.SendAsync(logoutRequest);
         Assert.Equal(HttpStatusCode.NoContent, validLogoutResponse.StatusCode);
+
+        using var cookieMutation = new HttpRequestMessage(HttpMethod.Post, "/api/favorites")
+        {
+            Content = JsonContent.Create(new { imdbId = "tt12345678", from = "catalog" })
+        };
+        cookieMutation.Headers.Add("Cookie", $"{GoogleSignInSettings.SessionCookieName}=test-session");
+        using var cookieMutationResponse = await client.SendAsync(cookieMutation);
+        Assert.Equal(HttpStatusCode.BadRequest, cookieMutationResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task AuthenticationRateLimitReturns429AndRecoversAfterItsWindow()
+    {
+        using var factory = new ApiFactory(
+            "Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test",
+            additionalConfiguration: new Dictionary<string, string?>
+            {
+                ["AbuseControls:RateLimits:Authentication:PermitLimit"] = "1",
+                ["AbuseControls:RateLimits:Authentication:WindowSeconds"] = "1"
+            });
+        using var client = factory.CreateClient();
+
+        using var firstResponse = await client.GetAsync("/api/auth/antiforgery");
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        using var limitedResponse = await client.GetAsync("/api/auth/antiforgery");
+        Assert.Equal(HttpStatusCode.TooManyRequests, limitedResponse.StatusCode);
+        Assert.Equal("no-store", limitedResponse.Headers.CacheControl?.ToString());
+        Assert.NotEmpty(limitedResponse.Headers.GetValues("Retry-After"));
+        var limitedBody = await limitedResponse.Content.ReadAsStringAsync();
+        Assert.Contains("Too many requests.", limitedBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("PermitLimit", limitedBody, StringComparison.Ordinal);
+
+        await Task.Delay(TimeSpan.FromMilliseconds(1200));
+        using var recoveredResponse = await client.GetAsync("/api/auth/antiforgery");
+        Assert.Equal(HttpStatusCode.OK, recoveredResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task UnexpectedExceptionsAreRedactedFromResponsesAndRetainedInLogs()
+    {
+        const string sentinel = "private-exception-sentinel";
+        var loggerProvider = new TestLoggerProvider();
+        using var factory = new ApiFactory(
+            "Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test",
+            loggerProvider: loggerProvider);
+        var exceptionHandler = factory.Services.GetRequiredService<IExceptionHandler>();
+        await using var responseBody = new MemoryStream();
+        var context = new DefaultHttpContext
+        {
+            RequestServices = factory.Services,
+            TraceIdentifier = "trace-sentinel"
+        };
+        context.Request.Path = "/api/test";
+        context.Response.Body = responseBody;
+
+        Assert.True(await exceptionHandler.TryHandleAsync(
+            context,
+            new InvalidOperationException(sentinel),
+            CancellationToken.None));
+
+        responseBody.Position = 0;
+        using var reader = new StreamReader(responseBody);
+        var body = await reader.ReadToEndAsync();
+        Assert.Equal(StatusCodes.Status500InternalServerError, context.Response.StatusCode);
+        Assert.Contains("trace-sentinel", body, StringComparison.Ordinal);
+        Assert.DoesNotContain(sentinel, body, StringComparison.Ordinal);
+        Assert.Equal("trace-sentinel", context.Response.Headers["X-MediaDock-TraceId"]);
+        Assert.Contains(loggerProvider.Exceptions, message => message.Contains(sentinel, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task OversizedRequestsUseAGeneric413ProblemResponse()
+    {
+        const string sentinel = "private-size-sentinel";
+        using var factory = new ApiFactory("Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test");
+        var exceptionHandler = factory.Services.GetRequiredService<IExceptionHandler>();
+        await using var responseBody = new MemoryStream();
+        var context = new DefaultHttpContext
+        {
+            RequestServices = factory.Services,
+            TraceIdentifier = "trace-size"
+        };
+        context.Request.Path = "/api/upload";
+        context.Response.Body = responseBody;
+
+        Assert.True(await exceptionHandler.TryHandleAsync(
+            context,
+            new BadHttpRequestException(sentinel, StatusCodes.Status413PayloadTooLarge),
+            CancellationToken.None));
+
+        responseBody.Position = 0;
+        using var reader = new StreamReader(responseBody);
+        var body = await reader.ReadToEndAsync();
+        Assert.Equal(StatusCodes.Status413PayloadTooLarge, context.Response.StatusCode);
+        Assert.Contains("The request body exceeds the allowed size.", body, StringComparison.Ordinal);
+        Assert.Contains("trace-size", body, StringComparison.Ordinal);
+        Assert.DoesNotContain(sentinel, body, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -189,6 +302,21 @@ public sealed class GoogleAuthenticationApiTests
     }
 
     [Fact]
+    public void NonDevelopmentStartupRequiresExplicitRateLimitValues()
+    {
+        using var factory = new ApiFactory(
+            "Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test",
+            accessControlEnforced: true,
+            environmentName: "Production",
+            googleSignInEnabled: true);
+
+        var exception = Record.Exception(() => factory.CreateClient());
+
+        Assert.NotNull(exception);
+        Assert.Contains("AbuseControls:RateLimits:Authentication:PermitLimit", exception.ToString());
+    }
+
+    [Fact]
     public void LocalMockRequiresLoopbackDatabase()
     {
         using var factory = new ApiFactory(
@@ -238,10 +366,12 @@ public sealed class GoogleAuthenticationApiTests
         var trustedContext = CreateForwardedRequest("172.20.0.3");
         await middleware.Invoke(trustedContext);
         Assert.Equal("https", trustedContext.Request.Scheme);
+        Assert.Equal(IPAddress.Parse("203.0.113.10"), trustedContext.Connection.RemoteIpAddress);
 
         var untrustedContext = CreateForwardedRequest("192.168.1.10");
         await middleware.Invoke(untrustedContext);
         Assert.Equal("http", untrustedContext.Request.Scheme);
+        Assert.Equal(IPAddress.Parse("192.168.1.10"), untrustedContext.Connection.RemoteIpAddress);
     }
 
     private static DefaultHttpContext CreateForwardedRequest(string remoteAddress)
@@ -249,6 +379,7 @@ public sealed class GoogleAuthenticationApiTests
         var context = new DefaultHttpContext();
         context.Request.Scheme = "http";
         context.Request.Headers["X-Forwarded-Proto"] = "https";
+        context.Request.Headers["X-Forwarded-For"] = "203.0.113.10";
         context.Connection.RemoteIpAddress = IPAddress.Parse(remoteAddress);
         return context;
     }

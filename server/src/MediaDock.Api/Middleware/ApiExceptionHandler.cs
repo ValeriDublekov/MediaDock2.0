@@ -12,6 +12,13 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
     {
         ProblemDetails problemDetails = exception switch
         {
+            ApiPayloadTooLargeException or BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge } => new ProblemDetails
+            {
+                Status = StatusCodes.Status413PayloadTooLarge,
+                Title = "Payload Too Large",
+                Detail = "The request body exceeds the allowed size.",
+                Instance = httpContext.Request.Path
+            },
             ApiForbiddenException forbiddenException => new ProblemDetails
             {
                 Status = StatusCodes.Status403Forbidden,
@@ -50,7 +57,7 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
             {
                 Status = StatusCodes.Status500InternalServerError,
                 Title = "Internal Server Error",
-                Detail = exception.Message,
+                Detail = "An unexpected error occurred. Use the trace ID when contacting support.",
                 Instance = httpContext.Request.Path
             }
         };
@@ -80,3 +87,4 @@ internal sealed class ApiNotFoundException(string message) : Exception(message);
 
 internal sealed class ApiConflictException(string message) : Exception(message);
 internal sealed class ApiTimeoutException(string message, Exception innerException) : Exception(message, innerException);
+internal sealed class ApiPayloadTooLargeException(string message) : Exception(message);

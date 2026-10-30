@@ -65,8 +65,9 @@ For HTTPS-aware application callbacks, set the ignored production `.env`
 variable `FORWARDED_HEADERS_TRUSTED_NETWORK` to the subnet of this dedicated
 bridge. Read it with
 `sudo docker network inspect mediadock-next-cloudflared --format '{{(index .IPAM.Config 0).Subnet}}'`.
-The API honors only `X-Forwarded-Proto`, only from that CIDR, and only one hop;
-forwarded-header processing stays disabled when the variable is empty. Never
+The API honors `X-Forwarded-Proto` and `X-Forwarded-For` only from that CIDR and
+only one hop; forwarded-header processing stays disabled when the variable is empty.
+The forwarded client address also partitions API rate limits. Never
 use the Compose default network or a wildcard CIDR as the trusted network.
 
 These host-side systemd units are for a single Ubuntu host. The production

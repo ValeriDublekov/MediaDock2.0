@@ -268,11 +268,13 @@ describe('RecommendationsView', () => {
   it('defaults to poster cards and keeps the table as an alternate view', async () => {
     vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()]))
 
-    render(<RecommendationsView mediaType="movie" />)
+    const view = render(<RecommendationsView mediaType="movie" />)
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Ranking and results' })).toBeTruthy()
     expect(screen.queryByRole('heading', { level: 2, name: 'Recommendations' })).toBeNull()
     expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
+    const catalogSections = [...view.container.querySelectorAll('.catalog-section-toolbar, .recommendation-filter-controls, .recommendation-controls, .recommendation-score-guide')]
+    expect(catalogSections.map((element) => element.classList.contains('catalog-section-toolbar'))).toEqual([true, false, false, false])
     expect(screen.getByRole('button', { name: 'Posters' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.queryByRole('columnheader', { name: 'MOVIE' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))

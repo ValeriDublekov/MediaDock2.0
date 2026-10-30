@@ -95,6 +95,12 @@ export async function requestJson<T>(
   headers.set('Accept', 'application/json')
   if (typeof init.body === 'string') headers.set('Content-Type', 'application/json')
 
+  const method = (init.method ?? 'GET').toUpperCase()
+  if (!['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)
+    && !headers.has('RequestVerificationToken')) {
+    headers.set('RequestVerificationToken', await getAuthRequestToken(fetcher))
+  }
+
   let response: Response
   try {
     response = await fetcher(`${API_ROOT}${path}`, { ...init, headers })

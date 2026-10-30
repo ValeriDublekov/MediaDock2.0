@@ -18,6 +18,7 @@ using MediaDock.Api.Versioning;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Users;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -80,7 +81,10 @@ if (builder.Configuration.GetValue<bool>("bootstrap-admin"))
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseMiddleware<ApiResponseHeadersMiddleware>();
+app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<ApiRequestProtectionMiddleware>();
 app.UseAuthorization();
 
 if (app.Environment.IsProduction())

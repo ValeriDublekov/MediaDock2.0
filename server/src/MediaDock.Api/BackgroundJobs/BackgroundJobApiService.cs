@@ -228,7 +228,7 @@ internal sealed class BackgroundJobApiService(
 
         if (file.Length > _maximumUploadBytes)
         {
-            throw ValidationError("file", $"The upload exceeds the {_maximumUploadBytes}-byte limit.");
+            throw new ApiPayloadTooLargeException($"The upload exceeds the {_maximumUploadBytes}-byte limit.");
         }
 
         if (form.YearAfter is < 0 or >= 9999)
@@ -249,7 +249,12 @@ internal sealed class BackgroundJobApiService(
         await file.CopyToAsync(buffer, cancellationToken);
         if (buffer.Length == 0 || buffer.Length > _maximumUploadBytes)
         {
-            throw ValidationError("file", "The upload is empty or exceeds the configured size limit.");
+            if (buffer.Length > _maximumUploadBytes)
+            {
+                throw new ApiPayloadTooLargeException("The upload exceeds the configured size limit.");
+            }
+
+            throw ValidationError("file", "The upload is empty.");
         }
 
         var now = timeProvider.GetUtcNow();
@@ -364,13 +369,18 @@ internal sealed class BackgroundJobApiService(
         CancellationToken cancellationToken)
     {
         if (form.File is not { } file || file.Length == 0) throw ValidationError("file", "Select a non-empty CSV or TSV file.");
-        if (file.Length > _maximumUploadBytes) throw ValidationError("file", $"The upload exceeds the {_maximumUploadBytes}-byte limit.");
+        if (file.Length > _maximumUploadBytes) throw new ApiPayloadTooLargeException($"The upload exceeds the {_maximumUploadBytes}-byte limit.");
         if (form.YearAfter is < 0 or >= 9999) throw ValidationError("yearAfter", "YearAfter must be between 0 and 9998.");
         var fileName = SanitizeFileName(file.FileName);
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         if (extension is not (".csv" or ".tsv")) throw ValidationError("file", "Only CSV or tab-separated CSV uploads are supported.");
         await using var buffer = new MemoryStream((int)file.Length);
         await file.CopyToAsync(buffer, cancellationToken);
+        if (buffer.Length > _maximumUploadBytes)
+        {
+            throw new ApiPayloadTooLargeException("The upload exceeds the configured size limit.");
+        }
+
         var now = timeProvider.GetUtcNow();
         var job = new BackgroundJob { JobType = "golden_globe_import", Trigger = "manual", Status = "queued", EnqueuedAt = now, CurrentStage = "queued", InputFileName = fileName, InputContentType = file.ContentType, InputBytes = buffer.ToArray(), ResultSummary = JsonSerializer.Serialize(new { yearAfter = form.YearAfter }) };
         job.Events.Add(new BackgroundJobEvent { OccurredAt = now, Level = "information", EventCode = "job_queued", Message = "Golden Globes dataset import queued." });
@@ -388,7 +398,7 @@ internal sealed class BackgroundJobApiService(
 
         if (file.Length > _maximumUploadBytes)
         {
-            throw ValidationError("file", $"The upload exceeds the {_maximumUploadBytes}-byte limit.");
+            throw new ApiPayloadTooLargeException($"The upload exceeds the {_maximumUploadBytes}-byte limit.");
         }
 
         var fileName = SanitizeFileName(file.FileName);
@@ -401,7 +411,12 @@ internal sealed class BackgroundJobApiService(
         await file.CopyToAsync(buffer, cancellationToken);
         if (buffer.Length == 0 || buffer.Length > _maximumUploadBytes)
         {
-            throw ValidationError("file", "The IMDb TSV file is empty or exceeds the upload limit.");
+            if (buffer.Length > _maximumUploadBytes)
+            {
+                throw new ApiPayloadTooLargeException("The upload exceeds the configured size limit.");
+            }
+
+            throw ValidationError("file", "The IMDb TSV file is empty.");
         }
 
         var now = timeProvider.GetUtcNow();

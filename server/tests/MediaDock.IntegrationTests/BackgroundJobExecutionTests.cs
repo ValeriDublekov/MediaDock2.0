@@ -16,6 +16,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using static MediaDock.IntegrationTests.GoogleAuthenticationApiTestSupport;
 
 namespace MediaDock.IntegrationTests;
 
@@ -271,7 +272,10 @@ public sealed class BackgroundJobExecutionTests
         upload.Add(csv, "File", "queued-film.csv");
         upload.Add(new StringContent("1980"), "YearAfter");
 
-        using var acceptedResponse = await client.PostAsync("/api/background-jobs/oscar-import", upload);
+        using var acceptedResponse = await PostMultipartWithAntiforgeryAsync(
+            client,
+            "/api/background-jobs/oscar-import",
+            upload);
         Assert.Equal(HttpStatusCode.Accepted, acceptedResponse.StatusCode);
         var accepted = await acceptedResponse.Content.ReadFromJsonAsync<BackgroundJobAcceptedResponse>();
         Assert.NotNull(accepted);
@@ -322,7 +326,10 @@ public sealed class BackgroundJobExecutionTests
         upload.Add(csv, "File", "golden-globes.csv");
         upload.Add(new StringContent("1980"), "YearAfter");
 
-        using var acceptedResponse = await client.PostAsync("/api/background-jobs/golden-globe-import", upload);
+        using var acceptedResponse = await PostMultipartWithAntiforgeryAsync(
+            client,
+            "/api/background-jobs/golden-globe-import",
+            upload);
         Assert.Equal(HttpStatusCode.Accepted, acceptedResponse.StatusCode);
         var accepted = await acceptedResponse.Content.ReadFromJsonAsync<BackgroundJobAcceptedResponse>();
         Assert.NotNull(accepted);
@@ -382,7 +389,10 @@ public sealed class BackgroundJobExecutionTests
         tsvContent.Headers.ContentType = MediaTypeHeaderValue.Parse("text/tab-separated-values");
         upload.Add(tsvContent, "File", "title-ratings.tsv");
 
-        using var acceptedResponse = await client.PostAsync("/api/background-jobs/imdb-title-import", upload);
+        using var acceptedResponse = await PostMultipartWithAntiforgeryAsync(
+            client,
+            "/api/background-jobs/imdb-title-import",
+            upload);
         Assert.Equal(HttpStatusCode.Accepted, acceptedResponse.StatusCode);
         var accepted = await acceptedResponse.Content.ReadFromJsonAsync<BackgroundJobAcceptedResponse>();
         Assert.NotNull(accepted);

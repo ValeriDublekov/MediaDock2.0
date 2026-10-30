@@ -10,6 +10,7 @@ Start here for work in this repository. Use the [local operations runbook](../..
 
 | Task | Read |
 | --- | --- |
+| Implementation workflow and plans | [Task workflow](WORKFLOW.md) for the local edit/check loop, cross-layer impact maps, migration safeguards, evidence, and multi-session handoffs. |
 | Frontend | [Architecture](ARCHITECTURE.md) for the web/API boundary and request flow; [Testing](TESTING.md) for frontend tests and commands. |
 | Frontend design review | [Remaining UI design improvements](plans/ui-design-improvements-remaining.md) for open and unverified catalog, personal, award, and administration findings. |
 | API | [Shared API conventions](API_CONTRACTS.md); [catalogs and awards](API_CATALOGS_AND_AWARDS.md), [identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md), or [operations and jobs](API_OPERATIONS_AND_JOBS.md) for route-specific contracts; [Architecture](ARCHITECTURE.md) for cross-layer flows. |

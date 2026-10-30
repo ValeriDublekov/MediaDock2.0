@@ -64,17 +64,31 @@ function response(status: number, value: unknown): Response {
   } as Response
 }
 
-function fetchStub(result: Response | Error) {
+function fetchStub(result: Response | Error, requestToken = 'stub-csrf-token') {
   const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = []
+  const tokenCalls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = []
   const fetcher: typeof fetch = async (input, init) => {
+    if (String(input) === '/api/auth/antiforgery') {
+      tokenCalls.push({ input, init })
+      return response(200, { requestToken })
+    }
     calls.push({ input, init })
     if (result instanceof Error) throw result
     return result
   }
-  return { fetcher, calls }
+  return { fetcher, calls, tokenCalls }
 }
 
 describe('typed API client', () => {
+  it('adds an antiforgery token to every unsafe API request', async () => {
+    const stub = fetchStub(response(204, undefined))
+
+    await requestJson<void>('/favorites', { method: 'POST' }, stub.fetcher)
+
+    expect(String(stub.tokenCalls[0]?.input)).toBe('/api/auth/antiforgery')
+    expect(new Headers(stub.calls[0]?.init?.headers).get('RequestVerificationToken')).toBe('stub-csrf-token')
+  })
+
   it('deletes a catalog title with the selected IMDb metadata option', async () => {
     const stub = fetchStub(response(200, { imdbInfoDeleted: true }))
 
@@ -491,7 +505,7 @@ describe('typed API client', () => {
       registrationRequest: null,
     }
     const stub = fetchStub(response(200, session))
-    const tokenStub = fetchStub(response(200, { requestToken: 'csrf-token' }))
+    const tokenStub = fetchStub(response(200, { requestToken: 'csrf-token' }), 'csrf-token')
     const registrationStub = fetchStub(response(200, { status: 'pending', requestedAt: '2026-10-06T10:00:00Z', decidedAt: null }))
     const fetcher: typeof fetch = async (input, init) => {
       const path = String(input)
@@ -504,7 +518,7 @@ describe('typed API client', () => {
     await requestRegistration(fetcher)
 
     expect(String(stub.calls[0]?.input)).toBe('/api/auth/session')
-    expect(String(tokenStub.calls[0]?.input)).toBe('/api/auth/antiforgery')
+    expect(String(tokenStub.tokenCalls[0]?.input)).toBe('/api/auth/antiforgery')
     expect(String(registrationStub.calls[0]?.input)).toBe('/api/auth/registration-requests')
     expect(registrationStub.calls[0]?.init?.method).toBe('POST')
     expect(new Headers(registrationStub.calls[0]?.init?.headers).get('RequestVerificationToken')).toBe('csrf-token')
@@ -589,7 +603,7 @@ describe('typed API client', () => {
   })
 
   it('sends one personal ratings CSV file as multipart', async () => {
-    const tokenStub = fetchStub(response(200, { requestToken: 'ratings-csrf' }))
+    const tokenStub = fetchStub(response(200, { requestToken: 'ratings-csrf' }), 'ratings-csrf')
     const importStub = fetchStub(response(200, {
       ratingsInFile: 1,
       added: 1,
@@ -609,7 +623,7 @@ describe('typed API client', () => {
 
     const init = importStub.calls[0]?.init
     const body = init?.body
-    expect(String(tokenStub.calls[0]?.input)).toBe('/api/auth/antiforgery')
+    expect(String(tokenStub.tokenCalls[0]?.input)).toBe('/api/auth/antiforgery')
     expect(String(importStub.calls[0]?.input)).toBe('/api/personal-ratings/import')
     expect(init?.method).toBe('POST')
     expect(body).toBeInstanceOf(FormData)
@@ -619,7 +633,7 @@ describe('typed API client', () => {
   })
 
   it('gives actionable guidance when ratings import returns only a generic validation title', async () => {
-    const tokenStub = fetchStub(response(200, { requestToken: 'ratings-csrf' }))
+    const tokenStub = fetchStub(response(200, { requestToken: 'ratings-csrf' }), 'ratings-csrf')
     const importStub = fetchStub(response(400, {
       title: 'One or more validation errors occurred.',
       errors: {},

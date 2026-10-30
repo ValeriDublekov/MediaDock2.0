@@ -35,6 +35,7 @@ public static class ApiServiceCollectionExtensions
 		services.AddValidation();
 		services.AddProblemDetails();
 		services.AddExceptionHandler<ApiExceptionHandler>();
+		services.AddApiRateLimiting(configuration, environment);
 		services.AddGoogleSignIn(configuration, environment);
 		services.AddAccessControl(configuration);
 		services.AddDbContext<MediaDockDbContext>(options =>

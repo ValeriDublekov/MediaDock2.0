@@ -21,9 +21,15 @@ Paged query DTOs accept optional `Page` in `1..1,000,000` and `PageSize` in `1..
 
 ## Errors
 
-[ApiExceptionHandler.cs](../../server/src/MediaDock.Api/Middleware/ApiExceptionHandler.cs) maps `ApiValidationException` to 400 `ValidationProblemDetails`, `ApiForbiddenException` to 403 `ProblemDetails`, `ApiNotFoundException` to 404 `ProblemDetails`, and `ApiConflictException` to 409 `ProblemDetails`. Handled exceptions use `application/problem+json`, include `traceId` in the body, and set `X-MediaDock-TraceId` in the response header. Unrecognized exceptions return 500 `ProblemDetails`; readiness failure is a separate 503 response.
+[ApiExceptionHandler.cs](../../server/src/MediaDock.Api/Middleware/ApiExceptionHandler.cs) maps `ApiValidationException` to 400 `ValidationProblemDetails`, `ApiForbiddenException` to 403 `ProblemDetails`, `ApiNotFoundException` to 404 `ProblemDetails`, and `ApiConflictException` to 409 `ProblemDetails`. Oversized requests return a generic 413 response; rate-limited requests return a generic 429 response with `Retry-After`. Problem responses use `application/problem+json`, include `traceId` in the body, and set `X-MediaDock-TraceId` in the response header. Unexpected exceptions return a generic 500 detail while exception text remains in server logs; readiness failure is a separate 503 response. API responses set `Cache-Control: no-store`.
 
 Authentication session, anti-forgery, and logout responses also include `X-MediaDock-TraceId`. Authentication logs record safe rejection reasons and trace IDs, not identity claims, session cookies, or anti-forgery tokens. Cookie challenges are API-native 401 responses and forbids are 403, not login redirects.
+
+## Request Integrity and Abuse Controls
+
+Unsafe API requests carrying the MediaDock session cookie require a valid `RequestVerificationToken` header and a same-origin browser request. The sign-in/account protocol mutations and multipart imports require the same protection even before an application session exists. Requests marked `Sec-Fetch-Site: cross-site` or `same-site`, or with a mismatched `Origin`/`Referer`, are rejected. The web API client obtains a token for every unsafe request. CSRF validation does not grant authorization; access policies still resolve the current account and role independently.
+
+Sliding-window rate limits apply by client IP to authentication/session/token routes, registration requests, expensive search/read routes, uploads, and job dispatch. Uploads and dispatch also have no-queue concurrency caps. Non-Development API startup requires explicit values for all five `AbuseControls:RateLimits` categories; see the [security guide](SECURITY.md#application-rate-limits). The effective client IP uses forwarded data only from the configured trusted proxy network.
 
 ## Access Modes
 

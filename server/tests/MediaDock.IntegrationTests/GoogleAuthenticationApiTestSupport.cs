@@ -35,6 +35,17 @@ internal static class GoogleAuthenticationApiTestSupport
         return token!.RequestToken;
     }
 
+    internal static async Task<HttpResponseMessage> PostMultipartWithAntiforgeryAsync(
+        HttpClient client,
+        string path,
+        HttpContent content)
+    {
+        var requestToken = await GetAntiforgeryTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = content };
+        request.Headers.Add("RequestVerificationToken", requestToken);
+        return await client.SendAsync(request);
+    }
+
     internal static ClaimsPrincipal CreatePrincipal(
         bool emailVerified = true,
         bool includeNames = true,
@@ -87,7 +98,8 @@ internal static class GoogleAuthenticationApiTestSupport
         bool accessControlEnforced = false,
         bool localMockEnabled = false,
         string environmentName = "Development",
-        bool googleSignInEnabled = false) : WebApplicationFactory<Program>
+        bool googleSignInEnabled = false,
+        IReadOnlyDictionary<string, string?>? additionalConfiguration = null) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -98,6 +110,7 @@ internal static class GoogleAuthenticationApiTestSupport
             }
 
             builder.ConfigureAppConfiguration((_, configuration) =>
+            {
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["ConnectionStrings:MediaDock"] = connectionString,
@@ -107,7 +120,12 @@ internal static class GoogleAuthenticationApiTestSupport
                     ["Authentication:Google:CallbackUri"] = "https://mediadock.example/signin-oidc",
                     ["Authentication:LocalMock:Enabled"] = localMockEnabled.ToString(),
                     ["AccessControl:Enforced"] = accessControlEnforced.ToString()
-                }));
+                });
+                if (additionalConfiguration is not null)
+                {
+                    configuration.AddInMemoryCollection(additionalConfiguration);
+                }
+            });
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IHostedService>();
@@ -130,16 +148,20 @@ internal static class GoogleAuthenticationApiTestSupport
     internal sealed class TestLoggerProvider : ILoggerProvider
     {
         private readonly ConcurrentQueue<string> _messages = new();
+        private readonly ConcurrentQueue<string> _exceptions = new();
 
         public IReadOnlyCollection<string> Messages => _messages.ToArray();
+        public IReadOnlyCollection<string> Exceptions => _exceptions.ToArray();
 
-        public ILogger CreateLogger(string categoryName) => new TestLogger(_messages);
+        public ILogger CreateLogger(string categoryName) => new TestLogger(_messages, _exceptions);
 
         public void Dispose()
         {
         }
 
-        private sealed class TestLogger(ConcurrentQueue<string> messages) : ILogger
+        private sealed class TestLogger(
+            ConcurrentQueue<string> messages,
+            ConcurrentQueue<string> exceptions) : ILogger
         {
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -153,6 +175,10 @@ internal static class GoogleAuthenticationApiTestSupport
                 Func<TState, Exception?, string> formatter)
             {
                 messages.Enqueue(formatter(state, exception));
+                if (exception is not null)
+                {
+                    exceptions.Enqueue(exception.ToString());
+                }
             }
         }
     }

@@ -86,7 +86,7 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
 
         if (file.Length > MaximumUploadBytes)
         {
-            throw ValidationError($"The ratings file cannot exceed {MaximumUploadBytes / (1024 * 1024)} MiB.");
+            throw new ApiPayloadTooLargeException("The ratings file exceeds the configured size limit.");
         }
 
         if (!string.Equals(Path.GetExtension(file.FileName), ".csv", StringComparison.OrdinalIgnoreCase))
@@ -98,7 +98,7 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
         await file.CopyToAsync(buffer, cancellationToken);
         if (buffer.Length > MaximumUploadBytes)
         {
-            throw ValidationError($"The ratings file cannot exceed {MaximumUploadBytes / (1024 * 1024)} MiB.");
+            throw new ApiPayloadTooLargeException("The ratings file exceeds the configured size limit.");
         }
 
         var importedAt = DateTimeOffset.UtcNow;

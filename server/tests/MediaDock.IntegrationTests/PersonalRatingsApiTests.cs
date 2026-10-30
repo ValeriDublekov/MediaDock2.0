@@ -516,22 +516,34 @@ public sealed class PersonalRatingsApiTests
 
         using var anonymousFactory = new ApiFactory(connectionString);
         using var anonymousClient = anonymousFactory.CreateClient();
-        using var anonymousResponse = await anonymousClient.PostAsync(
-            "/api/personal-ratings/import", CreateUpload("Title ID,Rating,Last Modified Date\ntt1234567,8,"));
+        var anonymousToken = await GetAntiforgeryTokenAsync(anonymousClient);
+        using var anonymousResponse = await ImportAsync(
+            anonymousClient,
+            "/api/personal-ratings/import",
+            "Title ID,Rating,Last Modified Date\ntt1234567,8,",
+            anonymousToken);
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousResponse.StatusCode);
 
         using var unknownFactory = new ApiFactory(
             connectionString, CreatePrincipal("ratings-unknown", "unknown@example.com"));
         using var unknownClient = unknownFactory.CreateClient();
-        using var unknownResponse = await unknownClient.PostAsync(
-            "/api/personal-ratings/import", CreateUpload("Title ID,Rating,Last Modified Date\ntt1234567,8,"));
+        var unknownToken = await GetAntiforgeryTokenAsync(unknownClient);
+        using var unknownResponse = await ImportAsync(
+            unknownClient,
+            "/api/personal-ratings/import",
+            "Title ID,Rating,Last Modified Date\ntt1234567,8,",
+            unknownToken);
         Assert.Equal(HttpStatusCode.Forbidden, unknownResponse.StatusCode);
 
         using var deactivatedFactory = new ApiFactory(
             connectionString, CreatePrincipal("ratings-disabled", "disabled@example.com"));
         using var deactivatedClient = deactivatedFactory.CreateClient();
-        using var deactivatedResponse = await deactivatedClient.PostAsync(
-            "/api/personal-ratings/import", CreateUpload("Title ID,Rating,Last Modified Date\ntt1234567,8,"));
+        var deactivatedToken = await GetAntiforgeryTokenAsync(deactivatedClient);
+        using var deactivatedResponse = await ImportAsync(
+            deactivatedClient,
+            "/api/personal-ratings/import",
+            "Title ID,Rating,Last Modified Date\ntt1234567,8,",
+            deactivatedToken);
         Assert.Equal(HttpStatusCode.Forbidden, deactivatedResponse.StatusCode);
 
         using var firstFactory = new ApiFactory(
@@ -592,7 +604,10 @@ public sealed class PersonalRatingsApiTests
             "/api/personal-ratings/import",
             oversizedCsv,
             firstToken);
-        Assert.Equal(HttpStatusCode.BadRequest, oversizedImportResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.RequestEntityTooLarge, oversizedImportResponse.StatusCode);
+        var oversizedProblem = await oversizedImportResponse.Content.ReadAsStringAsync();
+        Assert.Contains("exceeds the allowed size", oversizedProblem, StringComparison.Ordinal);
+        Assert.DoesNotContain("1048576", oversizedProblem, StringComparison.Ordinal);
 
         using var secondImportResponse = await ImportAsync(
             secondClient,

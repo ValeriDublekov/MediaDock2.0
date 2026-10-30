@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using static MediaDock.IntegrationTests.GoogleAuthenticationApiTestSupport;
 
 namespace MediaDock.IntegrationTests;
 
@@ -96,7 +97,10 @@ public sealed class BackgroundJobApiTests
         upload.Add(csv, "File", "../WINNERS.CSV");
         upload.Add(new StringContent("1980"), "YearAfter");
 
-        using var uploadResponse = await client.PostAsync("/api/background-jobs/oscar-import", upload);
+        using var uploadResponse = await PostMultipartWithAntiforgeryAsync(
+            client,
+            "/api/background-jobs/oscar-import",
+            upload);
         Assert.Equal(HttpStatusCode.Accepted, uploadResponse.StatusCode);
         var importJob = await uploadResponse.Content.ReadFromJsonAsync<AcceptedJob>();
         Assert.NotNull(importJob);
@@ -118,7 +122,8 @@ public sealed class BackgroundJobApiTests
         goldenGlobeCsv.Headers.ContentType = MediaTypeHeaderValue.Parse("text/csv");
         goldenGlobeUpload.Add(goldenGlobeCsv, "File", "../GLOBES.CSV");
         goldenGlobeUpload.Add(new StringContent("1980"), "YearAfter");
-        using var goldenGlobeUploadResponse = await client.PostAsync(
+        using var goldenGlobeUploadResponse = await PostMultipartWithAntiforgeryAsync(
+            client,
             "/api/background-jobs/golden-globe-import",
             goldenGlobeUpload);
         Assert.Equal(HttpStatusCode.Accepted, goldenGlobeUploadResponse.StatusCode);

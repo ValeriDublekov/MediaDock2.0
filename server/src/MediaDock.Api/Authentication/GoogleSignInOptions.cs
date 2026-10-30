@@ -12,6 +12,7 @@ namespace MediaDock.Api.Authentication;
 public sealed record GoogleSignInSettings(bool Enabled, string ClientId, string ClientSecret, Uri? CallbackUri)
 {
     public const string CookieScheme = "MediaDock.Session";
+    public const string SessionCookieName = "__Host-MediaDock.Session";
     public const string GoogleScheme = "Google";
     public const string IssuerClaimType = "mediadock:google:issuer";
     public const string GoogleIssuer = "https://accounts.google.com";
@@ -246,7 +247,7 @@ public static class GoogleSignInServiceCollectionExtensions
         });
         authentication.AddCookie(GoogleSignInSettings.CookieScheme, options =>
         {
-            options.Cookie.Name = "__Host-MediaDock.Session";
+            options.Cookie.Name = GoogleSignInSettings.SessionCookieName;
             options.Cookie.Path = "/";
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
