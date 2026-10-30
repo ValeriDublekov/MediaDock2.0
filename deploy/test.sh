@@ -53,7 +53,7 @@ fi
 
 TEMP_DIR="$(mktemp -d)"
 trap 'rm -rf -- "$TEMP_DIR"' EXIT
-mkdir -p "$TEMP_DIR/nuget"
+mkdir -p "$TEMP_DIR/nuget" "$TEMP_DIR/test-tmp"
 
 HOST_UID="$(id -u)"
 HOST_GID="$(id -g)"
@@ -111,6 +111,7 @@ run_logged dotnet-integration docker run --rm \
     --env TESTCONTAINERS_RYUK_DISABLED=true \
     --mount "type=bind,source=$SERVER_ROOT,target=/workspace/server" \
     --mount "type=bind,source=$TEMP_DIR/nuget,target=/tmp/nuget-packages" \
+    --mount "type=bind,source=$TEMP_DIR/test-tmp,target=/workspace/.test-tmp" \
     --mount "type=bind,source=$DOCKER_SOCKET,target=/var/run/docker.sock" \
     --workdir /workspace/server \
     "$DOTNET_SDK_IMAGE" \
