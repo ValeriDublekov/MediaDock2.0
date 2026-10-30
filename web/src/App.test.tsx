@@ -42,7 +42,7 @@ vi.mock('./features/auth/AuthStatus', async () => {
   }
 })
 vi.mock('./features/catalog/CatalogView', () => ({
-  CatalogView: ({ canDeleteTitles, canViewHistory }: { canDeleteTitles: boolean; canViewHistory: boolean }) => <div data-can-delete-titles={canDeleteTitles} data-can-view-history={canViewHistory}><h1>Torents catalog</h1>Catalog route content</div>,
+  CatalogView: ({ canDeleteTitles, canViewHistory }: { canDeleteTitles: boolean; canViewHistory: boolean }) => <div data-can-delete-titles={canDeleteTitles} data-can-view-history={canViewHistory}><h1>Torrents catalog</h1>Catalog route content</div>,
 }))
 vi.mock('./features/oscar/OscarCatalogView', () => ({ OscarCatalogView: () => <div>Oscar route content</div> }))
 vi.mock('./features/golden-globes/GoldenGlobeCatalogView', () => ({ GoldenGlobeCatalogView: () => <div>Golden Globes route content</div> }))
@@ -213,7 +213,7 @@ describe('App routes', () => {
     expect(await screen.findByText('Ratings route content')).toBeTruthy()
     const mainNavigation = screen.getByRole('navigation', { name: 'Main navigation' })
     expect(Array.from(mainNavigation.querySelectorAll(':scope > a, :scope > .account-nav-group > a'), (link) => link.getAttribute('aria-label'))).toEqual([
-      'Torents catalog',
+      'Torrents catalog',
       'Movie recommendations',
       'Series recommendations',
       'Favorites',
@@ -248,6 +248,10 @@ describe('App routes', () => {
     renderAt('/account/recommendations')
 
     expect(await screen.findByText('Recommendations route content')).toBeTruthy()
+    const breadcrumb = screen.getByRole('navigation', { name: 'Breadcrumb' })
+    expect(breadcrumb.closest('.topbar-content')).toBeTruthy()
+    expect(breadcrumb.querySelector('a')?.textContent).toBe('MediaDock')
+    expect(breadcrumb.querySelector('[aria-current="page"]')?.textContent).toBe('Personal')
     expect(screen.getByTestId('recommendations-route-content').getAttribute('data-media-type')).toBe('movie')
     expect(screen.getByRole('link', { name: 'Movie recommendations' }).getAttribute('aria-current')).toBe('page')
     expect(screen.getByRole('link', { name: 'Series recommendations' })).toBeTruthy()
@@ -375,7 +379,7 @@ describe('App routes', () => {
 
     renderAt('/catalog')
 
-    expect(await screen.findByRole('heading', { name: 'Torents catalog', level: 1 })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Torrents catalog', level: 1 })).toBeTruthy()
     expect(screen.queryByRole('note')).toBeNull()
   })
 

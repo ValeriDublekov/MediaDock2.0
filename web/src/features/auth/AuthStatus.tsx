@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { confirmGoogleAccountLink, getCurrentSession, signOut } from '../../api/client'
 import type { AuthDiagnostic, CurrentSession } from '../../api/types'
 
@@ -33,6 +33,9 @@ export function AuthStatus({ onSessionChange }: {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [invalidSession, setInvalidSession] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const profileButtonRef = useRef<HTMLButtonElement>(null)
+  const profilePanelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let active = true
@@ -61,6 +64,29 @@ export function AuthStatus({ onSessionChange }: {
     return () => { active = false }
   }, [onSessionChange])
 
+  useEffect(() => {
+    if (!profileOpen) return
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!(event.target instanceof Node)) return
+      if (profilePanelRef.current?.contains(event.target) || profileButtonRef.current?.contains(event.target)) return
+      setProfileOpen(false)
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return
+      setProfileOpen(false)
+      profileButtonRef.current?.focus()
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [profileOpen])
+
   async function runAction(operation: string, endpoint: string, action: () => Promise<unknown>) {
     setBusy(true)
     setError(null)
@@ -88,9 +114,11 @@ export function AuthStatus({ onSessionChange }: {
     : identity?.givenName && identity.familyName
       ? `${identity.givenName} ${identity.familyName}`
       : identity?.givenName ?? identity?.familyName ?? identity?.email
+  const profileLabel = displayName?.trim() || identity?.email || 'Signed-in account'
+  const profileInitials = profileLabel.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase()
 
   return (
-    <section aria-label="Sign-in status" className="auth-strip">
+    <section aria-label="Sign-in status" className={`auth-strip${session?.authenticated ? ' auth-profile' : ''}`}>
       {loading ? (
         <span className="auth-summary" role="status">Checking sign-in status</span>
       ) : session === null ? (
@@ -99,54 +127,64 @@ export function AuthStatus({ onSessionChange }: {
           {error && <button className="text-button" disabled={busy} onClick={() => void runAction('Reset sign-in', '/api/auth/logout', signOut)} type="button">Reset sign-in</button>}
           <button className="text-button" disabled={busy} onClick={() => void runAction('Retry session check', '/api/auth/session', getCurrentSession)} type="button">Retry</button>
         </>
-      ) : (
+      ) : !session.authenticated ? (
         <>
           <div className="auth-summary" aria-live="polite">
-            {!session.authenticated ? (
-              <>
-                <strong>Anonymous access</strong>
-                <span>Sign-in is optional</span>
-              </>
-            ) : (
-              <>
-                <strong>{displayName}</strong>
-                <span className="auth-email">{identity?.email}</span>
-                {session.registrationRequest && (
-                  <span className="auth-request-state" role="status">
-                    {requestStateLabel(session.registrationRequest.status)}
-                  </span>
-                )}
-                {session.accountState === 'link_confirmation_required' && (
-                  <span>Confirm the matching account before linking.</span>
-                )}
-                {session.accountState === 'account_conflict' && (
-                  <span className="auth-message">This email is already linked to another Google identity.</span>
-                )}
-              </>
-            )}
+            <strong>Anonymous access</strong>
+            <span>Sign-in is optional</span>
           </div>
 
           <div className="auth-controls">
-            {!session.authenticated ? (
-              session.signInEnabled
-                ? <a className="button button-secondary" href="/api/auth/google/login">Sign in with Google</a>
-                : <span className="auth-unavailable">Google sign-in is disabled</span>
-            ) : (
-              <>
-                {session.accountState === 'link_confirmation_required' && (
-                  <button className="button button-secondary" disabled={busy} onClick={() => void runAction('Link Google account', '/api/auth/google/link', confirmGoogleAccountLink)} type="button">
-                    {busy ? 'Linking…' : 'Link this account'}
-                  </button>
-                )}
-                <button className="text-button" disabled={busy} onClick={() => void runAction('Sign out', '/api/auth/logout', signOut)} type="button">
-                  {busy ? 'Please wait' : 'Sign out'}
+            {session.signInEnabled
+              ? <a className="button button-secondary" href="/api/auth/google/login">Sign in with Google</a>
+              : <span className="auth-unavailable">Google sign-in is disabled</span>}
+          </div>
+        </>
+      ) : (
+        <>
+          <button
+            aria-controls="auth-profile-panel"
+            aria-expanded={profileOpen}
+            aria-label={`Account for ${profileLabel}`}
+            className="auth-profile-trigger"
+            onClick={() => setProfileOpen((open) => !open)}
+            ref={profileButtonRef}
+            type="button"
+          >
+            {profileInitials}
+          </button>
+          <div className="auth-profile-panel" hidden={!profileOpen} id="auth-profile-panel" ref={profilePanelRef}>
+            <div className="auth-summary" aria-live="polite">
+              <strong>{displayName}</strong>
+              <span className="auth-email">{identity?.email}</span>
+              {session.registrationRequest && (
+                <span className="auth-request-state" role="status">
+                  {requestStateLabel(session.registrationRequest.status)}
+                </span>
+              )}
+              {session.accountState === 'link_confirmation_required' && (
+                <span>Confirm the matching account before linking.</span>
+              )}
+              {session.accountState === 'account_conflict' && (
+                <span className="auth-message">This email is already linked to another Google identity.</span>
+              )}
+            </div>
+
+            <div className="auth-controls">
+              {session.accountState === 'link_confirmation_required' && (
+                <button className="button button-secondary" disabled={busy} onClick={() => void runAction('Link Google account', '/api/auth/google/link', confirmGoogleAccountLink)} type="button">
+                  {busy ? 'Linking…' : 'Link this account'}
                 </button>
-              </>
-            )}
+              )}
+              <button className="text-button" disabled={busy} onClick={() => void runAction('Sign out', '/api/auth/logout', signOut)} type="button">
+                {busy ? 'Please wait' : 'Sign out'}
+              </button>
+            </div>
+            {error && <span className="auth-message" role="alert">{error}</span>}
           </div>
         </>
       )}
-      {error && <span className="auth-message" role="alert">{error}</span>}
+      {!session?.authenticated && error && <span className="auth-message" role="alert">{error}</span>}
     </section>
   )
 }

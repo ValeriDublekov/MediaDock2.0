@@ -247,12 +247,22 @@ describe('CatalogView', () => {
     const view = render(<CatalogView />)
 
     expect(screen.queryByRole('button', { name: 'History' })).toBeNull()
-    expect(screen.getByRole('heading', { name: 'Torents catalog', level: 1 })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Torrents catalog', level: 1 })).toBeTruthy()
+    expect(await screen.findByText('0 titles')).toBeTruthy()
     view.rerender(<CatalogView canViewHistory />)
+    const controlRow = view.container.querySelector('.catalog-control-row') as HTMLElement
+    expect(within(controlRow).getByRole('navigation', { name: 'Catalog categories' })).toBeTruthy()
+    expect(within(controlRow).getByRole('button', { name: 'RSS contents' })).toBeTruthy()
+    expect(within(controlRow).getByRole('button', { name: 'Posters' })).toBeTruthy()
+    expect(within(controlRow).getByRole('button', { name: 'History' })).toBeTruthy()
+    expect(Array.from(controlRow.querySelectorAll('.toolbar-actions button')).map((button) => button.textContent?.trim())).toEqual(['Posters', 'Table', 'RSS contents', 'History'])
+    expect(within(controlRow).queryByRole('button', { name: 'Refresh results' })).toBeNull()
+    expect(view.container.querySelector('.catalog-heading-copy .result-count')).toBeTruthy()
+    expect(view.container.querySelector('.section-toolbar')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'History' }))
 
     expect(await screen.findByRole('heading', { name: 'Catalog history', level: 1 })).toBeTruthy()
-    expect(screen.queryByRole('heading', { name: 'Torents catalog', level: 1 })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Torrents catalog', level: 1 })).toBeNull()
     expect(await screen.findByText('No parse entries found')).toBeTruthy()
     expect(getParseLogs).toHaveBeenCalledWith({ page: 1, pageSize: 20, ignored: true })
     expect(screen.getByRole('button', { name: 'Parse log' }).getAttribute('aria-pressed')).toBe('true')
@@ -262,6 +272,8 @@ describe('CatalogView', () => {
     expect(await screen.findByText('No scan runs found')).toBeTruthy()
     expect(getScanRuns).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
     expect(screen.queryByLabelText('Delete older than (days)')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Titles' }))
+    expect(await screen.findByRole('heading', { name: 'Torrents catalog', level: 1 })).toBeTruthy()
   })
 
   it('associates the IMDb rating with its title and opens that title at its torrent sources', async () => {
@@ -630,13 +642,18 @@ describe('CatalogView', () => {
     expect(screen.getByRole('button', { name: 'All' }).getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('uses the year sliders and genre multiselect while removing duplicate filter controls', async () => {
-    catalogRequest.mockResolvedValue(page([]))
+  it('keeps the year, IMDb rating, genre, and media type filters directly available', async () => {
+    catalogRequest.mockResolvedValue(page([], 1, 1, { minYear: 1980, maxYear: 2024 }, { minRating: 3.2, maxRating: 9.1 }))
     render(<CatalogView />)
 
     expect(await screen.findByText('All genres (2)')).toBeTruthy()
     expect(getCatalogGenres).toHaveBeenCalledTimes(1)
-    fireEvent.click(screen.getByText('More filters'))
+    expect(screen.getByLabelText('Search titles')).toBeTruthy()
+    expect(screen.getByText('0 titles')).toBeTruthy()
+    expect(screen.getByRole('slider', { name: 'Title year minimum' })).toBeTruthy()
+    expect(screen.getByLabelText('IMDb rating selected range')).toBeTruthy()
+    expect(screen.getByLabelText('Media type')).toBeTruthy()
+    expect(screen.queryByText('More filters')).toBeNull()
     expect(screen.queryByLabelText('Year from')).toBeNull()
     expect(screen.queryByLabelText('Year to')).toBeNull()
     expect(screen.queryByLabelText('Feed type')).toBeNull()
@@ -651,7 +668,7 @@ describe('CatalogView', () => {
     }))
     fireEvent.click(screen.getByText('All genres (2)'))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Drama' }))
-    expect(screen.getByText('More filters (2 active)')).toBeTruthy()
+    expect((screen.getByLabelText('Media type') as HTMLSelectElement).value).toBe('series')
     await waitFor(() => expect(catalogRequest).toHaveBeenLastCalledWith({
       page: 1, pageSize: titlePageSize, feedTypes: ['movie'], mediaType: 'series', genres: ['Action'],
     }))

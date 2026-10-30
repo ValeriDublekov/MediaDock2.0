@@ -22,7 +22,7 @@ import { MovieTablesDashboardView } from './features/dashboard/MovieTablesDashbo
 type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'account' | 'administration'
 
 const sections: { id: Section; path: string; label: string }[] = [
-  { id: 'catalog', path: '/catalog', label: 'Torents catalog' },
+  { id: 'catalog', path: '/catalog', label: 'Torrents catalog' },
   { id: 'oscar', path: '/oscar', label: 'Oscar catalog' },
   { id: 'golden-globes', path: '/golden-globes', label: 'Golden Globes catalog' },
   { id: 'favorites', path: '/favorites', label: 'Favorites' },
@@ -47,8 +47,8 @@ const recommendationPages: { path: string; label: string; mediaType: Recommendat
 const sectionContent: Record<Section, { eyebrow: string; title: string; description: string }> = {
   catalog: {
     eyebrow: 'LIBRARY',
-    title: 'Torents catalog',
-    description: 'Browse titles collected from your configured feeds.',
+    title: 'Torrents catalog',
+    description: '',
   },
   oscar: {
     eyebrow: 'ACADEMY AWARDS',
@@ -254,7 +254,7 @@ function AppContent() {
   const isAdmin = isActiveAccount && session?.user?.role === 'admin'
   const isPersonalRatingsPath = location.pathname === '/account/personal-ratings' || location.pathname === '/account/personal-ratings/import'
   const mainNavigation: { path: string; label: string }[] = [
-    { path: '/catalog', label: 'Torents catalog' },
+    { path: '/catalog', label: 'Torrents catalog' },
     ...(isActiveAccount ? [
       ...recommendationPages,
       { path: '/favorites', label: 'Favorites' },
@@ -290,6 +290,13 @@ function AppContent() {
   const description = administrationPage?.description ?? pageContent.description
   const registrationSession = session?.authenticated && session.accountState === 'unmatched' ? session : null
   const recoveryDiagnostic = session === null ? authDiagnostic : null
+  const breadcrumbContext = recoveryDiagnostic
+    ? 'SIGN-IN DIAGNOSTICS'
+    : !authChecked
+      ? 'SIGN-IN CHECK'
+      : !isActiveAccount
+        ? session?.authenticated ? 'ACCOUNT ACCESS' : 'WELCOME'
+        : `${section === 'account' || section === 'favorites' ? content.title : content.eyebrow}${administrationPage ? ` / ${administrationPage.label.toUpperCase()}` : ''}`
   const showAuthStatus = !authChecked || Boolean(session?.authenticated) || recoveryDiagnostic !== null
   const isAccessGated = !authChecked || !isActiveAccount
 
@@ -377,8 +384,22 @@ function AppContent() {
 
       <main className="main-shell">
         <header className="topbar">
-          <div className="breadcrumb">MEDIADOCK <span>/</span> {recoveryDiagnostic ? 'SIGN-IN DIAGNOSTICS' : !authChecked ? 'SIGN-IN CHECK' : !isActiveAccount ? session?.authenticated ? 'ACCOUNT ACCESS' : 'WELCOME' : <>{content.eyebrow}{administrationPage && <> <span>/</span> {administrationPage.label.toUpperCase()}</>}</>}</div>
-          {showAuthStatus && <AuthStatus onSessionChange={onSessionChange} />}
+          <div className="topbar-content">
+            {isActiveAccount ? (
+              <nav aria-label="Breadcrumb" className="breadcrumb">
+                <NavLink to="/catalog">MediaDock</NavLink>
+                <span aria-hidden="true" className="breadcrumb-separator">/</span>
+                <span aria-current="page" className="breadcrumb-current">{breadcrumbContext}</span>
+              </nav>
+            ) : (
+              <div className="breadcrumb">
+                <span className="breadcrumb-brand">MediaDock</span>
+                <span aria-hidden="true" className="breadcrumb-separator">/</span>
+                <span className="breadcrumb-current">{breadcrumbContext}</span>
+              </div>
+            )}
+            {showAuthStatus && <AuthStatus onSessionChange={onSessionChange} />}
+          </div>
         </header>
 
         {authChecked && isActiveAccount && session?.authorizationEnforced !== true && (

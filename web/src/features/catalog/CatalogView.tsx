@@ -166,8 +166,6 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
   const [detailsSection, setDetailsSection] = useState<'details' | 'torrents'>('details')
   const awardsRequestKey = movieAwardsRequestKey(result?.items.map((title) => title.imdbId) ?? [])
   const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
-  const activeFilterCount = Object.entries(draftFilters).filter(([key, value]) => key !== 'search' && key !== 'genres' && value !== '').length
-    + (draftFilters.genres?.length ? 1 : 0)
 
   function removeCatalogTitle(titleId: number) {
     setResult((current) => removePageItems(current, (title) => title.id === titleId))
@@ -273,28 +271,35 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
 
   return (
     <section aria-label="Catalog" className="media-view">
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">{showingCatalogHistory ? 'CATALOG HISTORY' : 'LIBRARY'}</p>
-          <h1>{showingCatalogHistory ? 'Catalog history' : 'Torents catalog'}</h1>
-          <p className="page-description">{showingCatalogHistory ? 'Review parse decisions and scan activity for catalog feeds.' : 'Browse titles collected from your configured feeds.'}</p>
+      <div className="page-heading catalog-page-heading">
+        <div className="catalog-heading-copy">
+          <h1>{showingCatalogHistory ? 'Catalog history' : 'Torrents catalog'}</h1>
+          {!showingCatalogHistory && <span className="result-count catalog-result-count">{result ? `${result.totalCount.toLocaleString()} titles` : 'Catalog records'}</span>}
         </div>
+        {showingCatalogHistory && <button
+          className="button button-secondary catalog-heading-action"
+          onClick={() => setCatalogView('titles')}
+          type="button"
+        >Titles</button>}
       </div>
-      {canViewHistory && <div aria-label="Catalog view" className="catalog-screen-switch segment-control" role="group">
-        <button aria-pressed={catalogView === 'titles'} onClick={() => setCatalogView('titles')} type="button">Titles</button>
-        <button aria-pressed={catalogView === 'history'} onClick={() => setCatalogView('history')} type="button">History</button>
-      </div>}
       {showingCatalogHistory ? <HistoryView showCleanupControls={false} /> : <>
       {deleteNotice && <p className="form-message" role="status">{deleteNotice}</p>}
-      <nav aria-label="Catalog categories" className="catalog-category-nav">
-        {categories.map((item) => <button
-          aria-pressed={category === item.id}
-          className={category === item.id ? 'is-active' : ''}
-          key={item.id}
-          onClick={() => selectCategory(item.id)}
-          type="button"
-        >{item.label}</button>)}
-      </nav>
+      <div className="catalog-control-row">
+        <nav aria-label="Catalog categories" className="catalog-category-nav">
+          {categories.map((item) => <button
+            aria-pressed={category === item.id}
+            className={category === item.id ? 'is-active' : ''}
+            key={item.id}
+            onClick={() => selectCategory(item.id)}
+            type="button"
+          >{item.label}</button>)}
+        </nav>
+        <div className="toolbar-actions">
+          <ViewModeControl onChange={setViewMode} value={viewMode} />
+          <button className="button button-secondary" onClick={() => setRssPreviewProfileId(category === 'all' ? 'all' : categoryFeedTypes[category][0])} type="button">RSS contents</button>
+          {canViewHistory && <button className="button button-secondary" onClick={() => setCatalogView('history')} type="button">History</button>}
+        </div>
+      </div>
       <form className="filter-form browse-filters" onSubmit={applyFilters}>
         <div className="field filter-search">
           <label htmlFor="catalog-search">Search titles</label>
@@ -309,34 +314,31 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
           optionsLabel="genres"
           selectedValues={draftFilters.genres}
         />
-        {result?.yearBounds && <YearRangeFilter
-          bounds={result.yearBounds}
-          id="catalog-year-range"
-          label="Title year"
-          onCommit={(from, to) => updateYearRange(from, to, true)}
-          onPreview={(from, to) => updateYearRange(from, to, false)}
-          valueFrom={draftFilters.yearFrom ? Number(draftFilters.yearFrom) : result.yearBounds.minYear}
-          valueTo={draftFilters.yearTo ? Number(draftFilters.yearTo) : result.yearBounds.maxYear}
-        />}
-        {result?.imdbRatingBounds && <ImdbRatingRangeFilter
-          bounds={result.imdbRatingBounds}
-          id="catalog-imdb-rating-range"
-          onCommit={(from, to) => updateImdbRatingRange(from, to, true)}
-          onPreview={(from, to) => updateImdbRatingRange(from, to, false)}
-          valueFrom={draftFilters.imdbRatingFrom ? Number(draftFilters.imdbRatingFrom) : result.imdbRatingBounds.minRating}
-          valueTo={draftFilters.imdbRatingTo ? Number(draftFilters.imdbRatingTo) : result.imdbRatingBounds.maxRating}
-        />}
-        <details className="advanced-filters">
-          <summary>More filters{activeFilterCount > 0 ? ` (${activeFilterCount} active)` : ''}</summary>
-          <div className="advanced-fields">
-            <div className="field">
-              <label htmlFor="catalog-media-type">Media type</label>
-              <select id="catalog-media-type" onChange={(event) => updateFilter('mediaType', event.target.value)} value={draftFilters.mediaType}>
-                <option value="">All types</option><option value="movie">Movie</option><option value="series">Series</option><option value="documentary">Documentary</option><option value="short">Short</option>
-              </select>
-            </div>
-          </div>
-        </details>
+        <div className="field browse-media-type">
+          <label htmlFor="catalog-media-type">Media type</label>
+          <select id="catalog-media-type" onChange={(event) => updateFilter('mediaType', event.target.value)} value={draftFilters.mediaType}>
+            <option value="">All types</option><option value="movie">Movie</option><option value="series">Series</option><option value="documentary">Documentary</option><option value="short">Short</option>
+          </select>
+        </div>
+        <div className="browse-range-filters">
+          {result?.yearBounds && <YearRangeFilter
+            bounds={result.yearBounds}
+            id="catalog-year-range"
+            label="Title year"
+            onCommit={(from, to) => updateYearRange(from, to, true)}
+            onPreview={(from, to) => updateYearRange(from, to, false)}
+            valueFrom={draftFilters.yearFrom ? Number(draftFilters.yearFrom) : result.yearBounds.minYear}
+            valueTo={draftFilters.yearTo ? Number(draftFilters.yearTo) : result.yearBounds.maxYear}
+          />}
+          {result?.imdbRatingBounds && <ImdbRatingRangeFilter
+            bounds={result.imdbRatingBounds}
+            id="catalog-imdb-rating-range"
+            onCommit={(from, to) => updateImdbRatingRange(from, to, true)}
+            onPreview={(from, to) => updateImdbRatingRange(from, to, false)}
+            valueFrom={draftFilters.imdbRatingFrom ? Number(draftFilters.imdbRatingFrom) : result.imdbRatingBounds.minRating}
+            valueTo={draftFilters.imdbRatingTo ? Number(draftFilters.imdbRatingTo) : result.imdbRatingBounds.maxRating}
+          />}
+        </div>
         <div className="filter-actions">
           <button className="button button-secondary" onClick={() => {
             const nextRanges = { ...ratingRanges, [ratingScopeForCategory(category)]: { ...emptyImdbRatingRange } }
@@ -350,15 +352,6 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
           }} type="button">Clear</button>
         </div>
       </form>
-
-      <div className="section-toolbar">
-        <span className="result-count">{result ? `${result.totalCount.toLocaleString()} titles` : 'Catalog records'}</span>
-        <div className="toolbar-actions">
-          <button className="button button-secondary" onClick={() => setRssPreviewProfileId(category === 'all' ? 'all' : categoryFeedTypes[category][0])} type="button">RSS contents</button>
-          <ViewModeControl onChange={setViewMode} value={viewMode} />
-          <button className="text-button" onClick={() => setAttempt((current) => current + 1)} type="button">Refresh results</button>
-        </div>
-      </div>
 
       {loading && <LoadingState label="Loading catalog" />}
       {!loading && error && <ErrorState message={error} onRetry={() => setAttempt((current) => current + 1)} />}

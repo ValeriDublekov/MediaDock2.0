@@ -97,16 +97,40 @@ describe('AuthStatus', () => {
 
     render(<AuthStatus />)
 
+    const profileButton = await screen.findByRole('button', { name: 'Account for Stored Account' })
+    expect(profileButton.textContent).toBe('SA')
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull()
+    fireEvent.click(profileButton)
+
     expect(await screen.findByText('Stored Account')).toBeTruthy()
     expect(screen.getByRole('status').textContent).toContain('pending review')
     expect(screen.queryByRole('button', { name: 'Request registration' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeTruthy()
   })
 
+  it('closes the profile disclosure on Escape and outside pointer input', async () => {
+    vi.mocked(getCurrentSession).mockResolvedValue(linkedSession())
+    render(<AuthStatus />)
+
+    const profileButton = await screen.findByRole('button', { name: 'Account for Stored Account' })
+    fireEvent.click(profileButton)
+    expect(profileButton.getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(profileButton.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(profileButton)
+
+    fireEvent.click(profileButton)
+    fireEvent.pointerDown(document.body)
+    expect(profileButton.getAttribute('aria-expanded')).toBe('false')
+  })
+
   it('shows the Google name for an unmatched account', async () => {
     vi.mocked(getCurrentSession).mockResolvedValue(unmatchedSession)
     render(<AuthStatus />)
 
+    const profileButton = await screen.findByRole('button', { name: 'Account for Google Profile' })
+    fireEvent.click(profileButton)
     expect(await screen.findByText('Google Profile')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Request registration' })).toBeNull()
   })
@@ -139,6 +163,7 @@ describe('AuthStatus', () => {
     vi.mocked(confirmGoogleAccountLink).mockResolvedValue(undefined)
 
     render(<AuthStatus />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Account for Stored Account' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Link this account' }))
 
     expect(await screen.findByText('Stored Account')).toBeTruthy()
@@ -152,6 +177,7 @@ describe('AuthStatus', () => {
     vi.mocked(signOut).mockResolvedValue(undefined)
 
     render(<AuthStatus />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Account for Stored Account' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
 
     expect(await screen.findByText('Anonymous access')).toBeTruthy()
