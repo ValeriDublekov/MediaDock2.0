@@ -87,11 +87,23 @@ export function AuthStatus({ onSessionChange }: {
     }
   }, [profileOpen])
 
-  async function runAction(operation: string, endpoint: string, action: () => Promise<unknown>) {
+  async function runAction(
+    operation: string,
+    endpoint: string,
+    action: () => Promise<unknown>,
+    clearSessionAfterAction = false,
+  ) {
     setBusy(true)
     setError(null)
+    let actionCompleted = false
     try {
       await action()
+      actionCompleted = true
+      if (clearSessionAfterAction) {
+        setSession(null)
+        onSessionChange?.(null, null)
+        setInvalidSession(false)
+      }
       const updatedSession = await getCurrentSession()
       setSession(updatedSession)
       onSessionChange?.(updatedSession, null)
@@ -99,9 +111,12 @@ export function AuthStatus({ onSessionChange }: {
     } catch (actionError) {
       const diagnostic = createDiagnostic(operation, endpoint, actionError)
       console.error('[MediaDock auth diagnostic]', diagnostic)
-      onSessionChange?.(session, diagnostic)
+      const signedOut = clearSessionAfterAction && actionCompleted
+      const nextSession = signedOut ? null : session
+      setSession(nextSession)
+      onSessionChange?.(nextSession, diagnostic)
       setError(diagnostic.message)
-      setInvalidSession(session === null || isUnauthorizedError(actionError))
+      setInvalidSession(signedOut ? false : nextSession === null || isUnauthorizedError(actionError))
     } finally {
       setBusy(false)
     }
@@ -124,7 +139,7 @@ export function AuthStatus({ onSessionChange }: {
       ) : session === null ? (
         <>
           <span className="auth-message" role="status">{invalidSession ? 'The saved sign-in session is invalid.' : 'Sign-in status unavailable'}</span>
-          {error && <button className="text-button" disabled={busy} onClick={() => void runAction('Reset sign-in', '/api/auth/logout', signOut)} type="button">Reset sign-in</button>}
+          {error && <button className="text-button" disabled={busy} onClick={() => void runAction('Reset sign-in', '/api/auth/logout', signOut, true)} type="button">Reset sign-in</button>}
           <button className="text-button" disabled={busy} onClick={() => void runAction('Retry session check', '/api/auth/session', getCurrentSession)} type="button">Retry</button>
         </>
       ) : !session.authenticated ? (
@@ -176,7 +191,7 @@ export function AuthStatus({ onSessionChange }: {
                   {busy ? 'Linking…' : 'Link this account'}
                 </button>
               )}
-              <button className="text-button" disabled={busy} onClick={() => void runAction('Sign out', '/api/auth/logout', signOut)} type="button">
+              <button className="text-button" disabled={busy} onClick={() => void runAction('Sign out', '/api/auth/logout', signOut, true)} type="button">
                 {busy ? 'Please wait' : 'Sign out'}
               </button>
             </div>

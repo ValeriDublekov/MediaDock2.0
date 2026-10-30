@@ -23,8 +23,28 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddMediaDockApi(builder.Configuration, builder.Environment);
-
 var app = builder.Build();
+var isOneShotHostOperation = app.Configuration.GetValue<bool>("migrate")
+	|| app.Configuration.GetValue<bool>("bootstrap-admin");
+if (app.Environment.IsProduction() && !isOneShotHostOperation)
+{
+	if (app.Configuration.GetValue<bool>("Authentication:LocalMock:Enabled"))
+	{
+		throw new InvalidOperationException(
+			"Authentication:LocalMock:Enabled is only supported in the Development environment.");
+	}
+
+	if (!app.Configuration.GetValue<bool>("Authentication:Google:Enabled"))
+	{
+		throw new InvalidOperationException("Production requires Google sign-in to be enabled.");
+	}
+
+	if (!app.Configuration.GetValue<bool>("AccessControl:Enforced"))
+	{
+		throw new InvalidOperationException("Production requires AccessControl:Enforced=true.");
+	}
+}
+
 var forwardedHeadersOptions = TrustedForwardedHeaders.CreateOptions(builder.Configuration);
 if (forwardedHeadersOptions is not null)
 {

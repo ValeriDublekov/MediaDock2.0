@@ -161,6 +161,34 @@ public sealed class GoogleAuthenticationApiTests
     }
 
     [Fact]
+    public void ProductionStartupRequiresGoogleSignIn()
+    {
+        using var factory = new ApiFactory(
+            "Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test",
+            accessControlEnforced: true,
+            environmentName: "Production");
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            factory.Services.GetRequiredService<IConfiguration>());
+
+        Assert.Contains("Google sign-in", exception.Message);
+    }
+
+    [Fact]
+    public void ProductionStartupRequiresAuthorizationEnforcement()
+    {
+        using var factory = new ApiFactory(
+            "Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test",
+            environmentName: "Production",
+            googleSignInEnabled: true);
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            factory.Services.GetRequiredService<IConfiguration>());
+
+        Assert.Contains("AccessControl:Enforced=true", exception.Message);
+    }
+
+    [Fact]
     public void LocalMockRequiresLoopbackDatabase()
     {
         using var factory = new ApiFactory(

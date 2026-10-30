@@ -86,7 +86,8 @@ internal static class GoogleAuthenticationApiTestSupport
         ILoggerProvider? loggerProvider = null,
         bool accessControlEnforced = false,
         bool localMockEnabled = false,
-        string environmentName = "Development") : WebApplicationFactory<Program>
+        string environmentName = "Development",
+        bool googleSignInEnabled = false) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -100,7 +101,10 @@ internal static class GoogleAuthenticationApiTestSupport
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
                     ["ConnectionStrings:MediaDock"] = connectionString,
-                    ["Authentication:Google:Enabled"] = "false",
+                    ["Authentication:Google:Enabled"] = googleSignInEnabled.ToString(),
+                    ["Authentication:Google:ClientId"] = googleSignInEnabled ? "test-client" : "",
+                    ["Authentication:Google:ClientSecret"] = googleSignInEnabled ? "test-secret" : "",
+                    ["Authentication:Google:CallbackUri"] = "https://mediadock.example/signin-oidc",
                     ["Authentication:LocalMock:Enabled"] = localMockEnabled.ToString(),
                     ["AccessControl:Enforced"] = accessControlEnforced.ToString()
                 }));

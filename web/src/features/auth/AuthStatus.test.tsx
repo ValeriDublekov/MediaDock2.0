@@ -183,4 +183,27 @@ describe('AuthStatus', () => {
     expect(await screen.findByText('Anonymous access')).toBeTruthy()
     expect(signOut).toHaveBeenCalledOnce()
   })
+
+  it('clears the active session when logout succeeds but status refresh fails', async () => {
+    vi.mocked(getCurrentSession)
+      .mockResolvedValueOnce(linkedSession())
+      .mockRejectedValueOnce(authError('Session status is unavailable.', 500, '/api/auth/session', 'trace-refresh'))
+    vi.mocked(signOut).mockResolvedValue(undefined)
+    const onSessionChange = vi.fn()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    render(<AuthStatus onSessionChange={onSessionChange} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Account for Stored Account' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
+
+    expect(await screen.findByText('Sign-in status unavailable')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Account for Stored Account' })).toBeNull()
+    expect(onSessionChange).toHaveBeenLastCalledWith(null, expect.objectContaining({
+      operation: 'Sign out',
+      endpoint: '/api/auth/session',
+      status: 500,
+      traceId: 'trace-refresh',
+    }))
+    consoleError.mockRestore()
+  })
 })

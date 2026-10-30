@@ -204,6 +204,8 @@ public sealed class UserAdministrationApiTests
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousRecommendationSettingsResponse.StatusCode);
         using var anonymousCatalogResponse = await anonymousClient.GetAsync("/api/catalog");
         Assert.Equal(HttpStatusCode.Unauthorized, anonymousCatalogResponse.StatusCode);
+        using var anonymousVersionResponse = await anonymousClient.GetAsync("/api/version");
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymousVersionResponse.StatusCode);
         using var anonymousHealthResponse = await anonymousClient.GetAsync("/health/live");
         Assert.Equal(HttpStatusCode.OK, anonymousHealthResponse.StatusCode);
 
@@ -271,6 +273,8 @@ public sealed class UserAdministrationApiTests
         using var adminClient = adminFactory.CreateClient();
         using var adminResponse = await adminClient.GetAsync("/api/admin/users");
         Assert.Equal(HttpStatusCode.OK, adminResponse.StatusCode);
+        using var adminVersionResponse = await adminClient.GetAsync("/api/version");
+        Assert.Equal(HttpStatusCode.OK, adminVersionResponse.StatusCode);
         using var adminSessionResponse = await adminClient.GetAsync("/api/auth/session");
         var adminSession = await adminSessionResponse.Content.ReadFromJsonAsync<CurrentSessionResponse>();
         Assert.True(adminSession?.AuthorizationEnforced);
