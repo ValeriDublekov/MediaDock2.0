@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Check } from 'lucide-react'
+import { Check, Info } from 'lucide-react'
 import { getRecommendationGenres, getRecommendations, markRecommendationWatched } from '../../api/client'
 import type { PageResponse, Recommendation, RecommendationCoefficients, RecommendationMediaType, RecommendationQuery } from '../../api/types'
 import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
@@ -20,6 +20,11 @@ import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 
 type CoefficientKey = keyof RecommendationCoefficients
 type SliderPercentages = Record<CoefficientKey, number>
+
+export interface RecommendationResultCount {
+  mediaType: RecommendationMediaType
+  totalCount: number
+}
 
 const coefficientControls: Array<{ key: CoefficientKey; id: string; label: string }> = [
   { key: 'ratingWeight', id: 'recommendation-rating-weight', label: 'IMDb rating' },
@@ -82,11 +87,18 @@ function eventOccasion(event: Recommendation['awardEvents'][number]): string | n
   return null
 }
 
-export function RecommendationsView({ mediaType }: { mediaType: RecommendationMediaType }) {
+export function RecommendationsView({
+  mediaType,
+  onResultCountChange,
+}: {
+  mediaType: RecommendationMediaType
+  onResultCountChange?: (count: RecommendationResultCount | null) => void
+}) {
   const titleTypeHeading = mediaType === 'movie' ? 'Movie' : 'Series'
   const titleType = mediaType === 'movie' ? 'movie' : 'series'
   const titleTypes = mediaType === 'movie' ? 'movies' : 'series'
   const [viewMode, setViewMode] = useState<ViewMode>('posters')
+  const [scoreGuideOpen, setScoreGuideOpen] = useState(false)
   const [sliderPercentages, setSliderPercentages] = useState(initialSliderPercentages)
   const [pageNumber, setPageNumber] = useState(1)
   const [draftYearFilter, setDraftYearFilter] = useState(emptyYearFilter)
@@ -127,6 +139,7 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
     let active = true
     setLoading(true)
     setError(null)
+    onResultCountChange?.(null)
     const query: RecommendationQuery = {
       mediaType,
       page: pageNumber,
@@ -138,14 +151,19 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
       ...(selectedGenres?.length ? { genres: selectedGenres } : {}),
     }
     getRecommendations(query)
-      .then((response) => { if (active) setResult(response) })
+      .then((response) => {
+        if (active) {
+          setResult(response)
+          onResultCountChange?.({ mediaType, totalCount: response.totalCount })
+        }
+      })
       .catch((requestError: unknown) => {
         if (active) setError(requestError instanceof Error ? requestError.message : 'Could not load recommendations.')
       })
       .finally(() => { if (active) setLoading(false) })
 
     return () => { active = false }
-  }, [appliedYearFilter, attempt, excludeWatched, mediaType, pageNumber, selectedGenres, sliderPercentages])
+  }, [appliedYearFilter, attempt, excludeWatched, mediaType, onResultCountChange, pageNumber, selectedGenres, sliderPercentages])
 
   function updateSlider(key: CoefficientKey, value: string) {
     setSliderPercentages((current) => changeSliderPercentages(current, key, value))
@@ -271,15 +289,7 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
     </div>
   }
 
-  return <section aria-labelledby="recommendations-heading" className="management-section recommendations-view">
-    <h2 id="recommendations-heading">Ranking and results</h2>
-    <p className="section-caption">A personal ranking of eligible award-nominated {titleTypes}, based on your ratings and the shared metadata catalog.</p>
-
-    <div className="section-toolbar catalog-section-toolbar">
-      <span className="result-count">{result ? `${result.totalCount.toLocaleString()} recommendations` : 'Recommendations'}</span>
-      <ViewModeControl onChange={setViewMode} value={viewMode} />
-    </div>
-
+  return <section aria-label={`${titleTypeHeading} recommendations`} className="management-section recommendations-view">
     <div className="recommendation-filter-controls">
       {result?.yearBounds && <YearRangeFilter
         bounds={result.yearBounds}
@@ -304,6 +314,18 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
         Exclude already watched {titleTypes}
       </label>
       <button className="button button-secondary" disabled={!appliedYearFilter.from && !appliedYearFilter.to && (selectedGenres === null || selectedGenres.length === 0) && excludeWatched} onClick={clearFilters} type="button">Clear filters</button>
+      <div className="recommendation-toolbar-actions">
+        <ViewModeControl onChange={setViewMode} value={viewMode} />
+        <button
+          aria-label="How recommendation scores are calculated"
+          className="button button-secondary recommendation-score-guide-trigger"
+          onClick={() => setScoreGuideOpen(true)}
+          title="View how recommendation scores are calculated"
+          type="button"
+        >
+          <Info aria-hidden="true" size={17} />
+        </button>
+      </div>
     </div>
 
     <fieldset aria-label="Recommendation score weights" className="recommendation-controls">
@@ -324,11 +346,6 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
       </div>
       <p aria-live="polite" className="recommendation-weight-total">Total weight: {Object.values(sliderPercentages).reduce((total, value) => total + value, 0)}%</p>
     </fieldset>
-
-    <details className="recommendation-score-guide">
-      <summary>How recommendation scores are calculated</summary>
-      <p>The API combines a Bayesian IMDb rating, capped time-normalized vote popularity, and capped points from distinct award events. Award points use the configured win or nomination value multiplied by your winner-derived category taste. The sliders set the three request coefficients; candidate eligibility and all score calculations remain server-side.</p>
-    </details>
 
     {loading && <LoadingState label="Loading recommendations" />}
     {!loading && error && <ErrorState message={error} onRetry={retry} />}
@@ -392,6 +409,29 @@ export function RecommendationsView({ mediaType }: { mediaType: RecommendationMe
       <Pagination page={result} onPageChange={changePage} />
     </>}
 
+    {scoreGuideOpen && <div className="detail-backdrop" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) setScoreGuideOpen(false)
+    }}>
+      <section
+        aria-labelledby="recommendation-score-guide-heading"
+        aria-modal="true"
+        className="detail-dialog recommendation-score-guide-dialog"
+        onKeyDown={(event) => { if (event.key === 'Escape') setScoreGuideOpen(false) }}
+        role="dialog"
+        tabIndex={-1}
+      >
+        <header className="detail-header">
+          <div>
+            <p className="eyebrow">SCORING</p>
+            <h2 id="recommendation-score-guide-heading">How recommendation scores are calculated</h2>
+          </div>
+          <button aria-label="Close recommendation scoring explanation" className="button button-secondary" onClick={() => setScoreGuideOpen(false)} type="button">Close</button>
+        </header>
+        <div className="detail-body">
+          <p className="detail-description">The API combines a Bayesian IMDb rating, capped time-normalized vote popularity, and capped points from distinct award events. Award points use the configured win or nomination value multiplied by your winner-derived category taste. The sliders set the three request coefficients; candidate eligibility and all score calculations remain server-side.</p>
+        </div>
+      </section>
+    </div>}
     {watchDialogItem && <div className="detail-backdrop" onMouseDown={(event) => {
       if (event.target === event.currentTarget) closeWatchDialog()
     }}>

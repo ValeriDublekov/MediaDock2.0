@@ -30,7 +30,8 @@ internal sealed class ApiResponseHeadersMiddleware(
                 headers["Strict-Transport-Security"] = "max-age=31536000";
             }
 
-            if (isPrivateResponse)
+            if (isPrivateResponse
+                || context.Response.ContentType?.StartsWith("text/html", StringComparison.OrdinalIgnoreCase) == true)
             {
                 headers.CacheControl = "no-store";
             }

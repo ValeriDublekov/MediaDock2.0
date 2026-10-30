@@ -90,16 +90,19 @@ if (builder.Configuration.GetValue<bool>("bootstrap-admin"))
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseMiddleware<ApiResponseHeadersMiddleware>();
+if (app.Environment.IsProduction())
+{
+	app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api"), publicFiles =>
+	{
+		publicFiles.UseDefaultFiles();
+		publicFiles.UseStaticFiles();
+	});
+}
+
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMiddleware<ApiRequestProtectionMiddleware>();
 app.UseAuthorization();
-
-if (app.Environment.IsProduction())
-{
-	app.UseDefaultFiles();
-	app.UseStaticFiles();
-}
 
 if (app.Environment.IsDevelopment())
 {
@@ -128,7 +131,13 @@ app.MapVersionEndpoints();
 
 if (app.Environment.IsProduction())
 {
-	app.MapFallbackToFile("index.html");
+	app.MapFallback("/api/{**path}", context =>
+	{
+		context.Response.StatusCode = StatusCodes.Status404NotFound;
+		return Task.CompletedTask;
+	}).AllowAnonymous();
+	app.MapFallbackToFile("index.html")
+		.AllowAnonymous();
 }
 
 app.Run();

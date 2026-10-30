@@ -133,6 +133,85 @@ public sealed class GoogleAuthenticationApiTests
     }
 
     [Fact]
+    public async Task ProductionServesPublicSpaShellButKeepsApplicationApisProtected()
+    {
+        var temporaryRoot = Path.GetFullPath("../../../../../../.test-tmp", AppContext.BaseDirectory);
+        var webRoot = Directory.CreateDirectory(Path.Combine(temporaryRoot, $"public-shell-{Guid.NewGuid():N}"));
+        try
+        {
+            await VerifyPublicShellAsync(webRoot.FullName);
+        }
+        finally
+        {
+            webRoot.Delete(recursive: true);
+        }
+    }
+
+    private static async Task VerifyPublicShellAsync(string webRootPath)
+    {
+        var assetsDirectory = Directory.CreateDirectory(Path.Combine(webRootPath, "assets"));
+        await File.WriteAllTextAsync(
+            Path.Combine(webRootPath, "index.html"),
+            "<!doctype html><title>MediaDock sign-in shell</title>");
+        await File.WriteAllTextAsync(Path.Combine(assetsDirectory.FullName, "app.js"), "public-shell-asset");
+
+        using var factory = new ApiFactory(
+            "Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test",
+            accessControlEnforced: true,
+            environmentName: "Production",
+            googleSignInEnabled: true,
+            additionalConfiguration: new Dictionary<string, string?>
+            {
+                ["AbuseControls:RateLimits:Authentication:PermitLimit"] = "120",
+                ["AbuseControls:RateLimits:Authentication:WindowSeconds"] = "60",
+                ["AbuseControls:RateLimits:Registration:PermitLimit"] = "5",
+                ["AbuseControls:RateLimits:Registration:WindowSeconds"] = "3600",
+                ["AbuseControls:RateLimits:Search:PermitLimit"] = "60",
+                ["AbuseControls:RateLimits:Search:WindowSeconds"] = "60",
+                ["AbuseControls:RateLimits:Uploads:PermitLimit"] = "10",
+                ["AbuseControls:RateLimits:Uploads:WindowSeconds"] = "60",
+                ["AbuseControls:RateLimits:Uploads:ConcurrencyLimit"] = "2",
+                ["AbuseControls:RateLimits:JobDispatch:PermitLimit"] = "30",
+                ["AbuseControls:RateLimits:JobDispatch:WindowSeconds"] = "60",
+                ["AbuseControls:RateLimits:JobDispatch:ConcurrencyLimit"] = "4"
+            },
+            webRootPath: webRootPath);
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://mediadock.example")
+        });
+
+        foreach (var path in new[] { "/", "/login", "/index.html", "/catalog", "/account/personal-ratings" })
+        {
+            using var shellResponse = await client.GetAsync(path);
+            Assert.Equal(HttpStatusCode.OK, shellResponse.StatusCode);
+            Assert.Equal("no-store", shellResponse.Headers.CacheControl?.ToString());
+            Assert.Contains("MediaDock sign-in shell", await shellResponse.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
+
+        using var assetResponse = await client.GetAsync("/assets/app.js");
+        Assert.Equal(HttpStatusCode.OK, assetResponse.StatusCode);
+        Assert.Equal("public-shell-asset", await assetResponse.Content.ReadAsStringAsync());
+
+        using var sessionResponse = await client.GetAsync("/api/auth/session");
+        Assert.Equal(HttpStatusCode.OK, sessionResponse.StatusCode);
+
+        using var protectedApiResponse = await client.GetAsync("/api/catalog");
+        Assert.Equal(HttpStatusCode.Unauthorized, protectedApiResponse.StatusCode);
+
+        using var protectedVersionResponse = await client.GetAsync("/api/version");
+        Assert.Equal(HttpStatusCode.Unauthorized, protectedVersionResponse.StatusCode);
+
+        foreach (var path in new[] { "/api", "/api/not-a-real-endpoint", "/api/not-a-real-endpoint.js", "/API/unknown" })
+        {
+            using var unknownApiResponse = await client.GetAsync(path);
+            Assert.Equal(HttpStatusCode.NotFound, unknownApiResponse.StatusCode);
+            Assert.Equal("no-store", unknownApiResponse.Headers.CacheControl?.ToString());
+            Assert.DoesNotContain("MediaDock sign-in shell", await unknownApiResponse.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public async Task AuthenticationRateLimitReturns429AndRecoversAfterItsWindow()
     {
         using var factory = new ApiFactory(

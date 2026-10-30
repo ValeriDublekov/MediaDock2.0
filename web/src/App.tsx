@@ -16,7 +16,7 @@ import { PersonalRatingsImportView } from './features/personal-ratings/PersonalR
 import { AuthStatus } from './features/auth/AuthStatus'
 import { UsersView } from './features/users/UsersView'
 import { RecommendationSettingsView } from './features/recommendations/RecommendationSettingsView'
-import { RecommendationsView } from './features/recommendations/RecommendationsView'
+import { RecommendationsView, type RecommendationResultCount } from './features/recommendations/RecommendationsView'
 import { MovieTablesDashboardView } from './features/dashboard/MovieTablesDashboardView'
 
 type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'account' | 'administration'
@@ -26,6 +26,12 @@ const sections: { id: Section; path: string; label: string }[] = [
   { id: 'oscar', path: '/oscar', label: 'Oscar catalog' },
   { id: 'golden-globes', path: '/golden-globes', label: 'Golden Globes catalog' },
   { id: 'favorites', path: '/favorites', label: 'Favorites' },
+]
+
+const catalogNavigation = [
+  { path: '/catalog', label: 'Torrents catalog' },
+  { path: '/oscar', label: 'Oscar catalog' },
+  { path: '/golden-globes', label: 'Golden Globes catalog' },
 ]
 
 const administrationPages = [
@@ -61,9 +67,9 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
     description: 'Browse Golden Globes nominees, winners, and award categories.',
   },
   favorites: {
-    eyebrow: 'MY TITLES',
+    eyebrow: '',
     title: 'Favorites',
-    description: 'Movies and series saved from supported catalogs, recommendations, or awards.',
+    description: '',
   },
   account: {
     eyebrow: 'PERSONAL',
@@ -103,21 +109,63 @@ function ActiveAccountArea({ isActiveAccount, children, title, message }: {
     : <RouteAccessRequired message={message} title={title} />
 }
 
+function MainNavigationItem({ item, index, isPersonalRatingsPath }: {
+  item: { path: string; label: string }
+  index: number
+  isPersonalRatingsPath: boolean
+}) {
+  return item.path === '/account/personal-ratings' ? (
+    <div className="account-nav-group">
+      <NavLink
+        aria-label={item.label}
+        className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
+        to={item.path}
+      >
+        <span className="nav-number">{String(index + 1).padStart(2, '0')}</span>
+        <span>{item.label}</span>
+      </NavLink>
+      {isPersonalRatingsPath && <div className="configuration-nav">
+        <NavLink
+          className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
+          end
+          to="/account/personal-ratings/import"
+        >Import ratings</NavLink>
+      </div>}
+    </div>
+  ) : (
+    <NavLink
+      aria-label={item.label}
+      className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
+      end
+      to={item.path}
+    >
+      <span className="nav-number">{String(index + 1).padStart(2, '0')}</span>
+      <span>{item.label}</span>
+    </NavLink>
+  )
+}
+
 function PersonalRecommendationsRoute({
   accountKey,
   isActiveAccount,
   mediaType,
+  onResultCountChange,
 }: {
   accountKey: string | null
   isActiveAccount: boolean
   mediaType: RecommendationMediaType
+  onResultCountChange: (count: RecommendationResultCount | null) => void
 }) {
   return <ActiveAccountArea
     isActiveAccount={isActiveAccount}
     message="Sign in with an active linked account to view personal recommendations."
     title="Recommendations unavailable"
   >
-    <RecommendationsView key={`${accountKey ?? 'no-active-account'}-${mediaType}`} mediaType={mediaType} />
+    <RecommendationsView
+      key={`${accountKey ?? 'no-active-account'}-${mediaType}`}
+      mediaType={mediaType}
+      onResultCountChange={onResultCountChange}
+    />
   </ActiveAccountArea>
 }
 
@@ -239,6 +287,7 @@ function AppContent() {
   const [authChecked, setAuthChecked] = useState(false)
   const [session, setSession] = useState<CurrentSession | null>(null)
   const [authDiagnostic, setAuthDiagnostic] = useState<AuthDiagnostic | null>(null)
+  const [recommendationResultCount, setRecommendationResultCount] = useState<RecommendationResultCount | null>(null)
   const onSessionChange = useCallback((currentSession: CurrentSession | null, diagnostic: AuthDiagnostic | null = null) => {
     setSession(currentSession)
     setAuthDiagnostic(diagnostic)
@@ -253,17 +302,12 @@ function AppContent() {
     : null
   const isAdmin = isActiveAccount && session?.user?.role === 'admin'
   const isPersonalRatingsPath = location.pathname === '/account/personal-ratings' || location.pathname === '/account/personal-ratings/import'
-  const mainNavigation: { path: string; label: string }[] = [
-    { path: '/catalog', label: 'Torrents catalog' },
-    ...(isActiveAccount ? [
-      ...recommendationPages,
-      { path: '/favorites', label: 'Favorites' },
-      { path: '/account/ignored-movies', label: 'Ignored' },
-      { path: '/account/personal-ratings', label: 'Personal ratings' },
-    ] : []),
-    { path: '/oscar', label: 'Oscar catalog' },
-    { path: '/golden-globes', label: 'Golden Globes catalog' },
-  ]
+  const personalNavigation: { path: string; label: string }[] = isActiveAccount ? [
+    ...recommendationPages,
+    { path: '/favorites', label: 'Favorites' },
+    { path: '/account/ignored-movies', label: 'Ignored' },
+    { path: '/account/personal-ratings', label: 'Personal ratings' },
+  ] : []
   const isAdministrationPath = location.pathname.startsWith('/configuration') || location.pathname === '/history'
   const section: Section = isAdministrationPath
     ? 'administration'
@@ -284,10 +328,13 @@ function AppContent() {
       : location.pathname === '/account/ignored-movies'
         ? { eyebrow: 'PERSONAL', title: 'Ignored titles', description: '' }
         : recommendationPage
-          ? { eyebrow: 'PERSONAL', title: recommendationPage.label, description: '' }
+          ? { eyebrow: '', title: recommendationPage.label, description: '' }
           : content
   const title = administrationPage?.label ?? pageContent.title
   const description = administrationPage?.description ?? pageContent.description
+  const visibleRecommendationCount = recommendationPage && recommendationResultCount?.mediaType === recommendationPage.mediaType
+    ? recommendationResultCount.totalCount
+    : null
   const registrationSession = session?.authenticated && session.accountState === 'unmatched' ? session : null
   const recoveryDiagnostic = session === null ? authDiagnostic : null
   const breadcrumbContext = recoveryDiagnostic
@@ -310,38 +357,23 @@ function AppContent() {
           <span className="brand-name">MediaDock</span>
         </NavLink>
 
-        <div className="sidebar-label sidebar-label-first">MAIN MENU</div>
         <nav className="primary-nav" aria-label="Main navigation">
-          {mainNavigation.map((item, index) => item.path === '/account/personal-ratings' ? (
-            <div className="account-nav-group" key={item.path}>
-              <NavLink
-                aria-label={item.label}
-                className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
-                to={item.path}
-              >
-                <span className="nav-number">{String(index + 1).padStart(2, '0')}</span>
-                <span>{item.label}</span>
-              </NavLink>
-              {isPersonalRatingsPath && <div className="configuration-nav">
-                <NavLink
-                  className={({ isActive }) => `configuration-nav-item${isActive ? ' is-active' : ''}`}
-                  end
-                  to="/account/personal-ratings/import"
-                >Import ratings</NavLink>
-              </div>}
-            </div>
-          ) : (
-            <NavLink
-              aria-label={item.label}
-              className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
-              end
+          <div className="sidebar-label nav-group-heading sidebar-label-first">CATALOGS</div>
+          {catalogNavigation.map((item, index) => <MainNavigationItem
+            index={index}
+            isPersonalRatingsPath={isPersonalRatingsPath}
+            item={item}
+            key={item.path}
+          />)}
+          {personalNavigation.length > 0 && <>
+            <div className="sidebar-label nav-group-heading">PERSONAL</div>
+            {personalNavigation.map((item, index) => <MainNavigationItem
+              index={index + catalogNavigation.length}
+              isPersonalRatingsPath={isPersonalRatingsPath}
+              item={item}
               key={item.path}
-              to={item.path}
-            >
-              <span className="nav-number">{String(index + 1).padStart(2, '0')}</span>
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+            />)}
+          </>}
         </nav>
 
         {isAdmin && (
@@ -413,7 +445,9 @@ function AppContent() {
         ) : recoveryDiagnostic ? (
           <AuthRecoveryScreen diagnostic={recoveryDiagnostic} />
         ) : !session?.authenticated ? (
-          <WelcomePage signInEnabled={Boolean(session?.signInEnabled)} />
+          location.pathname === '/' || location.pathname === '/login'
+            ? <WelcomePage signInEnabled={Boolean(session?.signInEnabled)} />
+            : <Navigate replace to="/login" />
         ) : registrationSession ? (
           <RegistrationGate onSessionChange={onSessionChange} session={registrationSession} />
         ) : !isActiveAccount ? (
@@ -425,16 +459,18 @@ function AppContent() {
               <AuthDiagnosticDetails diagnostic={authDiagnostic} />
             </section>
           )}
-          {location.pathname !== '/catalog' && <div className={section === 'oscar' || section === 'golden-globes' || recommendationPage ? 'page-heading catalog-page-heading' : 'page-heading'}>
-            <div>
-              <p className="eyebrow">{content.eyebrow}</p>
+          {location.pathname !== '/catalog' && <div className="page-heading">
+            <div className={recommendationPage ? 'page-heading-copy' : undefined}>
+              {pageContent.eyebrow && <p className="eyebrow">{pageContent.eyebrow}</p>}
               <h1>{title}</h1>
               {description && <p className="page-description">{description}</p>}
+              {visibleRecommendationCount !== null && <span className="result-count page-heading-count">{visibleRecommendationCount.toLocaleString()} recommendations</span>}
             </div>
           </div>}
 
           <Routes>
             <Route path="/" element={<Navigate replace to="/catalog" />} />
+            <Route path="/login" element={<Navigate replace to="/catalog" />} />
             <Route path="/catalog" element={<CatalogView canDeleteTitles={isAdmin} canViewHistory={isAdmin} />} />
             <Route path="/oscar" element={<OscarCatalogView />} />
             <Route path="/golden-globes" element={<GoldenGlobeCatalogView />} />
@@ -458,6 +494,7 @@ function AppContent() {
                 accountKey={accountKey}
                 isActiveAccount={Boolean(isActiveAccount)}
                 mediaType={page.mediaType}
+                onResultCountChange={setRecommendationResultCount}
               />}
               key={page.path}
               path={page.path}

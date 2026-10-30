@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Golden Globes catalog | MediaDock design reference</title>
+    <link rel="icon" type="image/svg+xml" href="../public/mediadock-favicon.svg">
+    <link rel="stylesheet" href="golden-globes.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <a class="brand" href="#main">
+          <span class="brand-mark">MD</span>
+          <span class="brand-name">MediaDock</span>
+        </a>
+
+        <nav class="primary-nav" aria-label="Catalogs and personal pages">
+          <p class="sidebar-label sidebar-label-first">CATALOGS</p>
+          <a class="nav-item" href="#"><span class="nav-number">01</span><span>Torents catalog</span></a>
+          <a class="nav-item" href="#"><span class="nav-number">02</span><span>Oscar catalog</span></a>
+          <a class="nav-item is-active" aria-current="page" href="#main"><span class="nav-number">03</span><span>Golden Globes catalog</span></a>
+
+          <p class="sidebar-label">PERSONAL</p>
+          <a class="nav-item" href="#"><span class="nav-number">04</span><span>Movie recommendations</span></a>
+          <a class="nav-item" href="#"><span class="nav-number">05</span><span>Series recommendations</span></a>
+          <a class="nav-item" href="#"><span class="nav-number">06</span><span>Favorites</span></a>
+          <a class="nav-item" href="#"><span class="nav-number">07</span><span>Ignored</span></a>
+          <a class="nav-item" href="#"><span class="nav-number">08</span><span>Personal ratings</span></a>
+
+          <p class="sidebar-label">ADMINISTRATION</p>
+          <a class="nav-item" href="#"><span class="nav-number">09</span><span>Administration</span></a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <span class="status-mark" aria-hidden="true"></span>
+          <span>Local instance</span>
+          <span class="status-caption">API-backed</span>
+        </div>
+      </aside>
+
+      <div class="main-shell">
+        <header class="topbar">
+          <div class="topbar-content">
+            <div class="breadcrumb" aria-label="Breadcrumb">
+              <span class="breadcrumb-brand">MediaDock</span>
+              <span class="breadcrumb-separator" aria-hidden="true">/</span>
+              <span class="breadcrumb-current">GOLDEN GLOBES</span>
+            </div>
+            <button class="profile-avatar" type="button" aria-label="Profile">VD</button>
+          </div>
+        </header>
+
+        <main class="page-content" id="main">
+          <header class="page-heading">
+            <div>
+              <p class="eyebrow">GOLDEN GLOBES</p>
+              <h1>Golden Globes catalog</h1>
+              <p class="page-description">Browse Golden Globes nominees, winners, and award categories.</p>
+            </div>
+          </header>
+
+          <div class="section-toolbar">
+            <span class="result-count">1,270 Golden Globes films</span>
+            <div class="toolbar-actions">
+              <div class="segment-control" role="group" aria-label="View mode">
+                <button type="button" aria-pressed="true">Posters</button>
+                <button type="button" aria-pressed="false">Table</button>
+              </div>
+              <button class="text-button" type="button">Refresh results</button>
+            </div>
+          </div>
+
+          <form class="filter-form" role="search">
+            <div class="field filter-search">
+              <label for="film-search">Search films</label>
+              <input id="film-search" type="search" placeholder="Film title">
+            </div>
+
+            <fieldset class="range-field">
+              <legend>Ceremony year</legend>
+              <div class="range-readout"><span>1981</span><strong>1981 - 2026</strong><span>2026</span></div>
+              <div class="range-track" aria-hidden="true"><span class="range-thumb range-thumb-start"></span><span class="range-thumb range-thumb-end"></span></div>
+              <div class="range-captions"><span>From</span><span>To</span></div>
+            </fieldset>
+
+            <fieldset class="range-field">
+              <legend>IMDb rating</legend>
+              <div class="range-readout"><span>3.2</span><strong>3.2 - 9.6</strong><span>9.6</span></div>
+              <div class="range-track" aria-hidden="true"><span class="range-thumb range-thumb-start"></span><span class="range-thumb range-thumb-end"></span></div>
+              <div class="range-captions"><span>From</span><span>To</span></div>
+            </fieldset>
+
+            <button class="button button-secondary clear-button" type="button">Clear</button>
+
+            <details class="advanced-filters">
+              <summary><span class="filter-plus" aria-hidden="true">+</span>More filters</summary>
+              <div class="advanced-fields">
+                <div class="field"><label for="categories">Categories</label><select id="categories"><option>All categories</option></select></div>
+                <div class="field"><label for="award-result">Award result</label><select id="award-result"><option>All results</option><option>Winners</option><option>Nominees</option></select></div>
+                <div class="field"><label for="omdb-status">OMDb status</label><select id="omdb-status"><option>All statuses</option></select></div>
+              </div>
+            </details>
+          </form>
+
+          <section class="poster-grid" aria-label="Golden Globes results">
+            <article class="movie-tile">
+              <div class="poster-stage">
+                <img class="poster" src="https://m.media-amazon.com/images/M/MV5BYjU5YTdlZTItNWM5Yi00OGM1LTk1NGItNjY5MGU3Y2JkOWIwXkEyXkFqcGc@._V1_QL75_UY562_CR35,0,380,562_.jpg" alt="Abbott Elementary poster" loading="lazy">
+              </div>
+              <div class="movie-tile-info">
+                <div class="tile-heading"><h2 class="tile-title">Abbott Elementary</h2><span class="tile-year">2026</span></div>
+                <span class="tile-rating">IMDb <strong>8.2</strong> <span>/ 10</span></span>
+                <div class="movie-title-metadata"><span class="movie-title-director">Director: Not listed</span><p class="movie-title-plot">A workplace comedy centered on a group of dedicated teachers - and an oblivious principal - in a Philadelphia public school where, despite the odds stacked against them, they are determined to help their students succeed in life.</p></div>
+                <div class="tile-genres"><span class="tile-genre">Comedy</span></div>
+                <div class="movie-awards-summary"><span class="awards-heading">Awards and nominations</span><div class="award-source"><strong>Golden Globes</strong><span>1 win &middot; 3 nominations</span></div><span class="details-link">View Golden Globes details (3)</span></div>
+              </div>
+            </article>
+
+            <article class="movie-tile">
+              <div class="poster-stage">
+                <img class="poster" src="https://m.media-amazon.com/images/M/MV5BNGY1YjBiNzMtYWZhNC00OWViLWE0MzItNjc4YzczOGNiM2I0XkEyXkFqcGc@._V1_QL75_UX380_CR0,0,380,562_.jpg" alt="Adolescence poster" loading="lazy">
+              </div>
+              <div class="movie-tile-info">
+                <div class="tile-heading"><h2 class="tile-title">Adolescence</h2><span class="tile-year">2026</span></div>
+                <span class="tile-rating">IMDb <strong>8.1</strong> <span>/ 10</span></span>
+                <div class="movie-title-metadata"><span class="movie-title-director">Director: Not listed</span><p class="movie-title-plot">When a 13-year-old is accused of the murder of a classmate, his family, therapist and the detective in charge are all left asking what really happened.</p></div>
+                <div class="tile-genres"><span class="tile-genre">Crime</span><span class="tile-genre">Drama</span><span class="tile-genre">Thriller</span></div>
+                <div class="movie-awards-summary"><span class="awards-heading">Awards and nominations</span><div class="award-source"><strong>Golden Globes</strong><span>1 win &middot; 1 nomination</span></div><span class="details-link">View Golden Globes details (1)</span></div>
+              </div>
+            </article>
+
+            <article class="movie-tile">
+              <div class="poster-stage">
+                <img class="poster" src="https://m.media-amazon.com/images/M/MV5BNzQ4NDQ5MmMtNWEwOC00M2U1LTgzN2EtYjI5ODkzZTlmZDJiXkEyXkFqcGc@._V1_QL75_UX380_CR0,0,380,562_.jpg" alt="All Her Fault poster" loading="lazy">
+              </div>
+              <div class="movie-tile-info">
+                <div class="tile-heading"><h2 class="tile-title">All Her Fault</h2><span class="tile-year">2026</span></div>
+                <span class="tile-rating">IMDb <strong>7.5</strong> <span>/ 10</span></span>
+                <div class="movie-title-metadata"><span class="movie-title-director">Director: Not listed</span><p class="movie-title-plot">When her son vanishes after a play date at the park, a mother is thrust into a desperate search to uncover the truth behind his disappearance.</p></div>
+                <div class="tile-genres"><span class="tile-genre">Drama</span><span class="tile-genre">Mystery</span><span class="tile-genre">Thriller</span></div>
+                <div class="movie-awards-summary"><span class="awards-heading">Awards and nominations</span><div class="award-source"><strong>Golden Globes</strong><span>0 wins &middot; 1 nomination</span></div><span class="details-link">View Golden Globes details (1)</span></div>
+              </div>
+            </article>
+
+            <article class="movie-tile">
+              <div class="poster-stage">
+                <img class="poster" src="https://m.media-amazon.com/images/M/MV5BM2IzNjdiNzUtNTJjMy00Mjk5LTg3MzItNzA2ZjYzOWE2MGIyXkEyXkFqcGc@._V1_QL75_UY562_CR21,0,380,562_.jpg" alt="Arco poster" loading="lazy">
+              </div>
+              <div class="movie-tile-info">
+                <div class="tile-heading"><h2 class="tile-title">Arco</h2><span class="tile-year">2026</span></div>
+                <span class="tile-rating">IMDb <strong>7.2</strong> <span>/ 10</span></span>
+                <div class="movie-title-metadata"><span class="movie-title-director">Director: Ugo Bienvenu</span><p class="movie-title-plot">In 2075, a girl witnesses a mysterious boy in a rainbow suit fall from the sky. He comes from an idyllic far future where time travel is possible. She shelters him and will do whatever it takes to help him return to his time.</p></div>
+                <div class="tile-genres"><span class="tile-genre">Animation</span><span class="tile-genre">Adventure</span><span class="tile-genre">Fantasy</span></div>
+                <div class="movie-awards-summary"><span class="awards-heading">Awards and nominations</span><div class="award-source"><strong>Golden Globes</strong><span>0 wins &middot; 1 nomination</span></div><span class="details-link">View Golden Globes details (1)</span></div>
+              </div>
+            </article>
+
+            <article class="movie-tile">
+              <div class="poster-stage">
+                <img class="poster" src="https://m.media-amazon.com/images/M/MV5BZDYxY2I1OGMtN2Y4MS00ZmU1LTgyNDAtODA0MzAyYjI0N2Y2XkEyXkFqcGc@._V1_QL75_UX380_CR0,0,380,562_.jpg" alt="Avatar: Fire and Ash poster" loading="lazy">
+              </div>
+              <div class="movie-tile-info">
+                <div class="tile-heading"><h2 class="tile-title">Avatar: Fire and Ash</h2><span class="tile-year">2026</span></div>
+                <span class="tile-rating">IMDb <strong>7.2</strong> <span>/ 10</span></span>
+                <div class="movie-title-metadata"><span class="movie-title-director">Director: James Cameron</span><p class="movie-title-plot">Jake and Neytiri's family grapples with grief, encountering a new, aggressive Na'vi tribe, the Ash People, who are led by the fiery Varang, as the conflict on Pandora escalates and a new moral focus emerges.</p></div>
+                <div class="tile-genres"><span class="tile-genre">Action</span><span class="tile-genre">Adventure</span><span class="tile-genre">Drama</span></div>
+                <div class="movie-awards-summary"><span class="awards-heading">Awards and nominations</span><div class="award-source"><strong>Golden Globes</strong><span>0 wins &middot; 1 nomination</span></div><span class="details-link">View Golden Globes details (1)</span></div>
+              </div>
+            </article>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,6 +1,6 @@
 # Security
 
-This page records security boundaries for the standalone application. See [project context](PROJECT_CONTEXT.md) for local-versus-production boundaries, the [local runbook](../../README.md) for application setup, and the [systemd runbook](../../deploy/systemd/README.md) for host configuration.
+This page records security boundaries for the standalone application. Open application/dependency changes are in the [code security review](SECURITY_AUDIT_2026-10-26.md); host/release findings are in the separate [deployment review](SECURITY_DEPLOYMENT_REVIEW_2026-10-30.md). See [project context](PROJECT_CONTEXT.md) for local-versus-production boundaries, the [local runbook](../../README.md) for application setup, and the [systemd runbook](../../deploy/systemd/README.md) for host configuration.
 
 ## Network And Authorization
 
@@ -14,11 +14,13 @@ Enable sign-in only after the HTTPS route, Cloudflare Access policy, and exact G
 
 The host-only `bootstrap-admin` tool trusts operator-supplied identity values and does not verify Google claims. Obtain them from an authenticated `/api/auth/session` response and remove the bootstrap values from `.env` after success. See the [bootstrap procedure](../../README.md#initial-administrator-bootstrap).
 
-The optional Configuration deployment panel lets any client inside the same LAN boundary trigger the full host deployment pipeline, including migrations. The host service exposes only fixed actions over a Unix socket, but this remains a high-impact unauthenticated control. Keep the API inaccessible outside the trusted LAN; see [operations and jobs](API_OPERATIONS_AND_JOBS.md) and the [systemd runbook](../../deploy/systemd/README.md#web-deployment-control).
+In current source, the optional Configuration deployment panel requires an active administrator when enforcement is enabled, and cookie-authenticated mutations pass the central CSRF/origin checks. The host service exposes only fixed actions, but its Unix socket is currently world-writable in a traversable directory; local callers can bypass those application checks. Restrict its caller identity/permissions or disable the bridge before exposure. An older deployment with enforcement disabled also remains unsafe regardless of LAN or Cloudflare access; see the [deployment review](SECURITY_DEPLOYMENT_REVIEW_2026-10-30.md), [operations and jobs](API_OPERATIONS_AND_JOBS.md), and [systemd runbook](../../deploy/systemd/README.md#web-deployment-control).
 
 ## Browser And Cache Policy
 
-The API adds `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, a restrictive referrer and permissions policy, and a `Content-Security-Policy-Report-Only` policy. CSP remains report-only while browser behavior is assessed; this policy has no report collection endpoint. HSTS is disabled by default. After HTTPS coverage for every public hostname is verified, set `HSTS_ENABLED=true`; the API then emits HSTS only in Production when ASP.NET sees an HTTPS request, including HTTPS established by a trusted forwarded-proto header. It uses a one-year max age without `includeSubDomains`. All `/api/` responses and the `/signin-oidc` callback use `Cache-Control: no-store`. These application headers do not establish what Cloudflare or another edge returns to clients.
+Production serves the public static web root before authorization, excluding `/api` paths, and explicitly allows the SPA shell anonymously. `/` and `/login` are public entry pages. Once the session check confirms an anonymous visitor, React redirects other page URLs to `/login` without mounting private views. Account approval remains required for application content. Known business APIs retain authorization; unknown `/api` paths return 404 rather than the SPA shell. This fixes A10 in source; it is not evidence that the running release contains the fix.
+
+The API adds `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, a restrictive referrer and permissions policy, and a `Content-Security-Policy-Report-Only` policy. CSP remains report-only while browser behavior is assessed; this policy has no report collection endpoint. HSTS is disabled by default. After HTTPS coverage for every public hostname is verified, set `HSTS_ENABLED=true`; the API then emits HSTS only in Production when ASP.NET sees an HTTPS request, including HTTPS established by a trusted forwarded-proto header. It uses a one-year max age without `includeSubDomains`. HTML, all `/api/` responses and the `/signin-oidc` callback use `Cache-Control: no-store`. These application headers do not establish what Cloudflare or another edge returns to clients.
 
 Feed-derived source links are rendered only for absolute HTTP or HTTPS URLs, and links opened in a new tab use `noopener noreferrer`.
 

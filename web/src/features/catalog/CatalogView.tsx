@@ -271,10 +271,10 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
 
   return (
     <section aria-label="Catalog" className="media-view">
-      <div className="page-heading catalog-page-heading">
-        <div className="catalog-heading-copy">
+      <div className="page-heading">
+        <div className="page-heading-copy">
           <h1>{showingCatalogHistory ? 'Catalog history' : 'Torrents catalog'}</h1>
-          {!showingCatalogHistory && <span className="result-count catalog-result-count">{result ? `${result.totalCount.toLocaleString()} titles` : 'Catalog records'}</span>}
+          {!showingCatalogHistory && <span className="result-count page-heading-count">{result ? `${result.totalCount.toLocaleString()} titles` : 'Catalog records'}</span>}
         </div>
         {showingCatalogHistory && <button
           className="button button-secondary catalog-heading-action"

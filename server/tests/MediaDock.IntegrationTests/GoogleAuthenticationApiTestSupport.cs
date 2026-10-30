@@ -99,11 +99,17 @@ internal static class GoogleAuthenticationApiTestSupport
         bool localMockEnabled = false,
         string environmentName = "Development",
         bool googleSignInEnabled = false,
-        IReadOnlyDictionary<string, string?>? additionalConfiguration = null) : WebApplicationFactory<Program>
+        IReadOnlyDictionary<string, string?>? additionalConfiguration = null,
+        string? webRootPath = null) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment(environmentName);
+            if (webRootPath is not null)
+            {
+                builder.UseWebRoot(webRootPath);
+            }
+
             if (loggerProvider is not null)
             {
                 builder.ConfigureLogging(logging => logging.AddProvider(loggerProvider));

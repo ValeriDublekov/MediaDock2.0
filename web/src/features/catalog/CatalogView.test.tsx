@@ -255,7 +255,9 @@ describe('CatalogView', () => {
     const view = render(<CatalogView />)
 
     expect(screen.queryByRole('button', { name: 'History' })).toBeNull()
-    expect(screen.getByRole('heading', { name: 'Torrents catalog', level: 1 })).toBeTruthy()
+    const heading = screen.getByRole('heading', { name: 'Torrents catalog', level: 1 })
+    expect(heading.closest('.page-heading')?.className).toBe('page-heading')
+    expect(heading.parentElement?.classList.contains('page-heading-copy')).toBe(true)
     expect(await screen.findByText('0 titles')).toBeTruthy()
     view.rerender(<CatalogView canViewHistory />)
     const controlRow = view.container.querySelector('.catalog-control-row') as HTMLElement
@@ -265,7 +267,7 @@ describe('CatalogView', () => {
     expect(within(controlRow).getByRole('button', { name: 'History' })).toBeTruthy()
     expect(Array.from(controlRow.querySelectorAll('.toolbar-actions button')).map((button) => button.textContent?.trim())).toEqual(['Posters', 'Table', 'RSS contents', 'History'])
     expect(within(controlRow).queryByRole('button', { name: 'Refresh results' })).toBeNull()
-    expect(view.container.querySelector('.catalog-heading-copy .result-count')).toBeTruthy()
+    expect(view.container.querySelector('.page-heading-copy .result-count')).toBeTruthy()
     expect(view.container.querySelector('.section-toolbar')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'History' }))
 

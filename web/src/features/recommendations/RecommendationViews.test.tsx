@@ -267,20 +267,49 @@ describe('RecommendationsView', () => {
 
   it('defaults to poster cards and keeps the table as an alternate view', async () => {
     vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()]))
+    const onResultCountChange = vi.fn()
 
-    const view = render(<RecommendationsView mediaType="movie" />)
+    const view = render(<RecommendationsView mediaType="movie" onResultCountChange={onResultCountChange} />)
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Ranking and results' })).toBeTruthy()
-    expect(screen.queryByRole('heading', { level: 2, name: 'Recommendations' })).toBeNull()
     expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
-    const catalogSections = [...view.container.querySelectorAll('.catalog-section-toolbar, .recommendation-filter-controls, .recommendation-controls, .recommendation-score-guide')]
-    expect(catalogSections.map((element) => element.classList.contains('catalog-section-toolbar'))).toEqual([true, false, false, false])
+    expect(screen.queryByText('Ranking and results')).toBeNull()
+    expect(screen.queryByText(/A personal ranking of eligible award-nominated/)).toBeNull()
+    expect(view.container.querySelector('.catalog-section-toolbar')).toBeNull()
+    const filterControls = view.container.querySelector('.recommendation-filter-controls') as HTMLElement
+    const toolbarActions = filterControls.lastElementChild as HTMLElement
+    expect(toolbarActions.classList.contains('recommendation-toolbar-actions')).toBe(true)
+    expect(toolbarActions.querySelector('.view-mode-control')).toBeTruthy()
+    expect(toolbarActions.lastElementChild).toBe(screen.getByRole('button', { name: 'How recommendation scores are calculated' }))
+    await waitFor(() => expect(onResultCountChange).toHaveBeenLastCalledWith({ mediaType: 'movie', totalCount: 1 }))
     expect(screen.getByRole('button', { name: 'Posters' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.queryByRole('columnheader', { name: 'MOVIE' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(screen.getByRole('columnheader', { name: 'MOVIE' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
     expect(screen.getByRole('button', { name: 'Posters' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it.each(['movie', 'series'] as const)('opens the score explanation for %s recommendations', async (mediaType) => {
+    vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([]))
+
+    render(<RecommendationsView mediaType={mediaType} />)
+
+    await screen.findByText('No recommendations available')
+    const guideButton = screen.getByRole('button', { name: 'How recommendation scores are calculated' })
+    expect(guideButton.getAttribute('title')).toBe('View how recommendation scores are calculated')
+    expect(screen.getByRole('button', { name: 'Posters' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Table' })).toBeTruthy()
+    const filterControls = screen.getByRole('button', { name: 'Table' }).closest('.recommendation-filter-controls') as HTMLElement
+    const toolbarActions = filterControls.lastElementChild as HTMLElement
+    expect(toolbarActions.classList.contains('recommendation-toolbar-actions')).toBe(true)
+    expect(toolbarActions.lastElementChild).toBe(guideButton)
+
+    fireEvent.click(guideButton)
+
+    const dialog = screen.getByRole('dialog', { name: 'How recommendation scores are calculated' })
+    expect(within(dialog).getByText(/Bayesian IMDb rating, capped time-normalized vote popularity/)).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close recommendation scoring explanation' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('shows catalog-style metadata and opens full recommendation details', async () => {

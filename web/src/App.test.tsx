@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { getCurrentSession, requestRegistration } from './api/client'
-import type { AuthDiagnostic, CurrentSession } from './api/types'
+import type { AuthDiagnostic, CurrentSession, RecommendationMediaType } from './api/types'
 import App from './App'
 
 const authMock = vi.hoisted(() => ({
@@ -52,8 +52,14 @@ vi.mock('./features/recommendations/RecommendationSettingsView', () => ({
   RecommendationSettingsView: () => <div>Recommendation settings route content</div>,
 }))
 vi.mock('./features/recommendations/RecommendationsView', () => ({
-  RecommendationsView: ({ mediaType }: { mediaType: string }) => (
-    <div data-media-type={mediaType} data-testid="recommendations-route-content">Recommendations route content</div>
+  RecommendationsView: ({ mediaType, onResultCountChange }: {
+    mediaType: RecommendationMediaType
+    onResultCountChange?: (count: { mediaType: RecommendationMediaType; totalCount: number } | null) => void
+  }) => (
+    <div data-media-type={mediaType} data-testid="recommendations-route-content">
+      <button onClick={() => onResultCountChange?.({ mediaType, totalCount: 42 })} type="button">Report recommendation count</button>
+      Recommendations route content
+    </div>
   ),
 }))
 vi.mock('./features/favorites/FavoriteContext', () => ({
@@ -152,14 +158,59 @@ describe('App routes', () => {
     '/catalog',
     '/oscar',
     '/golden-globes',
-  ])('shows the welcome page instead of %s to anonymous visitors', async (path) => {
+    '/favorites',
+    '/account/personal-ratings',
+    '/configuration/system',
+    '/unknown-page?filter=private',
+  ])('redirects anonymous visitors from %s to login', async (path) => {
     renderAt(path)
 
     expect(await screen.findByRole('heading', { name: 'MediaDock' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Sign in with Google' }).getAttribute('href')).toBe('/api/auth/google/login')
     expect(screen.queryByRole('navigation', { name: 'Main navigation' })).toBeNull()
     expect(screen.queryByRole('note')).toBeNull()
+    expect(screen.getByTestId('location').textContent).toBe('/login')
+  })
+
+  it.each(['/', '/login'])('keeps the public landing/login page available at %s', async (path) => {
+    renderAt(path)
+
+    expect(await screen.findByRole('heading', { name: 'MediaDock' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Sign in with Google' })).toBeTruthy()
     expect(screen.getByTestId('location').textContent).toBe(path)
+    expect(screen.queryByRole('navigation')).toBeNull()
+  })
+
+  it('keeps login accessible when Google sign-in is unavailable', async () => {
+    authMock.session = { ...anonymousSession, signInEnabled: false }
+    renderAt('/login')
+
+    expect(await screen.findByRole('heading', { name: 'MediaDock' })).toBeTruthy()
+    expect(screen.getByText('Google sign-in is currently unavailable.')).toBeTruthy()
+    expect(screen.getByTestId('location').textContent).toBe('/login')
+    expect(screen.queryByText('Catalog route content')).toBeNull()
+  })
+
+  it('opens the catalog for an active account visiting login', async () => {
+    authMock.session = activeUserSession
+    renderAt('/login')
+
+    expect(await screen.findByText('Catalog route content')).toBeTruthy()
+    expect(screen.getByTestId('location').textContent).toBe('/catalog')
+  })
+
+  it('redirects back to login when the account signs out', async () => {
+    authMock.session = activeUserSession
+    authMock.nextSession = anonymousSession
+    renderAt('/catalog')
+
+    expect(await screen.findByText('Catalog route content')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Switch account' }))
+
+    expect(await screen.findByRole('heading', { name: 'MediaDock' })).toBeTruthy()
+    expect(screen.getByTestId('location').textContent).toBe('/login')
+    expect(screen.queryByText('Catalog route content')).toBeNull()
+    expect(screen.queryByRole('navigation')).toBeNull()
   })
 
   it('blocks anonymous visitors from opening favorites directly', async () => {
@@ -169,14 +220,15 @@ describe('App routes', () => {
     expect(screen.queryByText('Favorites route content')).toBeNull()
   })
 
-  it('describes favorites as a mixed movie and series collection', async () => {
+  it('omits the favorites eyebrow and description', async () => {
     authMock.session = activeUserSession
 
     renderAt('/favorites')
 
     expect(await screen.findByText('Favorites route content')).toBeTruthy()
-    expect(screen.getByText('MY TITLES')).toBeTruthy()
-    expect(screen.getByText('Movies and series saved from supported catalogs, recommendations, or awards.')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Favorites' })).toBeTruthy()
+    expect(screen.queryByText('MY TITLES')).toBeNull()
+    expect(screen.queryByText('Movies and series saved from supported catalogs, recommendations, or awards.')).toBeNull()
   })
 
   it('blocks anonymous visitors from opening the ignore list directly', async () => {
@@ -212,15 +264,17 @@ describe('App routes', () => {
 
     expect(await screen.findByText('Ratings route content')).toBeTruthy()
     const mainNavigation = screen.getByRole('navigation', { name: 'Main navigation' })
+    expect(mainNavigation.textContent).toContain('CATALOGS')
+    expect(mainNavigation.textContent).toContain('PERSONAL')
     expect(Array.from(mainNavigation.querySelectorAll(':scope > a, :scope > .account-nav-group > a'), (link) => link.getAttribute('aria-label'))).toEqual([
       'Torrents catalog',
+      'Oscar catalog',
+      'Golden Globes catalog',
       'Movie recommendations',
       'Series recommendations',
       'Favorites',
       'Ignored',
       'Personal ratings',
-      'Oscar catalog',
-      'Golden Globes catalog',
     ])
     expect(screen.queryByRole('navigation', { name: 'Administration navigation' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Users' })).toBeNull()
@@ -252,7 +306,13 @@ describe('App routes', () => {
     expect(breadcrumb.closest('.topbar-content')).toBeTruthy()
     expect(breadcrumb.querySelector('a')?.textContent).toBe('MediaDock')
     expect(breadcrumb.querySelector('[aria-current="page"]')?.textContent).toBe('Personal')
+    const heading = screen.getByRole('heading', { name: 'Movie recommendations' })
+    expect(heading.closest('.page-heading')?.className).toBe('page-heading')
+    expect(heading.parentElement?.classList.contains('page-heading-copy')).toBe(true)
+    expect(heading.parentElement?.querySelector('.eyebrow')).toBeNull()
     expect(screen.getByTestId('recommendations-route-content').getAttribute('data-media-type')).toBe('movie')
+    fireEvent.click(screen.getByRole('button', { name: 'Report recommendation count' }))
+    expect(screen.getByText('42 recommendations').parentElement).toBe(heading.parentElement)
     expect(screen.getByRole('link', { name: 'Movie recommendations' }).getAttribute('aria-current')).toBe('page')
     expect(screen.getByRole('link', { name: 'Series recommendations' })).toBeTruthy()
     expect(screen.getByRole('navigation', { name: 'Main navigation' }).textContent).toContain('Personal ratings')
@@ -351,7 +411,7 @@ describe('App routes', () => {
     renderAt('/configuration/personal-ratings')
 
     expect(await screen.findByRole('heading', { name: 'MediaDock' })).toBeTruthy()
-    expect(screen.getByTestId('location').textContent).toBe('/configuration/personal-ratings')
+    expect(screen.getByTestId('location').textContent).toBe('/login')
     expect(screen.queryByText('Ratings route content')).toBeNull()
   })
 
