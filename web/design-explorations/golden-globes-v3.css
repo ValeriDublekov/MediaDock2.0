@@ -1,0 +1,59 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap");
+
+/* Variant 3: Midnight Indigo - deep navy, violet glow, glass cards with poster-overlay gradient. */
+:root {
+  color-scheme: dark;
+  --font-body: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Sora", "Manrope", sans-serif;
+
+  --bg: #0a0e1c;
+  --surface: #121832;
+  --ink: #eceeff;
+  --muted: #9aa2cb;
+  --line: #222a52;
+  --accent: #8e8fff;
+  --accent-ink: #0a0e1c;
+  --gold: #ffc857;
+  --gold-ink: #2a1c00;
+  --win: #ffc857;
+
+  --sidebar-bg: #080b17;
+  --sidebar-line: #1a2040;
+  --nav-ink: #b3b9dd;
+  --nav-muted: #6f78a8;
+  --nav-hover-bg: #12183a;
+  --nav-active-bg: linear-gradient(90deg, rgb(142 143 255 / 22%), rgb(142 143 255 / 6%));
+  --nav-active-ink: #fff;
+
+  --field-bg: #0c1126;
+  --field-line: #2a3363;
+  --chip-bg: #1a2147;
+  --chip-ink: #c5caf0;
+
+  --card-bg: linear-gradient(180deg, #151c3d, #101631);
+  --card-line: #242d5a;
+  --card-shadow: 0 12px 34px rgb(2 4 16 / 55%);
+
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+
+body { background: radial-gradient(800px 480px at 85% -120px, rgb(142 143 255 / 20%), transparent 70%), radial-gradient(600px 400px at 0% 100%, rgb(255 200 87 / 6%), transparent 70%), var(--bg); }
+.brand-mark { background: linear-gradient(135deg, #a5a6ff, #6b6df0); box-shadow: 0 6px 18px rgb(107 109 240 / 45%); }
+.nav-item.is-active .nav-number { color: var(--accent); }
+.page-heading h1 { font-size: 40px; background: linear-gradient(90deg, #fff, #b5b7ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.eyebrow { display: inline-block; border: 1px solid rgb(142 143 255 / 40%); border-radius: var(--pill); padding: 3px 12px; color: var(--accent); background: rgb(142 143 255 / 10%); font-size: 11px; }
+.filter-form { border-color: var(--line); background: rgb(18 24 50 / 70%); backdrop-filter: blur(8px); }
+.segment-control button[aria-pressed="true"] { background: #2a3370; color: #fff; box-shadow: none; }
+.range-thumb { border-color: #fff; box-shadow: 0 0 0 4px rgb(142 143 255 / 25%); }
+.range-track::before { background: linear-gradient(90deg, #8e8fff, #b48cff); }
+.button:hover { border-color: var(--accent); }
+.movie-tile { transition: transform 0.2s, box-shadow 0.2s; }
+.movie-tile:hover { transform: translateY(-4px); box-shadow: 0 18px 40px rgb(2 4 16 / 70%), 0 0 0 1px rgb(142 143 255 / 45%); }
+.movie-tile.is-winner { border-color: rgb(255 200 87 / 50%); }
+.poster-stage::after { position: absolute; inset: auto 0 0; height: 40%; background: linear-gradient(transparent, #151c3d); content: ""; }
+.badge-rating { background: rgb(8 11 23 / 70%); border: 1px solid rgb(255 255 255 / 12%); }
+.badge-winner { background: linear-gradient(135deg, #ffd87a, #ffb23f); box-shadow: 0 4px 14px rgb(255 178 63 / 40%); }
+.tile-genre { background: rgb(142 143 255 / 14%); color: #c9ccff; }
+.details-link { color: var(--accent); }
+.status-mark { background: #5ef0b0; box-shadow: 0 0 0 3px rgb(94 240 176 / 20%); }

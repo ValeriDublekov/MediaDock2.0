@@ -53,7 +53,7 @@ button { cursor: pointer; }
 .icon { width: 1em; height: 1em; flex: 0 0 auto; vertical-align: -0.14em; }
 
 /* Shell */
-.app-shell { display: grid; min-height: 100vh; grid-template-columns: 240px minmax(0, 1fr); }
+.app-shell { display: grid; min-height: 100vh; grid-template-columns: 264px minmax(0, 1fr); }
 .sidebar { position: sticky; top: 0; display: flex; height: 100vh; flex-direction: column; overflow-y: auto; padding: 26px 14px 18px; border-right: 1px solid var(--sidebar-line); background: var(--sidebar-bg); }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; color: inherit; text-decoration: none; }
 .brand-mark { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border-radius: var(--radius-sm); color: var(--accent-ink); background: var(--accent); font-family: var(--font-display); font-size: 13px; font-weight: 800; letter-spacing: 0.02em; }
@@ -165,4 +165,64 @@ button { cursor: pointer; }
 @media (max-width: 460px) {
   .toolbar-actions { width: 100%; justify-content: space-between; }
   .poster-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.new-directions {
+  --radius: 6px;
+  --radius-sm: 4px;
+  --pill: 4px;
+  --card-shadow: none;
+}
+.new-directions * { letter-spacing: 0; }
+.new-directions .sidebar { min-width: 0; }
+.new-directions .nav-item { min-height: 42px; line-height: 1.4; }
+.new-directions .nav-item > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.new-directions .nav-number { flex: 0 0 20px; }
+.new-directions .brand-name { font-size: 23px; }
+.new-directions .page-heading h1 { font-size: 32px; line-height: 1.2; }
+.new-directions .page-description { font-size: 14px; }
+.new-directions .eyebrow { font-size: 11px; }
+.new-directions .filter-form { border-inline: 0; border-radius: 0; padding: 16px 0; background: transparent; }
+.new-directions .advanced-filters { border: 0; padding-top: 0; }
+.new-directions .movie-tile { border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+.new-directions .poster-grid { grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 30px 22px; }
+.new-directions .poster-stage { border-radius: 4px; }
+.new-directions .movie-tile-info { padding: 14px 0 0; }
+.new-directions .tile-title { font-size: 18px; }
+.new-directions .tile-meta { font-size: 12px; }
+.new-directions .tile-genres { gap: 6px; }
+.new-directions .tile-genre { padding: 1px 6px; font-size: 11px; }
+.new-directions .badge-rating, .new-directions .badge-winner { border-radius: 3px; }
+.new-directions .movie-awards-summary { font-size: 12px; }
+.new-directions :is(a, button, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.new-directions .page-heading, .new-directions .poster-grid { animation: study-reveal 260ms ease-out both; }
+.new-directions .poster-grid { animation-delay: 70ms; }
+@keyframes study-reveal {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 1100px) and (min-width: 761px) {
+  .new-directions .app-shell { grid-template-columns: 226px minmax(0, 1fr); }
+  .new-directions .page-content { padding-inline: 26px; }
+  .new-directions .filter-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .new-directions .filter-search { grid-column: 1 / -1; }
+  .new-directions .clear-button { justify-self: start; }
+}
+@media (max-width: 760px) {
+  .new-directions .sidebar-footer { display: none; }
+  .new-directions .primary-nav { padding-bottom: 4px; }
+  .new-directions .nav-item { min-height: 38px; }
+  .new-directions .page-heading h1 { font-size: 27px; }
+  .new-directions .page-content { padding-bottom: 100px; }
+  .new-directions .poster-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px 16px; }
+  .new-directions .badge-rating { top: 7px; left: 7px; padding: 3px 6px; font-size: 11px; }
+  .new-directions .badge-winner { top: auto; right: 7px; bottom: 7px; padding: 3px 6px; font-size: 10px; }
+  .new-directions .tile-heading { flex-wrap: wrap; gap: 3px 8px; }
+  .new-directions .tile-title { flex: 1 1 110px; font-size: 16px; }
+}
+@media (max-width: 360px) {
+  .new-directions .poster-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .new-directions .page-heading, .new-directions .poster-grid { animation: none; }
 }

@@ -1,0 +1,59 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap");
+
+/* Variant 1: Noir Gold - black cinema palette with champagne-gold accents and a serif display face. */
+:root {
+  color-scheme: dark;
+  --font-display: "Playfair Display", "Georgia", serif;
+
+  --bg: #0b0b0d;
+  --surface: #131316;
+  --ink: #f3eee2;
+  --muted: #a39d90;
+  --line: #25252a;
+  --accent: #d7b066;
+  --accent-ink: #1a1405;
+  --gold: #d7b066;
+  --gold-ink: #1a1405;
+  --win: #e6c27a;
+
+  --sidebar-bg: #08080a;
+  --nav-ink: #bdb7a9;
+  --nav-muted: #7d786d;
+  --nav-hover-bg: #141417;
+  --nav-active-bg: rgb(215 176 102 / 11%);
+  --nav-active-ink: #e6c27a;
+
+  --field-bg: #0e0e11;
+  --field-line: #2e2e34;
+  --chip-bg: #1c1c20;
+  --chip-ink: #d2ccbe;
+
+  --card-bg: #131316;
+  --card-line: #26262b;
+  --card-shadow: 0 10px 30px rgb(0 0 0 / 45%);
+
+  --radius: 6px;
+  --radius-sm: 4px;
+}
+
+body { background: radial-gradient(900px 420px at 80% -80px, rgb(215 176 102 / 9%), transparent 70%), var(--bg); }
+.brand-mark { border: 1px solid var(--accent); color: var(--accent); background: transparent; font-family: var(--font-display); }
+.brand-name { color: var(--ink); }
+.page-heading { border-bottom: 1px solid var(--line); padding-bottom: 24px; }
+.page-heading h1 { font-size: 46px; font-weight: 700; letter-spacing: -0.01em; }
+.eyebrow { letter-spacing: 0.3em; }
+.page-description { font-size: 16px; }
+.segment-control { border-radius: var(--radius-sm); }
+.segment-control button[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); box-shadow: none; }
+.filter-form { background: rgb(255 255 255 / 2%); }
+.range-thumb { border-color: var(--bg); }
+.button:hover { border-color: var(--accent); color: var(--accent); }
+.movie-tile { transition: transform 0.2s, border-color 0.2s; }
+.movie-tile:hover { transform: translateY(-3px); border-color: rgb(215 176 102 / 45%); }
+.movie-tile.is-winner { border-color: rgb(215 176 102 / 55%); }
+.poster-stage::after { position: absolute; inset: auto 0 0; height: 35%; background: linear-gradient(transparent, #131316); content: ""; }
+.tile-title { font-size: 19px; font-weight: 700; }
+.badge-rating { border: 1px solid rgb(255 255 255 / 12%); }
+.badge-winner { border-radius: 3px; }
+.tile-genre { border: 1px solid #303036; border-radius: 3px; background: transparent; }
+.status-text strong { color: var(--ink); }

@@ -1,0 +1,61 @@
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap");
+
+:root {
+  color-scheme: dark;
+  --font-body: "Barlow", "Trebuchet MS", sans-serif;
+  --font-display: "Barlow Condensed", "Impact", sans-serif;
+  --bg: #1b1b1c;
+  --surface: #262628;
+  --ink: #f0efed;
+  --muted: #b0aba6;
+  --line: #3d3c3b;
+  --accent: #f27b69;
+  --accent-ink: #241411;
+  --gold: #e7c56e;
+  --gold-ink: #302615;
+  --win: #e7c56e;
+  --sidebar-bg: #121213;
+  --sidebar-line: #333233;
+  --nav-ink: #c7c3be;
+  --nav-muted: #9d9690;
+  --nav-hover-bg: #272324;
+  --nav-active-bg: #342523;
+  --nav-active-ink: #ff9a87;
+  --field-bg: #242425;
+  --field-line: #54504d;
+  --chip-bg: #302d2b;
+  --chip-ink: #d4ccc5;
+  --card-line: #46413d;
+}
+
+.new-directions .brand-name { font-size: 28px; font-weight: 600; }
+.new-directions .brand-mark { border: 1px solid var(--accent); border-radius: 0; color: var(--accent); background: transparent; }
+.new-directions .primary-nav { margin-top: 38px; }
+.new-directions .nav-item { border-radius: 0; border-left: 2px solid transparent; }
+.new-directions .nav-item.is-active { border-left-color: var(--accent); }
+.new-directions .status-mark { background: var(--gold); box-shadow: none; }
+.new-directions .page-heading { border-bottom: 2px solid var(--accent); padding-bottom: 22px; }
+.new-directions .page-heading h1 { font-size: 38px; font-weight: 600; }
+.new-directions .eyebrow { color: var(--muted); }
+.new-directions .filter-form { border-top: 0; padding-top: 4px; }
+.new-directions .segment-control { border-radius: 2px; background: transparent; }
+.new-directions .segment-control button { border-radius: 1px; }
+.new-directions .segment-control button[aria-pressed="true"] { color: #221512; background: var(--accent); box-shadow: none; }
+.new-directions .range-track::before { height: 2px; }
+.new-directions .range-thumb { width: 14px; height: 14px; border-width: 2px; box-shadow: none; }
+.new-directions .poster-stage { border-radius: 0; }
+.new-directions .tile-title { font-size: 25px; font-weight: 500; }
+.new-directions .tile-heading { align-items: center; }
+.new-directions .tile-year { font-family: var(--font-body); font-size: 12px; }
+.new-directions .movie-title-plot { color: #bdb8b2; -webkit-line-clamp: 2; }
+.new-directions .tile-meta { display: none; }
+.new-directions .tile-genre { border: 1px solid #514a44; border-radius: 0; color: #d8ccc1; background: transparent; }
+.new-directions .badge-rating { color: #f7f3ed; background: #19191b; backdrop-filter: none; }
+.new-directions .badge-winner { color: #261b12; background: var(--gold); }
+.new-directions .movie-awards-summary { border-top: 1px solid var(--card-line); }
+
+@media (max-width: 760px) {
+  .new-directions .primary-nav { margin-top: 12px; }
+  .new-directions .page-heading h1 { font-size: 32px; }
+  .new-directions .tile-title { font-size: 23px; }
+}

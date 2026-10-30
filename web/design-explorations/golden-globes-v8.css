@@ -1,0 +1,68 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Libre+Baskerville:wght@400;700&display=swap");
+
+:root {
+  color-scheme: light;
+  --font-body: "DM Sans", "Trebuchet MS", sans-serif;
+  --font-display: "Libre Baskerville", "Georgia", serif;
+  --bg: #fcf8f9;
+  --surface: #fff;
+  --ink: #33282d;
+  --muted: #7a6970;
+  --line: #e5dbe0;
+  --accent: #96384e;
+  --accent-ink: #fff;
+  --gold: #efe1ba;
+  --gold-ink: #544123;
+  --win: #276f65;
+  --sidebar-bg: #fff;
+  --nav-ink: #66535b;
+  --nav-muted: #88747f;
+  --nav-hover-bg: #f7eef1;
+  --nav-active-bg: #96384e;
+  --nav-active-ink: #fff;
+  --field-bg: #fff;
+  --field-line: #d8c9d1;
+  --chip-bg: #f0e9ed;
+  --chip-ink: #705562;
+  --card-line: #e5dbe0;
+}
+
+.new-directions .brand-name { font-size: 20px; }
+.new-directions .brand-mark { font-family: var(--font-body); font-size: 11px; border-radius: 50%; }
+.new-directions .primary-nav { margin-top: 40px; }
+.new-directions .nav-item { border-radius: 3px; }
+.new-directions .nav-item.is-active .nav-number { color: #f5ccd6; }
+.new-directions .status-mark { background: #438c7c; box-shadow: none; }
+.new-directions .page-heading { padding-top: 5px; margin-bottom: 32px; }
+.new-directions .page-heading h1 { font-size: 29px; font-weight: 400; line-height: 1.4; }
+.new-directions .page-description { margin-top: 10px; }
+.new-directions .eyebrow { margin-bottom: 10px; }
+.new-directions .segment-control { background: #f1e8ed; border: 0; }
+.new-directions .segment-control button[aria-pressed="true"] { color: var(--accent); box-shadow: none; }
+.new-directions .poster-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 32px; }
+.new-directions .movie-tile { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 18px; border-bottom: 1px solid var(--line); padding-bottom: 24px; }
+.new-directions .poster-stage { align-self: start; border-radius: 2px; }
+.new-directions .movie-tile-info { padding: 0; gap: 9px; }
+.new-directions .tile-heading { flex-wrap: wrap; gap: 5px; }
+.new-directions .tile-title { flex: 1 1 100%; font-size: 17px; font-weight: 400; line-height: 1.5; }
+.new-directions .tile-year { font-size: 12px; }
+.new-directions .tile-meta { display: none; }
+.new-directions .movie-title-plot { -webkit-line-clamp: 3; font-size: 12px; }
+.new-directions .tile-genre { background: transparent; padding: 0; color: #886371; }
+.new-directions .tile-genre + .tile-genre::before { content: "/"; margin-right: 6px; }
+.new-directions .movie-awards-summary { align-content: start; justify-content: start; margin-top: 0; border: 0; padding-top: 0; }
+.new-directions .award-counts { flex-basis: 100%; gap: 5px 10px; }
+.new-directions .badge-rating { top: 7px; left: 7px; padding: 2px 6px; background: #fff; color: var(--ink); backdrop-filter: none; font-size: 11px; }
+.new-directions .badge-rating .icon { color: var(--accent); }
+.new-directions .badge-winner { top: auto; right: auto; bottom: 7px; left: 7px; padding: 3px 6px; color: #fff; background: var(--accent); font-size: 9px; }
+
+@media (max-width: 1200px) {
+  .new-directions .poster-grid { grid-template-columns: minmax(0, 1fr); }
+  .new-directions .movie-tile { grid-template-columns: 120px minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  .new-directions .primary-nav { margin-top: 12px; }
+  .new-directions .page-heading h1 { font-size: 25px; }
+  .new-directions .movie-tile { grid-template-columns: 94px minmax(0, 1fr); gap: 16px; }
+  .new-directions .tile-title { flex-basis: 100%; font-size: 16px; }
+}

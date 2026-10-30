@@ -1,0 +1,58 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap");
+
+:root {
+  color-scheme: light;
+  --font-body: "Outfit", "Trebuchet MS", sans-serif;
+  --bg: #f8faf9;
+  --surface: #fff;
+  --ink: #202b27;
+  --muted: #64716b;
+  --line: #dce4df;
+  --accent: #216346;
+  --accent-ink: #fff;
+  --gold: #f0cb76;
+  --gold-ink: #382b10;
+  --win: #85601a;
+  --sidebar-bg: #173c32;
+  --sidebar-line: #32584b;
+  --nav-ink: #d4e4dd;
+  --nav-muted: #a3bdb0;
+  --nav-hover-bg: #244b3e;
+  --nav-active-bg: #f0cb76;
+  --nav-active-ink: #28382f;
+  --field-bg: #fff;
+  --field-line: #c9d6ce;
+  --chip-bg: #edf2ef;
+  --chip-ink: #52665a;
+  --card-line: #dce4df;
+}
+
+.new-directions .sidebar { padding-top: 34px; }
+.new-directions .brand-name { color: #f6faf8; }
+.new-directions .brand-mark { border: 1px solid #86a594; color: #f0cb76; background: transparent; }
+.new-directions .primary-nav { margin-top: 42px; gap: 4px; }
+.new-directions .nav-item { border-radius: 3px; }
+.new-directions .nav-item.is-active { font-weight: 500; }
+.new-directions .status-text strong { color: #f6faf8; }
+.new-directions .status-mark { background: #b4cf96; box-shadow: none; }
+.new-directions .profile-avatar { border-color: #86a594; color: #fff; background: transparent; }
+.new-directions .page-heading { margin-bottom: 30px; }
+.new-directions .eyebrow { color: #6f7054; }
+.new-directions .page-heading h1 { font-weight: 500; }
+.new-directions .segment-control { border: 0; background: #e8eee9; }
+.new-directions .segment-control button[aria-pressed="true"] { color: #fff; background: var(--accent); box-shadow: none; }
+.new-directions .poster-stage { border-radius: 3px; }
+.new-directions .tile-title { font-weight: 500; }
+.new-directions .tile-meta { display: none; }
+.new-directions .badge-rating { color: var(--ink); background: #fff; backdrop-filter: none; }
+.new-directions .badge-rating .icon { color: #967125; }
+.new-directions .badge-winner { color: #fff; background: #173c32; }
+.new-directions .movie-title-plot { -webkit-line-clamp: 2; }
+.new-directions .tile-genre { padding: 0; background: transparent; }
+.new-directions .tile-genre + .tile-genre::before { margin-right: 6px; color: #9aa79f; content: "/"; }
+.new-directions .movie-awards-summary { padding-top: 10px; }
+
+@media (max-width: 760px) {
+  .new-directions .sidebar { padding-top: 16px; }
+  .new-directions .primary-nav { margin-top: 12px; }
+}

@@ -1,0 +1,63 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+
+/* Variant 4: Clean Modern - light, airy, floating rounded sidebar, deep teal with amber winners. */
+:root {
+  --font-body: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+
+  --bg: #eef1f4;
+  --surface: #fff;
+  --ink: #0f1a24;
+  --muted: #62707e;
+  --line: #e1e6ec;
+  --accent: #0b6e66;
+  --accent-ink: #fff;
+  --gold: #ffb627;
+  --gold-ink: #2b1b00;
+  --win: #b36b00;
+
+  --sidebar-bg: #fff;
+  --nav-ink: #2e3b48;
+  --nav-muted: #9aa6b2;
+  --nav-hover-bg: #f2f5f7;
+  --nav-active-bg: #0b6e66;
+  --nav-active-ink: #fff;
+
+  --field-line: #d5dce3;
+  --chip-bg: #eef2f5;
+  --chip-ink: #33414f;
+
+  --card-shadow: 0 1px 2px rgb(15 26 36 / 5%), 0 10px 28px rgb(15 26 36 / 8%);
+  --radius: 18px;
+  --radius-sm: 12px;
+}
+
+.app-shell { grid-template-columns: 262px minmax(0, 1fr); padding: 16px; gap: 8px; }
+.sidebar { top: 16px; height: calc(100vh - 32px); border: 0; border-radius: 22px; box-shadow: 0 1px 2px rgb(15 26 36 / 5%), 0 10px 30px rgb(15 26 36 / 7%); }
+.brand-mark { border-radius: 12px; background: linear-gradient(135deg, #12958a, #0b6e66); }
+.nav-item.is-active .nav-number { color: rgb(255 255 255 / 70%); }
+.nav-item.is-active { box-shadow: 0 6px 16px rgb(11 110 102 / 30%); }
+.page-content { padding-top: 26px; }
+.page-heading h1 { font-size: 34px; }
+.eyebrow { display: inline-block; border-radius: var(--pill); padding: 3px 11px; color: var(--accent); background: #dff2ef; font-size: 11px; letter-spacing: 0.1em; }
+.filter-form { border: 0; box-shadow: var(--card-shadow); }
+.segment-control { background: #fff; }
+.segment-control button[aria-pressed="true"] { color: #fff; background: var(--accent); box-shadow: none; }
+.button { border-radius: var(--pill); }
+.button:hover { border-color: var(--accent); color: var(--accent); }
+.movie-tile { border: 0; transition: transform 0.2s, box-shadow 0.2s; }
+.movie-tile:hover { transform: translateY(-4px); box-shadow: 0 2px 4px rgb(15 26 36 / 6%), 0 18px 40px rgb(15 26 36 / 16%); }
+.poster-stage { margin: 8px 8px 0; border-radius: 12px; }
+.movie-tile-info { padding: 14px 18px 16px; }
+.tile-genre { background: #e8f3f1; color: #0b5a54; }
+.award-win { border-radius: var(--pill); padding: 2px 10px 2px 8px; background: #fff3d6; }
+.details-link { font-weight: 700; }
+
+@media (max-width: 1024px) {
+  .app-shell { grid-template-columns: 210px minmax(0, 1fr); }
+}
+
+@media (max-width: 760px) {
+  .app-shell { padding: 0; }
+  .sidebar { top: 0; height: auto; border-radius: 0; }
+  .poster-stage { margin: 6px 6px 0; }
+}

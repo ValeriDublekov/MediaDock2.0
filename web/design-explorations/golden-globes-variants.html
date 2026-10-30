@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Golden Globes catalog | MediaDock design variants</title>
+    <link rel="icon" type="image/svg+xml" href="../public/mediadock-favicon.svg">
+    <link rel="stylesheet" href="golden-globes-base.css">
+    <script>
+      var variant = new URLSearchParams(location.search).get("v");
+      if (!/^(?:[1-9]|1[0-3])$/.test(variant || "")) variant = "1";
+      document.documentElement.dataset.variant = variant;
+      document.documentElement.classList.toggle("new-directions", Number(variant) >= 5 && Number(variant) <= 8);
+      document.documentElement.classList.toggle("refined-direction", Number(variant) >= 9 && Number(variant) <= 10);
+      document.documentElement.classList.toggle("large-direction", Number(variant) >= 11);
+      var stylesheet = Number(variant) >= 11 ? "golden-globes-large.css" : Number(variant) >= 9 ? "golden-globes-refined.css" : "golden-globes-v" + variant + ".css";
+      document.write('<link rel="stylesheet" href="' + stylesheet + '">');
+    </script>
+    <style>
+      .variant-switcher { position: fixed; bottom: 12px; left: 50%; z-index: 100; display: flex; width: max-content; max-width: calc(100% - 24px); flex-wrap: wrap; justify-content: center; gap: 4px; transform: translateX(-50%); border: 1px solid #494950; border-radius: 8px; padding: 5px; background: #18181c; box-shadow: 0 8px 28px rgb(0 0 0 / 25%); font: 600 12px/1.3 "Segoe UI", sans-serif; }
+      .variant-switcher a { border-radius: 4px; padding: 9px 10px; color: #d8d8de; text-decoration: none; white-space: nowrap; }
+      .variant-switcher a[aria-current="true"] { color: #111; background: #fff; }
+      .variant-switcher a:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+      .refined-direction .variant-switcher { left: auto; right: 16px; max-width: calc(100% - 32px); flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; transform: none; }
+      .refined-direction .variant-switcher a { flex-shrink: 0; }
+      .refined-direction .variant-label { display: none; }
+      .refined-direction .variant-switcher a:nth-child(n+9):nth-child(-n+10) .variant-label { display: inline; }
+      @media (max-width: 760px) {
+        .variant-switcher a { display: grid; width: 32px; height: 34px; place-items: center; padding: 0; }
+        .variant-label { display: none; }
+        .refined-direction .variant-switcher { right: 12px; left: 12px; max-width: none; }
+        .refined-direction .variant-switcher a:nth-child(n+9):nth-child(-n+10) .variant-label { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <symbol id="i-star" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/></symbol>
+      <symbol id="i-trophy" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/></symbol>
+    </svg>
+
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <a class="brand" href="#main">
+          <span class="brand-mark">MD</span>
+          <span class="brand-name">MediaDock</span>
+        </a>
+
+        <nav class="primary-nav" aria-label="Catalogs and personal pages">
+          <p class="sidebar-label sidebar-label-first">CATALOGS</p>
+          <a class="nav-item" href="#"><span class="nav-number">01</span><span>Torents catalog</span></a>
+          <a class="nav-item" href="#"><span class="nav-number">02</span><span>Oscar catalog</span></a>
+          <a class="nav-item is-active" aria-current="page" href="#main"><span class="nav-number">03</span><span>Golden Globes catalog</span></a>
+
+          <p class="sidebar-label">PERSONAL</p>
+          <a class="nav-item" href="#"><span class="nav-number">04</span><span>Movie recommendations</span></a>
+          <a class="nav-item" href="#"><span class="nav-number">05</span><span>Series recommendations</span></a>
+          <a class="nav-item" href="#"><span class="nav-number">06</span><span>Favorites</span></a>
+          <a class="nav-item" href="#"><span class="nav-number">07</span><span>Ignored</span></a>
+          <a class="nav-item" href="#"><span class="nav-number">08</span><span>Personal ratings</span></a>
+
+          <p class="sidebar-label">ADMINISTRATION</p>
+          <a class="nav-item" href="#"><span class="nav-number">09</span><span>Administration</span></a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="status">
+            <span class="status-mark" aria-hidden="true"></span>
+            <span class="status-text"><strong>Local instance</strong><small>API-backed</small></span>
+          </div>
+          <button class="profile-avatar" type="button" aria-label="Profile">VD</button>
+        </div>
+      </aside>
+
+      <main class="page-content" id="main">
+        <header class="page-heading">
+          <p class="eyebrow">GOLDEN GLOBES</p>
+          <h1>Golden Globes catalog</h1>
+          <p class="page-description">Browse Golden Globes nominees, winners, and award categories.</p>
+        </header>
+
+        <div class="section-toolbar">
+          <span class="result-count"><strong>1,270</strong> Golden Globes films</span>
+          <div class="toolbar-actions">
+            <div class="segment-control" role="group" aria-label="View mode">
+              <button type="button" aria-pressed="true">Posters</button>
+              <button type="button" aria-pressed="false">Table</button>
+            </div>
+            <button class="text-button" type="button">Refresh results</button>
+          </div>
+        </div>
+
+        <form class="filter-form" role="search">
+          <div class="field filter-search">
+            <label for="film-search">Search films</label>
+            <input id="film-search" type="search" placeholder="Film title">
+          </div>
+
+          <fieldset class="range-field">
+            <legend>Ceremony year</legend>
+            <div class="range-readout"><span>1981</span><strong>1981 - 2026</strong><span>2026</span></div>
+            <div class="range-track" aria-hidden="true"><span class="range-thumb range-thumb-start"></span><span class="range-thumb range-thumb-end"></span></div>
+            <div class="range-captions"><span>From</span><span>To</span></div>
+          </fieldset>
+
+          <fieldset class="range-field">
+            <legend>IMDb rating</legend>
+            <div class="range-readout"><span>3.2</span><strong>3.2 - 9.6</strong><span>9.6</span></div>
+            <div class="range-track" aria-hidden="true"><span class="range-thumb range-thumb-start"></span><span class="range-thumb range-thumb-end"></span></div>
+            <div class="range-captions"><span>From</span><span>To</span></div>
+          </fieldset>
+
+          <button class="button clear-button" type="button">Clear</button>
+
+          <details class="advanced-filters">
+            <summary><span class="filter-plus" aria-hidden="true">+</span>More filters</summary>
+            <div class="advanced-fields">
+              <div class="field"><label for="categories">Categories</label><select id="categories"><option>All categories</option></select></div>
+              <div class="field"><label for="award-result">Award result</label><select id="award-result"><option>All results</option><option>Winners</option><option>Nominees</option></select></div>
+              <div class="field"><label for="omdb-status">OMDb status</label><select id="omdb-status"><option>All statuses</option></select></div>
+            </div>
+          </details>
+        </form>
+
+        <section class="poster-grid" aria-label="Golden Globes results">
+          <article class="movie-tile is-winner">
+            <div class="poster-stage">
+              <img class="poster" src="https://m.media-amazon.com/images/M/MV5BYjU5YTdlZTItNWM5Yi00OGM1LTk1NGItNjY5MGU3Y2JkOWIwXkEyXkFqcGc@._V1_QL75_UY562_CR35,0,380,562_.jpg" alt="Abbott Elementary poster" loading="lazy">
+              <span class="badge-rating"><svg class="icon"><use href="#i-star"/></svg>8.2</span>
+              <span class="badge-winner"><svg class="icon"><use href="#i-trophy"/></svg>Winner</span>
+            </div>
+            <div class="movie-tile-info">
+              <div class="tile-heading"><h2 class="tile-title">Abbott Elementary</h2><span class="tile-year">2026</span></div>
+              <p class="tile-meta">Director not listed</p>
+              <div class="tile-genres"><span class="tile-genre">Comedy</span></div>
+              <p class="movie-title-plot">A workplace comedy centered on a group of dedicated teachers - and an oblivious principal - in a Philadelphia public school where, despite the odds stacked against them, they are determined to help their students succeed in life.</p>
+              <div class="movie-awards-summary"><div class="award-counts"><span class="award-win"><svg class="icon"><use href="#i-trophy"/></svg>1 win</span><span class="award-nom">3 nominations</span></div><span class="details-link">Details (3) &rarr;</span></div>
+            </div>
+          </article>
+
+          <article class="movie-tile is-winner">
+            <div class="poster-stage">
+              <img class="poster" src="https://m.media-amazon.com/images/M/MV5BNGY1YjBiNzMtYWZhNC00OWViLWE0MzItNjc4YzczOGNiM2I0XkEyXkFqcGc@._V1_QL75_UX380_CR0,0,380,562_.jpg" alt="Adolescence poster" loading="lazy">
+              <span class="badge-rating"><svg class="icon"><use href="#i-star"/></svg>8.1</span>
+              <span class="badge-winner"><svg class="icon"><use href="#i-trophy"/></svg>Winner</span>
+            </div>
+            <div class="movie-tile-info">
+              <div class="tile-heading"><h2 class="tile-title">Adolescence</h2><span class="tile-year">2026</span></div>
+              <p class="tile-meta">Director not listed</p>
+              <div class="tile-genres"><span class="tile-genre">Crime</span><span class="tile-genre">Drama</span><span class="tile-genre">Thriller</span></div>
+              <p class="movie-title-plot">When a 13-year-old is accused of the murder of a classmate, his family, therapist and the detective in charge are all left asking what really happened.</p>
+              <div class="movie-awards-summary"><div class="award-counts"><span class="award-win"><svg class="icon"><use href="#i-trophy"/></svg>1 win</span><span class="award-nom">1 nomination</span></div><span class="details-link">Details (1) &rarr;</span></div>
+            </div>
+          </article>
+
+          <article class="movie-tile">
+            <div class="poster-stage">
+              <img class="poster" src="https://m.media-amazon.com/images/M/MV5BNzQ4NDQ5MmMtNWEwOC00M2U1LTgzN2EtYjI5ODkzZTlmZDJiXkEyXkFqcGc@._V1_QL75_UX380_CR0,0,380,562_.jpg" alt="All Her Fault poster" loading="lazy">
+              <span class="badge-rating"><svg class="icon"><use href="#i-star"/></svg>7.5</span>
+            </div>
+            <div class="movie-tile-info">
+              <div class="tile-heading"><h2 class="tile-title">All Her Fault</h2><span class="tile-year">2026</span></div>
+              <p class="tile-meta">Director not listed</p>
+              <div class="tile-genres"><span class="tile-genre">Drama</span><span class="tile-genre">Mystery</span><span class="tile-genre">Thriller</span></div>
+              <p class="movie-title-plot">When her son vanishes after a play date at the park, a mother is thrust into a desperate search to uncover the truth behind his disappearance.</p>
+              <div class="movie-awards-summary"><div class="award-counts"><span class="award-nom">1 nomination</span></div><span class="details-link">Details (1) &rarr;</span></div>
+            </div>
+          </article>
+
+          <article class="movie-tile">
+            <div class="poster-stage">
+              <img class="poster" src="https://m.media-amazon.com/images/M/MV5BM2IzNjdiNzUtNTJjMy00Mjk5LTg3MzItNzA2ZjYzOWE2MGIyXkEyXkFqcGc@._V1_QL75_UY562_CR21,0,380,562_.jpg" alt="Arco poster" loading="lazy">
+              <span class="badge-rating"><svg class="icon"><use href="#i-star"/></svg>7.2</span>
+            </div>
+            <div class="movie-tile-info">
+              <div class="tile-heading"><h2 class="tile-title">Arco</h2><span class="tile-year">2026</span></div>
+              <p class="tile-meta">Directed by Ugo Bienvenu</p>
+              <div class="tile-genres"><span class="tile-genre">Animation</span><span class="tile-genre">Adventure</span><span class="tile-genre">Fantasy</span></div>
+              <p class="movie-title-plot">In 2075, a girl witnesses a mysterious boy in a rainbow suit fall from the sky. He comes from an idyllic far future where time travel is possible. She shelters him and will do whatever it takes to help him return to his time.</p>
+              <div class="movie-awards-summary"><div class="award-counts"><span class="award-nom">1 nomination</span></div><span class="details-link">Details (1) &rarr;</span></div>
+            </div>
+          </article>
+
+          <article class="movie-tile">
+            <div class="poster-stage">
+              <img class="poster" src="https://m.media-amazon.com/images/M/MV5BZDYxY2I1OGMtN2Y4MS00ZmU1LTgyNDAtODA0MzAyYjI0N2Y2XkEyXkFqcGc@._V1_QL75_UX380_CR0,0,380,562_.jpg" alt="Avatar: Fire and Ash poster" loading="lazy">
+              <span class="badge-rating"><svg class="icon"><use href="#i-star"/></svg>7.2</span>
+            </div>
+            <div class="movie-tile-info">
+              <div class="tile-heading"><h2 class="tile-title">Avatar: Fire and Ash</h2><span class="tile-year">2026</span></div>
+              <p class="tile-meta">Directed by James Cameron</p>
+              <div class="tile-genres"><span class="tile-genre">Action</span><span class="tile-genre">Adventure</span><span class="tile-genre">Drama</span></div>
+              <p class="movie-title-plot">Jake and Neytiri's family grapples with grief, encountering a new, aggressive Na'vi tribe, the Ash People, who are led by the fiery Varang, as the conflict on Pandora escalates and a new moral focus emerges.</p>
+              <div class="movie-awards-summary"><div class="award-counts"><span class="award-nom">1 nomination</span></div><span class="details-link">Details (1) &rarr;</span></div>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <nav class="variant-switcher" aria-label="Design variants">
+      <a href="?v=1" aria-label="1 Noir Gold" title="Noir Gold">1<span class="variant-label"> Noir Gold</span></a>
+      <a href="?v=2" aria-label="2 Ivory Editorial" title="Ivory Editorial">2<span class="variant-label"> Ivory Editorial</span></a>
+      <a href="?v=3" aria-label="3 Midnight Indigo" title="Midnight Indigo">3<span class="variant-label"> Midnight Indigo</span></a>
+      <a href="?v=4" aria-label="4 Clean Modern" title="Clean Modern">4<span class="variant-label"> Clean Modern</span></a>
+      <a href="?v=5" aria-label="5 Forest Gallery" title="Forest Gallery">5<span class="variant-label"> Forest Gallery</span></a>
+      <a href="?v=6" aria-label="6 Silver Index" title="Silver Index">6<span class="variant-label"> Silver Index</span></a>
+      <a href="?v=7" aria-label="7 Carbon Cinema" title="Carbon Cinema">7<span class="variant-label"> Carbon Cinema</span></a>
+      <a href="?v=8" aria-label="8 Rose Archive" title="Rose Archive">8<span class="variant-label"> Rose Archive</span></a>
+      <a href="?v=9" aria-label="9 Noir Gold refined" title="Noir Gold refined">9<span class="variant-label"> Noir, refined</span></a>
+      <a href="?v=10" aria-label="10 Carbon Cinema refined" title="Carbon Cinema refined">10<span class="variant-label"> Carbon, refined</span></a>
+      <a href="?v=11" aria-label="11 Grand Noir" title="Grand Noir">11<span class="variant-label"> Grand Noir</span></a>
+      <a href="?v=12" aria-label="12 Silver Screen" title="Silver Screen">12<span class="variant-label"> Silver Screen</span></a>
+      <a href="?v=13" aria-label="13 Noir Journal" title="Noir Journal">13<span class="variant-label"> Noir Journal</span></a>
+    </nav>
+    <script>
+      document.querySelectorAll(".variant-switcher a").forEach(function (link) {
+        if (link.getAttribute("href") === "?v=" + variant) link.setAttribute("aria-current", "true");
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,171 @@
+- generic [active] [ref=f4e1]:
+  - generic [ref=f4e2]:
+    - complementary "Primary navigation" [ref=f4e3]:
+      - link "MD MediaDock" [ref=f4e4] [cursor=pointer]:
+        - /url: "#main"
+        - generic [ref=f4e5]: MD
+        - generic [ref=f4e6]: MediaDock
+      - navigation "Catalogs and personal pages" [ref=f4e7]:
+        - link "Torents catalog" [ref=f4e8] [cursor=pointer]:
+          - /url: "#"
+        - link "Oscar catalog" [ref=f4e10] [cursor=pointer]:
+          - /url: "#"
+        - link "Golden Globes catalog" [ref=f4e12] [cursor=pointer]:
+          - /url: "#main"
+        - link "Movie recommendations" [ref=f4e14] [cursor=pointer]:
+          - /url: "#"
+        - link "Series recommendations" [ref=f4e16] [cursor=pointer]:
+          - /url: "#"
+        - link "Favorites" [ref=f4e18] [cursor=pointer]:
+          - /url: "#"
+        - link "Ignored" [ref=f4e20] [cursor=pointer]:
+          - /url: "#"
+        - link "Personal ratings" [ref=f4e22] [cursor=pointer]:
+          - /url: "#"
+        - link "Administration" [ref=f4e24] [cursor=pointer]:
+          - /url: "#"
+      - generic [ref=f4e26]:
+        - strong [ref=f4e30]: Local instance
+        - button "Profile" [ref=f4e31] [cursor=pointer]: VD
+    - main [ref=f4e32]:
+      - generic [ref=f4e33]:
+        - paragraph [ref=f4e34]: GOLDEN GLOBES
+        - heading "Golden Globes catalog" [level=1] [ref=f4e35]
+        - paragraph [ref=f4e36]: Browse Golden Globes nominees, winners, and award categories.
+      - generic [ref=f4e37]:
+        - generic [ref=f4e38]:
+          - strong [ref=f4e39]: 1,270
+          - text: Golden Globes films
+        - generic [ref=f4e40]:
+          - group "View mode" [ref=f4e41]:
+            - button "Posters" [pressed] [ref=f4e42] [cursor=pointer]
+            - button "Table" [ref=f4e43] [cursor=pointer]
+          - button "Refresh results" [ref=f4e44] [cursor=pointer]
+      - search [ref=f4e45]:
+        - generic [ref=f4e46]:
+          - generic [ref=f4e47]: Search films
+          - searchbox "Search films" [ref=f4e48]
+        - group "Ceremony year" [ref=f4e49]:
+          - generic [ref=f4e51]:
+            - generic [ref=f4e52]: "1981"
+            - strong [ref=f4e53]: 1981 - 2026
+            - generic [ref=f4e54]: "2026"
+          - generic [ref=f4e58]:
+            - generic [ref=f4e59]: From
+            - generic [ref=f4e60]: To
+        - group "IMDb rating" [ref=f4e61]:
+          - generic [ref=f4e63]:
+            - generic [ref=f4e64]: "3.2"
+            - strong [ref=f4e65]: 3.2 - 9.6
+            - generic [ref=f4e66]: "9.6"
+          - generic [ref=f4e70]:
+            - generic [ref=f4e71]: From
+            - generic [ref=f4e72]: To
+        - button "Clear" [ref=f4e73] [cursor=pointer]
+        - group [ref=f4e74]:
+          - generic "More filters" [ref=f4e75] [cursor=pointer]:
+            - generic [aria-hidden] [ref=f4e76]: +
+            - text: More filters
+          - option "All categories" [selected]
+          - option "All results" [selected]
+          - option "Winners"
+          - option "Nominees"
+          - option "All statuses" [selected]
+      - region "Golden Globes results" [ref=f4e77]:
+        - article [ref=f4e78]:
+          - generic [ref=f4e79]:
+            - img "Abbott Elementary poster" [ref=f4e80]
+            - generic [ref=f4e81]: "8.2"
+            - generic [ref=f4e84]: Winner
+          - generic [ref=f4e87]:
+            - generic [ref=f4e88]:
+              - heading "Abbott Elementary" [level=2] [ref=f4e89]
+              - generic [ref=f4e90]: "2026"
+            - paragraph [ref=f4e91]: Director not listed
+            - generic [ref=f4e92]: Comedy
+            - paragraph [ref=f4e94]: A workplace comedy centered on a group of dedicated teachers - and an oblivious principal - in a Philadelphia public school where, despite the odds stacked against them, they are determined to help their students succeed in life.
+            - generic [ref=f4e95]:
+              - generic [ref=f4e96]:
+                - generic [ref=f4e97]: 1 win
+                - generic [ref=f4e100]: 3 nominations
+              - generic [ref=f4e101]: Details (3) →
+        - article [ref=f4e102]:
+          - generic [ref=f4e103]:
+            - img "Adolescence poster" [ref=f4e104]
+            - generic [ref=f4e105]: "8.1"
+            - generic [ref=f4e108]: Winner
+          - generic [ref=f4e111]:
+            - generic [ref=f4e112]:
+              - heading "Adolescence" [level=2] [ref=f4e113]
+              - generic [ref=f4e114]: "2026"
+            - paragraph [ref=f4e115]: Director not listed
+            - generic [ref=f4e116]:
+              - generic [ref=f4e117]: Crime
+              - generic [ref=f4e118]: Drama
+              - generic [ref=f4e119]: Thriller
+            - paragraph [ref=f4e120]: When a 13-year-old is accused of the murder of a classmate, his family, therapist and the detective in charge are all left asking what really happened.
+            - generic [ref=f4e121]:
+              - generic [ref=f4e122]:
+                - generic [ref=f4e123]: 1 win
+                - generic [ref=f4e126]: 1 nomination
+              - generic [ref=f4e127]: Details (1) →
+        - article [ref=f4e128]:
+          - generic [ref=f4e129]:
+            - img "All Her Fault poster" [ref=f4e130]
+            - generic [ref=f4e131]: "7.5"
+          - generic [ref=f4e134]:
+            - generic [ref=f4e135]:
+              - heading "All Her Fault" [level=2] [ref=f4e136]
+              - generic [ref=f4e137]: "2026"
+            - paragraph [ref=f4e138]: Director not listed
+            - generic [ref=f4e139]:
+              - generic [ref=f4e140]: Drama
+              - generic [ref=f4e141]: Mystery
+              - generic [ref=f4e142]: Thriller
+            - paragraph [ref=f4e143]: When her son vanishes after a play date at the park, a mother is thrust into a desperate search to uncover the truth behind his disappearance.
+            - generic [ref=f4e144]:
+              - generic [ref=f4e145]: 1 nomination
+              - generic [ref=f4e147]: Details (1) →
+        - article [ref=f4e148]:
+          - generic [ref=f4e149]:
+            - img "Arco poster" [ref=f4e150]
+            - generic [ref=f4e151]: "7.2"
+          - generic [ref=f4e154]:
+            - generic [ref=f4e155]:
+              - heading "Arco" [level=2] [ref=f4e156]
+              - generic [ref=f4e157]: "2026"
+            - paragraph [ref=f4e158]: Directed by Ugo Bienvenu
+            - generic [ref=f4e159]:
+              - generic [ref=f4e160]: Animation
+              - generic [ref=f4e161]: Adventure
+              - generic [ref=f4e162]: Fantasy
+            - paragraph [ref=f4e163]: In 2075, a girl witnesses a mysterious boy in a rainbow suit fall from the sky. He comes from an idyllic far future where time travel is possible. She shelters him and will do whatever it takes to help him return to his time.
+            - generic [ref=f4e164]:
+              - generic [ref=f4e165]: 1 nomination
+              - generic [ref=f4e167]: Details (1) →
+        - article [ref=f4e168]:
+          - generic [ref=f4e169]:
+            - 'img "Avatar: Fire and Ash poster" [ref=f4e170]'
+            - generic [ref=f4e171]: "7.2"
+          - generic [ref=f4e174]:
+            - generic [ref=f4e175]:
+              - 'heading "Avatar: Fire and Ash" [level=2] [ref=f4e176]'
+              - generic [ref=f4e177]: "2026"
+            - paragraph [ref=f4e178]: Directed by James Cameron
+            - generic [ref=f4e179]:
+              - generic [ref=f4e180]: Action
+              - generic [ref=f4e181]: Adventure
+              - generic [ref=f4e182]: Drama
+            - paragraph [ref=f4e183]: Jake and Neytiri's family grapples with grief, encountering a new, aggressive Na'vi tribe, the Ash People, who are led by the fiery Varang, as the conflict on Pandora escalates and a new moral focus emerges.
+            - generic [ref=f4e184]:
+              - generic [ref=f4e185]: 1 nomination
+              - generic [ref=f4e187]: Details (1) →
+  - navigation "Design variants" [ref=f4e188]:
+    - link "1 Noir Gold" [ref=f4e189] [cursor=pointer]:
+      - /url: "?v=1"
+    - link "2 Ivory Editorial" [ref=f4e190] [cursor=pointer]:
+      - /url: "?v=2"
+    - link "3 Midnight Indigo" [ref=f4e191] [cursor=pointer]:
+      - /url: "?v=3"
+    - link "4 Clean Modern" [ref=f4e192] [cursor=pointer]:
+      - /url: "?v=4"
