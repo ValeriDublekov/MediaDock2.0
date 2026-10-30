@@ -160,7 +160,7 @@ describe('OscarCatalogView', () => {
     expect(oscarGroup.getByText('Winner · Ceremony 90 · Film year 2017')).toBeTruthy()
     expect(oscarGroup.getByText('Nominee · Ceremony 90 · Film year 2017')).toBeTruthy()
 
-    const globeGroup = within(summary.getByRole('group', { name: 'Golden Globes awards and nominations' }))
+    const globeGroup = within(await summary.findByRole('group', { name: 'Golden Globes awards and nominations' }))
     fireEvent.click(globeGroup.getByText('View Golden Globes details (1)'))
     expect(globeGroup.getByText('Best Motion Picture - Drama')).toBeTruthy()
     expect(globeGroup.getByText('Nominee · Ceremony year 2018')).toBeTruthy()
