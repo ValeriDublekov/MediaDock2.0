@@ -19,16 +19,16 @@
 
 ## Prioritization Rationale
 
-P1 addresses operational/data risk or a broad usability blocker. P2 addresses repeated browsing and comprehension problems after the relevant foundations. These scheduling bands do not downgrade a source observation labeled High. Within each phase, the initiative order is the proposed priority order; there are no precise effort estimates.
+The [index work order](ui-design-improvements-plan.md#work-order) controls scheduling per problem, not per phase. P1 covers obstructed/inaccessible use, consequential intent, confirmed unsafe operation behavior, and misleading failure/retry semantics. P2 covers everyday lookup, comparison, and interpretation using supported data. P3 covers extra controls, richer capabilities requiring new data, and visual polish. Original High/Medium/Low observations remain evidence, not blanket implementation priorities; no precise effort estimates are implied.
 
-| Phase | Evidence / reason for order | Dependency / exit |
+| Work package | First useful scope | Deferred candidates |
 | --- | --- | --- |
-| [1. Evidence and shared shell](ui-design-improvements-plan-phase-1-shell.md) | UI-01, P1: High first-viewport concerns and repeated Medium overlap; broad benefit establishes scroll, heading, and responsive constraints | Approval and local ownership check; shell acceptance gate |
-| [2. Safe operations and diagnostics](ui-design-improvements-plan-phase-2-operations.md) | UI-02 through UI-05, P1: multiple High observations; deployment, imports, account changes, provider requests, retries, saves, and recalculation carry operational/data risk | Per-workflow contract verification; safe synthetic success/failure scenarios |
-| [3. Browsing and personal libraries](ui-design-improvements-plan-phase-3-browsing.md) | UI-06 through UI-08, P2: High/Medium density, finding/position, scope and rating meaning; reuses shell and action decisions across frequent tasks | Phase 1 offsets; Phase 2 action conventions where mutations appear; browse/reflow gate |
-| [4. Recommendations and awards](ui-design-improvements-plan-phase-4-domain-meaning.md) | UI-09 and UI-10, P2: High explanation/category concerns; domain-specific interpretation builds on readable results and verified data | Phase 3 hierarchy; verified score/category data; domain comprehension gate |
+| [1. Shell, UI-01](ui-design-improvements-plan-phase-1-shell.md) | P1 overlap/focus/navigation; broad benefit with existing ownership checks | P2 density/context; P3 repeated-heading polish |
+| [2. Operations, UI-02 through UI-05](ui-design-improvements-plan-phase-2-operations.md) | P1 selected action safety and failure semantics, verified locally first | P2 supported settings/diagnostic clarity; P3 richer histories, tokenized inputs, admin navigation |
+| [3. Browsing, UI-06 through UI-08](ui-design-improvements-plan-phase-3-browsing.md) | P2 lookup, readable comparison, and accurate personal/mixed-type meaning | P3 extra pagination/filter controls, fallback/layout/ID polish |
+| [4. Domain meaning, UI-09 and UI-10](ui-design-improvements-plan-phase-4-domain-meaning.md) | P2 distinct scores, available explanations, and existing award-category details | P3 new score/category fields, filters, and series features |
 
-Phase 1 starts with the smallest local evidence/ownership checks, not a new whole-product review. Each later phase is separately approved and delivered as coherent, independently testable slices. Safe-action conventions are shared design work, not a mandate for one generic workflow engine. Phase 4 data-feasibility checks may run alongside Phase 2; its display changes depend on Phase 3. P1 safety work need not wait for unrelated browsing refinements.
+Verify only the selected problem and its direct boundary, not the whole application. If unobserved behavior is already correct, record no change needed. Select the highest-priority unblocked problem; preserve a blocked item's status without delaying independent approved work. Every selected slice requires approval and its relevant criteria/common gate, not completion of all candidates in a phase. Safety conventions do not imply a generic workflow engine, and score/category clarity does not depend on a full card redesign.
 
 ## Coverage and Ownership Boundaries
 

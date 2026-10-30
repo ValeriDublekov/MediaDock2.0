@@ -169,6 +169,16 @@ describe('App routes', () => {
     expect(screen.queryByText('Favorites route content')).toBeNull()
   })
 
+  it('describes favorites as a mixed movie and series collection', async () => {
+    authMock.session = activeUserSession
+
+    renderAt('/favorites')
+
+    expect(await screen.findByText('Favorites route content')).toBeTruthy()
+    expect(screen.getByText('MY TITLES')).toBeTruthy()
+    expect(screen.getByText('Movies and series saved from supported catalogs, recommendations, or awards.')).toBeTruthy()
+  })
+
   it('blocks anonymous visitors from opening the ignore list directly', async () => {
     renderAt('/account/ignored-movies')
 

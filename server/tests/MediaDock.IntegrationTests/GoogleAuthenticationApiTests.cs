@@ -4,10 +4,13 @@ using MediaDock.Api.Authentication;
 using MediaDock.Api.Common;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using static MediaDock.IntegrationTests.GoogleAuthenticationApiTestSupport;
@@ -55,6 +58,119 @@ public sealed class GoogleAuthenticationApiTests
         logoutRequest.Headers.Add("RequestVerificationToken", token.RequestToken);
         using var validLogoutResponse = await client.SendAsync(logoutRequest);
         Assert.Equal(HttpStatusCode.NoContent, validLogoutResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task DevelopmentLocalMockUsesTheOnlyActiveLinkedUser()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_local_mock_auth_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            var now = DateTimeOffset.UtcNow;
+            var user = new User
+            {
+                NormalizedEmail = "local-admin@example.com",
+                GivenName = "Local",
+                FamilyName = "Admin",
+                Status = "active",
+                Role = "admin",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            user.ExternalIdentities.Add(new ExternalIdentity
+            {
+                User = user,
+                Issuer = GoogleSignInSettings.GoogleIssuer,
+                Subject = "local-mock-subject",
+                CreatedAt = now
+            });
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+        }
+
+        var loggerProvider = new TestLoggerProvider();
+        using var factory = new ApiFactory(
+            connectionString,
+            loggerProvider: loggerProvider,
+            accessControlEnforced: true,
+            localMockEnabled: true);
+        Assert.Equal(
+            "True",
+            factory.Services.GetRequiredService<IConfiguration>()["Authentication:LocalMock:Enabled"]);
+        var schemes = await factory.Services.GetRequiredService<IAuthenticationSchemeProvider>()
+            .GetAllSchemesAsync();
+        Assert.Contains(schemes, scheme => scheme.Name == "MediaDock.LocalMock");
+        Assert.Equal(
+            "MediaDock.LocalMock",
+            factory.Services.GetRequiredService<IOptions<AuthenticationOptions>>().Value.DefaultAuthenticateScheme);
+        using var client = factory.CreateClient();
+
+        using var sessionResponse = await client.GetAsync("/api/auth/session");
+        Assert.Equal(HttpStatusCode.OK, sessionResponse.StatusCode);
+        var session = await sessionResponse.Content.ReadFromJsonAsync<CurrentSessionResponse>();
+        Assert.NotNull(session);
+        Assert.True(session.Authenticated, string.Join(" | ", loggerProvider.Messages));
+        Assert.Equal("linked", session.AccountState);
+        Assert.Equal("local-mock-subject", session.Identity?.Subject);
+        Assert.Equal("admin", session.User?.Role);
+
+        using var catalogResponse = await client.GetAsync("/api/catalog");
+        Assert.Equal(HttpStatusCode.OK, catalogResponse.StatusCode);
+
+        using var favoritesResponse = await client.GetAsync("/api/favorites");
+        Assert.Equal(HttpStatusCode.OK, favoritesResponse.StatusCode);
+    }
+
+    [Fact]
+    public void LocalMockIsRejectedOutsideDevelopment()
+    {
+        using var factory = new ApiFactory(
+            "Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test",
+            localMockEnabled: true,
+            environmentName: "Production");
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            factory.Services.GetRequiredService<IOptions<AuthenticationOptions>>().Value);
+
+        Assert.Contains("Development", exception.Message);
+    }
+
+    [Fact]
+    public void LocalMockIsRejectedDuringProductionServiceRegistration()
+    {
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+        {
+            EnvironmentName = Environments.Production
+        });
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Authentication:LocalMock:Enabled"] = "true",
+            ["ConnectionStrings:MediaDock"] = "Host=127.0.0.1;Database=mediadock_test;Username=test;Password=test"
+        });
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            builder.Services.AddGoogleSignIn(builder.Configuration, builder.Environment));
+
+        Assert.Contains("Development", exception.Message);
+    }
+
+    [Fact]
+    public void LocalMockRequiresLoopbackDatabase()
+    {
+        using var factory = new ApiFactory(
+            "Host=db.example.invalid;Database=mediadock_test;Username=test;Password=test",
+            localMockEnabled: true);
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            factory.Services.GetRequiredService<IOptions<AuthenticationOptions>>().Value);
+
+        Assert.Contains("loopback", exception.Message);
     }
 
     [Fact]

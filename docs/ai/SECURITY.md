@@ -16,6 +16,16 @@ The host-only `bootstrap-admin` tool trusts operator-supplied identity values an
 
 The optional Configuration deployment panel lets any client inside the same LAN boundary trigger the full host deployment pipeline, including migrations. The host service exposes only fixed actions over a Unix socket, but this remains a high-impact unauthenticated control. Keep the API inaccessible outside the trusted LAN; see [operations and jobs](API_OPERATIONS_AND_JOBS.md) and the [systemd runbook](../../deploy/systemd/README.md#web-deployment-control).
 
+## Local Development Mock Authentication
+
+`Authentication:LocalMock:Enabled` is an authentication bypass for local testing. Never add it to `.env`, `compose.yaml`, a production host environment, or a shared launch profile. The production Compose service sets `ASPNETCORE_ENVIRONMENT=Production` and does not pass this setting.
+
+Start the restored-data development API only with [`run_local_restored.ps1`](../../scripts/run_local_restored.ps1). The script reads credentials from the local Compose configuration, targets the local restored database, verifies exactly one active user and linked Google identity, enables authorization enforcement, disables Google OAuth and the background-job dispatcher, and binds the API to `http://localhost:5280`. It sets the mock flag only in the runner process and restores prior environment values when the process exits.
+
+The API rejects the mock flag outside `Development`, when Google sign-in is enabled, or when the database connection is not loopback. The mock scheme is registered only in `Development` and rejects non-loopback client addresses. If the flag is accidentally configured for production, service registration fails rather than enabling the mock.
+
+Stop the API with **Ctrl+C** in the terminal running the script. This stops only the local API; the Vite server and local PostgreSQL container remain running, and the restored database is retained. The restored database contains production data and settings, including the plaintext OMDb key; keep it local and replace that key before enabling background jobs.
+
 ## Secrets
 
 Keep real values in the ignored `.env` file or host environment, never in source, documentation, or the browser bundle. `.env` is plaintext and needs host permissions and protected backups. Replace the development-only database password in the checked-in [`.env.example`](../../.env.example) before local use.

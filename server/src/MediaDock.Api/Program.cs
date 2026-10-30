@@ -22,7 +22,7 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddMediaDockApi(builder.Configuration);
+builder.Services.AddMediaDockApi(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 var forwardedHeadersOptions = TrustedForwardedHeaders.CreateOptions(builder.Configuration);

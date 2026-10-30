@@ -25,6 +25,14 @@ it('does not report zero movies when the API fails', async () => {
   expect(screen.queryByText('0 titles')).toBeNull()
 })
 
+it('uses media-neutral guidance for an empty mixed favorites collection', async () => {
+  vi.mocked(getFavorites).mockResolvedValue({ items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0 })
+  render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
+
+  expect(await screen.findByText('No favorites here')).toBeTruthy()
+  expect(screen.getByText('Add titles from supported catalogs, recommendations, or awards.')).toBeTruthy()
+})
+
 it('filters one canonical movie independently by watch and download status', async () => {
   const movie: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: 42, title: 'Shared Movie', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',

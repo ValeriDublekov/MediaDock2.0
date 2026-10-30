@@ -84,10 +84,13 @@ internal static class GoogleAuthenticationApiTestSupport
         string connectionString,
         ClaimsPrincipal? principal = null,
         ILoggerProvider? loggerProvider = null,
-        bool accessControlEnforced = false) : WebApplicationFactory<Program>
+        bool accessControlEnforced = false,
+        bool localMockEnabled = false,
+        string environmentName = "Development") : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.UseEnvironment(environmentName);
             if (loggerProvider is not null)
             {
                 builder.ConfigureLogging(logging => logging.AddProvider(loggerProvider));
@@ -98,18 +101,24 @@ internal static class GoogleAuthenticationApiTestSupport
                 {
                     ["ConnectionStrings:MediaDock"] = connectionString,
                     ["Authentication:Google:Enabled"] = "false",
+                    ["Authentication:LocalMock:Enabled"] = localMockEnabled.ToString(),
                     ["AccessControl:Enforced"] = accessControlEnforced.ToString()
                 }));
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IHostedService>();
-                services.AddAuthentication()
-                    .AddScheme<TestGoogleOptions, TestGoogleHandler>(TestGoogleOptions.Scheme, options =>
+                if (!localMockEnabled)
+                {
+                    services.AddAuthentication()
+                        .AddScheme<TestGoogleOptions, TestGoogleHandler>(TestGoogleOptions.Scheme, options =>
+                        {
+                            options.Principal = principal;
+                        });
+                    services.PostConfigure<AuthenticationOptions>(options =>
                     {
-                        options.Principal = principal;
+                        options.DefaultAuthenticateScheme = TestGoogleOptions.Scheme;
                     });
-                services.PostConfigure<AuthenticationOptions>(options =>
-                    options.DefaultAuthenticateScheme = TestGoogleOptions.Scheme);
+                }
             });
         }
     }

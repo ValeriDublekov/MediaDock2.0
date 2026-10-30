@@ -27,8 +27,8 @@ export function IgnoredMoviesView() {
         {items.map((movie) => <MoviePosterCard
           awards={[]}
           footer={<div className="favorite-controls ignored-movie-controls">
-            <button className="button button-secondary" disabled={pending !== null} onClick={() => void remove(movie.imdbId)} type="button">
-              {pending === movie.imdbId ? 'Removing…' : 'Remove'}
+            <button aria-label={pending === movie.imdbId ? `Stopping ignoring ${movie.title}` : `Stop ignoring ${movie.title}`} className="button button-secondary" disabled={pending !== null} onClick={() => void remove(movie.imdbId)} type="button">
+              {pending === movie.imdbId ? 'Stopping…' : 'Stop ignoring'}
             </button>
           </div>}
           imdbId={movie.imdbId}
@@ -59,8 +59,8 @@ export function IgnoredMoviesView() {
             <td><a className="title-link" href={`https://www.imdb.com/title/${encodeURIComponent(movie.imdbId)}/`} rel="noreferrer" target="_blank">{movie.imdbId}</a></td>
             <td>{movie.imdbRating === null ? 'Not rated' : movie.imdbRating.toFixed(1)}</td>
             <td>{formatDate(movie.createdAt)}</td>
-            <td><button className="text-button" disabled={pending !== null} onClick={() => void remove(movie.imdbId)} type="button">
-              {pending === movie.imdbId ? 'Removing…' : 'Remove'}
+            <td><button aria-label={pending === movie.imdbId ? `Stopping ignoring ${movie.title}` : `Stop ignoring ${movie.title}`} className="text-button" disabled={pending !== null} onClick={() => void remove(movie.imdbId)} type="button">
+              {pending === movie.imdbId ? 'Stopping…' : 'Stop ignoring'}
             </button></td>
           </tr>)}</tbody>
         </table>

@@ -20,6 +20,7 @@ using MediaDock.Infrastructure.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Users;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 
 namespace MediaDock.Api.DependencyInjection;
 
@@ -27,13 +28,14 @@ public static class ApiServiceCollectionExtensions
 {
 	public static IServiceCollection AddMediaDockApi(
 		this IServiceCollection services,
-		IConfiguration configuration)
+		IConfiguration configuration,
+		IHostEnvironment environment)
 	{
 		services.AddOpenApi();
 		services.AddValidation();
 		services.AddProblemDetails();
 		services.AddExceptionHandler<ApiExceptionHandler>();
-		services.AddGoogleSignIn(configuration);
+		services.AddGoogleSignIn(configuration, environment);
 		services.AddAccessControl(configuration);
 		services.AddDbContext<MediaDockDbContext>(options =>
 			options.UseNpgsql(configuration.GetConnectionString("MediaDock")
@@ -56,7 +58,10 @@ public static class ApiServiceCollectionExtensions
 		services.AddKeyedScoped<IBackgroundJobHandler, ImdbTitleEnrichmentBackgroundJobHandler>("imdb_title_enrichment");
 		services.AddKeyedScoped<IBackgroundJobHandler, ImdbCatalogEnrichmentBackgroundJobHandler>("imdb_catalog_enrichment");
 		services.AddKeyedScoped<IBackgroundJobHandler, GoldenGlobeManualRefreshBackgroundJobHandler>("golden_globe_manual_refresh");
-		services.AddHostedService<BackgroundJobDispatcher>();
+		if (configuration.GetValue("BackgroundJobs:DispatcherEnabled", true))
+		{
+			services.AddHostedService<BackgroundJobDispatcher>();
+		}
 		services.AddScoped<ICatalogApiService, CatalogApiService>();
 		services.AddScoped<IRssFeedPreviewApiService, RssFeedPreviewApiService>();
 		services.AddScoped<ITorrentTitleMatchApiService, TorrentTitleMatchApiService>();

@@ -77,7 +77,7 @@ export function FavoritesView() {
     {!available && <EmptyState title="Sign in to view favorites" message="An active linked account is required." />}
     {available && loading && <LoadingState label="Loading favorites" />}
     {available && !loading && error && <ErrorState message={error} onRetry={() => { setLoading(true); setError(null); setAttempt((value) => value + 1) }} />}
-    {available && !loading && !error && result?.items.length === 0 && <EmptyState title="No favorites here" message="Add movies from supported catalogs or titles from recommendations." />}
+    {available && !loading && !error && result?.items.length === 0 && <EmptyState title="No favorites here" message="Add titles from supported catalogs, recommendations, or awards." />}
     {available && !loading && !error && result && result.items.length > 0 && <>
       {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
       {viewMode === 'posters' ? <div className="poster-grid">

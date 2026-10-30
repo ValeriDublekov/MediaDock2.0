@@ -1,9 +1,11 @@
+using System.Net;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using MediaDock.Infrastructure.Users;
+using Npgsql;
 
 namespace MediaDock.Api.Authentication;
 
@@ -211,9 +213,13 @@ public sealed record ValidatedGoogleIdentity(
 
 public static class GoogleSignInServiceCollectionExtensions
 {
-    public static IServiceCollection AddGoogleSignIn(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddGoogleSignIn(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         var settings = GoogleSignInSettings.FromConfiguration(configuration);
+        ValidateLocalMockSettings(configuration, environment, settings.Enabled);
         services.AddSingleton(settings);
         services.AddScoped<GoogleSessionService>();
         services.AddAntiforgery(options =>
@@ -229,7 +235,12 @@ public static class GoogleSignInServiceCollectionExtensions
 
         var authentication = services.AddAuthentication(options =>
         {
-            options.DefaultAuthenticateScheme = GoogleSignInSettings.CookieScheme;
+            var localMockEnabled = configuration.GetValue<bool>("Authentication:LocalMock:Enabled");
+            ValidateLocalMockSettings(configuration, environment, settings.Enabled);
+
+            options.DefaultAuthenticateScheme = localMockEnabled
+                ? LocalMockAuthenticationHandler.Scheme
+                : GoogleSignInSettings.CookieScheme;
             options.DefaultSignInScheme = GoogleSignInSettings.CookieScheme;
             options.DefaultChallengeScheme = GoogleSignInSettings.CookieScheme;
         });
@@ -260,7 +271,57 @@ public static class GoogleSignInServiceCollectionExtensions
             authentication.AddGoogleOpenIdConnect(settings);
         }
 
+        if (environment.IsDevelopment())
+        {
+            authentication.AddScheme<AuthenticationSchemeOptions, LocalMockAuthenticationHandler>(
+                LocalMockAuthenticationHandler.Scheme,
+                _ => { });
+        }
+
         return services;
+    }
+
+    private static bool UsesLoopbackDatabase(string? connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return false;
+        }
+
+        var hosts = new NpgsqlConnectionStringBuilder(connectionString).Host
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return hosts.Length > 0 && hosts.All(host =>
+            string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
+            || IPAddress.TryParse(host, out var address) && IPAddress.IsLoopback(address));
+    }
+
+    private static void ValidateLocalMockSettings(
+        IConfiguration configuration,
+        IHostEnvironment environment,
+        bool googleSignInEnabled)
+    {
+        if (!configuration.GetValue<bool>("Authentication:LocalMock:Enabled"))
+        {
+            return;
+        }
+
+        if (!environment.IsDevelopment())
+        {
+            throw new InvalidOperationException(
+                "Authentication:LocalMock:Enabled is only supported in the Development environment.");
+        }
+
+        if (googleSignInEnabled)
+        {
+            throw new InvalidOperationException(
+                "Authentication:LocalMock:Enabled cannot be combined with Google sign-in.");
+        }
+
+        if (!UsesLoopbackDatabase(configuration.GetConnectionString("MediaDock")))
+        {
+            throw new InvalidOperationException(
+                "Authentication:LocalMock:Enabled requires a loopback MediaDock database connection.");
+        }
     }
 
     public static AuthenticationBuilder AddGoogleOpenIdConnect(

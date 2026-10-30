@@ -54,12 +54,14 @@ describe('IgnoredMoviesView', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Ignore movie' }))
     expect(await screen.findByRole('button', { name: 'Remove from ignore list' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Stop ignoring Quiet River' })).toBeTruthy()
     expect(await screen.findByRole('link', { name: movie.title })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(await screen.findByRole('row', { name: /Quiet River/ })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Stop ignoring Quiet River' })).toBeTruthy()
     expect(addIgnoredMovie).toHaveBeenCalledWith(movie.imdbId)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop ignoring Quiet River' }))
     await waitFor(() => expect(removeIgnoredMovie).toHaveBeenCalledWith(movie.imdbId))
     expect(await screen.findByText('No ignored titles')).toBeTruthy()
     expect(await screen.findByRole('button', { name: 'Ignore movie' })).toBeTruthy()

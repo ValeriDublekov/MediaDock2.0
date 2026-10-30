@@ -61,9 +61,9 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
     description: 'Browse Golden Globes nominees, winners, and award categories.',
   },
   favorites: {
-    eyebrow: 'MY MOVIES',
+    eyebrow: 'MY TITLES',
     title: 'Favorites',
-    description: 'Movies saved from recommendations, the catalog, and Oscar awards.',
+    description: 'Movies and series saved from supported catalogs, recommendations, or awards.',
   },
   account: {
     eyebrow: 'PERSONAL',

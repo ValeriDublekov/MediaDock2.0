@@ -4,15 +4,15 @@
 
 ## Entry and Tasks
 
-Current status belongs in the [progress tracker](ui-design-improvements-plan-progress.md). Use Phase 1 shell/scroll rules and Phase 2 action conventions where lists mutate. Add verified renderers, query owners, API fields, direct consumers, and tests to this file before implementation.
+Current status belongs in the [progress tracker](ui-design-improvements-plan-progress.md). Select P2 work after approved, unblocked P1 problems; neither full Phase 1 nor full Phase 2 completion is required. Use only the shell/action contracts actually touched. Add verified renderers, query owners, API fields, direct consumers, and tests before implementation.
 
-1. Establish card/table hierarchy using Catalog as the first local slice; inspect actual shared consumers before applying it elsewhere.
-2. Extend verified shared behavior to recommendation, award, and personal lists without erasing screen-specific meaning. Apply UI-07 result context and UI-08 personal semantics in separate coherent slices.
-3. Validate small and large collections, long/missing data, multiple pages, and responsive table/card layouts. Do not force identical column counts or metadata onto every list.
+1. Address a concrete everyday task: Personal Ratings title lookup using a verified query, distinct rating labels, or accurate mixed-content wording. A label fix does not require redesigning cards.
+2. Then improve Catalog card readability/compact table rows where scanning is obstructed; inspect actual shared consumers before extending the change. Recommendation score labels can proceed independently under UI-09.
+3. Keep extra page-size/jump/filter controls, elaborate poster fallbacks, technical-ID relocation, small-collection tuning, and upload instruction/layout polish at P3. Validate the selected task across relevant data and responsive states, not the whole candidate list.
 
 ## UI-06: Readable Cards and Efficient Tables
 
-**Priority / observation / sources:** P2. [Catalog](ui-design-improvements.md#catalog) records narrow five-column cards and tall Table rows (High), plus metadata hierarchy, missing posters, actions, and header context (Medium). Movie/Series Recommendations, Favorites, Personal Ratings, Oscar, and Golden Globes repeat density/missing-value concerns; Ignored Titles only requests narrower-width validation (Low). The simpler ignored cards were scannable at the reviewed desktop width.
+**Priority / observation / sources:** P2 for readable primary fields and compact comparison; P3 for aesthetic fallback/small-collection tuning. Inaccessible controls are P1 wherever found. [Catalog](ui-design-improvements.md#catalog) records narrow five-column cards and tall Table rows (High), plus metadata hierarchy, missing posters, actions, and header context (Medium). Movie/Series Recommendations, Favorites, Personal Ratings, Oscar, and Golden Globes repeat density/missing-value concerns; Ignored Titles only requests narrower-width validation (Low). The simpler ignored cards were scannable at the reviewed desktop width.
 
 **Impact / affected areas:** Faster comparison and less scrolling across title lists. Candidate shared areas are card sizing, fallback media, metadata/disclosure, action accessibility, and table density; actual renderers and each screen's primary fields remain unverified. Administration tables are not assumed to share the title-table implementation; their domain refinements stay in UI-04/UI-05.
 
@@ -31,7 +31,7 @@ Current status belongs in the [progress tracker](ui-design-improvements-plan-pro
 
 ## UI-07: Find Titles and Preserve Result Position
 
-**Priority / observation / sources:** P2. [Personal Ratings](ui-design-improvements.md#personal-ratings) has no visible title search (High). Catalog, recommendation lists, Favorites, Golden Globes, and both [Parse Log entry points](ui-design-improvements-administration.md#parse-log) record count/order/pagination/context concerns (Medium); a page-jump control is only a Golden Globes candidate.
+**Priority / observation / sources:** P2 for title lookup and basic count/order/page context; P3 for new page-size/jump/additional filter controls. [Personal Ratings](ui-design-improvements.md#personal-ratings) has no visible title search (High). Catalog, recommendation lists, Favorites, Golden Globes, and both [Parse Log entry points](ui-design-improvements-administration.md#parse-log) record count/order/pagination/context concerns (Medium); a page-jump control is only a Golden Globes candidate.
 
 **Impact / affected areas:** Less repeated scrolling, easier lookup in large libraries, and clearer current result scope. Share visual conventions for result context where useful, not query logic by assumption.
 
@@ -49,7 +49,7 @@ Current status belongs in the [progress tracker](ui-design-improvements-plan-pro
 
 ## UI-08: Honest Scope and Personal Rating Meaning
 
-**Priority / observation / sources:** P2. [Favorites](ui-design-improvements.md#favorites) uses movie-only context for mixed results (High); [Golden Globes](ui-design-improvements.md#golden-globes-catalog) calls mixed results films (High). [Personal Ratings](ui-design-improvements.md#personal-ratings) needs clearer personal/public rating separation (High), provenance/dates and quieter IMDb IDs (Medium); [Import Ratings](ui-design-improvements.md#import-ratings) needs scannable instructions and a comfortable form measure (Medium/Low).
+**Priority / observation / sources:** P2 for accurate scope, explicit ratings, and truthful supported provenance; P3 for ID relocation and instruction/form polish. [Favorites](ui-design-improvements.md#favorites) uses movie-only context for mixed results (High); [Golden Globes](ui-design-improvements.md#golden-globes-catalog) calls mixed results films (High). [Personal Ratings](ui-design-improvements.md#personal-ratings) needs clearer personal/public rating separation (High), provenance/dates and quieter IMDb IDs (Medium); [Import Ratings](ui-design-improvements.md#import-ratings) needs scannable instructions and a comfortable form measure (Medium/Low).
 
 **Impact / affected areas:** Prevent users misunderstanding what a collection contains, whose rating they see, or what a date represents. Keep recommendation scores separately defined in UI-09. Import mutation safety remains UI-02/UI-03.
 
@@ -69,4 +69,4 @@ Current status belongs in the [progress tracker](ui-design-improvements-plan-pro
 
 Use synthetic mixed movie/series collections, unavailable metadata/posters, long titles, equal and missing rating values, imported/local/unknown provenance, and multi-page libraries. Apply the [common validation gate](ui-design-improvements-plan-validation.md) and focused tests per verified component/query owner; preserve all existing mutation and query semantics.
 
-Exit when finding a known fixture title, comparing primary signals, reaching details/actions by keyboard, and retaining filter/page context pass without layout overlap. Document unsupported provenance/search data separately rather than presenting a misleading UI.
+Close the selected lookup, comparison, or meaning problem when its relevant fixture task and common gate pass. Do not require every list, all UI-06/UI-07/UI-08 criteria, or P3 polish. Document unsupported provenance/search data separately rather than inventing UI capabilities; any API addition requires separate approval.
