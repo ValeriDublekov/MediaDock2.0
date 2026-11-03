@@ -20,6 +20,7 @@ import { RecommendationsView, type RecommendationResultCount } from './features/
 import { MovieTablesDashboardView } from './features/dashboard/MovieTablesDashboardView'
 
 type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'account' | 'administration'
+const anonymousBrowsingStorageKey = 'mediadock.anonymous-browsing'
 
 const sections: { id: Section; path: string; label: string }[] = [
   { id: 'catalog', path: '/catalog', label: 'Torrents catalog' },
@@ -214,15 +215,24 @@ function RegistrationGate({
   )
 }
 
-function WelcomePage({ signInEnabled }: { signInEnabled: boolean }) {
+function WelcomePage({
+  signInEnabled,
+  anonymousAccessEnabled,
+  onContinueWithoutSigningIn,
+}: {
+  signInEnabled: boolean
+  anonymousAccessEnabled: boolean
+  onContinueWithoutSigningIn: () => void
+}) {
   return (
     <section aria-labelledby="welcome-heading" className="welcome-page">
       <p className="registration-eyebrow">YOUR MOVIE LIBRARY</p>
       <h1 id="welcome-heading">MediaDock</h1>
       <p>Explore award catalogs, discover movies and series, and keep your personal collection in one place.</p>
+      {anonymousAccessEnabled && <button className="button" onClick={onContinueWithoutSigningIn} type="button">Continue without signing in</button>}
       {signInEnabled
-        ? <a className="button" href="/api/auth/google/login">Sign in with Google</a>
-        : <p className="registration-note" role="status">Google sign-in is currently unavailable.</p>}
+        ? <a className={`button${anonymousAccessEnabled ? ' button-secondary' : ''}`} href="/api/auth/google/login">Sign in with Google</a>
+        : !anonymousAccessEnabled && <p className="registration-note" role="status">Google sign-in is currently unavailable.</p>}
     </section>
   )
 }
@@ -286,6 +296,9 @@ function AuthRecoveryScreen({ diagnostic }: { diagnostic: AuthDiagnostic }) {
 function AppContent() {
   const [authChecked, setAuthChecked] = useState(false)
   const [session, setSession] = useState<CurrentSession | null>(null)
+  const [anonymousBrowsingEnabled, setAnonymousBrowsingEnabled] = useState(
+    () => window.sessionStorage.getItem(anonymousBrowsingStorageKey) === 'true',
+  )
   const [authDiagnostic, setAuthDiagnostic] = useState<AuthDiagnostic | null>(null)
   const [recommendationResultCount, setRecommendationResultCount] = useState<RecommendationResultCount | null>(null)
   const onSessionChange = useCallback((currentSession: CurrentSession | null, diagnostic: AuthDiagnostic | null = null) => {
@@ -297,6 +310,9 @@ function AppContent() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const isActiveAccount = session?.accountState === 'linked' && session.user?.status === 'active'
+  const isAnonymousOpenMode = session?.authenticated === false
+    && session.authorizationEnforced === false
+    && anonymousBrowsingEnabled
   const accountKey = isActiveAccount && session?.identity
     ? `${session.identity.issuer}:${session.identity.subject}`
     : null
@@ -337,15 +353,22 @@ function AppContent() {
     : null
   const registrationSession = session?.authenticated && session.accountState === 'unmatched' ? session : null
   const recoveryDiagnostic = session === null ? authDiagnostic : null
+  function continueWithoutSigningIn() {
+    window.sessionStorage.setItem(anonymousBrowsingStorageKey, 'true')
+    setAnonymousBrowsingEnabled(true)
+    navigate('/catalog')
+  }
   const breadcrumbContext = recoveryDiagnostic
     ? 'SIGN-IN DIAGNOSTICS'
     : !authChecked
       ? 'SIGN-IN CHECK'
+      : isAnonymousOpenMode
+        ? content.eyebrow
       : !isActiveAccount
         ? session?.authenticated ? 'ACCOUNT ACCESS' : 'WELCOME'
         : `${section === 'account' || section === 'favorites' ? content.title : content.eyebrow}${administrationPage ? ` / ${administrationPage.label.toUpperCase()}` : ''}`
-  const showAuthStatus = !authChecked || Boolean(session?.authenticated) || recoveryDiagnostic !== null
-  const isAccessGated = !authChecked || !isActiveAccount
+  const showAuthStatus = !authChecked || Boolean(session?.authenticated) || isAnonymousOpenMode || recoveryDiagnostic !== null
+  const isAccessGated = !authChecked || (!isActiveAccount && !isAnonymousOpenMode)
 
   return (
     <IgnoredMoviesProvider accountKey={accountKey} key={accountKey ?? 'no-active-owner'}>
@@ -434,7 +457,7 @@ function AppContent() {
           </div>
         </header>
 
-        {authChecked && isActiveAccount && session?.authorizationEnforced !== true && (
+        {authChecked && (isActiveAccount || isAnonymousOpenMode) && session?.authorizationEnforced !== true && (
           <aside className="open-mode-warning" role="note">
             Access control is disabled: shared, system, and administration APIs are not authorization-protected. Keep the API within its configured network boundary. Favorites, ignored movies, and personal ratings still require an active linked account and remain owner-scoped.
           </aside>
@@ -444,13 +467,17 @@ function AppContent() {
           <div className="session-check" role="status">Checking sign-in status</div>
         ) : recoveryDiagnostic ? (
           <AuthRecoveryScreen diagnostic={recoveryDiagnostic} />
-        ) : !session?.authenticated ? (
+        ) : !session?.authenticated && !isAnonymousOpenMode ? (
           location.pathname === '/' || location.pathname === '/login'
-            ? <WelcomePage signInEnabled={Boolean(session?.signInEnabled)} />
+            ? <WelcomePage
+              anonymousAccessEnabled={session?.authorizationEnforced === false}
+              onContinueWithoutSigningIn={continueWithoutSigningIn}
+              signInEnabled={Boolean(session?.signInEnabled)}
+            />
             : <Navigate replace to="/login" />
         ) : registrationSession ? (
           <RegistrationGate onSessionChange={onSessionChange} session={registrationSession} />
-        ) : !isActiveAccount ? (
+        ) : !isActiveAccount && !isAnonymousOpenMode ? (
           <AccountAccessGate session={session} />
         ) : <div className="page-content">
           {authDiagnostic && (

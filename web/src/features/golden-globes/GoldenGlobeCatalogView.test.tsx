@@ -64,6 +64,8 @@ describe('GoldenGlobeCatalogView', () => {
     render(<GoldenGlobeCatalogView />)
 
     expect(await screen.findByRole('button', { name: 'A Film' })).toBeTruthy()
+    expect(screen.queryByText('More filters')).toBeNull()
+    expect(screen.getByLabelText('Award result').closest('details')).toBeNull()
     expect(screen.getByText('Director: Not listed')).toBeTruthy()
     expect(screen.getByText('Plot unavailable')).toBeTruthy()
     expect(document.querySelector('.state-pill.is-enriched')).toBeNull()

@@ -158,29 +158,42 @@ export function GoldenGlobeCatalogView() {
   return <section aria-label="Golden Globes catalog" className="media-view">
     <div className="section-toolbar catalog-section-toolbar"><span className="result-count">{result ? `${result.totalCount.toLocaleString()} Golden Globes films` : 'Golden Globes records'}</span><div className="toolbar-actions"><ViewModeControl onChange={setViewMode} value={viewMode} /><button className="text-button" onClick={refresh} type="button">Refresh results</button></div></div>
     <form className="filter-form oscar-filter-form browse-filters" onSubmit={apply}>
-      <div className="field filter-search"><label htmlFor="golden-globe-search">Search films</label><input id="golden-globe-search" onChange={(event) => update('search', event.target.value)} placeholder="Film title" type="search" value={draft.search} /></div>
-      {result?.yearBounds && <YearRangeFilter
-        bounds={result.yearBounds}
-        id="golden-globe-year-range"
-        label="Ceremony year"
-        onCommit={(from, to) => updateYearRange(from, to, true)}
-        onPreview={(from, to) => updateYearRange(from, to, false)}
-        valueFrom={draft.yearFrom ? Number(draft.yearFrom) : result.yearBounds.minYear}
-        valueTo={draft.yearTo ? Number(draft.yearTo) : result.yearBounds.maxYear}
-      />}
-      {result?.imdbRatingBounds && <ImdbRatingRangeFilter
-        bounds={result.imdbRatingBounds}
-        id="golden-globe-imdb-rating-range"
-        onCommit={(from, to) => updateImdbRatingRange(from, to, true)}
-        onPreview={(from, to) => updateImdbRatingRange(from, to, false)}
-        valueFrom={draft.imdbRatingFrom ? Number(draft.imdbRatingFrom) : result.imdbRatingBounds.minRating}
-        valueTo={draft.imdbRatingTo ? Number(draft.imdbRatingTo) : result.imdbRatingBounds.maxRating}
-      />}
-      <details className="advanced-filters"><summary>More filters</summary><div className="advanced-fields">
-        <CategoryMultiSelect error={categoryOptionsError} label="Categories" loading={categoryOptionsLoading} onChange={applyCategories} options={categoryOptions} selectedValues={draft.categories} />
-        <div className="field"><label htmlFor="golden-globe-result">Award result</label><select id="golden-globe-result" onChange={(event) => update('result', event.target.value)} value={draft.result}><option value="">All results</option><option value="winner">Winners</option><option value="nominee">Nominees</option></select></div>
-        <div className="field"><label htmlFor="golden-globe-enrichment-status">OMDb status</label><select id="golden-globe-enrichment-status" onChange={(event) => update('enrichmentStatus', event.target.value)} value={draft.enrichmentStatus}><option value="">All statuses</option><option value="pending">Pending</option><option value="enriched">Enriched</option><option value="problem">Problem</option><option value="not_found">Not found</option><option value="temporary_error">Temporary error</option></select></div>
-      </div></details>
+      <div className="field filter-search">
+        <label htmlFor="golden-globe-search">Search films</label>
+        <input id="golden-globe-search" onChange={(event) => update('search', event.target.value)} placeholder="Film title" type="search" value={draft.search} />
+      </div>
+      <CategoryMultiSelect error={categoryOptionsError} label="Categories" loading={categoryOptionsLoading} onChange={applyCategories} options={categoryOptions} selectedValues={draft.categories} />
+      <div className="field award-result-filter">
+        <label htmlFor="golden-globe-result">Award result</label>
+        <select id="golden-globe-result" onChange={(event) => update('result', event.target.value)} value={draft.result}>
+          <option value="">All results</option><option value="winner">Winners</option><option value="nominee">Nominees</option>
+        </select>
+      </div>
+      <div className="field award-status-filter">
+        <label htmlFor="golden-globe-enrichment-status">OMDb status</label>
+        <select id="golden-globe-enrichment-status" onChange={(event) => update('enrichmentStatus', event.target.value)} value={draft.enrichmentStatus}>
+          <option value="">All statuses</option><option value="pending">Pending</option><option value="enriched">Enriched</option><option value="problem">Problem</option><option value="not_found">Not found</option><option value="temporary_error">Temporary error</option>
+        </select>
+      </div>
+      <div className="browse-range-filters">
+        {result?.yearBounds && <YearRangeFilter
+          bounds={result.yearBounds}
+          id="golden-globe-year-range"
+          label="Ceremony year"
+          onCommit={(from, to) => updateYearRange(from, to, true)}
+          onPreview={(from, to) => updateYearRange(from, to, false)}
+          valueFrom={draft.yearFrom ? Number(draft.yearFrom) : result.yearBounds.minYear}
+          valueTo={draft.yearTo ? Number(draft.yearTo) : result.yearBounds.maxYear}
+        />}
+        {result?.imdbRatingBounds && <ImdbRatingRangeFilter
+          bounds={result.imdbRatingBounds}
+          id="golden-globe-imdb-rating-range"
+          onCommit={(from, to) => updateImdbRatingRange(from, to, true)}
+          onPreview={(from, to) => updateImdbRatingRange(from, to, false)}
+          valueFrom={draft.imdbRatingFrom ? Number(draft.imdbRatingFrom) : result.imdbRatingBounds.minRating}
+          valueTo={draft.imdbRatingTo ? Number(draft.imdbRatingTo) : result.imdbRatingBounds.maxRating}
+        />}
+      </div>
       <div className="filter-actions"><button className="button button-secondary" onClick={clear} type="button">Clear</button></div>
     </form>
     {loading && <LoadingState label="Loading Golden Globes catalog" />}

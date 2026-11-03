@@ -149,6 +149,7 @@ describe('App routes', () => {
     authMock.session = anonymousSession
     authMock.diagnostic = null
     authMock.nextSession = null
+    window.sessionStorage.clear()
     vi.mocked(getCurrentSession).mockReset()
     vi.mocked(requestRegistration).mockReset()
   })
@@ -182,13 +183,33 @@ describe('App routes', () => {
   })
 
   it('keeps login accessible when Google sign-in is unavailable', async () => {
-    authMock.session = { ...anonymousSession, signInEnabled: false }
+    authMock.session = { ...anonymousSession, authorizationEnforced: true, signInEnabled: false }
     renderAt('/login')
 
     expect(await screen.findByRole('heading', { name: 'MediaDock' })).toBeTruthy()
     expect(screen.getByText('Google sign-in is currently unavailable.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Continue without signing in' })).toBeNull()
     expect(screen.getByTestId('location').textContent).toBe('/login')
     expect(screen.queryByText('Catalog route content')).toBeNull()
+  })
+
+  it('lets anonymous visitors explicitly enter local open mode without enabling account-only routes', async () => {
+    authMock.session = { ...anonymousSession, signInEnabled: false, authorizationEnforced: false }
+    renderAt('/oscar')
+
+    expect(await screen.findByRole('heading', { name: 'MediaDock' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Continue without signing in' }))
+
+    expect(await screen.findByText('Catalog route content')).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Main navigation' })).toBeTruthy()
+    expect(screen.getByRole('note').textContent).toContain('Access control is disabled')
+    expect(window.sessionStorage.getItem('mediadock.anonymous-browsing')).toBe('true')
+    fireEvent.click(screen.getByRole('link', { name: 'Oscar catalog' }))
+    expect(await screen.findByText('Oscar route content')).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Favorites' })).toBeNull()
+    cleanup()
+    renderAt('/favorites')
+    expect(await screen.findByRole('heading', { name: 'Favorites unavailable' })).toBeTruthy()
   })
 
   it('opens the catalog for an active account visiting login', async () => {

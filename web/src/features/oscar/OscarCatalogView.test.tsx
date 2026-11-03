@@ -179,7 +179,8 @@ describe('OscarCatalogView', () => {
     filmRequest.mockResolvedValue(page([]))
     render(<OscarCatalogView />)
 
-    fireEvent.click(screen.getByText('More filters'))
+    expect(screen.queryByText('More filters')).toBeNull()
+    expect(screen.getByLabelText('Award result').closest('details')).toBeNull()
     fireEvent.change(screen.getByLabelText('Search films'), { target: { value: '  Oppenheimer  ' } })
     expect(filmRequest).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('button', { name: 'Apply filters' })).toBeNull()
@@ -189,7 +190,7 @@ describe('OscarCatalogView', () => {
     expect(filmRequest).toHaveBeenLastCalledWith({ page: 1, pageSize: titlePageSize, result: 'winner', enrichmentStatus: 'pending' })
     fireEvent.click(await screen.findByLabelText('Categories: All categories (5)'))
     fireEvent.click(screen.getByLabelText('BEST PICTURE'))
-    expect(screen.getByText('More filters (3 active)')).toBeTruthy()
+    expect(screen.getByLabelText('Categories: 4 of 5 selected')).toBeTruthy()
 
     expect(await screen.findByText('No Oscar films found')).toBeTruthy()
     await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({
