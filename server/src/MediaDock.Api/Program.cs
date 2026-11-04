@@ -115,6 +115,7 @@ app.MapUserAdministrationEndpoints();
 app.MapMovieTablesDashboardEndpoints();
 app.MapCatalogEndpoints();
 app.MapTorrentTitleMatchEndpoints();
+app.MapManualImdbTitleEndpoints();
 app.MapMovieAwardsEndpoints();
 app.MapFavoriteEndpoints();
 app.MapIgnoredMoviesEndpoints();

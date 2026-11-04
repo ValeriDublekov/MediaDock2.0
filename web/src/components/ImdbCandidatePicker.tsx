@@ -1,10 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import {
+  addManualImdbTitle,
   applyCatalogTitleImdbCandidate,
   applyParseLogImdbCandidate,
   lookupCatalogTitleImdbCandidate,
+  lookupManualImdbTitleCandidate,
   lookupParseLogImdbCandidate,
   searchCatalogTitleImdbCandidates,
+  searchManualImdbTitleCandidates,
   searchParseLogImdbCandidates,
 } from '../api/client'
 import type { ImdbCandidate, ImdbCandidateSearch } from '../api/types'
@@ -14,6 +17,7 @@ import { formatWords } from '../shared/format'
 export type ImdbCandidateTarget =
   | { source: 'catalog'; id: number; title: string; rawTitle: string }
   | { source: 'parse-log'; id: number; title: string; rawTitle: string }
+  | { source: 'manual'; list: 'favorites' | 'ignored' | 'personal-ratings' }
 
 export function ImdbCandidatePicker({
   target,
@@ -22,10 +26,10 @@ export function ImdbCandidatePicker({
 }: {
   target: ImdbCandidateTarget
   onClose: () => void
-  onApplied: () => void
+  onApplied: (candidate?: ImdbCandidate, rating?: number) => void | Promise<void>
 }) {
   const [mode, setMode] = useState<'title' | 'imdb-id'>('title')
-  const [titleQuery, setTitleQuery] = useState(target.title)
+  const [titleQuery, setTitleQuery] = useState(target.source === 'manual' ? '' : target.title)
   const [searchedTitle, setSearchedTitle] = useState<string | null>(null)
   const [imdbIdQuery, setImdbIdQuery] = useState('')
   const [searchResult, setSearchResult] = useState<ImdbCandidateSearch | null>(null)
@@ -34,6 +38,16 @@ export function ImdbCandidatePicker({
   const [loading, setLoading] = useState(false)
   const [applyingImdbId, setApplyingImdbId] = useState<string | null>(null)
   const [page, setPage] = useState(1)
+  const [ratingQuery, setRatingQuery] = useState('8')
+  const manual = target.source === 'manual'
+  const rating = Number(ratingQuery)
+  const validRating = Number.isInteger(rating) && rating >= 1 && rating <= 10
+  const manualActionLabel = target.source !== 'manual' ? 'Use match' : target.list === 'favorites'
+    ? 'Add to favorites'
+    : target.list === 'ignored' ? 'Ignore title' : 'Add rating'
+  const dialogTitle = target.source !== 'manual' ? 'Change IMDb match' : target.list === 'favorites'
+    ? 'Add to favorites'
+    : target.list === 'ignored' ? 'Add to ignore list' : 'Add personal rating'
 
   function setLookupResult(result: ImdbCandidateSearch) {
     setSearchResult(result)
@@ -60,7 +74,9 @@ export function ImdbCandidatePicker({
     try {
       const result = target.source === 'catalog'
         ? await searchCatalogTitleImdbCandidates(target.id, normalizedTitle, nextPage)
-        : await searchParseLogImdbCandidates(target.id, normalizedTitle, nextPage)
+        : target.source === 'parse-log'
+          ? await searchParseLogImdbCandidates(target.id, normalizedTitle, nextPage)
+          : await searchManualImdbTitleCandidates(normalizedTitle, nextPage)
       setLookupResult(result)
     } catch (requestError) {
       setSearchError(requestError instanceof Error ? requestError.message : 'Could not search IMDb records.')
@@ -85,7 +101,9 @@ export function ImdbCandidatePicker({
     try {
       const result = target.source === 'catalog'
         ? await lookupCatalogTitleImdbCandidate(target.id, normalizedImdbId)
-        : await lookupParseLogImdbCandidate(target.id, normalizedImdbId)
+        : target.source === 'parse-log'
+          ? await lookupParseLogImdbCandidate(target.id, normalizedImdbId)
+          : await lookupManualImdbTitleCandidate(normalizedImdbId)
       setLookupResult(result)
     } catch (requestError) {
       setSearchError(requestError instanceof Error ? requestError.message : 'Could not load the IMDb record.')
@@ -107,12 +125,18 @@ export function ImdbCandidatePicker({
     setApplyingImdbId(candidate.imdbId)
     setApplyError(null)
     try {
-      if (target.source === 'catalog') {
+      if (target.source === 'manual') {
+        if (target.list === 'personal-ratings' && !validRating) return
+        await addManualImdbTitle(candidate.imdbId)
+        if (target.list === 'personal-ratings') await onApplied(candidate, rating)
+        else await onApplied(candidate)
+      } else if (target.source === 'catalog') {
         await applyCatalogTitleImdbCandidate(target.id, candidate.imdbId)
+        await onApplied()
       } else {
         await applyParseLogImdbCandidate(target.id, candidate.imdbId)
+        await onApplied()
       }
-      onApplied()
     } catch (requestError) {
       setApplyError(requestError instanceof Error ? requestError.message : 'Could not apply the IMDb match.')
     } finally {
@@ -127,17 +151,17 @@ export function ImdbCandidatePicker({
       <section aria-labelledby="imdb-candidate-heading" aria-modal="true" className="detail-dialog imdb-candidate-dialog" role="dialog">
         <header className="detail-header">
           <div>
-            <p className="eyebrow">IMDb MATCH</p>
-            <h2 id="imdb-candidate-heading">Change IMDb match</h2>
+            <p className="eyebrow">{manual ? 'MANUAL ADD' : 'IMDb MATCH'}</p>
+            <h2 id="imdb-candidate-heading">{dialogTitle}</h2>
           </div>
-          <button aria-label="Reject IMDb candidates" className="button button-secondary" onClick={onClose} type="button">Reject</button>
+          <button aria-label={manual ? 'Close manual add dialog' : 'Reject IMDb candidates'} className="button button-secondary" onClick={onClose} type="button">{manual ? 'Close' : 'Reject'}</button>
         </header>
 
         <div className="detail-body">
-          <div className="imdb-match-raw">
+          {target.source !== 'manual' && <div className="imdb-match-raw">
             <strong>RAW TORRENT TEXT</strong>
             <p>{target.rawTitle}</p>
-          </div>
+          </div>}
           <div aria-label="IMDb match method" className="imdb-match-tabs" role="tablist">
             <button aria-selected={mode === 'title'} className={mode === 'title' ? 'is-active' : ''} disabled={loading} onClick={() => changeMode('title')} role="tab" type="button">Search by title</button>
             <button aria-selected={mode === 'imdb-id'} className={mode === 'imdb-id' ? 'is-active' : ''} disabled={loading} onClick={() => changeMode('imdb-id')} role="tab" type="button">IMDb ID</button>
@@ -159,6 +183,10 @@ export function ImdbCandidatePicker({
               <button className="button" disabled={loading} type="submit">Load IMDb info</button>
             </form>
           )}
+          {target.source === 'manual' && target.list === 'personal-ratings' && <label className="field imdb-manual-rating" htmlFor="imdb-manual-rating">
+            <span>Your rating (1-10)</span>
+            <input id="imdb-manual-rating" max="10" min="1" onChange={(event) => setRatingQuery(event.target.value)} step="1" type="number" value={ratingQuery} />
+          </label>}
           {loading && <LoadingState label={mode === 'title' ? 'Searching OMDb' : 'Loading IMDb information'} />}
           {!loading && searchError && (
             <div className="imdb-candidate-error" role="alert">
@@ -184,10 +212,10 @@ export function ImdbCandidatePicker({
                       {candidate.imdbId && <a href={`https://www.imdb.com/title/${candidate.imdbId}/`} rel="noopener noreferrer" target="_blank">IMDb</a>}
                       <button
                         className="button"
-                        disabled={!candidate.imdbId || applyingImdbId !== null}
+                        disabled={!candidate.imdbId || applyingImdbId !== null || (target.source === 'manual' && target.list === 'personal-ratings' && !validRating)}
                         onClick={() => { void applyCandidate(candidate) }}
                         type="button"
-                      >{applyingImdbId === candidate.imdbId ? 'Applying' : 'Use match'}</button>
+                      >{applyingImdbId === candidate.imdbId ? 'Adding' : manualActionLabel}</button>
                     </div>
                   </li>
                 ))}

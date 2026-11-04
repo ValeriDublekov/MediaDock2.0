@@ -7,7 +7,10 @@ import { FavoriteControls } from './FavoriteControls'
 import { FavoriteProvider } from './FavoriteContext'
 import { FavoritesView } from './FavoritesView'
 
-vi.mock('../../api/client', () => ({ getFavorites: vi.fn(), getMovieAwards: vi.fn().mockResolvedValue([]), addFavorite: vi.fn(), updateFavorite: vi.fn(), removeFavorite: vi.fn() }))
+vi.mock('../../api/client', () => ({
+  getFavorites: vi.fn(), getMovieAwards: vi.fn().mockResolvedValue([]), addFavorite: vi.fn(), updateFavorite: vi.fn(), removeFavorite: vi.fn(),
+  searchManualImdbTitleCandidates: vi.fn(), lookupManualImdbTitleCandidate: vi.fn(), addManualImdbTitle: vi.fn(),
+}))
 afterEach(() => {
   cleanup()
   vi.mocked(getFavorites).mockReset()
@@ -33,11 +36,19 @@ it('uses media-neutral guidance for an empty mixed favorites collection', async 
   expect(screen.getByText('Add titles from supported catalogs, recommendations, or awards.')).toBeTruthy()
 })
 
+it('opens the manual IMDb picker from favorites', async () => {
+  vi.mocked(getFavorites).mockResolvedValue({ items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0 })
+  render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Add title' }))
+  expect(await screen.findByRole('heading', { name: 'Add to favorites' })).toBeTruthy()
+})
+
 it('filters one canonical movie independently by watch and download status', async () => {
   const movie: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: 42, title: 'Shared Movie', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: null, posterUrl: null, toWatch: true, toDownload: true,
-    addedFromOscar: true, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
+    addedFromOscar: true, addedFromCatalog: true, addedFromRecommendations: false, addedFromManual: false, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 2,
     winCount: 1, occurrenceCount: 1, lastSeenAt: '2026-09-30T00:00:00Z',
   }
@@ -69,7 +80,7 @@ it('reloads and clears favorites when the account changes', async () => {
   const firstMovie: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: 1, title: 'First Account Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: null, posterUrl: null, toWatch: true, toDownload: false,
-    addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
+    addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, addedFromManual: false, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
     winCount: 0, occurrenceCount: 1, lastSeenAt: '2026-09-30T00:00:00Z',
   }
@@ -95,7 +106,7 @@ it('shares state by IMDb ID, blocks ineligible adds, and allows download before 
   const favorite: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: null, title: 'Shared Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: 8.2, posterUrl: null, toWatch: true, toDownload: false,
-    addedFromOscar: true, addedFromCatalog: false, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
+    addedFromOscar: true, addedFromCatalog: false, addedFromRecommendations: false, addedFromManual: false, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 0,
     winCount: 0, occurrenceCount: 0, lastSeenAt: null,
   }
@@ -129,7 +140,7 @@ it('allows enriched series from the catalog but not from Oscar', async () => {
   const series: FavoriteTitle = {
     imdbId: 'tt99887766', torrentMovieId: null, title: 'Shared Series', year: 2025, mediaType: 'series', metadataStatus: 'enriched',
     imdbRating: 8.4, posterUrl: null, toWatch: false, toDownload: true,
-    addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false,
+    addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, addedFromManual: false,
     createdAt: '2026-10-29T00:00:00Z', updatedAt: '2026-10-29T00:00:00Z',
     oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
   }
@@ -153,7 +164,7 @@ it('treats series favorites like movie favorites and omits empty metadata', asyn
   const series: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: null, title: 'Shared Series', year: 2025, mediaType: 'series', metadataStatus: 'enriched',
     imdbRating: 8.4, posterUrl: null, toWatch: true, toDownload: false,
-    addedFromOscar: false, addedFromCatalog: false, addedFromRecommendations: true,
+    addedFromOscar: false, addedFromCatalog: false, addedFromRecommendations: true, addedFromManual: false,
     createdAt: '2026-10-26T00:00:00Z', updatedAt: '2026-10-26T00:00:00Z',
     oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
   }
@@ -186,7 +197,7 @@ it('does not offer adding another origin from the favorites view', async () => {
   const movie: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: null, title: 'Recommendation Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: 8.2, posterUrl: null, toWatch: true, toDownload: false,
-    addedFromOscar: false, addedFromCatalog: false, addedFromRecommendations: true,
+    addedFromOscar: false, addedFromCatalog: false, addedFromRecommendations: true, addedFromManual: false,
     createdAt: '2026-10-26T00:00:00Z', updatedAt: '2026-10-26T00:00:00Z',
     oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
   }
@@ -213,7 +224,7 @@ it('uses the shared poster card and opens details for a favorite without a torre
     imdbId: 'tt12345678', torrentMovieId: null, title: 'Award Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: 8.2, posterUrl: null, toWatch: true, toDownload: false,
     director: 'Mira Director', plot: 'A story about a changing city.', genres: ['Drama', 'Mystery'],
-    addedFromOscar: true, addedFromCatalog: false, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
+    addedFromOscar: true, addedFromCatalog: false, addedFromRecommendations: false, addedFromManual: false, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 1, nominationCount: 2,
     winCount: 1, occurrenceCount: 0, lastSeenAt: null,
   }
@@ -242,7 +253,7 @@ it('removes a favorite locally without reloading the current page', async () => 
   const movie: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: null, title: 'Local Favorite', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: 8.2, posterUrl: null, toWatch: true, toDownload: false,
-    addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
+    addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, addedFromManual: false, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
     winCount: 0, occurrenceCount: 1, lastSeenAt: '2026-09-30T00:00:00Z',
   }
@@ -262,7 +273,7 @@ it('removes a favorite locally when it no longer matches the active status filte
   const movie: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: null, title: 'Watch Filter Favorite', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
     imdbRating: 8.2, posterUrl: null, toWatch: true, toDownload: false,
-    addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
+    addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, addedFromManual: false, createdAt: '2026-09-30T00:00:00Z',
     updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
     winCount: 0, occurrenceCount: 1, lastSeenAt: '2026-09-30T00:00:00Z',
   }

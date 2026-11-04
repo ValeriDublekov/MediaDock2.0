@@ -23,6 +23,8 @@ public sealed record ApplyImdbCandidateRequest(
 
 public sealed record AppliedImdbCandidateResponse(long TorrentTitleId, string ImdbId);
 
+public sealed record ManualImdbTitleResponse(string ImdbId, string Title, int? Year, string MediaType);
+
 internal static class TorrentTitleMatchEndpoints
 {
     public static WebApplication MapTorrentTitleMatchEndpoints(this WebApplication app)

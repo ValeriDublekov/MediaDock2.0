@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   ApiError,
   addFavorite,
+  addManualImdbTitle,
   addIgnoredMovie,
+  addPersonalRating,
   applyCatalogTitleImdbCandidate,
   applyParseLogImdbCandidate,
   enqueueFailedEntryRecheck,
@@ -37,6 +39,7 @@ import {
   getPersonalRatingsEnrichmentJob,
   getProviderSettings,
   lookupCatalogTitleImdbCandidate,
+  lookupManualImdbTitleCandidate,
   lookupParseLogImdbCandidate,
   enqueuePersonalRatingsEnrichment,
   importPersonalRatings,
@@ -46,6 +49,7 @@ import {
   removePersonalRating,
   recalculateRecommendationVoteWeights,
   searchCatalogTitleImdbCandidates,
+  searchManualImdbTitleCandidates,
   searchParseLogImdbCandidates,
   runDeploymentAction,
   updateRecommendationSettings,
@@ -138,6 +142,28 @@ describe('typed API client', () => {
     expect(JSON.parse(String(stub.calls[3]?.init?.body))).toEqual({ title: 'Quiet River' })
     expect(String(stub.calls[4]?.input)).toBe('/api/parse-logs/42/imdb-candidate')
     expect(String(stub.calls[5]?.input)).toBe('/api/parse-logs/42/imdb-match')
+  })
+
+  it('searches, loads, and stores an IMDb title for manual list additions', async () => {
+    const stub = fetchStub(response(200, {
+      imdbId: 'tt12345678', title: 'Quiet River', year: 2004, mediaType: 'movie',
+    }))
+
+    await searchManualImdbTitleCandidates('Quiet River', 2, stub.fetcher)
+    await lookupManualImdbTitleCandidate('tt12345678', stub.fetcher)
+    await addManualImdbTitle('tt12345678', stub.fetcher)
+    await addFavorite('tt12345678', 'manual', stub.fetcher)
+    await addPersonalRating('tt12345678', 9, stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/imdb-titles/manual-candidates?page=2')
+    expect(JSON.parse(String(stub.calls[0]?.init?.body))).toEqual({ title: 'Quiet River' })
+    expect(String(stub.calls[1]?.input)).toBe('/api/imdb-titles/manual-candidate')
+    expect(JSON.parse(String(stub.calls[1]?.init?.body))).toEqual({ imdbId: 'tt12345678' })
+    expect(String(stub.calls[2]?.input)).toBe('/api/imdb-titles/manual-add')
+    expect(JSON.parse(String(stub.calls[2]?.init?.body))).toEqual({ imdbId: 'tt12345678' })
+    expect(JSON.parse(String(stub.calls[3]?.init?.body))).toEqual({ imdbId: 'tt12345678', from: 'manual' })
+    expect(String(stub.calls[4]?.input)).toBe('/api/personal-ratings')
+    expect(JSON.parse(String(stub.calls[4]?.init?.body))).toEqual({ imdbId: 'tt12345678', rating: 9 })
   })
 
   it('uses IMDb IDs for favorite create and marker requests', async () => {

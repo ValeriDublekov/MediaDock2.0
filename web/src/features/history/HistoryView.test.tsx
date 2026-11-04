@@ -11,6 +11,9 @@ vi.mock('../../api/client', () => ({
   searchParseLogImdbCandidates: vi.fn(),
   lookupParseLogImdbCandidate: vi.fn(),
   applyParseLogImdbCandidate: vi.fn(),
+  searchManualImdbTitleCandidates: vi.fn(),
+  lookupManualImdbTitleCandidate: vi.fn(),
+  addManualImdbTitle: vi.fn(),
 }))
 
 function createLog(overrides: Partial<ParseLog>): ParseLog {

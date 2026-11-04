@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Plus } from 'lucide-react'
+import { ImdbCandidatePicker } from '../../components/ImdbCandidatePicker'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { MoviePosterCard } from '../../components/MoviePresentation'
 import { Poster } from '../../components/Poster'
@@ -8,13 +10,14 @@ import { useIgnoredMovies } from './IgnoredMoviesContext'
 
 export function IgnoredMoviesView() {
   const [viewMode, setViewMode] = useState<ViewMode>('posters')
-  const { available, movies, pending, loading, error, remove, retry } = useIgnoredMovies()
+  const [addTitleOpen, setAddTitleOpen] = useState(false)
+  const { available, movies, pending, loading, error, ignore, remove, retry } = useIgnoredMovies()
   const items = Object.values(movies).sort((left, right) => left.title.localeCompare(right.title))
 
   return <section aria-label="Ignored titles" className="media-view ignored-movies-view">
     <div className="section-toolbar">
       <span className="result-count">{available && !error ? `${items.length} titles` : 'Ignored titles'}</span>
-      <div className="toolbar-actions"><ViewModeControl onChange={setViewMode} value={viewMode} /></div>
+      <div className="toolbar-actions">{available && <button className="button button-secondary" onClick={() => setAddTitleOpen(true)} type="button"><Plus aria-hidden="true" size={16} />Add title</button>}<ViewModeControl onChange={setViewMode} value={viewMode} /></div>
     </div>
     {!available && <EmptyState title="Sign in to view ignored titles" message="An active linked account is required." />}
     {available && loading && <LoadingState label="Loading ignored movies" />}
@@ -65,5 +68,14 @@ export function IgnoredMoviesView() {
           </tr>)}</tbody>
         </table>
       </div>)}
+    {addTitleOpen && <ImdbCandidatePicker
+      onApplied={async (candidate) => {
+        if (!candidate?.imdbId) return
+        if (!await ignore(candidate.imdbId)) throw new Error('Could not add the title to the ignore list.')
+        setAddTitleOpen(false)
+      }}
+      onClose={() => setAddTitleOpen(false)}
+      target={{ source: 'manual', list: 'ignored' }}
+    />}
   </section>
 }

@@ -132,7 +132,8 @@ internal static class ApiRateLimiting
         if (HttpMethods.IsPost(method))
         {
             var value = path.Value ?? string.Empty;
-            return value.EndsWith("/imdb-candidates", StringComparison.OrdinalIgnoreCase)
+            return path.StartsWithSegments("/api/imdb-titles")
+                || value.EndsWith("/imdb-candidates", StringComparison.OrdinalIgnoreCase)
                 || value.EndsWith("/imdb-candidate", StringComparison.OrdinalIgnoreCase)
                 || path.StartsWithSegments("/api/catalog/rss")
                     && value.EndsWith("/refresh", StringComparison.OrdinalIgnoreCase);

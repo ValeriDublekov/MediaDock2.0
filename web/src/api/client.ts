@@ -15,6 +15,7 @@ import type {
   IgnoredMovie,
   AppliedImdbCandidate,
   ImdbCandidateSearch,
+  ManualImdbTitle,
   OmdbDiagnostic,
   OmdbDailyUsage,
   PersonalRatingsImportResult,
@@ -220,7 +221,14 @@ export function removePersonalRating(imdbId: string, fetcher?: typeof fetch) {
   return requestJson<void>(`/personal-ratings/${encodeURIComponent(imdbId)}`, { method: 'DELETE' }, fetcher)
 }
 
-export function addFavorite(imdbId: string, from: 'oscar' | 'catalog' | 'recommendation', fetcher?: typeof fetch) {
+export function addPersonalRating(imdbId: string, rating: number, fetcher?: typeof fetch) {
+  return requestJson<void>('/personal-ratings', {
+    method: 'POST',
+    body: JSON.stringify({ imdbId, rating }),
+  }, fetcher)
+}
+
+export function addFavorite(imdbId: string, from: 'oscar' | 'catalog' | 'recommendation' | 'manual', fetcher?: typeof fetch) {
   return requestJson<FavoriteTitle>('/favorites', { method: 'POST', body: JSON.stringify({ imdbId, from }) }, fetcher)
 }
 
@@ -256,6 +264,27 @@ export function lookupCatalogTitleImdbCandidate(id: number, imdbId: string, fetc
 
 export function applyCatalogTitleImdbCandidate(id: number, imdbId: string, fetcher?: typeof fetch) {
   return requestJson<AppliedImdbCandidate>(`/titles/${id}/imdb-match`, {
+    method: 'POST',
+    body: JSON.stringify({ imdbId }),
+  }, fetcher)
+}
+
+export function searchManualImdbTitleCandidates(title: string, page = 1, fetcher?: typeof fetch) {
+  return requestJson<ImdbCandidateSearch>(withQuery('/imdb-titles/manual-candidates', { page }), {
+    method: 'POST',
+    body: JSON.stringify({ title }),
+  }, fetcher)
+}
+
+export function lookupManualImdbTitleCandidate(imdbId: string, fetcher?: typeof fetch) {
+  return requestJson<ImdbCandidateSearch>('/imdb-titles/manual-candidate', {
+    method: 'POST',
+    body: JSON.stringify({ imdbId }),
+  }, fetcher)
+}
+
+export function addManualImdbTitle(imdbId: string, fetcher?: typeof fetch) {
+  return requestJson<ManualImdbTitle>('/imdb-titles/manual-add', {
     method: 'POST',
     body: JSON.stringify({ imdbId }),
   }, fetcher)

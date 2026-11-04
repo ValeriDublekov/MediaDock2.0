@@ -29,6 +29,17 @@ It reads local Compose credentials without printing them, requires exactly one a
 
 That profile listens on `http://localhost:5280` and uses the local development connection string. The Compose runbook serves its bundled UI at `http://127.0.0.1:8080/`; use the Vite server above when working with the frontend dev server and hot reload. The UI does not require the Worker, live RSS feeds, or an OMDb key.
 
+## Golden Globes Design Explorations
+
+The static design concepts are separate from the React app and can be reopened through the Vite development server. From the repository root, start the server with:
+
+```powershell
+cd web
+npm run dev -- --host 127.0.0.1
+```
+
+Open `http://127.0.0.1:5173/design-explorations/golden-globes-variants.html?v=1` and change `v=1` to any number from `1` to `13` to compare the designs. Variants 11-13 are **Grand Noir**, **Silver Screen**, and **Noir Journal**. The original, unvaried static page is at `http://127.0.0.1:5173/design-explorations/golden-globes.html`.
+
 ## Frontend Checks
 
 Run these from `web`; the scripts are defined in [package.json](package.json):

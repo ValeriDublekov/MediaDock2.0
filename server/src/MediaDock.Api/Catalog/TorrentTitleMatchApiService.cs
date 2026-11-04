@@ -35,6 +35,19 @@ internal interface ITorrentTitleMatchApiService
         string imdbId,
         CancellationToken cancellationToken);
 
+    Task<ImdbCandidateSearchResponse> SearchManualImdbTitleCandidatesAsync(
+        string title,
+        int page,
+        CancellationToken cancellationToken);
+
+    Task<ImdbCandidateSearchResponse> LookupManualImdbTitleCandidateAsync(
+        string imdbId,
+        CancellationToken cancellationToken);
+
+    Task<ManualImdbTitleResponse> AddManualImdbTitleAsync(
+        string imdbId,
+        CancellationToken cancellationToken);
+
     Task<AppliedImdbCandidateResponse> ApplyCatalogTitleMatchAsync(
         long titleId,
         string imdbId,
@@ -105,6 +118,40 @@ internal sealed class TorrentTitleMatchApiService(
             ?? throw new ApiNotFoundException("Parse-log entry not found.");
 
         return await LookupImdbCandidateAsync(SourceTypeForFeed(log.FeedType), imdbId, cancellationToken);
+    }
+
+    public Task<ImdbCandidateSearchResponse> SearchManualImdbTitleCandidatesAsync(
+        string title,
+        int page,
+        CancellationToken cancellationToken) =>
+        SearchAsync(title, sourceType: null, page, cancellationToken);
+
+    public Task<ImdbCandidateSearchResponse> LookupManualImdbTitleCandidateAsync(
+        string imdbId,
+        CancellationToken cancellationToken) =>
+        LookupImdbCandidateAsync(expectedSourceType: null, imdbId, cancellationToken);
+
+    public async Task<ManualImdbTitleResponse> AddManualImdbTitleAsync(
+        string imdbId,
+        CancellationToken cancellationToken)
+    {
+        var normalizedImdbId = NormalizeImdbId(imdbId);
+        var metadata = await ResolveMetadataAsync(normalizedImdbId, cancellationToken);
+        ValidateSourceType(expected: null, metadata.SourceType);
+        var now = timeProvider.GetUtcNow();
+        var imdbTitle = (await ImdbTitleMetadataMapper.EnsureAsync(
+            dbContext,
+            [normalizedImdbId],
+            now,
+            cancellationToken))[normalizedImdbId];
+        ImdbTitleMetadataMapper.Apply(imdbTitle, metadata, now);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new ManualImdbTitleResponse(
+            normalizedImdbId,
+            metadata.Title,
+            metadata.Year,
+            metadata.SourceType);
     }
 
     public async Task<AppliedImdbCandidateResponse> ApplyCatalogTitleMatchAsync(

@@ -668,6 +668,10 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("added_from_catalog");
 
+                    b.Property<bool>("AddedFromManual")
+                        .HasColumnType("boolean")
+                        .HasColumnName("added_from_manual");
+
                     b.Property<bool>("AddedFromOscar")
                         .HasColumnType("boolean")
                         .HasColumnName("added_from_oscar");
@@ -699,7 +703,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.ToTable("favorite_movies", null, t =>
                         {
-                            t.HasCheckConstraint("ck_favorite_movies_origin", "added_from_oscar OR added_from_catalog OR added_from_recommendations");
+                            t.HasCheckConstraint("ck_favorite_movies_origin", "added_from_oscar OR added_from_catalog OR added_from_recommendations OR added_from_manual");
                         });
                 });
 

@@ -80,6 +80,13 @@ export interface AppliedImdbCandidate {
   imdbId: string
 }
 
+export interface ManualImdbTitle {
+  imdbId: string
+  title: string
+  year: number | null
+  mediaType: MediaSourceType
+}
+
 export type OscarEnrichmentStatus = 'pending' | 'enriched' | 'problem' | 'not_found' | 'temporary_error'
 export type GoldenGlobeEnrichmentStatus = OscarEnrichmentStatus
 
@@ -558,6 +565,7 @@ export interface FavoriteTitle {
   addedFromOscar: boolean
   addedFromCatalog: boolean
   addedFromRecommendations: boolean
+  addedFromManual: boolean
   createdAt: string
   updatedAt: string
   oscarFilmCount: number

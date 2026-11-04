@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Trash2 } from 'lucide-react'
-import { enqueuePersonalRatingsEnrichment, getOmdbDailyUsage, getPersonalRatings, getPersonalRatingsEnrichmentJob, getProviderSettings, getVersion, removePersonalRating, testOmdbApi, updateProviderSettings } from '../../api/client'
+import { Plus, Trash2 } from 'lucide-react'
+import { addPersonalRating, enqueuePersonalRatingsEnrichment, getOmdbDailyUsage, getPersonalRatings, getPersonalRatingsEnrichmentJob, getProviderSettings, getVersion, removePersonalRating, testOmdbApi, updateProviderSettings } from '../../api/client'
 import type { BackgroundJob, OmdbDailyUsage, OmdbDiagnostic, PageResponse, PersonalRating, PersonalRatingsSort, ProviderSettings, ProviderSettingsInput, SystemVersion } from '../../api/types'
 import { ErrorState, LoadingState } from '../../components/Feedback'
 import { EmptyState } from '../../components/Feedback'
+import { ImdbCandidatePicker } from '../../components/ImdbCandidatePicker'
 import { MoviePosterCard } from '../../components/MoviePresentation'
 import { Pagination } from '../../components/Pagination'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
@@ -47,6 +48,7 @@ export function PersonalRatingsView() {
   const [ratingsError, setRatingsError] = useState<string | null>(null)
   const [ratingsAttempt, setRatingsAttempt] = useState(0)
   const [deletingRatingId, setDeletingRatingId] = useState<string | null>(null)
+  const [addRatingOpen, setAddRatingOpen] = useState(false)
   const [deleteRatingError, setDeleteRatingError] = useState<string | null>(null)
   const [enrichmentError, setEnrichmentError] = useState<string | null>(null)
   const [enrichmentJob, setEnrichmentJob] = useState<BackgroundJob | null>(null)
@@ -174,7 +176,7 @@ export function PersonalRatingsView() {
       </div>
       <div className="section-toolbar">
         <span className="result-count">{ratings?.totalCount.toLocaleString() ?? '—'} ratings</span>
-        <ViewModeControl onChange={setViewMode} value={viewMode} />
+        <div className="toolbar-actions"><button className="button button-secondary" onClick={() => setAddRatingOpen(true)} type="button"><Plus aria-hidden="true" size={16} />Add title</button><ViewModeControl onChange={setViewMode} value={viewMode} /></div>
       </div>
       {enrichmentJob && <div aria-label="Personal ratings enrichment status" className="ingestion-current" role="status">
         <span className={`state-pill is-${enrichmentJob.status}`}>{formatWords(enrichmentJob.status)}</span>
@@ -256,6 +258,19 @@ export function PersonalRatingsView() {
           setRatingsError(null)
         }} />
       </>}
+      {addRatingOpen && <ImdbCandidatePicker
+        onApplied={async (candidate, rating) => {
+          if (!candidate?.imdbId || rating === undefined) return
+          await addPersonalRating(candidate.imdbId, rating)
+          setPage(1)
+          setLoadingRatings(true)
+          setRatingsError(null)
+          setRatingsAttempt((current) => current + 1)
+          setAddRatingOpen(false)
+        }}
+        onClose={() => setAddRatingOpen(false)}
+        target={{ source: 'manual', list: 'personal-ratings' }}
+      />}
     </section>
   )
 }

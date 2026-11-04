@@ -37,11 +37,12 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
         var fromOscar = request.From == "oscar";
         var fromCatalog = request.From == "catalog";
         var fromRecommendations = request.From == "recommendation";
+        var fromManual = request.From == "manual";
         var toWatch = fromOscar || fromRecommendations;
         var now = DateTimeOffset.UtcNow;
         var changed = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
-            INSERT INTO favorite_movies (user_id, imdb_id, to_watch, to_download, added_from_oscar, added_from_catalog, added_from_recommendations, created_at, updated_at)
-            SELECT {userId}, imdb_id, {toWatch}, {fromCatalog}, {fromOscar}, {fromCatalog}, {fromRecommendations}, {now}, {now}
+            INSERT INTO favorite_movies (user_id, imdb_id, to_watch, to_download, added_from_oscar, added_from_catalog, added_from_recommendations, added_from_manual, created_at, updated_at)
+            SELECT {userId}, imdb_id, {toWatch}, {fromCatalog}, {fromOscar}, {fromCatalog}, {fromRecommendations}, {fromManual}, {now}, {now}
             FROM imdb_titles
             WHERE imdb_id = {imdbId}
                 AND metadata_status = 'enriched'
@@ -52,6 +53,7 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
                 added_from_oscar = favorite_movies.added_from_oscar OR EXCLUDED.added_from_oscar,
                 added_from_catalog = favorite_movies.added_from_catalog OR EXCLUDED.added_from_catalog,
                 added_from_recommendations = favorite_movies.added_from_recommendations OR EXCLUDED.added_from_recommendations,
+                added_from_manual = favorite_movies.added_from_manual OR EXCLUDED.added_from_manual,
                 updated_at = EXCLUDED.updated_at
             """, cancellationToken);
                 if (changed == 0) throw new ApiNotFoundException("Enriched IMDb title not found.");
@@ -114,6 +116,7 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
             favorite.ImdbTitle.PosterUrl,
             favorite.ToWatch, favorite.ToDownload,
             favorite.AddedFromOscar, favorite.AddedFromCatalog, favorite.AddedFromRecommendations,
+            favorite.AddedFromManual,
             favorite.CreatedAt, favorite.UpdatedAt,
             dbContext.OscarMovies.Count(film => film.ImdbId == favorite.ImdbId),
             dbContext.OscarNominations.Count(nomination => nomination.OscarMovie != null

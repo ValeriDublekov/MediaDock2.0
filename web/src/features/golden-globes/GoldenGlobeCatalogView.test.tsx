@@ -297,7 +297,7 @@ describe('GoldenGlobeCatalogView', () => {
     const favorite: FavoriteTitle = {
       imdbId: 'tt12345678', torrentMovieId: null, title: 'A Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: null, posterUrl: null, toWatch: false, toDownload: true,
-      addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-09-30T00:00:00Z',
+      addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, addedFromManual: false, createdAt: '2026-09-30T00:00:00Z',
       updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
       winCount: 0, occurrenceCount: 0, lastSeenAt: null,
     }
@@ -327,7 +327,7 @@ describe('GoldenGlobeCatalogView', () => {
     const favorite: FavoriteTitle = {
       imdbId: 'tt87654321', torrentMovieId: null, title: 'A Series', year: 2025, mediaType: 'series', metadataStatus: 'enriched',
       imdbRating: null, posterUrl: null, toWatch: false, toDownload: true,
-      addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, createdAt: '2026-10-29T00:00:00Z',
+      addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, addedFromManual: false, createdAt: '2026-10-29T00:00:00Z',
       updatedAt: '2026-10-29T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
       winCount: 0, occurrenceCount: 0, lastSeenAt: null,
     }

@@ -8,6 +8,9 @@ import { IgnoredMoviesView } from './IgnoredMoviesView'
 
 vi.mock('../../api/client', () => ({
   addIgnoredMovie: vi.fn(),
+  searchManualImdbTitleCandidates: vi.fn(),
+  lookupManualImdbTitleCandidate: vi.fn(),
+  addManualImdbTitle: vi.fn(),
   getIgnoredMovies: vi.fn(),
   removeIgnoredMovie: vi.fn(),
 }))
@@ -65,6 +68,13 @@ describe('IgnoredMoviesView', () => {
     await waitFor(() => expect(removeIgnoredMovie).toHaveBeenCalledWith(movie.imdbId))
     expect(await screen.findByText('No ignored titles')).toBeTruthy()
     expect(await screen.findByRole('button', { name: 'Ignore movie' })).toBeTruthy()
+  })
+
+  it('opens the manual IMDb picker from the ignore list', async () => {
+    render(<IgnoredMoviesProvider accountKey="issuer:subject"><IgnoredMoviesView /></IgnoredMoviesProvider>)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add title' }))
+    expect(await screen.findByRole('heading', { name: 'Add to ignore list' })).toBeTruthy()
   })
 
   it('offers ignore actions for both movies and series', async () => {

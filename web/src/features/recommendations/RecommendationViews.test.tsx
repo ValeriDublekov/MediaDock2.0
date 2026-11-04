@@ -547,7 +547,7 @@ describe('RecommendationsView', () => {
     const savedFavorite: FavoriteTitle = {
       imdbId: 'tt12345678', torrentMovieId: null, title: 'Quiet River', year: 2004, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: 8.1, posterUrl: null, toWatch: true, toDownload: false,
-      addedFromOscar: false, addedFromCatalog: false, addedFromRecommendations: true,
+      addedFromOscar: false, addedFromCatalog: false, addedFromRecommendations: true, addedFromManual: false,
       createdAt: '2026-10-26T00:00:00Z', updatedAt: '2026-10-26T00:00:00Z',
       oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
     }
@@ -632,7 +632,7 @@ describe('RecommendationsView', () => {
     const savedSeries: FavoriteTitle = {
       imdbId: 'tt12345678', torrentMovieId: null, title: 'Quiet River', year: 2004, mediaType: 'series', metadataStatus: 'enriched',
       imdbRating: 8.1, posterUrl: null, toWatch: true, toDownload: false,
-      addedFromOscar: false, addedFromCatalog: false, addedFromRecommendations: true,
+      addedFromOscar: false, addedFromCatalog: false, addedFromRecommendations: true, addedFromManual: false,
       createdAt: '2026-10-26T00:00:00Z', updatedAt: '2026-10-26T00:00:00Z',
       oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
     }

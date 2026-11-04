@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Plus } from 'lucide-react'
 import { getFavorites } from '../../api/client'
 import type { FavoriteTitle, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
@@ -10,6 +11,7 @@ import { removePageItems } from '../../shared/removePageItems'
 import { combineMovieAwards, movieAwardsRequestKey } from '../../shared/movieAwards'
 import { useMovieAwards } from '../../shared/useMovieAwards'
 import { ViewModeControl, type ViewMode } from '../../components/ViewModeControl'
+import { ImdbCandidatePicker } from '../../components/ImdbCandidatePicker'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
 import { TitleDetailsDialog } from '../catalog/TitleDetailsDialog'
 import { FavoriteControls } from './FavoriteControls'
@@ -26,7 +28,8 @@ export function FavoritesView() {
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [selected, setSelected] = useState<FavoriteTitle | null>(null)
-  const { available } = useFavorites()
+  const [addTitleOpen, setAddTitleOpen] = useState(false)
+  const { available, add, retry } = useFavorites()
   const awardsRequestKey = movieAwardsRequestKey(result?.items.map((item) => item.imdbId) ?? [])
   const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
 
@@ -72,7 +75,7 @@ export function FavoritesView() {
           <button aria-pressed={status === option} className={`button ${status === option ? '' : 'button-secondary'}`} key={option}
             onClick={() => changeStatus(option)} type="button">{option === 'all' ? 'All' : option === 'to_watch' ? 'To watch' : 'To download'}</button>)}
       </div>
-      <div className="toolbar-actions">{!error && result && <span className="result-count">{result.totalCount} {result.totalCount === 1 ? 'title' : 'titles'}</span>}<ViewModeControl onChange={setViewMode} value={viewMode} /></div>
+      <div className="toolbar-actions">{!error && result && <span className="result-count">{result.totalCount} {result.totalCount === 1 ? 'title' : 'titles'}</span>}{available && <button className="button button-secondary" onClick={() => setAddTitleOpen(true)} type="button"><Plus aria-hidden="true" size={16} />Add title</button>}<ViewModeControl onChange={setViewMode} value={viewMode} /></div>
     </div>
     {!available && <EmptyState title="Sign in to view favorites" message="An active linked account is required." />}
     {available && loading && <LoadingState label="Loading favorites" />}
@@ -131,6 +134,21 @@ export function FavoritesView() {
           setSelected((current) => current ? { ...current, ...input } : current)
         }}
       />)}
+    {addTitleOpen && <ImdbCandidatePicker
+      onApplied={async (candidate) => {
+        if (!candidate?.imdbId) return
+        if (!await add(candidate.imdbId, 'manual')) throw new Error('Could not add the title to favorites.')
+        retry()
+        setStatus('all')
+        setPage(1)
+        setLoading(true)
+        setError(null)
+        setAttempt((current) => current + 1)
+        setAddTitleOpen(false)
+      }}
+      onClose={() => setAddTitleOpen(false)}
+      target={{ source: 'manual', list: 'favorites' }}
+    />}
   </section>
 }
 

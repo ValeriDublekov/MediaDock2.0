@@ -216,6 +216,89 @@ public sealed class GoldenGlobeDatasetImporterTests
     }
 
     [Fact]
+    public async Task ImportInheritsOnlyAnUnambiguousManualLinkFromAnotherCeremonyYear()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_import_cross_year_link_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+
+        var award = new GoldenGlobeAward { Name = "Best Television Series" };
+        var hacks2026 = new GoldenGlobeTitle
+        {
+            Title = "Hacks",
+            Year = 2026,
+            NomineeType = "series",
+            ImdbId = "tt11815682",
+            IsImdbIdManual = true,
+            ImdbIdVersion = 2,
+            EnrichmentStatus = "enriched"
+        };
+        var sharedSeries2024 = new GoldenGlobeTitle
+        {
+            Title = "Shared Series",
+            Year = 2024,
+            NomineeType = "series",
+            ImdbId = "tt20000001",
+            IsImdbIdManual = true,
+            EnrichmentStatus = "enriched"
+        };
+        var sharedSeries2026 = new GoldenGlobeTitle
+        {
+            Title = "Shared Series",
+            Year = 2026,
+            NomineeType = "series",
+            ImdbId = "tt20000002",
+            IsImdbIdManual = true,
+            EnrichmentStatus = "enriched"
+        };
+        db.ImdbTitles.AddRange(
+            new ImdbTitle { ImdbId = "tt11815682", MetadataStatus = "enriched", UpdatedAt = DateTimeOffset.UtcNow },
+            new ImdbTitle { ImdbId = "tt20000001", MetadataStatus = "enriched", UpdatedAt = DateTimeOffset.UtcNow },
+            new ImdbTitle { ImdbId = "tt20000002", MetadataStatus = "enriched", UpdatedAt = DateTimeOffset.UtcNow });
+        db.GoldenGlobeNominations.AddRange(
+            new GoldenGlobeNomination { ImportKey = "hacks-2026", Winner = true, Award = award, GoldenGlobeTitle = hacks2026 },
+            new GoldenGlobeNomination { ImportKey = "shared-2024", Winner = true, Award = award, GoldenGlobeTitle = sharedSeries2024 },
+            new GoldenGlobeNomination { ImportKey = "shared-2026", Winner = true, Award = award, GoldenGlobeTitle = sharedSeries2026 });
+        await db.SaveChangesAsync();
+
+        const string csv = """
+            nominee_type,year,winner,award,title,id
+            series,2025,true,Best Television Series,Hacks,
+            series,2025,true,Best Television Series,Shared Series,
+            film,2025,true,Best Motion Picture,Imported ID Only,tt30000001
+            film,2025,false,Best Motion Picture,Numeric Row ID,1
+            """;
+
+        var import = await new GoldenGlobeDatasetImporter(db).ImportAsync(Encoding.UTF8.GetBytes(csv));
+        Assert.Equal(2, import.ImdbLinksPinned);
+
+        var importedGroups = await db.GoldenGlobeTitles.AsNoTracking()
+            .Where(group => group.Year == 2025)
+            .OrderBy(group => group.Title)
+            .ToListAsync();
+        var hacks2025 = Assert.Single(importedGroups, group => group.Title == "Hacks");
+        Assert.Equal("tt11815682", hacks2025.ImdbId);
+        Assert.True(hacks2025.IsImdbIdManual);
+        Assert.Equal("pending", hacks2025.EnrichmentStatus);
+
+        var ambiguousSeries2025 = Assert.Single(importedGroups, group => group.Title == "Shared Series");
+        Assert.Null(ambiguousSeries2025.ImdbId);
+        Assert.False(ambiguousSeries2025.IsImdbIdManual);
+
+        var idOnlyGroup = await db.GoldenGlobeTitles.AsNoTracking().SingleAsync(group => group.Title == "Imported ID Only");
+        Assert.Equal("tt30000001", idOnlyGroup.ImdbId);
+        Assert.True(idOnlyGroup.IsImdbIdManual);
+        var numericRowIdGroup = await db.GoldenGlobeTitles.AsNoTracking().SingleAsync(group => group.Title == "Numeric Row ID");
+        Assert.Null(numericRowIdGroup.ImdbId);
+        Assert.False(numericRowIdGroup.IsImdbIdManual);
+    }
+
+    [Fact]
     public async Task TypeCorrectionReusesExistingTargetGroupAndPreservesItsManualLink()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_import_type_merge_test").Build();

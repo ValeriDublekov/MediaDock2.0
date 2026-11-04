@@ -73,6 +73,41 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
                 && rating.IsManuallyAdded)
             .ExecuteDeleteAsync(cancellationToken) > 0;
 
+    public async Task AddManualAsync(
+        long userId,
+        CreatePersonalRatingRequest request,
+        CancellationToken cancellationToken)
+    {
+        var imdbId = request.ImdbId.Trim().ToLowerInvariant();
+        var now = DateTimeOffset.UtcNow;
+        var dateRated = DateOnly.FromDateTime(now.UtcDateTime);
+        var inserted = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO personal_ratings (user_id, imdb_id, rating, date_rated, is_manually_added, updated_at)
+            SELECT {userId}, imdb_id, {request.Rating}, {dateRated}, TRUE, {now}
+            FROM imdb_titles
+            WHERE imdb_id = {imdbId}
+                AND metadata_status = 'enriched'
+                AND media_type IN ('movie', 'series')
+            ON CONFLICT (user_id, imdb_id) DO NOTHING
+            """, cancellationToken);
+
+        if (inserted > 0)
+        {
+            return;
+        }
+
+        var titleExists = await dbContext.ImdbTitles.AsNoTracking()
+            .AnyAsync(title => title.ImdbId == imdbId
+                && title.MetadataStatus == "enriched"
+                && (title.MediaType == "movie" || title.MediaType == "series"), cancellationToken);
+        if (!titleExists)
+        {
+            throw new ApiNotFoundException("Enriched IMDb movie or series not found.");
+        }
+
+        throw new ApiConflictException("A personal rating already exists for this title.");
+    }
+
     public async Task<PersonalRatingsImportResponse> ImportAsync(
         long userId,
         PersonalRatingsImportForm form,

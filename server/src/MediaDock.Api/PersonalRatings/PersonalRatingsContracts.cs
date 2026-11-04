@@ -43,6 +43,10 @@ public sealed record PersonalRatingResponse(
     string? BoxOffice,
     string MetadataStatus);
 
+public sealed record CreatePersonalRatingRequest(
+    [Required, RegularExpression("^[Tt][Tt][0-9]{7,10}$")] string ImdbId,
+    [Range(1, 10)] int Rating);
+
 public sealed record PersonalRatingsImportResponse(
     int RatingsInFile,
     int Added,

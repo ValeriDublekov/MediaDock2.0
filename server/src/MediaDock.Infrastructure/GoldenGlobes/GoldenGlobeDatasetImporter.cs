@@ -10,7 +10,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MediaDock.Infrastructure.GoldenGlobes;
 
-public sealed record GoldenGlobeImportSummary(int RowsRead, int RowsSkippedByYear, int RowsSkippedByType, int RowsSkippedWithoutTitle, int AwardsCreated, int NominationsCreated);
+public sealed record GoldenGlobeImportSummary(
+    int RowsRead,
+    int RowsSkippedByYear,
+    int RowsSkippedByType,
+    int RowsSkippedWithoutTitle,
+    int AwardsCreated,
+    int NominationsCreated,
+    int ImdbLinksPinned = 0);
 
 internal sealed record GoldenGlobeRow(int Year, bool Winner, string Award, string Title, string NomineeType, string? ImdbId);
 
@@ -31,6 +38,7 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
         var headers = rawHeaders.Select(x => x.Trim().TrimStart('\uFEFF')).ToArray();
         var indexes = headers.Select((x, i) => (x, i)).ToDictionary(x => x.x, x => x.i, StringComparer.OrdinalIgnoreCase);
         var hasImdbIdColumn = indexes.TryGetValue("imdb_id", out var imdbIdIndex);
+        var hasIdColumn = !hasImdbIdColumn && indexes.TryGetValue("id", out imdbIdIndex);
         foreach (var required in new[] { "nominee_type", "year", "winner", "award", "title" })
             if (!indexes.ContainsKey(required)) throw new InvalidDataException($"Golden Globes dataset is missing required column: {required}.");
 
@@ -45,10 +53,11 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
             if (type is not ("tv-show" or "film" or "movie" or "series")) { skippedType++; continue; }
             var title = Field("title"); if (string.IsNullOrWhiteSpace(title)) { skippedTitle++; continue; }
             var nomineeType = type is "tv-show" or "series" ? "series" : "movie";
-            var rawImdbId = hasImdbIdColumn ? fields[imdbIdIndex].Trim() : string.Empty;
-            var imdbId = string.IsNullOrWhiteSpace(rawImdbId) ? null : ImdbIdNormalizer.Normalize(rawImdbId);
-            if (rawImdbId.Length > 0 && !ImdbIdNormalizer.IsValid(imdbId))
+            var rawImdbId = hasImdbIdColumn || hasIdColumn ? fields[imdbIdIndex].Trim() : string.Empty;
+            var normalizedImdbId = ImdbIdNormalizer.Normalize(rawImdbId);
+            if (hasImdbIdColumn && rawImdbId.Length > 0 && !ImdbIdNormalizer.IsValid(normalizedImdbId))
                 throw new InvalidDataException($"Golden Globes dataset row {parser.LineNumber} has an invalid IMDb ID.");
+            var imdbId = ImdbIdNormalizer.IsValid(normalizedImdbId) ? normalizedImdbId : null;
             rows.Add(new(year, ParseBool(Field("winner")), Field("award"), title, nomineeType, imdbId));
         }
 
@@ -62,7 +71,41 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
             importedImdbIds[identity] = row.ImdbId!;
         }
 
+        var importGroupIdentities = rows
+            .Select(row => (row.Title, row.Year, row.NomineeType))
+            .Distinct()
+            .ToArray();
+        var groupTitles = rows.Select(x => x.Title).Distinct(StringComparer.Ordinal).ToArray();
+        var groupTypes = rows.Select(x => x.NomineeType).Distinct(StringComparer.Ordinal).ToArray();
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var existingManualLinks = await db.GoldenGlobeTitles.AsNoTracking()
+            .Where(group => groupTitles.Contains(group.Title)
+                && groupTypes.Contains(group.NomineeType)
+                && group.IsImdbIdManual
+                && group.ImdbId != null)
+            .Select(group => new { group.Title, group.NomineeType, group.ImdbId })
+            .ToListAsync(cancellationToken);
+        var manualIdsByTitleAndType = existingManualLinks
+            .Select(link => new
+            {
+                link.Title,
+                link.NomineeType,
+                ImdbId = ImdbIdNormalizer.Normalize(link.ImdbId)
+            })
+            .Where(link => ImdbIdNormalizer.IsValid(link.ImdbId))
+            .GroupBy(link => (link.Title, link.NomineeType))
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(link => link.ImdbId!).Distinct(StringComparer.Ordinal).ToArray());
+
+        foreach (var identity in importGroupIdentities)
+        {
+            if (!importedImdbIds.ContainsKey(identity)
+                && manualIdsByTitleAndType.TryGetValue((identity.Title, identity.NomineeType), out var manualIds)
+                && manualIds.Length == 1)
+                importedImdbIds.Add(identity, manualIds[0]);
+        }
+
         await ImdbTitleMetadataMapper.EnsureAsync(
             db, importedImdbIds.Values, DateTimeOffset.UtcNow, cancellationToken);
         var awardNames = rows.Select(x => x.Award).Distinct(StringComparer.Ordinal).ToArray();
@@ -76,9 +119,7 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
             .Where(x => keys.Contains(x.ImportKey))
             .Include(x => x.GoldenGlobeTitle)
             .ToDictionaryAsync(x => x.ImportKey, StringComparer.Ordinal, cancellationToken);
-        var groupTitles = rows.Select(x => x.Title).Distinct(StringComparer.Ordinal).ToArray();
         var groupYears = rows.Select(x => x.Year).Distinct().ToArray();
-        var groupTypes = rows.Select(x => x.NomineeType).Distinct(StringComparer.Ordinal).ToArray();
         var groups = await db.GoldenGlobeTitles
             .Where(x => groupTitles.Contains(x.Title) && groupYears.Contains(x.Year) && groupTypes.Contains(x.NomineeType))
             .ToDictionaryAsync(x => (x.Title, x.Year, x.NomineeType), cancellationToken);
@@ -88,6 +129,7 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
                 groups.TryAdd((title.Title, title.Year, title.NomineeType), title);
         }
 
+        var pinnedGroups = new HashSet<(string Title, int Year, string NomineeType)>();
         foreach (var (identity, imdbId) in importedImdbIds)
         {
             if (groups.TryGetValue(identity, out var group)
@@ -110,6 +152,7 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
             group.LastEnrichmentAttemptAt = null;
             group.NextEnrichmentAttemptAt = null;
             group.LastEnrichmentError = null;
+            pinnedGroups.Add((group.Title, group.Year, group.NomineeType));
         }
 
         GoldenGlobeTitle GetGroup(GoldenGlobeRow row, int initialVersion = 0)
@@ -209,7 +252,7 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
         }
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return new(read, skippedYear, skippedType, skippedTitle, awardsCreated, nominationsCreated);
+        return new(read, skippedYear, skippedType, skippedTitle, awardsCreated, nominationsCreated, pinnedGroups.Count);
     }
 
     private static string Key(GoldenGlobeRow row) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"v1:{row.Year}\u001f{row.Winner}\u001f{row.Award}\u001f{row.Title}"))).ToLowerInvariant();

@@ -33,6 +33,10 @@ import { OmdbProviderView, PersonalRatingsView, SystemSettingsView } from './Con
 import { SourceSettingsView } from './SourceSettingsView'
 
 vi.mock('../../api/client', () => ({
+  addPersonalRating: vi.fn(),
+  searchManualImdbTitleCandidates: vi.fn(),
+  lookupManualImdbTitleCandidate: vi.fn(),
+  addManualImdbTitle: vi.fn(),
   addSourceUrl: vi.fn(),
   enqueuePersonalRatingsEnrichment: vi.fn(),
   enqueueManualScan: vi.fn(),
@@ -224,6 +228,14 @@ describe('SourceSettingsView', () => {
     expect(await screen.findByText('No personal ratings yet')).toBeTruthy()
     expect(screen.queryByLabelText('IMDb ratings CSV')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Import ratings' })).toBeNull()
+  })
+
+  it('opens the manual IMDb picker from personal ratings', async () => {
+    render(<PersonalRatingsView />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add title' }))
+    expect(await screen.findByRole('heading', { name: 'Add personal rating' })).toBeTruthy()
+    expect(screen.getByLabelText('Your rating (1-10)')).toBeTruthy()
   })
 
   it('rejects personal ratings CSV files larger than 1 MiB before upload', async () => {

@@ -7,7 +7,12 @@ using System.Text.Json;
 using System.Text.Encodings.Web;
 using MediaDock.Api.Authentication;
 using MediaDock.Api.Common;
+using MediaDock.Api.Catalog;
+using MediaDock.Api.Favorites;
+using MediaDock.Api.IgnoredMovies;
 using MediaDock.Api.PersonalRatings;
+using MediaDock.Application.Matching;
+using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.AspNetCore.Authentication;
@@ -27,6 +32,112 @@ namespace MediaDock.IntegrationTests;
 [Trait("Category", "Api")]
 public sealed class PersonalRatingsApiTests
 {
+    [Fact]
+    public async Task ManualImdbTitleCanBeAddedToFavoritesIgnoredTitlesAndPersonalRatings()
+    {
+        const string imdbId = "tt12345678";
+        const string subject = "manual-imdb-owner";
+        const string email = "manual-imdb-owner@example.com";
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_manual_imdb_title_api_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        long ownerId;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            var now = DateTimeOffset.UtcNow;
+            var owner = new User
+            {
+                NormalizedEmail = email,
+                GivenName = "Test",
+                FamilyName = "User",
+                Status = "active",
+                Role = "user",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            owner.ExternalIdentities.Add(new ExternalIdentity
+            {
+                User = owner,
+                Issuer = GoogleSignInSettings.GoogleIssuer,
+                Subject = subject,
+                CreatedAt = now
+            });
+            db.Users.Add(owner);
+            await db.SaveChangesAsync();
+            ownerId = owner.Id;
+            var settings = await db.Settings.SingleAsync();
+            settings.OmdbApiKey = "test-omdb-key";
+            settings.OmdbDailyRequestLimit = 40;
+            settings.UpdatedAt = now;
+            await db.SaveChangesAsync();
+        }
+
+        using var factory = new ApiFactory(
+            connectionString,
+            CreatePrincipal(subject, email),
+            new StubOmdbClientFactory(imdbId));
+        using var client = factory.CreateClient();
+
+        using var titleSearch = await client.PostAsJsonAsync(
+            "/api/imdb-titles/manual-candidates",
+            new ImdbCandidateSearchRequest("Quiet River"));
+        Assert.Equal(HttpStatusCode.OK, titleSearch.StatusCode);
+        var candidates = await titleSearch.Content.ReadFromJsonAsync<ImdbCandidateSearchResponse>();
+        Assert.Equal(imdbId, Assert.Single(candidates!.Candidates).ImdbId);
+
+        using var idLookup = await client.PostAsJsonAsync(
+            "/api/imdb-titles/manual-candidate",
+            new LookupImdbCandidateRequest(imdbId));
+        Assert.Equal(HttpStatusCode.OK, idLookup.StatusCode);
+
+        using var metadataAdd = await client.PostAsJsonAsync(
+            "/api/imdb-titles/manual-add",
+            new ApplyImdbCandidateRequest(imdbId));
+        Assert.Equal(HttpStatusCode.OK, metadataAdd.StatusCode);
+        var addedTitle = await metadataAdd.Content.ReadFromJsonAsync<ManualImdbTitleResponse>();
+        Assert.Equal(imdbId, addedTitle!.ImdbId);
+        Assert.Equal("Quiet River", addedTitle.Title);
+
+        using var favoriteAdd = await client.PostAsJsonAsync(
+            "/api/favorites",
+            new CreateFavoriteRequest { ImdbId = imdbId, From = "manual" });
+        Assert.Equal(HttpStatusCode.OK, favoriteAdd.StatusCode);
+        var favorite = await favoriteAdd.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.False(favorite!.ToWatch);
+        Assert.False(favorite.ToDownload);
+        Assert.False(favorite.AddedFromCatalog);
+        Assert.True(favorite.AddedFromManual);
+
+        using var ignoredAdd = await client.PostAsJsonAsync(
+            "/api/ignored-movies",
+            new CreateIgnoredMovieRequest { ImdbId = imdbId });
+        Assert.Equal(HttpStatusCode.OK, ignoredAdd.StatusCode);
+
+        using var ratingAdd = await client.PostAsJsonAsync(
+            "/api/personal-ratings",
+            new CreatePersonalRatingRequest(imdbId, 9));
+        Assert.Equal(HttpStatusCode.NoContent, ratingAdd.StatusCode);
+
+        using var duplicateRatingAdd = await client.PostAsJsonAsync(
+            "/api/personal-ratings",
+            new CreatePersonalRatingRequest(imdbId, 4));
+        Assert.Equal(HttpStatusCode.Conflict, duplicateRatingAdd.StatusCode);
+
+        await using var verifyDb = new MediaDockDbContext(options);
+        var title = await verifyDb.ImdbTitles.AsNoTracking().SingleAsync(item => item.ImdbId == imdbId);
+        Assert.Equal("enriched", title.MetadataStatus);
+        Assert.Equal("movie", title.MediaType);
+        Assert.True(await verifyDb.ImdbFavoriteMovies.AnyAsync(item => item.UserId == ownerId && item.ImdbId == imdbId));
+        Assert.True(await verifyDb.UserIgnoredMovies.AnyAsync(item => item.UserId == ownerId && item.ImdbId == imdbId));
+        var rating = await verifyDb.PersonalRatings.AsNoTracking().SingleAsync(item => item.UserId == ownerId && item.ImdbId == imdbId);
+        Assert.Equal(9, rating.Rating);
+        Assert.True(rating.IsManuallyAdded);
+    }
+
     [Fact]
     public async Task DeleteRemovesOnlyManuallyAddedRatingsOwnedByTheActiveUser()
     {
@@ -729,7 +840,8 @@ public sealed class PersonalRatingsApiTests
 
     private sealed class ApiFactory(
         string connectionString,
-        ClaimsPrincipal? principal = null) : WebApplicationFactory<Program>
+        ClaimsPrincipal? principal = null,
+        IOmdbClientFactory? omdbClientFactory = null) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -749,8 +861,48 @@ public sealed class PersonalRatingsApiTests
                         options => options.Principal = principal);
                 services.PostConfigure<AuthenticationOptions>(options =>
                     options.DefaultAuthenticateScheme = TestAuthenticationOptions.Scheme);
+                if (omdbClientFactory is not null)
+                {
+                    services.RemoveAll<IOmdbClientFactory>();
+                    services.AddSingleton(omdbClientFactory);
+                }
             });
         }
+    }
+
+    private sealed class StubOmdbClientFactory(string imdbId) : IOmdbClientFactory
+    {
+        public IOmdbClient Create(string apiKey, int dailyRequestLimit) => new StubOmdbClient(imdbId);
+    }
+
+    private sealed class StubOmdbClient(string imdbId) : IOmdbClient
+    {
+        public Task<MetadataLookupResult> LookupAsync(
+            string title,
+            int? year,
+            string sourceType,
+            CancellationToken cancellationToken = default,
+            OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion,
+            string? requestedImdbId = null) =>
+            Task.FromResult(new MetadataLookupResult(
+                MetadataLookupStatus.Found,
+                new MetadataDetails(
+                    "Quiet River", 2004, requestedImdbId ?? imdbId, "movie", "movie", "standard", null,
+                    8.1m, 1200, 78m, ["Drama"], ["Canada"], "A. Director", "A quiet story.",
+                    "https://example.test/quiet-river.jpg", "112 min", null, null),
+                HttpAttempts: 1));
+
+        public Task<MetadataSearchResult> SearchAsync(
+            string title,
+            string? sourceType,
+            int page,
+            CancellationToken cancellationToken = default,
+            OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion) =>
+            Task.FromResult(new MetadataSearchResult(
+                MetadataLookupStatus.Found,
+                [new MetadataSearchCandidate("Quiet River", 2004, imdbId, "movie")],
+                1,
+                HttpAttempts: 1));
     }
 
     private sealed class TestAuthenticationOptions : AuthenticationSchemeOptions

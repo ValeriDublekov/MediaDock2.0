@@ -15,13 +15,13 @@ public sealed record FavoriteQuery
     public int? PageSize { get; init; }
 }
 
-/// <summary>Adds an enriched title from a supported source.</summary>
+/// <summary>Adds an enriched title from a supported source or manual IMDb lookup.</summary>
 public sealed record CreateFavoriteRequest
 {
     [Required, RegularExpression("^[Tt][Tt][0-9]{7,10}$")]
     public string ImdbId { get; init; } = string.Empty;
 
-    [Required, RegularExpression("^(oscar|catalog|recommendation)$")]
+    [Required, RegularExpression("^(oscar|catalog|recommendation|manual)$")]
     public string? From { get; init; }
 }
 
@@ -56,6 +56,7 @@ public sealed record FavoriteMovieResponse(
     bool AddedFromOscar,
     bool AddedFromCatalog,
     bool AddedFromRecommendations,
+    bool AddedFromManual,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     int OscarFilmCount,

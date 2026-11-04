@@ -9,6 +9,7 @@ public sealed class ImdbFavoriteMovie
     public bool AddedFromOscar { get; set; }
     public bool AddedFromCatalog { get; set; }
     public bool AddedFromRecommendations { get; set; }
+    public bool AddedFromManual { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 

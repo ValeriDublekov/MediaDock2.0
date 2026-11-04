@@ -35,7 +35,7 @@ internal static class FavoriteEndpoints
             var currentUser = await ResolveCurrentUserAsync(principal, currentUserContext, cancellationToken);
             return TypedResults.Ok(await service.AddAsync(currentUser.Id, request, cancellationToken));
         })
-            .WithName("AddFavorite").WithSummary("Add an enriched title from a supported source.")
+            .WithName("AddFavorite").WithSummary("Add an enriched title from a supported source or manual IMDb lookup.")
             .RequireAuthorization(AccessPolicies.OwnerScopedFavorites)
             .ProducesProblem(StatusCodes.Status400BadRequest).ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound);
