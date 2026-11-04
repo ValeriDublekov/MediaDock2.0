@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { deleteCatalogTitle, getMovieAwards, getTitle, getTitleOccurrences, getTitleOscars } from '../../api/client'
-import type { DeleteTitleResponse, MovieAwardRecognition, Occurrence, OscarFilm, PageResponse, TitleDetails } from '../../api/types'
+import type { DeleteTitleResponse, MovieAwardRecognition, Occurrence, PageResponse, TitleDetails } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { MovieAwardsList, MovieDetailsIntro } from '../../components/MoviePresentation'
 import { formatDate, formatWords } from '../../shared/format'
@@ -23,7 +23,6 @@ interface TitleDetailsDialogProps {
 export function TitleDetailsDialog({ titleId, initialSection = 'details', onClose, onFindImdbMatch, onDeleted, onFavoriteRemoved, onFavoriteUpdated, onIgnored }: TitleDetailsDialogProps) {
   const [title, setTitle] = useState<TitleDetails | null>(null)
   const [occurrences, setOccurrences] = useState<PageResponse<Occurrence> | null>(null)
-  const [oscars, setOscars] = useState<OscarFilm[]>([])
   const [awards, setAwards] = useState<MovieAwardRecognition[]>([])
   const [awardsError, setAwardsError] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -52,7 +51,6 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
         if (!current) return
         setTitle(details)
         setOccurrences(page)
-        setOscars(oscarFilms)
         setAwards(combineMovieAwards(oscarFilms.flatMap(getOscarRecognitions), combinedAwards, details.imdbId))
         setAwardsError(lookupFailed)
       })
