@@ -373,7 +373,7 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                 && !dbContext.UserIgnoredMovies.Any(ignored =>
                     ignored.UserId == userId && ignored.ImdbId == title.ImdbId)
                 && !dbContext.ImdbFavoriteMovies.Any(favorite =>
-                    favorite.UserId == userId && favorite.ImdbId == title.ImdbId && favorite.ToWatch)
+                    favorite.UserId == userId && favorite.ImdbId == title.ImdbId)
                 && ((mediaType == RecommendationMediaTypes.Movie
                         && dbContext.OscarNominations.Any(nomination =>
                             nomination.OscarMovie != null && nomination.OscarMovie.ImdbId == title.ImdbId))

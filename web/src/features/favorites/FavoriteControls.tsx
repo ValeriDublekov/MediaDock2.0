@@ -1,16 +1,15 @@
 import { useFavorites } from './FavoriteContext'
 import { BookmarkCheck, BookmarkPlus, Star } from 'lucide-react'
 
-export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, placement = 'inline', allowAddFromHere = true, alwaysShowRemove = false, onAdded, onRemoved, onUpdated }: {
+export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, placement = 'inline', allowAddFromHere = true, showFavoriteStatus = true, onRemoved, onUpdated }: {
   imdbId: string | null
   metadataStatus: string | null
-  from: 'oscar' | 'catalog'
+  from: 'oscar' | 'catalog' | 'golden-globes' | 'manual'
   mediaType: string
   occurrenceCount: number
   placement?: 'inline' | 'poster' | 'status'
   allowAddFromHere?: boolean
-  alwaysShowRemove?: boolean
-  onAdded?: () => void
+  showFavoriteStatus?: boolean
   onRemoved?: () => void
   onUpdated?: (input: { toWatch?: boolean; toDownload?: boolean }) => void
 }) {
@@ -19,12 +18,11 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, plac
   const favoriteImdbId = imdbId
   const favorite = titles[favoriteImdbId]
   const canAddFromHere = metadataStatus === 'enriched'
-    && (mediaType === 'movie' || (from === 'catalog' && mediaType === 'series'))
+    && (mediaType === 'movie' || (from !== 'oscar' && mediaType === 'series'))
   if (!favorite && !canAddFromHere) return null
   const disabled = pending === favoriteImdbId || loading || Boolean(error)
-  const selectedFromHere = from === 'oscar' ? favorite?.addedFromOscar : favorite?.addedFromCatalog
   function addFromHere() {
-    void add(favoriteImdbId, from).then((added) => { if (added) onAdded?.() })
+    void add(favoriteImdbId, from)
   }
   function removeFromFavorites() {
     void remove(favoriteImdbId).then((removed) => { if (removed) onRemoved?.() })
@@ -34,8 +32,8 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, plac
   }
 
   if (placement === 'poster') {
-    const removing = Boolean(favorite && (selectedFromHere || !canAddFromHere))
-    const label = removing ? 'Remove from favorites' : favorite ? `Add from ${from === 'oscar' ? 'Oscar' : 'catalog'} to favorites` : 'Add to favorites'
+    const removing = Boolean(favorite)
+    const label = removing ? 'Remove from favorites' : 'Add to favorites'
     return <button
       aria-label={label}
       className={`tile-icon-action favorite-icon${favorite ? ' is-active' : ''}`}
@@ -50,21 +48,20 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, plac
     if (!favorite && !error) return null
     return <div className="favorite-card-statuses">
       {favorite && <>
+        {showFavoriteStatus && <span className="subtle-line">In favorites</span>}
         <label><input checked={favorite.toWatch} disabled={disabled} onChange={(event) => updateFavorite({ toWatch: event.target.checked })} type="checkbox" /> To watch</label>
         <label><input checked={favorite.toDownload} disabled={disabled} onChange={(event) => updateFavorite({ toDownload: event.target.checked })} type="checkbox" /> To download</label>
-        {allowAddFromHere && !selectedFromHere && canAddFromHere && <button className="text-button" disabled={disabled} onClick={addFromHere} type="button">
-          Add from {from === 'oscar' ? 'Oscar' : 'catalog'}
-        </button>}
-        {(alwaysShowRemove || (!selectedFromHere && canAddFromHere)) && <button className="text-button" disabled={disabled} onClick={removeFromFavorites} type="button">Remove from favorites</button>}
+        <button className="text-button" disabled={disabled} onClick={removeFromFavorites} type="button">Remove from favorites</button>
       </>}
       {error && <span role="alert">{error} <button className="text-button" onClick={retry} type="button">Retry</button></span>}
     </div>
   }
 
   return <div className="favorite-controls">
-    {allowAddFromHere && !selectedFromHere && canAddFromHere && <button className="text-button" disabled={disabled} onClick={addFromHere} type="button">
-      {favorite ? `Add from ${from === 'oscar' ? 'Oscar' : 'catalog'}` : 'Add to favorites'}
+    {allowAddFromHere && !favorite && canAddFromHere && <button className="text-button" disabled={disabled} onClick={addFromHere} type="button">
+      Add to favorites
     </button>}
+    {favorite && showFavoriteStatus && <span className="subtle-line">In favorites</span>}
     {favorite && <button className="text-button" disabled={disabled} onClick={removeFromFavorites} type="button">Remove from favorites</button>}
     {favorite && <>
       <label><input checked={favorite.toWatch} disabled={disabled} onChange={(event) => updateFavorite({ toWatch: event.target.checked })} type="checkbox" /> To watch</label>
@@ -82,20 +79,20 @@ export function RecommendationWatchlistControl({ imdbId, title, onAdded, placeme
 }) {
   const { available, titles, pending, loading, error, add, retry } = useFavorites()
   if (!available) return null
-  const isInWatchList = Boolean(titles[imdbId]?.toWatch)
+  const isInFavorites = Boolean(titles[imdbId])
 
   if (placement === 'poster') {
-    const label = isInWatchList ? `${title} is in watch list` : `Add ${title} to watch list`
+    const label = isInFavorites ? `${title} is in favorites` : `Add ${title} to watch list`
     return <button
       aria-label={label}
-      className={`tile-icon-action favorite-icon${isInWatchList ? ' is-active' : ''}`}
+      className={`tile-icon-action favorite-icon${isInFavorites ? ' is-active' : ''}`}
       data-tooltip={label}
-      disabled={isInWatchList || pending === imdbId || loading || Boolean(error)}
+      disabled={isInFavorites || pending === imdbId || loading || Boolean(error)}
       onClick={() => { void add(imdbId, 'recommendation').then((added) => { if (added) onAdded() }) }}
       type="button"
-    >{isInWatchList ? <BookmarkCheck aria-hidden="true" size={16} /> : <BookmarkPlus aria-hidden="true" size={16} />}</button>
+    >{isInFavorites ? <BookmarkCheck aria-hidden="true" size={16} /> : <BookmarkPlus aria-hidden="true" size={16} />}</button>
   }
-  if (isInWatchList) return <span className="subtle-line">In watch list</span>
+  if (isInFavorites) return <span className="subtle-line">In favorites</span>
 
   return <div className="favorite-controls recommendation-watchlist-control">
     <button

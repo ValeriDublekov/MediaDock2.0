@@ -34,22 +34,25 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
         CancellationToken cancellationToken)
     {
         var imdbId = request.ImdbId.Trim().ToLowerInvariant();
-        var fromOscar = request.From == "oscar";
         var fromCatalog = request.From == "catalog";
+        var fromGoldenGlobes = request.From == "golden-globes";
+        var fromOscar = request.From == "oscar";
         var fromRecommendations = request.From == "recommendation";
         var fromManual = request.From == "manual";
-        var toWatch = fromOscar || fromRecommendations;
+        var addedFromCatalog = fromCatalog || fromGoldenGlobes;
+        var toWatch = !fromCatalog;
+        var toDownload = fromCatalog;
         var now = DateTimeOffset.UtcNow;
         var changed = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO favorite_movies (user_id, imdb_id, to_watch, to_download, added_from_oscar, added_from_catalog, added_from_recommendations, added_from_manual, created_at, updated_at)
-            SELECT {userId}, imdb_id, {toWatch}, {fromCatalog}, {fromOscar}, {fromCatalog}, {fromRecommendations}, {fromManual}, {now}, {now}
+            SELECT {userId}, imdb_id, {toWatch}, {toDownload}, {fromOscar}, {addedFromCatalog}, {fromRecommendations}, {fromManual}, {now}, {now}
             FROM imdb_titles
             WHERE imdb_id = {imdbId}
                 AND metadata_status = 'enriched'
-                AND (media_type = 'movie' OR (media_type = 'series' AND ({fromCatalog} OR {fromRecommendations})))
+                AND (media_type = 'movie' OR (media_type = 'series' AND ({fromCatalog} OR {fromGoldenGlobes} OR {fromRecommendations} OR {fromManual})))
             ON CONFLICT (user_id, imdb_id) DO UPDATE SET
-                to_watch = favorite_movies.to_watch OR EXCLUDED.added_from_recommendations OR (EXCLUDED.added_from_oscar AND NOT favorite_movies.added_from_oscar),
-                to_download = favorite_movies.to_download OR (EXCLUDED.added_from_catalog AND NOT favorite_movies.added_from_catalog),
+                to_watch = favorite_movies.to_watch OR EXCLUDED.to_watch,
+                to_download = favorite_movies.to_download OR EXCLUDED.to_download,
                 added_from_oscar = favorite_movies.added_from_oscar OR EXCLUDED.added_from_oscar,
                 added_from_catalog = favorite_movies.added_from_catalog OR EXCLUDED.added_from_catalog,
                 added_from_recommendations = favorite_movies.added_from_recommendations OR EXCLUDED.added_from_recommendations,

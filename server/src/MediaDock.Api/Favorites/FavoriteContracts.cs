@@ -21,7 +21,7 @@ public sealed record CreateFavoriteRequest
     [Required, RegularExpression("^[Tt][Tt][0-9]{7,10}$")]
     public string ImdbId { get; init; } = string.Empty;
 
-    [Required, RegularExpression("^(oscar|catalog|recommendation|manual)$")]
+    [Required, RegularExpression("^(oscar|catalog|golden-globes|recommendation|manual)$")]
     public string? From { get; init; }
 }
 

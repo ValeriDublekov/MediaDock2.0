@@ -117,10 +117,10 @@ describe('CatalogView', () => {
 
     await waitFor(() => expect(addFavorite).toHaveBeenCalledWith(movie.imdbId, 'catalog'))
     expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
-    expect(await screen.findByRole('button', { name: 'Remove from favorites' })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Remove from favorites' })).toHaveLength(2)
     fireEvent.click(addButtons[1] as HTMLButtonElement)
     await waitFor(() => expect(addFavorite).toHaveBeenCalledWith(series.imdbId, 'catalog'))
-    expect(screen.getAllByRole('button', { name: 'Remove from favorites' })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'Remove from favorites' })).toHaveLength(4)
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(screen.getByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
     expect(catalogRequest).toHaveBeenCalledTimes(1)

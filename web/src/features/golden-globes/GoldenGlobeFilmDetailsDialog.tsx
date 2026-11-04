@@ -11,7 +11,6 @@ interface GoldenGlobeFilmDetailsDialogProps {
   awards: MovieAwardRecognition[]
   onClose: () => void
   onUpdated: (filmId: string) => Promise<GoldenGlobeFilm | undefined>
-  onFavoriteAdded?: () => void
   onIgnored?: () => void
 }
 
@@ -28,7 +27,7 @@ function refreshMessage(status: BackgroundJobStatus, outcome?: unknown, errorCod
   return 'Metadata refresh needs attention. The manual link is retained for retry.'
 }
 
-export function GoldenGlobeFilmDetailsDialog({ film, awards, onClose, onUpdated, onFavoriteAdded, onIgnored }: GoldenGlobeFilmDetailsDialogProps) {
+export function GoldenGlobeFilmDetailsDialog({ film, awards, onClose, onUpdated, onIgnored }: GoldenGlobeFilmDetailsDialogProps) {
   const [currentFilm, setCurrentFilm] = useState(film)
   const [imdbId, setImdbId] = useState(film.imdbId ?? '')
   const [refreshJobId, setRefreshJobId] = useState<number | null>(null)
@@ -128,7 +127,7 @@ export function GoldenGlobeFilmDetailsDialog({ film, awards, onClose, onUpdated,
           <div><dt>IMDb rating</dt><dd>{currentFilm.imdbRating?.toFixed(1) ?? 'Not rated'}</dd></div>
           {currentFilm.enrichmentStatus !== 'enriched' && <div><dt>OMDb status</dt><dd>{formatWords(currentFilm.enrichmentStatus)}</dd></div>}
         </dl>
-        <FavoriteControls from="catalog" imdbId={currentFilm.imdbId} metadataStatus={currentFilm.metadataStatus} mediaType={currentFilm.nomineeType} occurrenceCount={0} onAdded={onFavoriteAdded} />
+        <FavoriteControls from="golden-globes" imdbId={currentFilm.imdbId} metadataStatus={currentFilm.metadataStatus} mediaType={currentFilm.nomineeType} occurrenceCount={0} />
         <IgnoredMovieControl imdbId={currentFilm.imdbId} mediaType={currentFilm.nomineeType} onIgnored={onIgnored} />
         <form className="golden-globe-imdb-link" onSubmit={(event) => { void saveImdbId(event) }}>
           <div className="field">

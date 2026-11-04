@@ -138,7 +138,7 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
                   </div>
                 )}
               </div>}
-              <FavoriteControls from={oscars.length ? 'oscar' : 'catalog'} imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} onRemoved={onFavoriteRemoved} onUpdated={onFavoriteUpdated} />
+              <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} onRemoved={onFavoriteRemoved} onUpdated={onFavoriteUpdated} />
               <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} onIgnored={onIgnored} />
               {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
               <MovieAwardsList awards={awards} />

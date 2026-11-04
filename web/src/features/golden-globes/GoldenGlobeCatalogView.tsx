@@ -205,7 +205,7 @@ export function GoldenGlobeCatalogView() {
         <div className="poster-grid">
           {result.items.map((film) => <MoviePosterCard
             awards={combineMovieAwards(getGoldenGlobeRecognitions(film), pageAwards, film.imdbId)}
-            footer={<FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} onAdded={() => removeGoldenGlobeFilm(film.filmId)} placement="status" />}
+            footer={<FavoriteControls from="golden-globes" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} placement="status" />}
             genres={film.genres}
             imdbId={film.imdbId}
             imdbRating={film.imdbRating}
@@ -215,7 +215,7 @@ export function GoldenGlobeCatalogView() {
             onOpen={() => setSelectedFilm(film)}
             posterLabel="GLO"
             posterActions={<>
-              <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} onAdded={() => removeGoldenGlobeFilm(film.filmId)} placement="poster" />
+              <FavoriteControls from="golden-globes" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} placement="poster" />
               <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.nomineeType} onIgnored={() => removeGoldenGlobeFilm(film.filmId)} placement="poster" />
             </>}
             posterUrl={film.posterUrl}
@@ -238,7 +238,7 @@ export function GoldenGlobeCatalogView() {
                 <td>{film.genres.slice(0, 2).join(', ') || 'Not tagged'}</td>
                 <td><EnrichmentStatus film={film} /></td>
                 <td>
-                  <FavoriteControls from="catalog" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} onAdded={() => removeGoldenGlobeFilm(film.filmId)} />
+                  <FavoriteControls from="golden-globes" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.nomineeType} occurrenceCount={0} />
                   <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.nomineeType} onIgnored={() => removeGoldenGlobeFilm(film.filmId)} />
                 </td>
               </tr>
@@ -252,7 +252,6 @@ export function GoldenGlobeCatalogView() {
       awards={combineMovieAwards(getGoldenGlobeRecognitions(selectedFilm), pageAwards, selectedFilm.imdbId)}
       film={selectedFilm}
       onClose={() => setSelectedFilm(null)}
-      onFavoriteAdded={() => removeGoldenGlobeFilm(selectedFilm.filmId)}
       onIgnored={() => removeGoldenGlobeFilm(selectedFilm.filmId)}
       onUpdated={refreshFilm}
     />}

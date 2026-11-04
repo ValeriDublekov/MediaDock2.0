@@ -326,7 +326,7 @@ describe('OscarCatalogView', () => {
     await waitFor(() => expect(filmRequest).toHaveBeenLastCalledWith({ page: 2, pageSize: titlePageSize }))
   })
 
-  it('adds from Oscar and removes the film locally without reloading', async () => {
+  it('adds an Oscar title to favorites without removing its source row', async () => {
     const favorite: FavoriteTitle = {
       imdbId: film.imdbId!, torrentMovieId: null, title: film.title, year: film.filmYear, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: film.imdbRating, posterUrl: null, toWatch: true, toDownload: false,
@@ -341,11 +341,12 @@ describe('OscarCatalogView', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add to favorites' }))
     await waitFor(() => expect(addRequest).toHaveBeenCalledWith(film.imdbId, 'oscar'))
-    expect(await screen.findByText('No Oscar films found')).toBeTruthy()
+    expect(await screen.findByText('In favorites')).toBeTruthy()
+    expect(screen.getByRole('button', { name: `View ${film.title} Oscar details` })).toBeTruthy()
     expect(filmRequest).toHaveBeenCalledTimes(1)
   })
 
-  it('records Oscar origin on an existing catalog favorite and removes the film locally', async () => {
+  it('shows an existing favorite from another source without offering another add', async () => {
     const existing: FavoriteTitle = {
       imdbId: film.imdbId!, torrentMovieId: null, title: film.title, year: film.filmYear, mediaType: 'movie', metadataStatus: 'enriched',
       imdbRating: film.imdbRating, posterUrl: null, toWatch: false, toDownload: true,
@@ -358,9 +359,10 @@ describe('OscarCatalogView', () => {
     addRequest.mockResolvedValue({ ...existing, toWatch: true, addedFromOscar: true })
     render(<FavoriteProvider accountKey="test-account"><OscarCatalogView /></FavoriteProvider>)
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Add from Oscar' }))
-    await waitFor(() => expect(addRequest).toHaveBeenCalledWith(film.imdbId, 'oscar'))
-    expect(await screen.findByText('No Oscar films found')).toBeTruthy()
+    expect(await screen.findByText('In favorites')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Add from Oscar' })).toBeNull()
+    expect(screen.getByRole('button', { name: `View ${film.title} Oscar details` })).toBeTruthy()
+    expect(addRequest).not.toHaveBeenCalled()
     expect(filmRequest).toHaveBeenCalledTimes(1)
   })
 })

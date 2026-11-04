@@ -277,11 +277,11 @@ public sealed class MovieRecommendationsApiTests
         Assert.NotNull(firstPage);
         Assert.Equal(1, firstPage.Page);
         Assert.Equal(25, firstPage.PageSize);
-        Assert.Equal(4, firstPage.TotalCount);
+        Assert.Equal(3, firstPage.TotalCount);
         Assert.Equal(1, firstPage.TotalPages);
         Assert.Equal(new YearBounds(2020, 2025), firstPage.YearBounds);
         Assert.Equal(
-            ["tt3000004", "tt3000005", "tt3000006", "tt3000015"],
+            ["tt3000004", "tt3000005", "tt3000015"],
             firstPage.Items.Select(item => item.ImdbId));
 
         using var genresResponse = await firstClient.GetAsync("/api/recommendations/genres");
@@ -315,9 +315,9 @@ public sealed class MovieRecommendationsApiTests
         Assert.Equal(HttpStatusCode.OK, filteredResponse.StatusCode);
         var filteredPage = await filteredResponse.Content.ReadFromJsonAsync<PageResponse<RecommendationResponse>>();
         Assert.NotNull(filteredPage);
-        Assert.Equal(2, filteredPage.TotalCount);
+        Assert.Equal(1, filteredPage.TotalCount);
         Assert.Equal(new YearBounds(2020, 2025), filteredPage.YearBounds);
-        Assert.Equal(["tt3000005", "tt3000006"], filteredPage.Items.Select(item => item.ImdbId).Order());
+        Assert.Equal(["tt3000005"], filteredPage.Items.Select(item => item.ImdbId).Order());
 
         var candidate = firstPage.Items[0];
         Assert.Equal("Candidate A", candidate.Title);
@@ -341,12 +341,6 @@ public sealed class MovieRecommendationsApiTests
         Assert.Equal(0.25m, candidate.AwardsWeight);
         Assert.InRange(candidate.FinalScore, 0m, 10m);
 
-        var downloadOnly = firstPage.Items.Single(item => item.ImdbId == "tt3000006");
-        Assert.Equal("golden_globes", downloadOnly.AwardEvents.Single().AwardSource);
-        Assert.Equal("best_motion_picture_drama", downloadOnly.AwardEvents.Single().CategoryKey);
-        Assert.Null(downloadOnly.AwardEvents.Single().Ceremony);
-        Assert.Equal<int?>(2025, downloadOnly.AwardEvents.Single().CeremonyYear);
-        Assert.Equal(0.5m, downloadOnly.AwardComponent);
         var unknownCategory = firstPage.Items.Single(item => item.ImdbId == "tt3000015");
         Assert.Equal("award_other", unknownCategory.AwardEvents.Single().CategoryKey);
         Assert.Equal(0.5m, unknownCategory.AwardComponent);
@@ -363,8 +357,8 @@ public sealed class MovieRecommendationsApiTests
             $"/api/recommendations?{weights}&page=5&pageSize=1");
         var pastEndPage = await pastEndResponse.Content.ReadFromJsonAsync<PageResponse<RecommendationResponse>>();
         Assert.Empty(pastEndPage!.Items);
-        Assert.Equal(4, pastEndPage.TotalCount);
-        Assert.Equal(4, pastEndPage.TotalPages);
+        Assert.Equal(3, pastEndPage.TotalCount);
+        Assert.Equal(3, pastEndPage.TotalPages);
 
         using var invalidSumResponse = await firstClient.GetAsync(
             "/api/recommendations?ratingWeight=0.5&votesWeight=0.25&awardsWeight=0.3");
@@ -445,14 +439,14 @@ public sealed class MovieRecommendationsApiTests
         using var refreshedRecommendationsResponse = await firstClient.GetAsync($"/api/recommendations?{weights}");
         var refreshedRecommendations = await refreshedRecommendationsResponse.Content
             .ReadFromJsonAsync<PageResponse<RecommendationResponse>>();
-        Assert.Equal(3, refreshedRecommendations?.TotalCount);
+        Assert.Equal(2, refreshedRecommendations?.TotalCount);
         Assert.DoesNotContain(refreshedRecommendations!.Items, item => item.ImdbId == "tt3000005");
 
         using var includeWatchedResponse = await firstClient.GetAsync($"/api/recommendations?{weights}&excludeWatched=false");
         var includeWatchedPage = await includeWatchedResponse.Content
             .ReadFromJsonAsync<PageResponse<RecommendationResponse>>();
         Assert.Equal(HttpStatusCode.OK, includeWatchedResponse.StatusCode);
-        Assert.Equal(8, includeWatchedPage?.TotalCount);
+        Assert.Equal(7, includeWatchedPage?.TotalCount);
         Assert.Contains(includeWatchedPage!.Items, item => item.ImdbId == "tt3000001");
         Assert.Contains(includeWatchedPage.Items, item => item.ImdbId == "tt3000002");
         Assert.Contains(includeWatchedPage.Items, item => item.ImdbId == "tt3000003");

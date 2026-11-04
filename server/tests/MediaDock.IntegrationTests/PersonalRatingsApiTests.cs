@@ -107,7 +107,7 @@ public sealed class PersonalRatingsApiTests
             new CreateFavoriteRequest { ImdbId = imdbId, From = "manual" });
         Assert.Equal(HttpStatusCode.OK, favoriteAdd.StatusCode);
         var favorite = await favoriteAdd.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
-        Assert.False(favorite!.ToWatch);
+        Assert.True(favorite!.ToWatch);
         Assert.False(favorite.ToDownload);
         Assert.False(favorite.AddedFromCatalog);
         Assert.True(favorite.AddedFromManual);

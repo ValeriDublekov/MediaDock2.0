@@ -128,7 +128,9 @@ it('shares state by IMDb ID, blocks ineligible adds, and allows download before 
   await waitFor(() => expect(firstAddButton.disabled).toBe(false))
   fireEvent.click(firstAddButton)
   await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt12345678', 'oscar'))
-  expect(await screen.findByRole('button', { name: 'Add from catalog' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Add from catalog' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Add to favorites' })).toBeNull()
+  expect(screen.getAllByText('In favorites')).toHaveLength(3)
 
   const download = screen.getAllByRole('checkbox', { name: 'To download' })[0] as HTMLInputElement
   expect(download.disabled).toBe(false)

@@ -228,7 +228,7 @@ export function addPersonalRating(imdbId: string, rating: number, fetcher?: type
   }, fetcher)
 }
 
-export function addFavorite(imdbId: string, from: 'oscar' | 'catalog' | 'recommendation' | 'manual', fetcher?: typeof fetch) {
+export function addFavorite(imdbId: string, from: 'oscar' | 'catalog' | 'golden-globes' | 'recommendation' | 'manual', fetcher?: typeof fetch) {
   return requestJson<FavoriteTitle>('/favorites', { method: 'POST', body: JSON.stringify({ imdbId, from }) }, fetcher)
 }
 

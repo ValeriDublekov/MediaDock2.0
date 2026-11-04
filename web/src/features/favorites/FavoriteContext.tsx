@@ -10,7 +10,7 @@ interface FavoriteState {
   loading: boolean
   error: string | null
   retry: () => void
-  add: (imdbId: string, from: 'oscar' | 'catalog' | 'recommendation' | 'manual') => Promise<boolean>
+  add: (imdbId: string, from: 'oscar' | 'catalog' | 'golden-globes' | 'recommendation' | 'manual') => Promise<boolean>
   update: (imdbId: string, input: { toWatch?: boolean; toDownload?: boolean }) => Promise<boolean>
   remove: (imdbId: string) => Promise<boolean>
 }

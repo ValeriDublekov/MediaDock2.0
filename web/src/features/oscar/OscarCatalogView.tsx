@@ -94,7 +94,7 @@ function OscarRow({ film, onSelect, onRemoved, awards }: { film: OscarFilm; onSe
         </>}
       </td>
       <td>
-        <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} onAdded={onRemoved} />
+        <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} />
         <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} onIgnored={onRemoved} />
       </td>
     </tr>
@@ -309,7 +309,7 @@ export function OscarCatalogView() {
             {result.items.map((film) => {
               return <MoviePosterCard
                 awards={combineMovieAwards(getOscarRecognitions(film), pageAwards, film.imdbId)}
-                footer={<FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} onAdded={() => removeOscarFilm(film.id)} placement="status" />}
+                footer={<FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} placement="status" />}
                 genres={film.genres}
                 imdbId={film.imdbId}
                 imdbRating={film.imdbRating}
@@ -319,7 +319,7 @@ export function OscarCatalogView() {
                 openLabel={`View ${film.title} Oscar details`}
                 posterLabel="OSC"
                 posterActions={<>
-                  <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} onAdded={() => removeOscarFilm(film.id)} placement="poster" />
+                  <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} placement="poster" />
                   <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} onIgnored={() => removeOscarFilm(film.id)} placement="poster" />
                 </>}
                 posterUrl={film.posterUrl}
@@ -347,7 +347,6 @@ export function OscarCatalogView() {
         <OscarFilmDetailsDialog
           filmId={selectedFilmId}
           onClose={() => setSelectedFilmId(null)}
-          onFavoriteAdded={() => removeOscarFilm(selectedFilmId)}
           onIgnored={() => removeOscarFilm(selectedFilmId)}
         />
       )}

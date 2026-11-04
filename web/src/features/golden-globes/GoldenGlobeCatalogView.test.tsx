@@ -296,7 +296,7 @@ describe('GoldenGlobeCatalogView', () => {
     const enrichedFilm = { ...film, imdbId: 'tt12345678', enrichmentStatus: 'enriched' as const, metadataStatus: 'enriched' }
     const favorite: FavoriteTitle = {
       imdbId: 'tt12345678', torrentMovieId: null, title: 'A Film', year: 2025, mediaType: 'movie', metadataStatus: 'enriched',
-      imdbRating: null, posterUrl: null, toWatch: false, toDownload: true,
+      imdbRating: null, posterUrl: null, toWatch: true, toDownload: false,
       addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, addedFromManual: false, createdAt: '2026-09-30T00:00:00Z',
       updatedAt: '2026-09-30T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
       winCount: 0, occurrenceCount: 0, lastSeenAt: null,
@@ -309,8 +309,9 @@ describe('GoldenGlobeCatalogView', () => {
     await waitFor(() => expect(addButton.disabled).toBe(false))
     fireEvent.click(addButton)
 
-    await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt12345678', 'catalog'))
-    expect(await screen.findByText('No Golden Globes films found')).toBeTruthy()
+    await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt12345678', 'golden-globes'))
+    expect(await screen.findByText('In favorites')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'View A Film details' })).toBeTruthy()
     expect(getGoldenGlobeFilms).toHaveBeenCalledTimes(1)
   })
 
@@ -326,7 +327,7 @@ describe('GoldenGlobeCatalogView', () => {
     }
     const favorite: FavoriteTitle = {
       imdbId: 'tt87654321', torrentMovieId: null, title: 'A Series', year: 2025, mediaType: 'series', metadataStatus: 'enriched',
-      imdbRating: null, posterUrl: null, toWatch: false, toDownload: true,
+      imdbRating: null, posterUrl: null, toWatch: true, toDownload: false,
       addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, addedFromManual: false, createdAt: '2026-10-29T00:00:00Z',
       updatedAt: '2026-10-29T00:00:00Z', oscarFilmCount: 0, nominationCount: 0,
       winCount: 0, occurrenceCount: 0, lastSeenAt: null,
@@ -339,8 +340,9 @@ describe('GoldenGlobeCatalogView', () => {
     await waitFor(() => expect(addButton.disabled).toBe(false))
     fireEvent.click(addButton)
 
-    await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt87654321', 'catalog'))
-    expect(await screen.findByText('No Golden Globes films found')).toBeTruthy()
+    await waitFor(() => expect(addFavorite).toHaveBeenCalledWith('tt87654321', 'golden-globes'))
+    expect(await screen.findByText('In favorites')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'View A Series details' })).toBeTruthy()
     expect(getGoldenGlobeFilms).toHaveBeenCalledTimes(1)
   })
 })

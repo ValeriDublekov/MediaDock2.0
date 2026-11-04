@@ -207,7 +207,7 @@ export function PersonalRatingsView() {
             mediaType={rating.mediaType}
             metadata={{ director: rating.director, plot: rating.plot }}
             posterActions={<>
-              <FavoriteControls from="catalog" imdbId={rating.imdbId} metadataStatus={rating.metadataStatus} mediaType={rating.mediaType ?? ''} occurrenceCount={0} placement="poster" />
+              <FavoriteControls from="manual" imdbId={rating.imdbId} metadataStatus={rating.metadataStatus} mediaType={rating.mediaType ?? ''} occurrenceCount={0} placement="poster" />
               <IgnoredMovieControl imdbId={rating.imdbId} mediaType={rating.mediaType} placement="poster" />
               {rating.isManuallyAdded && <button
                 aria-label={`Delete ${rating.title} personal rating`}

@@ -172,6 +172,16 @@ public sealed class FavoritesApiTests
         Assert.True(seriesCatalogFavorite.ToDownload);
         Assert.True(seriesCatalogFavorite.AddedFromCatalog);
 
+        using var seriesGoldenGlobesAddResponse = await firstClient.PostAsJsonAsync(
+            "/api/favorites",
+            new { imdbId = seriesImdbId, from = "golden-globes" });
+        Assert.Equal(HttpStatusCode.OK, seriesGoldenGlobesAddResponse.StatusCode);
+        var seriesGoldenGlobesFavorite = await seriesGoldenGlobesAddResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.NotNull(seriesGoldenGlobesFavorite);
+        Assert.True(seriesGoldenGlobesFavorite.ToWatch);
+        Assert.True(seriesGoldenGlobesFavorite.ToDownload);
+        Assert.True(seriesGoldenGlobesFavorite.AddedFromCatalog);
+
         using var seriesOscarAddResponse = await firstClient.PostAsJsonAsync(
             "/api/favorites",
             new { imdbId = seriesImdbId, from = "oscar" });
@@ -273,7 +283,7 @@ public sealed class FavoritesApiTests
         Assert.Equal(HttpStatusCode.OK, repeatAddResponse.StatusCode);
         Assert.NotNull(repeatAdded);
         Assert.True(repeatAdded.ToWatch);
-        Assert.False(repeatAdded.ToDownload);
+        Assert.True(repeatAdded.ToDownload);
         Assert.True(repeatAdded.AddedFromOscar);
         Assert.True(repeatAdded.AddedFromCatalog);
 
@@ -286,7 +296,7 @@ public sealed class FavoritesApiTests
         Assert.Equal(1, firstPage.TotalPages);
         Assert.Equal(firstImdbId, Assert.Single(firstPage.Items).ImdbId);
         Assert.True(firstPage.Items[0].ToWatch);
-        Assert.False(firstPage.Items[0].ToDownload);
+        Assert.True(firstPage.Items[0].ToDownload);
 
         using var secondPageOneResponse = await secondClient.GetAsync("/api/favorites?page=1&pageSize=1");
         using var secondPageTwoResponse = await secondClient.GetAsync("/api/favorites?page=2&pageSize=1");
@@ -319,7 +329,7 @@ public sealed class FavoritesApiTests
         using var secondDownloadFilterResponse = await secondClient.GetAsync("/api/favorites?status=to_download");
         var firstDownloadFilter = await firstDownloadFilterResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
         var secondDownloadFilter = await secondDownloadFilterResponse.Content.ReadFromJsonAsync<PageResponse<FavoriteMovieResponse>>();
-        Assert.Equal(0, firstDownloadFilter?.TotalCount);
+        Assert.Equal(1, firstDownloadFilter?.TotalCount);
         Assert.Equal(2, secondDownloadFilter?.TotalCount);
 
         using var seriesRecommendationAddResponse = await firstClient.PostAsJsonAsync(
