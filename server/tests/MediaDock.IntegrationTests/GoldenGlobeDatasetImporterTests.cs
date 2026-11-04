@@ -1,4 +1,5 @@
 using System.Text;
+using MediaDock.Application.GoldenGlobes;
 using MediaDock.Infrastructure.GoldenGlobes;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
@@ -179,6 +180,39 @@ public sealed class GoldenGlobeDatasetImporterTests
         Assert.Equal("Shared Group Film (canonical)", metadata.TitleText);
         Assert.Equal(8.3m, metadata.ImdbRating);
         Assert.Equal("https://example.test/shared-group.jpg", metadata.PosterUrl);
+    }
+
+    [Fact]
+    public async Task ImportPinsOptionalImdbIdsAndExposesThemForExactIdEnrichment()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_golden_globe_import_imdb_id_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+
+        const string csv = """
+            nominee_type,year,winner,award,title,imdb_id
+            film,2025,true,Best Motion Picture,Imported ID Film,tt12345678
+            film,2025,false,Best Director,Imported ID Film,tt12345678
+            """;
+
+        await new GoldenGlobeDatasetImporter(db).ImportAsync(Encoding.UTF8.GetBytes(csv));
+
+        var group = await db.GoldenGlobeTitles.AsNoTracking().SingleAsync();
+        Assert.Equal("tt12345678", group.ImdbId);
+        Assert.True(group.IsImdbIdManual);
+        Assert.Equal(1, group.ImdbIdVersion);
+        Assert.Equal("pending", group.EnrichmentStatus);
+
+        var candidates = await new PostgresGoldenGlobeEnrichmentRepository(db)
+            .GetEligibleCandidatesAsync(DateTimeOffset.UtcNow);
+        Assert.Equal(
+            new GoldenGlobeEnrichmentCandidate("Imported ID Film", 2025, 0, "movie", "tt12345678", 1),
+            Assert.Single(candidates));
     }
 
     [Fact]

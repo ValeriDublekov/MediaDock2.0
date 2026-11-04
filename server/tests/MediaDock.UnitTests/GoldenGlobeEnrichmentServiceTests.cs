@@ -363,6 +363,7 @@ public sealed class GoldenGlobeEnrichmentServiceTests
 
         Assert.Equal(new GoldenGlobeEnrichmentSummary(1, 1, 1, 0, 0, 0, 0, 1, false), result.Summary);
         Assert.Equal((2025, "movie", "tt12345678"), Assert.Single(client.Requests));
+        Assert.Empty(client.SearchRequests);
         Assert.Empty(repository.SavedOutcomes);
         var manualOutcome = Assert.Single(repository.SavedManualOutcomes);
         Assert.Equal(new GoldenGlobeManualRefreshCandidate(

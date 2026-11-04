@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using MediaDock.Infrastructure.Metadata;
 using Microsoft.VisualBasic.FileIO;
 using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.Persistence;
@@ -11,7 +12,7 @@ namespace MediaDock.Infrastructure.GoldenGlobes;
 
 public sealed record GoldenGlobeImportSummary(int RowsRead, int RowsSkippedByYear, int RowsSkippedByType, int RowsSkippedWithoutTitle, int AwardsCreated, int NominationsCreated);
 
-internal sealed record GoldenGlobeRow(int Year, bool Winner, string Award, string Title, string NomineeType);
+internal sealed record GoldenGlobeRow(int Year, bool Winner, string Award, string Title, string NomineeType, string? ImdbId);
 
 public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
 {
@@ -29,6 +30,7 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
         var rawHeaders = parser.ReadFields() ?? throw new InvalidDataException("Golden Globes dataset has no header row.");
         var headers = rawHeaders.Select(x => x.Trim().TrimStart('\uFEFF')).ToArray();
         var indexes = headers.Select((x, i) => (x, i)).ToDictionary(x => x.x, x => x.i, StringComparer.OrdinalIgnoreCase);
+        var hasImdbIdColumn = indexes.TryGetValue("imdb_id", out var imdbIdIndex);
         foreach (var required in new[] { "nominee_type", "year", "winner", "award", "title" })
             if (!indexes.ContainsKey(required)) throw new InvalidDataException($"Golden Globes dataset is missing required column: {required}.");
 
@@ -43,10 +45,26 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
             if (type is not ("tv-show" or "film" or "movie" or "series")) { skippedType++; continue; }
             var title = Field("title"); if (string.IsNullOrWhiteSpace(title)) { skippedTitle++; continue; }
             var nomineeType = type is "tv-show" or "series" ? "series" : "movie";
-            rows.Add(new(year, ParseBool(Field("winner")), Field("award"), title, nomineeType));
+            var rawImdbId = hasImdbIdColumn ? fields[imdbIdIndex].Trim() : string.Empty;
+            var imdbId = string.IsNullOrWhiteSpace(rawImdbId) ? null : ImdbIdNormalizer.Normalize(rawImdbId);
+            if (rawImdbId.Length > 0 && !ImdbIdNormalizer.IsValid(imdbId))
+                throw new InvalidDataException($"Golden Globes dataset row {parser.LineNumber} has an invalid IMDb ID.");
+            rows.Add(new(year, ParseBool(Field("winner")), Field("award"), title, nomineeType, imdbId));
+        }
+
+        var importedImdbIds = new Dictionary<(string Title, int Year, string NomineeType), string>();
+        foreach (var row in rows.Where(row => row.ImdbId is not null))
+        {
+            var identity = (row.Title, row.Year, row.NomineeType);
+            if (importedImdbIds.TryGetValue(identity, out var existingImdbId)
+                && !string.Equals(existingImdbId, row.ImdbId, StringComparison.Ordinal))
+                throw new InvalidDataException($"Golden Globes title group '{row.Title}' in {row.Year} has conflicting IMDb IDs.");
+            importedImdbIds[identity] = row.ImdbId!;
         }
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        await ImdbTitleMetadataMapper.EnsureAsync(
+            db, importedImdbIds.Values, DateTimeOffset.UtcNow, cancellationToken);
         var awardNames = rows.Select(x => x.Award).Distinct(StringComparer.Ordinal).ToArray();
         var awards = await db.GoldenGlobeAwards.Where(x => awardNames.Contains(x.Name)).ToDictionaryAsync(x => x.Name, StringComparer.Ordinal, cancellationToken);
         var categoryAliases = await db.AwardCategoryAliases
@@ -70,20 +88,55 @@ public sealed class GoldenGlobeDatasetImporter(MediaDockDbContext db)
                 groups.TryAdd((title.Title, title.Year, title.NomineeType), title);
         }
 
+        foreach (var (identity, imdbId) in importedImdbIds)
+        {
+            if (groups.TryGetValue(identity, out var group)
+                && group.ImdbId is { } existingImdbId
+                && !string.Equals(ImdbIdNormalizer.Normalize(existingImdbId), imdbId, StringComparison.Ordinal))
+                throw new InvalidDataException($"Golden Globes title group '{identity.Title}' in {identity.Year} already has a different IMDb ID.");
+        }
+
+        void PinImportedImdbId(GoldenGlobeTitle group, string imdbId)
+        {
+            if (group.IsImdbIdManual
+                && string.Equals(ImdbIdNormalizer.Normalize(group.ImdbId), imdbId, StringComparison.Ordinal))
+                return;
+
+            group.ImdbId = imdbId;
+            group.IsImdbIdManual = true;
+            group.ImdbIdVersion = checked(group.ImdbIdVersion + 1);
+            group.EnrichmentStatus = "pending";
+            group.EnrichmentAttemptCount = 0;
+            group.LastEnrichmentAttemptAt = null;
+            group.NextEnrichmentAttemptAt = null;
+            group.LastEnrichmentError = null;
+        }
+
         GoldenGlobeTitle GetGroup(GoldenGlobeRow row, int initialVersion = 0)
         {
             var identity = (row.Title, row.Year, row.NomineeType);
-            if (groups.TryGetValue(identity, out var group)) return group;
-            group = new GoldenGlobeTitle
+            if (!groups.TryGetValue(identity, out var group))
             {
-                Title = row.Title,
-                Year = row.Year,
-                NomineeType = row.NomineeType,
-                ImdbIdVersion = initialVersion
-            };
-            db.GoldenGlobeTitles.Add(group);
-            groups.Add(identity, group);
+                group = new GoldenGlobeTitle
+                {
+                    Title = row.Title,
+                    Year = row.Year,
+                    NomineeType = row.NomineeType,
+                    ImdbIdVersion = initialVersion
+                };
+                db.GoldenGlobeTitles.Add(group);
+                groups.Add(identity, group);
+            }
+
+            if (importedImdbIds.TryGetValue(identity, out var imdbId))
+                PinImportedImdbId(group, imdbId);
             return group;
+        }
+
+        foreach (var (identity, imdbId) in importedImdbIds)
+        {
+            if (groups.TryGetValue(identity, out var group))
+                PinImportedImdbId(group, imdbId);
         }
 
         var seenKeys = new HashSet<string>(existing.Keys, StringComparer.Ordinal);

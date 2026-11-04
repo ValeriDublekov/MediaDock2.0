@@ -161,6 +161,7 @@ def build_command(name: str, filter_value: str | None, report_dir: Path, restore
                 "scripts.test_inspect_ef_migration",
                 "scripts.test_report_file_lines",
                 "scripts.test_check_markdown_links",
+                "scripts.test_prepare_golden_globes",
             )
         )
         command.extend(modules)

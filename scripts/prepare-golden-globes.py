@@ -51,12 +51,17 @@ def main() -> None:
             "id" if index == 0 and not name.strip() else name.strip().lstrip("\ufeff")
             for index, name in enumerate(reader.fieldnames)
         ]
+        imdb_id_column = next(
+            (name for name in reader.fieldnames if name.casefold() == "imdb_id"),
+            None,
+        )
+        output_columns = OUTPUT_COLUMNS + (("imdb_id",) if imdb_id_column is not None else ())
         missing = [column for column in OUTPUT_COLUMNS if column not in reader.fieldnames]
         if missing:
             raise SystemExit(f"Input file is missing required columns: {', '.join(missing)}")
 
         with output.open("w", encoding="utf-8", newline="") as output_file:
-            writer = csv.DictWriter(output_file, fieldnames=OUTPUT_COLUMNS)
+            writer = csv.DictWriter(output_file, fieldnames=output_columns)
             writer.writeheader()
             for row in reader:
                 source_rows += 1
@@ -86,14 +91,17 @@ def main() -> None:
                     skipped_duplicate += 1
                     continue
                 seen_keys.add(key)
-                writer.writerow({
+                output_row = {
                     "id": (row.get("id") or "").strip(),
                     "nominee_type": nominee_type,
                     "year": year,
                     "winner": winner,
                     "award": award,
                     "title": title,
-                })
+                }
+                if imdb_id_column is not None:
+                    output_row["imdb_id"] = (row.get(imdb_id_column) or "").strip()
+                writer.writerow(output_row)
                 exported += 1
 
     print(f"Output: {output}")
