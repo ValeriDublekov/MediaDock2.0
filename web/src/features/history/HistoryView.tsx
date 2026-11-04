@@ -180,28 +180,60 @@ function ScanRunTable({ items }: { items: ScanRun[] }) {
 }
 
 function ParseLogTable({ items, onRetry }: { items: ParseLog[]; onRetry: (entry: ParseLog) => void }) {
+  const [expandedEntries, setExpandedEntries] = useState<Set<number>>(() => new Set())
+
+  function toggleDetails(entryId: number) {
+    setExpandedEntries((current) => {
+      const nextExpanded = new Set(current)
+      if (nextExpanded.has(entryId)) nextExpanded.delete(entryId)
+      else nextExpanded.add(entryId)
+      return nextExpanded
+    })
+  }
+
   return (
     <div className="table-wrap">
-      <table className="data-table">
+      <table className="data-table parse-log-table">
+        <colgroup>
+          <col className="parse-log-col-raw" />
+          <col className="parse-log-col-parsed" />
+          <col className="parse-log-col-year" />
+          <col className="parse-log-col-feed" />
+          <col className="parse-log-col-result" />
+          <col className="parse-log-col-type" />
+          <col className="parse-log-col-processed" />
+          <col className="parse-log-col-action" />
+        </colgroup>
         <thead><tr><th>RAW TITLE</th><th>PARSED TITLE</th><th>YEAR</th><th>FEED</th><th>RESULT</th><th>TYPE</th><th>PROCESSED</th><th>ACTION</th></tr></thead>
         <tbody>{items.map((entry) => (
-          <tr key={entry.id}>
-            <td>{entry.rawTitle && isHttpUrl(entry.torrentUrl)
-              ? <a href={entry.torrentUrl!} rel="noopener noreferrer" target="_blank">{entry.rawTitle}</a>
-              : entry.rawTitle || '—'}</td>
+          <tr className={expandedEntries.has(entry.id) ? 'parse-log-row is-expanded' : 'parse-log-row'} key={entry.id}>
+            <td className="parse-log-raw-title-cell">
+              <button
+                aria-expanded={expandedEntries.has(entry.id)}
+                aria-label={`${expandedEntries.has(entry.id) ? 'Hide' : 'Show'} details for ${entry.parsedTitle || entry.rawTitle || entry.feedName} (log ${entry.id})`}
+                className="parse-log-details-toggle text-button"
+                onClick={() => toggleDetails(entry.id)}
+                type="button"
+              >{expandedEntries.has(entry.id) ? 'Hide' : 'Details'}</button>
+              {expandedEntries.has(entry.id) && <div className="parse-log-entry-detail">{entry.rawTitle && isHttpUrl(entry.torrentUrl)
+                ? <a href={entry.torrentUrl!} rel="noopener noreferrer" target="_blank">{entry.rawTitle}</a>
+                : entry.rawTitle || '—'}</div>}
+            </td>
             <td>{entry.parsedTitle ?? 'No normalized title'}</td>
             <td>{entry.parsedYear ?? '—'}</td>
             <td>{entry.sourceName ?? entry.feedName}<span className="subtle-line">{entry.feedType ?? 'Unknown feed type'}</span></td>
             <td>
               <span className="state-pill">{getParseLogDiagnosis(entry)}</span>
-              <span className={`subtle-line${entry.parsedSuccessfully ? '' : ' is-muted'}`}>{getParseLogStatus(entry)}</span>
-              {entry.lookupTitles.length > 0 && <span className="subtle-line">Lookup names: {entry.lookupTitles.join(' → ')}</span>}
-              {entry.ignoreReason && <span className="subtle-line">Reason: {formatWords(entry.ignoreReason)}</span>}
-              {entry.errorMessage && <span className="subtle-line">Error: {entry.errorMessage}</span>}
-              {entry.decision && <span className="subtle-line">Decision: {entry.decision === 'known_torrent_url' ? 'Known torrent URL' : formatWords(entry.decision)}</span>}
+              {expandedEntries.has(entry.id) && <div className="parse-log-entry-detail">
+                <span className={`subtle-line${entry.parsedSuccessfully ? '' : ' is-muted'}`}>{getParseLogStatus(entry)}</span>
+                {entry.lookupTitles.length > 0 && <span className="subtle-line">Lookup names: {entry.lookupTitles.join(' → ')}</span>}
+                {entry.ignoreReason && <span className="subtle-line">Reason: {formatWords(entry.ignoreReason)}</span>}
+                {entry.errorMessage && <span className="subtle-line">Error: {entry.errorMessage}</span>}
+                {entry.decision && <span className="subtle-line">Decision: {entry.decision === 'known_torrent_url' ? 'Known torrent URL' : formatWords(entry.decision)}</span>}
+              </div>}
             </td>
-            <td>{formatWords(entry.retryState)}<span className="subtle-line">{entry.attemptCount} attempts</span></td>
-            <td>{formatDate(entry.processedAt)}</td>
+            <td className="parse-log-type-cell">{formatWords(entry.retryState)} · {entry.attemptCount} {entry.attemptCount === 1 ? 'attempt' : 'attempts'}</td>
+            <td className="parse-log-processed-cell"><time dateTime={entry.processedAt}>{formatDate(entry.processedAt)}</time></td>
             <td>{entry.canRetryMatch && <button
               aria-label={`Retry IMDb match for ${entry.parsedTitle ?? entry.rawTitle}`}
               className="button button-secondary"

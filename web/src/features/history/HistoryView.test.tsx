@@ -90,6 +90,8 @@ describe('HistoryView parse diagnosis', () => {
 
     expect(await screen.findByText('Parsing failed')).toBeTruthy()
     expect(screen.getByText('OMDb found no result')).toBeTruthy()
+    expect(screen.queryByText('Lookup names: English Title → Локално име')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show details for English Title (log 2)' }))
     expect(screen.getByText('Lookup names: English Title → Локално име')).toBeTruthy()
   })
 
@@ -136,8 +138,9 @@ describe('HistoryView parse diagnosis', () => {
 
     render(<HistoryView scanRunId={42} />)
 
+    expect(await screen.findByText('Already in catalog')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show details for Example Film (2024) (log 1)' }))
     expect(await screen.findByText('Skipped')).toBeTruthy()
-    expect(screen.getByText('Already in catalog')).toBeTruthy()
     expect(screen.getByText('Decision: Known torrent URL')).toBeTruthy()
     expect(screen.queryByText('Parsing failed')).toBeNull()
   })
@@ -149,9 +152,11 @@ describe('HistoryView parse diagnosis', () => {
 
     render(<HistoryView scanRunId={42} />)
 
-    const row = await screen.findByRole('row', { name: /Example Film \(2024\) \[1080p\]/ })
+    const row = await screen.findByRole('row', { name: /Example Film/ })
     const cells = within(row).getAllByRole('cell')
-    expect(cells[0].textContent).toBe(entry.rawTitle)
+    expect(cells[0].textContent).not.toContain(entry.rawTitle)
+    fireEvent.click(within(cells[0]).getByRole('button', { name: 'Show details for Example Film (log 1)' }))
+    expect(cells[0].textContent).toContain(entry.rawTitle)
     expect(cells[1].textContent).toBe(entry.parsedTitle)
     expect(cells[2].textContent).toBe('2024')
   })
@@ -166,6 +171,8 @@ describe('HistoryView parse diagnosis', () => {
 
     render(<HistoryView />)
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Show details for Example Film (log 1)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show details for Example Film (log 2)' }))
     const link = await screen.findByRole('link', { name: 'Linked Film (2024)' })
     expect(link.getAttribute('href')).toBe(torrentUrl)
     expect(link.getAttribute('target')).toBe('_blank')

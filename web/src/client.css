@@ -131,6 +131,19 @@ button:disabled { cursor: not-allowed; }
 
 .table-wrap { width: 100%; overflow-x: auto; border-top: 1px solid #cbd6cd; }
 .data-table { width: 100%; border-collapse: collapse; text-align: left; }
+.parse-log-table { min-width: 1120px; table-layout: fixed; }
+.parse-log-col-raw { width: 14%; }
+.parse-log-col-parsed { width: 12%; }
+.parse-log-col-year { width: 5%; }
+.parse-log-col-feed { width: 9%; }
+.parse-log-col-result { width: 21%; }
+.parse-log-col-type { width: 15%; }
+.parse-log-col-processed { width: 14%; }
+.parse-log-col-action { width: 10%; }
+.parse-log-raw-title-cell { overflow-wrap: anywhere; }
+.parse-log-entry-detail { margin-top: 7px; color: #52665a; line-height: 1.45; overflow-wrap: anywhere; }
+.parse-log-entry-detail a { overflow-wrap: anywhere; }
+.parse-log-details-toggle, .parse-log-type-cell, .parse-log-processed-cell { white-space: nowrap; }
 .data-table th { height: 39px; border-bottom: 1px solid #cbd6cd; padding: 0 12px; color: #728078; font-size: 9px; font-weight: 800; letter-spacing: 0.8px; white-space: nowrap; }
 .data-table td { height: 66px; border-bottom: 1px solid #dce3dd; padding: 10px 12px; color: #35473f; font-size: 12px; vertical-align: middle; }
 .data-table tbody tr { background: rgba(250, 252, 249, 0.6); transition: background-color 120ms ease; }
