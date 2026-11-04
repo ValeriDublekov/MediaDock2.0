@@ -393,7 +393,7 @@ export function CatalogView({ canDeleteTitles = false, canViewHistory = false }:
               </div>
             </MoviePosterCard>)}
           </div> : <div className="table-wrap">
-            <table className="data-table">
+            <table className="data-table catalog-data-table">
               <thead><tr><th>TITLE</th><th>TYPE</th><th>IMDB</th><th>AWARDS</th><th>GENRES</th><th>RSS DATE</th><th>ACTIONS</th></tr></thead>
               <tbody>{result.items.map((title) => <CatalogRow awards={combineMovieAwards([], pageAwards, title.imdbId)} key={title.id} onRemoved={() => removeCatalogTitle(title.id)} onSelect={(id) => openTitle(id, 'details')} title={title} />)}</tbody>
             </table>

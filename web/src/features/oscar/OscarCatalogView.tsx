@@ -331,7 +331,7 @@ export function OscarCatalogView() {
               </MoviePosterCard>
             })}
           </div> : <div className="table-wrap">
-            <table className="data-table">
+            <table className="data-table catalog-data-table">
               <thead><tr><th>FILM</th><th>TYPE</th><th>IMDB</th><th>AWARDS</th><th>GENRES</th><th>OMDB</th><th>ACTIONS</th></tr></thead>
               <tbody>
                 {result.items.map((film) => (

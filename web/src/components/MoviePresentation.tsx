@@ -111,7 +111,12 @@ interface MovieTableTitleProps {
 
 export function MovieTableTitle({ title, posterUrl, posterLabel, openLabel, subtitle, onOpen, metadata, children }: MovieTableTitleProps) {
   return <div className="title-cell">
-    <Poster className="poster-small" label={posterLabel} src={posterUrl} title={title} />
+    <button aria-label={`View ${title} poster and details`} className="table-poster-preview" onClick={onOpen} type="button">
+      <Poster className="poster-small" label={posterLabel} src={posterUrl} title={title} />
+      <span aria-hidden="true" className="table-poster-large">
+        <Poster className="poster-table-large-image" label={posterLabel} src={posterUrl} title={title} />
+      </span>
+    </button>
     <span className="movie-table-title-details">
       <button aria-label={openLabel} className="title-link" onClick={onOpen} type="button">{title}</button>
       {subtitle !== undefined && <span className="subtle-line">{subtitle}</span>}

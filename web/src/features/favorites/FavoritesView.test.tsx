@@ -60,6 +60,10 @@ it('filters one canonical movie independently by watch and download status', asy
 
   expect(await screen.findByRole('button', { name: 'Shared Movie' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Table' }))
+  expect(screen.getByRole('columnheader', { name: 'TYPE' })).toBeTruthy()
+  expect(screen.getByRole('columnheader', { name: 'IMDB' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'View Shared Movie poster and details' })).toBeTruthy()
+  expect(screen.getByRole('link', { name: 'Open Shared Movie on IMDb (opens in new tab)' })).toBeTruthy()
   expect(screen.queryByRole('columnheader', { name: 'ORIGIN' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Posters' }))
   fireEvent.click(screen.getByRole('button', { name: 'To watch' }))

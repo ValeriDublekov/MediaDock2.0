@@ -4,9 +4,10 @@ import { getFavorites } from '../../api/client'
 import type { FavoriteTitle, PageResponse } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { Pagination } from '../../components/Pagination'
-import { MoviePosterCard } from '../../components/MoviePresentation'
+import { MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { MovieMetadataDetailsDialog } from '../../components/MovieMetadataDetailsDialog'
 import { titlePageSize } from '../../shared/titlePagination'
+import { formatWords } from '../../shared/format'
 import { removePageItems } from '../../shared/removePageItems'
 import { combineMovieAwards, movieAwardsRequestKey } from '../../shared/movieAwards'
 import { useMovieAwards } from '../../shared/useMovieAwards'
@@ -105,11 +106,22 @@ export function FavoritesView() {
         >
           {item.occurrenceCount > 0 && <div className="tile-observations"><span>{item.occurrenceCount} torrent {item.occurrenceCount === 1 ? 'source' : 'sources'}</span></div>}
         </MoviePosterCard>)}
-      </div> : <div className="table-wrap"><table className="data-table"><thead><tr><th>TITLE</th><th>OSCAR</th><th>TORRENTS</th><th>STATUS</th></tr></thead>
+      </div> : <div className="table-wrap"><table className="data-table catalog-data-table"><thead><tr><th>TITLE</th><th>TYPE</th><th>IMDB</th><th>OSCAR</th><th>GENRES</th><th>TORRENTS</th><th>STATUS</th></tr></thead>
         <tbody>{result.items.map((item) => <tr key={item.imdbId}>
-          <td><button className="title-link" onClick={() => setSelected(item)} type="button">{item.title}</button><span className="subtle-line">{item.year ?? 'Year unknown'}</span></td>
+          <td><MovieTableTitle
+            metadata={{ director: item.director ?? null, plot: item.plot ?? null }}
+            onOpen={() => setSelected(item)}
+            openLabel={`View ${item.title} details`}
+            posterLabel={item.mediaType.slice(0, 3).toUpperCase()}
+            posterUrl={item.posterUrl}
+            subtitle={item.year ?? 'Year unknown'}
+            title={item.title}
+          /></td>
+          <td><span className="type-label">{formatWords(item.mediaType)}</span></td>
+          <td><MovieImdbLink imdbId={item.imdbId} rating={item.imdbRating} title={item.title} /></td>
           <td>{[item.nominationCount > 0 && `${item.nominationCount} nominations`, item.winCount > 0 && `${item.winCount} wins`].filter(Boolean).join(', ')}</td>
-          <td>{item.occurrenceCount > 0 ? `${item.occurrenceCount} sources` : null}</td>
+          <td>{item.genres?.slice(0, 2).join(', ') || 'Not tagged'}</td>
+          <td>{item.occurrenceCount > 0 ? `${item.occurrenceCount} sources` : '0 sources'}</td>
           <td><FavoriteControls allowAddFromHere={false} showFavoriteStatus={false} from="catalog" imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={() => removeFavoriteTitle(item.imdbId)} onUpdated={(input) => updateFavoriteTitle(item.imdbId, input)} /></td>
         </tr>)}</tbody>
       </table></div>}
