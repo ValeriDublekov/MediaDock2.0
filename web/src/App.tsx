@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { getCurrentSession, requestRegistration } from './api/client'
 import type { AuthDiagnostic, CurrentSession, RecommendationMediaType } from './api/types'
@@ -53,6 +53,52 @@ const recommendationPages: { path: string; label: string; mediaType: Recommendat
   { path: '/account/recommendations/movies', label: 'Movie recommendations', mediaType: 'movie' },
   { path: '/account/recommendations/series', label: 'Series recommendations', mediaType: 'series' },
 ]
+
+type ColorTheme = 'current' | 'noir-gold' | 'carbon-cinema'
+
+const colorThemes: ColorTheme[] = ['current', 'noir-gold', 'carbon-cinema']
+const colorThemeLabels: Record<ColorTheme, string> = {
+  current: 'Current',
+  'noir-gold': 'Noir Gold',
+  'carbon-cinema': 'Carbon Cinema',
+}
+const colorThemeStorageKey = 'mediadock.color-theme'
+
+function getInitialColorTheme(): ColorTheme {
+  try {
+    const savedTheme = window.localStorage.getItem(colorThemeStorageKey)
+    return colorThemes.find((theme) => theme === savedTheme) ?? 'current'
+  } catch {
+    return 'current'
+  }
+}
+
+function ColorThemeSwitcher() {
+  const [theme, setTheme] = useState<ColorTheme>(getInitialColorTheme)
+  const nextTheme = colorThemes[(colorThemes.indexOf(theme) + 1) % colorThemes.length]
+
+  useEffect(() => {
+    document.documentElement.dataset.colorTheme = theme
+    try {
+      window.localStorage.setItem(colorThemeStorageKey, theme)
+    } catch {
+      return
+    }
+  }, [theme])
+
+  return (
+    <button
+      aria-label={`Color theme: ${colorThemeLabels[theme]}. Switch to ${colorThemeLabels[nextTheme]}.`}
+      className="theme-switcher"
+      onClick={() => setTheme(nextTheme)}
+      title={`Switch to ${colorThemeLabels[nextTheme]} theme`}
+      type="button"
+    >
+      <span aria-hidden="true" className="theme-switcher-mark" />
+      <span className="theme-switcher-label">Theme: {colorThemeLabels[theme]}</span>
+    </button>
+  )
+}
 
 const sectionContent: Record<Section, { eyebrow: string; title: string; description: string }> = {
   catalog: {
@@ -461,7 +507,10 @@ function AppContent() {
                 <span className="breadcrumb-current">{breadcrumbContext}</span>
               </div>
             )}
-            {showAuthStatus && <AuthStatus onSessionChange={onSessionChange} />}
+            <div className="topbar-actions">
+              <ColorThemeSwitcher />
+              {showAuthStatus && <AuthStatus onSessionChange={onSessionChange} />}
+            </div>
           </div>
         </header>
 

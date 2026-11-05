@@ -1,0 +1,273 @@
+.topbar-actions {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.theme-switcher {
+  display: inline-flex;
+  min-height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #cbd6cd;
+  border-radius: 3px;
+  padding: 0 9px;
+  color: #374a42;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.theme-switcher:hover { border-color: #a7422e; }
+.theme-switcher:focus-visible { outline: 2px solid #ad593a; outline-offset: 2px; }
+.theme-switcher-mark { width: 12px; height: 12px; border: 1px solid currentColor; border-radius: 50%; background: linear-gradient(90deg, #e0573e 50%, #1c2222 50%); }
+
+:root[data-color-theme="noir-gold"] {
+  color-scheme: dark;
+  --theme-bg: #0b0b0d;
+  --theme-surface: #131316;
+  --theme-surface-raised: #1c1c20;
+  --theme-control: #0e0e11;
+  --theme-ink: #f3eee2;
+  --theme-muted: #a39d90;
+  --theme-line: #2e2e34;
+  --theme-accent: #d7b066;
+  --theme-accent-ink: #1a1405;
+  --theme-accent-hover: #e6c27a;
+  --theme-sidebar: #08080a;
+  --theme-sidebar-ink: #bdb7a9;
+  --theme-sidebar-muted: #7d786d;
+  --theme-nav-hover: #141417;
+  --theme-warning-bg: #332a18;
+  --theme-warning-ink: #f1dca7;
+  --theme-danger: #f0a08e;
+  --theme-success: #9ac9a8;
+  --theme-overlay: rgb(0 0 0 / 78%);
+}
+
+:root[data-color-theme="carbon-cinema"] {
+  color-scheme: dark;
+  --theme-bg: #202123;
+  --theme-surface: #27292b;
+  --theme-surface-raised: #303234;
+  --theme-control: #282a2c;
+  --theme-ink: #f0f0ee;
+  --theme-muted: #b3b4b1;
+  --theme-line: #414345;
+  --theme-accent: #eb9484;
+  --theme-accent-ink: #271411;
+  --theme-accent-hover: #ffc0af;
+  --theme-sidebar: #17181a;
+  --theme-sidebar-ink: #b6b9b6;
+  --theme-sidebar-muted: #929793;
+  --theme-nav-hover: #1c1f20;
+  --theme-warning-bg: #3a3022;
+  --theme-warning-ink: #f2dfb6;
+  --theme-danger: #ffaaa0;
+  --theme-success: #a3d2b1;
+  --theme-overlay: rgb(0 0 0 / 78%);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) body,
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .app-shell,
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell {
+  color: var(--theme-ink);
+  background: var(--theme-bg);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .sidebar {
+  border-color: var(--theme-line);
+  color: var(--theme-sidebar-ink);
+  background: var(--theme-sidebar);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .sidebar :where(*) {
+  color: var(--theme-sidebar-ink) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .sidebar :where(.sidebar-label, .status-caption) {
+  color: var(--theme-sidebar-muted) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .sidebar .nav-item:hover,
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .sidebar .configuration-nav-item:hover {
+  color: var(--theme-ink) !important;
+  background: var(--theme-nav-hover);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .sidebar .nav-item.is-active,
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .sidebar .configuration-nav-item.is-active {
+  border-left-color: var(--theme-accent);
+  color: var(--theme-accent-hover) !important;
+  background: var(--theme-nav-hover);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .topbar,
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .auth-profile-panel,
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .detail-dialog,
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .movie-tile,
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .source-row,
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .feedback {
+  border-color: var(--theme-line);
+  color: var(--theme-ink);
+  background: var(--theme-surface);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .detail-backdrop {
+  background: var(--theme-overlay);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(*) {
+  color: var(--theme-ink) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(
+  .breadcrumb, .breadcrumb-separator, .breadcrumb-current, .auth-summary, .auth-email,
+  .auth-unavailable, .page-description, .result-count, .field label, .field-label,
+  .section-caption, .subtle-line, .type-label, .tile-year, .tile-meta, .data-table th,
+  .pagination, .recommendation-weight-total, .detail-summary-meta, .movie-detail-genres,
+  .movie-detail-inline-facts dt, .movie-awards-empty, .movie-award-record-meta,
+  .movie-award-detail, .movie-award-name, .feedback-copy p, .auth-recovery-help
+) {
+  color: var(--theme-muted) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(
+  h1, h2, h3, h4, strong, dt, dd, td, th, label, legend, summary, .breadcrumb a,
+  .eyebrow, .registration-eyebrow, .title-link, .text-button, .movie-imdb-link,
+  .imdb-candidate-actions a, .details-link, .recommendation-score-disclosure > summary
+) {
+  color: var(--theme-ink) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(
+  .eyebrow, .registration-eyebrow, .title-link, .text-button, .movie-imdb-link,
+  .imdb-candidate-actions a, .details-link, .recommendation-award-details summary
+) {
+  color: var(--theme-accent) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .topbar {
+  border-color: var(--theme-line);
+  background: var(--theme-surface);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(
+  .filter-form, .management-section, .management-grid, .recommendation-controls,
+  .recommendation-freshness, .ratings-toolbar, .detail-header, .movie-detail-actions,
+  .table-wrap, .data-table th, .data-table td, .poster-grid, .favorite-award,
+  .source-profile, .source-list, .source-row, .detail-dialog, .movie-tile
+) {
+  border-color: var(--theme-line) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(
+  .detail-dialog, .auth-profile-panel, .filter-form, .feedback, .source-row,
+  .recommendation-score-guide-dialog, .recommendation-watch-dialog, .imdb-candidate-dialog
+) {
+  background: var(--theme-surface) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea,
+  .recommendation-settings-table input
+) {
+  border-color: var(--theme-line) !important;
+  color: var(--theme-ink) !important;
+  background: var(--theme-control) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(input, textarea)::placeholder {
+  color: var(--theme-muted) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .category-multiselect-menu > summary {
+  border-color: var(--theme-line) !important;
+  color: var(--theme-ink) !important;
+  background: var(--theme-control) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .category-multiselect-menu[open] {
+  border-color: var(--theme-line) !important;
+  background: var(--theme-surface) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(.button) {
+  border-color: var(--theme-accent) !important;
+  color: var(--theme-accent-ink) !important;
+  background: var(--theme-accent) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(.button:hover:not(:disabled)) {
+  border-color: var(--theme-accent-hover) !important;
+  color: var(--theme-accent-ink) !important;
+  background: var(--theme-accent-hover) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(.button-secondary, .segment-control, .segment-control button[aria-pressed="true"]) {
+  border-color: var(--theme-line) !important;
+  color: var(--theme-ink) !important;
+  background: var(--theme-surface-raised) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(button:not(.button):not(.theme-switcher)) {
+  border-color: var(--theme-line) !important;
+  color: var(--theme-ink) !important;
+  background: var(--theme-surface-raised) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(button.is-active, button[aria-pressed="true"]) {
+  border-color: var(--theme-accent) !important;
+  color: var(--theme-accent-ink) !important;
+  background: var(--theme-accent) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(.data-table tbody tr, .title-stamp, .segment-control) {
+  background: var(--theme-surface-raised) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(.data-table tbody tr:hover) {
+  background: var(--theme-nav-hover) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(
+  .open-mode-warning, .recommendation-dirty-warning, .trust-note
+) {
+  border-color: var(--theme-accent) !important;
+  color: var(--theme-warning-ink) !important;
+  background: var(--theme-warning-bg) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(
+  .form-error, .feedback-error .feedback-symbol, .imdb-candidate-error,
+  .auth-message, [role="alert"]
+) {
+  color: var(--theme-danger) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(
+  .form-message, .history-retention-feedback, .auth-request-state
+) {
+  color: var(--theme-success) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .theme-switcher {
+  border-color: var(--theme-line);
+  color: var(--theme-ink);
+  background: var(--theme-surface-raised);
+}
+
+:root[data-color-theme="noir-gold"] .theme-switcher-mark,
+:root[data-color-theme="carbon-cinema"] .theme-switcher-mark {
+  background: linear-gradient(90deg, var(--theme-accent) 50%, var(--theme-bg) 50%);
+}
+
+@media (max-width: 560px) {
+  .topbar-actions { gap: 7px; }
+  .theme-switcher { width: 34px; justify-content: center; padding: 0; }
+  .theme-switcher-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+}
