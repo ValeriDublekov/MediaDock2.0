@@ -25,7 +25,7 @@ python -B scripts/run_tests.py deploy
 python -B scripts/run_tests.py runner
 ```
 
-`--filter` applies to one suite: VSTest expression for .NET, a Vitest file-path filter for web, or Python unittest's `-k` pattern for `deploy` and `runner`. Each run captures logs in a unique `.test-tmp/mediadock-tests-*` directory; .NET and web runs also write structured reports. Use `--artifacts-dir <path>` to select another base directory. The runner prints bounded failure summaries, retains full artifacts, and exits nonzero if any selected suite fails.
+`--filter` applies to one suite: VSTest expression for .NET, a Vitest file-path filter for web, or Python unittest's `-k` pattern for `deploy` and `runner`. Each run captures logs in a unique `.test-tmp/mediadock-tests-*` directory; .NET and web runs also write structured reports. .NET test builds use project-specific output directories under that run directory, leaving normal `bin/Debug` outputs available to a running local API. Use `--artifacts-dir <path>` to select another base directory. The runner prints bounded failure summaries, retains full artifacts, and exits nonzero if any selected suite fails.
 
 ## Restore and Build
 

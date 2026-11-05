@@ -72,6 +72,14 @@ class TestResultParsingTests(unittest.TestCase):
 
         self.assertEqual(command[0], "npm.cmd" if sys.platform == "win32" else "npm")
 
+    def test_dotnet_suites_use_run_scoped_build_outputs(self) -> None:
+        output_root = f"-p:MediaDockTestOutputRoot={self.directory / 'dotnet-output'}{os.sep}"
+
+        for suite in ("server-unit", "server-integration"):
+            with self.subTest(suite=suite):
+                command, _, _, _ = build_command(suite, None, self.directory, restore=False)
+                self.assertIn(output_root, command)
+
 
 class TestRunnerArtifactAndFallbackTests(unittest.TestCase):
     def setUp(self) -> None:

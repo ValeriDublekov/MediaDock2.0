@@ -134,6 +134,8 @@ def build_command(name: str, filter_value: str | None, report_dir: Path, restore
         project = UNIT_PROJECT if name == "server-unit" else INTEGRATION_PROJECT
         report_path = report_dir / f"{name}.trx"
         command = ["dotnet", "test", project]
+        output_root = str(report_dir / "dotnet-output") + os.sep
+        command.append(f"-p:MediaDockTestOutputRoot={output_root}")
         if not restore:
             command.append("--no-restore")
         command.extend(["--logger", f"trx;LogFileName={report_path.name}", "--results-directory", str(report_dir)])

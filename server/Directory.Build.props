@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup Condition="'$(MediaDockTestOutputRoot)' != ''">
+    <BaseOutputPath>$(MediaDockTestOutputRoot)$(MSBuildProjectName)\</BaseOutputPath>
+  </PropertyGroup>
+</Project>

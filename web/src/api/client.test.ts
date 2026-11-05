@@ -10,6 +10,7 @@ import {
   enqueueFailedEntryRecheck,
   enqueueGoldenGlobeEnrichment,
   enqueueGoldenGlobeImport,
+  enqueueImdbTitleImport,
   enqueueManualScan,
   enqueueOscarImport,
   getActiveBackgroundJob,
@@ -517,6 +518,19 @@ describe('typed API client', () => {
 
     await getGoldenGlobeCategories(stub.fetcher)
     expect(String(stub.calls[3]?.input)).toBe('/api/golden-globes/categories')
+  })
+
+  it('uploads an IMDb TSV through the protected background-job endpoint', async () => {
+    const file = new File(['tconst\taverageRating\tnumVotes'], 'ratings.tsv', { type: 'text/tab-separated-values' })
+    const stub = fetchStub(response(202, { id: 19, status: 'queued', statusUrl: '/api/background-jobs/19' }))
+
+    await enqueueImdbTitleImport(file, stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/background-jobs/imdb-title-import')
+    expect(stub.calls[0]?.init?.method).toBe('POST')
+    expect(new Headers(stub.calls[0]?.init?.headers).get('RequestVerificationToken')).toBe('stub-csrf-token')
+    expect((stub.calls[0]?.init?.body as FormData).get('File')).toBe(file)
+    expect(new Headers(stub.calls[0]?.init?.headers).has('Content-Type')).toBe(false)
   })
 
   it('preserves an explicitly empty award category selection', async () => {

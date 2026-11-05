@@ -1,10 +1,11 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ApiError,
   enqueueFailedEntryRecheck,
   enqueueGoldenGlobeEnrichment,
   enqueueGoldenGlobeImport,
+  enqueueImdbTitleImport,
   enqueueManualScan,
   enqueueOscarImport,
   getActiveBackgroundJob,
@@ -26,6 +27,7 @@ vi.mock('../../api/client', () => ({
   enqueueFailedEntryRecheck: vi.fn(),
   enqueueGoldenGlobeEnrichment: vi.fn(),
   enqueueGoldenGlobeImport: vi.fn(),
+  enqueueImdbTitleImport: vi.fn(),
   enqueueManualScan: vi.fn(),
   enqueueOscarImport: vi.fn(),
   getActiveBackgroundJob: vi.fn(),
@@ -55,6 +57,7 @@ describe('BackgroundIngestionPanel', () => {
     vi.mocked(enqueueFailedEntryRecheck).mockReset().mockResolvedValue({ id: 11, status: 'queued', statusUrl: '/api/background-jobs/11' })
     vi.mocked(enqueueGoldenGlobeEnrichment).mockReset().mockResolvedValue({ id: 9, status: 'queued', statusUrl: '/api/background-jobs/9' })
     vi.mocked(enqueueGoldenGlobeImport).mockReset().mockResolvedValue({ id: 10, status: 'queued', statusUrl: '/api/background-jobs/10' })
+    vi.mocked(enqueueImdbTitleImport).mockReset().mockResolvedValue({ id: 12, status: 'queued', statusUrl: '/api/background-jobs/12' })
     vi.mocked(enqueueManualScan).mockReset().mockResolvedValue({ id: 7, status: 'queued', statusUrl: '/api/background-jobs/7' })
     vi.mocked(enqueueOscarImport).mockReset().mockResolvedValue({ id: 8, status: 'queued', statusUrl: '/api/background-jobs/8' })
     vi.mocked(getActiveBackgroundJob).mockReset().mockResolvedValue(null)
@@ -148,6 +151,73 @@ describe('BackgroundIngestionPanel', () => {
 
     await screen.findByRole('dialog')
     expect(enqueueGoldenGlobeEnrichment).toHaveBeenCalledOnce()
+  })
+
+  it('queues an IMDb TSV and tracks its import and catalog enrichment jobs', async () => {
+    const importJob: BackgroundJob = {
+      ...queuedJob,
+      id: 12,
+      jobType: 'imdb_title_import',
+      status: 'succeeded',
+      resultSummary: {
+        import: { rowsRead: 2, rowsSkippedByType: 0, rowsInserted: 1, rowsUpdated: 1, rowsIgnored: 0 },
+        enrichmentJobId: 18,
+      },
+    }
+    const enrichmentJob: BackgroundJob = {
+      ...queuedJob,
+      id: 18,
+      jobType: 'imdb_catalog_enrichment',
+      status: 'running',
+      currentStage: 'imdb_catalog_enrichment',
+    }
+    vi.mocked(getBackgroundJob).mockImplementation(async (id) => id === 18 ? enrichmentJob : importJob)
+    render(<BackgroundIngestionPanel mode="awards" />)
+    await screen.findByText('No active ingestion job.')
+    const file = new File(['tconst\taverageRating\tnumVotes'], 'title.ratings.filtered.movies-series.tsv', { type: 'text/tab-separated-values' })
+
+    fireEvent.change(screen.getByLabelText('IMDb title ratings TSV'), { target: { files: [file] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Queue IMDb import' }))
+
+    await screen.findByRole('dialog')
+    expect(enqueueImdbTitleImport).toHaveBeenCalledWith(file)
+    expect(screen.getByRole('heading', { name: 'IMDb title dataset import' })).toBeTruthy()
+    expect(screen.getByText('ROWS UPDATED').nextElementSibling?.textContent).toBe('1')
+    const enrichmentStatus = await screen.findByRole('region', { name: 'IMDb catalog enrichment job' })
+    expect(within(enrichmentStatus).getByText('running')).toBeTruthy()
+    expect(getBackgroundJob).toHaveBeenCalledWith(18)
+  })
+
+  it('rejects non-TSV, empty, and oversized IMDb files before submitting', async () => {
+    render(<BackgroundIngestionPanel mode="awards" />)
+    await screen.findByText('No active ingestion job.')
+    const input = screen.getByLabelText('IMDb title ratings TSV')
+    const oversizedFile = new File(['x'], 'large.tsv', { type: 'text/tab-separated-values' })
+    Object.defineProperty(oversizedFile, 'size', { value: 10 * 1024 * 1024 + 1 })
+    const cases = [
+      [new File(['data'], 'ratings.csv', { type: 'text/csv' }), 'Choose a file with the .tsv extension.'],
+      [new File([], 'empty.tsv', { type: 'text/tab-separated-values' }), 'The TSV file must be non-empty.'],
+      [oversizedFile, 'The TSV file must be no larger than 10 MiB.'],
+    ] as const
+
+    for (const [file, message] of cases) {
+      fireEvent.change(input, { target: { files: [file] } })
+      fireEvent.click(screen.getByRole('button', { name: 'Queue IMDb import' }))
+      await waitFor(() => expect(screen.getByRole('alert').textContent).toBe(message))
+    }
+    expect(enqueueImdbTitleImport).not.toHaveBeenCalled()
+  })
+
+  it('shows server upload errors for IMDb files', async () => {
+    vi.mocked(enqueueImdbTitleImport).mockRejectedValue(new ApiError('The upload exceeds the configured limit.', 413))
+    render(<BackgroundIngestionPanel mode="awards" />)
+    await screen.findByText('No active ingestion job.')
+    const file = new File(['dataset'], 'ratings.tsv', { type: 'text/tab-separated-values' })
+
+    fireEvent.change(screen.getByLabelText('IMDb title ratings TSV'), { target: { files: [file] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Queue IMDb import' }))
+
+    expect((await screen.findByRole('alert')).textContent).toContain('The upload exceeds the configured limit.')
   })
 
   it('queues a selected Golden Globes dataset for import', async () => {

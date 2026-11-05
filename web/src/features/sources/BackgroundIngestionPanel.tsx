@@ -7,6 +7,7 @@ import {
   enqueueGoldenGlobeEnrichment,
   enqueueOscarImport,
   enqueueGoldenGlobeImport,
+  enqueueImdbTitleImport,
   getActiveBackgroundJob,
   getBackgroundJob,
   getBackgroundJobEvents,
@@ -33,7 +34,15 @@ function progressSummary(job: BackgroundJob): Record<string, unknown> {
   const rss = job.resultSummary?.rss
   if (isRecord(rss)) return rss
   const enrichment = job.resultSummary?.summary
-  return isRecord(enrichment) ? enrichment : job.resultSummary ?? {}
+  if (isRecord(enrichment)) return enrichment
+  const imported = job.resultSummary?.import
+  return isRecord(imported) ? imported : job.resultSummary ?? {}
+}
+
+function imdbEnrichmentJobId(job: BackgroundJob | null): number | null {
+  if (job?.jobType !== 'imdb_title_import') return null
+  const id = job.resultSummary?.enrichmentJobId
+  return typeof id === 'number' && Number.isSafeInteger(id) && id > 0 ? id : null
 }
 
 function jobLabel(job: BackgroundJob): string {
@@ -47,6 +56,8 @@ function jobLabel(job: BackgroundJob): string {
   if (job.jobType === 'golden_globe_import') return 'Golden Globes dataset import'
   if (job.jobType === 'golden_globe_enrichment') return 'Golden Globes film metadata'
   if (job.jobType === 'golden_globe_manual_refresh') return 'Manual Golden Globes metadata refresh'
+  if (job.jobType === 'imdb_title_import') return 'IMDb title dataset import'
+  if (job.jobType === 'imdb_catalog_enrichment') return 'IMDb catalog enrichment'
   return 'Oscar dataset import'
 }
 
@@ -70,9 +81,13 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
   const [retry, setRetry] = useState(0)
   const [yearAfter, setYearAfter] = useState('1980')
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [imdbUploadError, setImdbUploadError] = useState<string | null>(null)
+  const [relatedJob, setRelatedJob] = useState<BackgroundJob | null>(null)
+  const [relatedJobError, setRelatedJobError] = useState<string | null>(null)
   const eventsCursor = useRef(0)
   const fileInput = useRef<HTMLInputElement>(null)
   const goldenGlobeFileInput = useRef<HTMLInputElement>(null)
+  const imdbFileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     let current = true
@@ -99,6 +114,8 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
 
   const activeJobId = job?.id
   const activeJob = isActive(job)
+  const enrichmentJobId = imdbEnrichmentJobId(job)
+  const relatedJobIsActive = relatedJob?.id === enrichmentJobId && isActive(relatedJob)
 
   useEffect(() => {
     if (!dialogOpen || activeJobId === undefined || !activeJob) return
@@ -125,6 +142,28 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
     }
   }, [dialogOpen, activeJobId, activeJob])
 
+  useEffect(() => {
+    if (!dialogOpen || enrichmentJobId === null) return
+    let current = true
+    const poll = async () => {
+      try {
+        const latest = await getBackgroundJob(enrichmentJobId)
+        if (!current) return
+        setRelatedJob(latest)
+        setRelatedJobError(null)
+      } catch (requestError: unknown) {
+        if (current) setRelatedJobError(requestError instanceof Error ? requestError.message : 'Could not refresh IMDb enrichment status.')
+      }
+    }
+    void poll()
+    if (!relatedJobIsActive) return () => { current = false }
+    const interval = window.setInterval(() => { void poll() }, 2000)
+    return () => {
+      current = false
+      window.clearInterval(interval)
+    }
+  }, [dialogOpen, enrichmentJobId, relatedJobIsActive])
+
   async function showJob(jobId: number) {
     try {
       const latest = await getBackgroundJob(jobId)
@@ -134,6 +173,7 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
       eventsCursor.current = page.nextAfterId
       setDialogOpen(true)
       setError(null)
+      setRelatedJobError(null)
     } catch (requestError: unknown) {
       setError(requestError instanceof Error ? requestError.message : 'Could not load ingestion status.')
     }
@@ -204,6 +244,38 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
       await showJob(accepted.id)
     } catch (requestError: unknown) {
       setUploadError(requestError instanceof Error ? requestError.message : 'Could not queue the Oscar import.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function startImdbImport() {
+    const file = imdbFileInput.current?.files?.[0]
+    setImdbUploadError(null)
+    if (!file) {
+      setImdbUploadError('Choose an IMDb TSV file.')
+      return
+    }
+    if (!file.name.toLowerCase().endsWith('.tsv')) {
+      setImdbUploadError('Choose a file with the .tsv extension.')
+      return
+    }
+    if (file.size === 0) {
+      setImdbUploadError('The TSV file must be non-empty.')
+      return
+    }
+    if (file.size > maximumUploadBytes) {
+      setImdbUploadError('The TSV file must be no larger than 10 MiB.')
+      return
+    }
+
+    setBusy(true)
+    try {
+      const accepted = await enqueueImdbTitleImport(file)
+      if (imdbFileInput.current) imdbFileInput.current.value = ''
+      await showJob(accepted.id)
+    } catch (requestError: unknown) {
+      setImdbUploadError(requestError instanceof Error ? requestError.message : 'Could not queue the IMDb title import.')
     } finally {
       setBusy(false)
     }
@@ -289,7 +361,7 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
       {job && (
         <div className="ingestion-current">
           <span className={`state-pill is-${job.status}`}>{formatWords(job.status)}</span>
-          <span>{job.jobType === 'oscar_import' ? job.inputFileName ?? 'Oscar import' : jobLabel(job)}</span>
+          <span>{job.jobType === 'oscar_import' || job.jobType === 'imdb_title_import' ? job.inputFileName ?? jobLabel(job) : jobLabel(job)}</span>
           <span className="section-caption">{job.currentStage ? formatWords(job.currentStage) : formatWords(job.trigger)}</span>
           {job.currentSource && <span className="section-caption">{job.currentSource}</span>}
           {job.errorCode && <span className="form-error">{formatWords(job.errorCode)}</span>}
@@ -313,6 +385,14 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
         <form className="ingestion-upload" onSubmit={(event) => { event.preventDefault(); void startGoldenGlobeImport() }}>
           <div className="field"><label htmlFor="golden-globe-dataset-file">Golden Globes dataset</label><input accept=".csv,.tsv,text/csv,text/tab-separated-values" id="golden-globe-dataset-file" ref={goldenGlobeFileInput} type="file" /></div>
           <button className="button button-secondary" disabled={busy} type="submit">Queue Golden Globes import</button>
+        </form>
+        <form className="ingestion-upload" onSubmit={(event) => { event.preventDefault(); void startImdbImport() }}>
+          <div className="field">
+            <label htmlFor="imdb-title-dataset-file">IMDb title ratings TSV</label>
+            <input accept=".tsv,text/tab-separated-values" id="imdb-title-dataset-file" ref={imdbFileInput} type="file" />
+          </div>
+          <button className="button button-secondary" disabled={busy} type="submit">Queue IMDb import</button>
+          {imdbUploadError && <p className="form-error" role="alert">{imdbUploadError}</p>}
         </form>
       </>}
 
@@ -356,8 +436,25 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
                   <div><dt>OMDb REQUESTS</dt><dd>{counter(summary, 'httpAttempts', 'HttpAttempts')}</dd></div>
                   <div><dt>CACHE HITS</dt><dd>{counter(summary, 'cacheHits', 'CacheHits')}</dd></div>
                 </>}
+                {job.jobType === 'imdb_title_import' && <>
+                  <div><dt>ROWS READ</dt><dd>{counter(summary, 'rowsRead', 'RowsRead')}</dd></div>
+                  <div><dt>ROWS SKIPPED BY TYPE</dt><dd>{counter(summary, 'rowsSkippedByType', 'RowsSkippedByType')}</dd></div>
+                  <div><dt>ROWS INSERTED</dt><dd>{counter(summary, 'rowsInserted', 'RowsInserted')}</dd></div>
+                  <div><dt>ROWS UPDATED</dt><dd>{counter(summary, 'rowsUpdated', 'RowsUpdated')}</dd></div>
+                  <div><dt>ROWS IGNORED</dt><dd>{counter(summary, 'rowsIgnored', 'RowsIgnored')}</dd></div>
+                </>}
                 {job.errorCode && <div><dt>ERROR</dt><dd>{formatWords(job.errorCode)}</dd></div>}
               </dl>
+              {enrichmentJobId !== null && (
+                <section aria-label="IMDb catalog enrichment job" className="background-job-state">
+                  <strong>IMDb catalog enrichment</strong>
+                  {relatedJob?.id === enrichmentJobId ? <>
+                    <span className={`state-pill is-${relatedJob.status}`}>{formatWords(relatedJob.status)}</span>
+                    <span>{relatedJob.currentStage ? formatWords(relatedJob.currentStage) : 'Waiting for execution'}</span>
+                    <button className="text-button" onClick={() => { void showJob(enrichmentJobId) }} type="button">View enrichment job</button>
+                  </> : <span role="status">{relatedJobError ?? 'Loading enrichment status...'}</span>}
+                </section>
+              )}
               {(job.errorCode || jobError(job)) && (
                 <div className="ingestion-error" role="alert">
                   <strong>{job.errorCode ? formatWords(job.errorCode) : 'Job failed'}</strong>

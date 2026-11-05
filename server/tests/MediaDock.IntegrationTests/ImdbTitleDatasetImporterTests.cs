@@ -49,12 +49,15 @@ public sealed class ImdbTitleDatasetImporterTests
         Assert.Equal(6, summary.RowsRead);
         Assert.Equal(1, summary.RowsSkippedByType);
         Assert.Equal(3, summary.RowsInserted);
-        Assert.Equal(2, summary.RowsIgnored);
+        Assert.Equal(1, summary.RowsUpdated);
+        Assert.Equal(1, summary.RowsIgnored);
 
         var existing = await dbContext.ImdbTitles.AsNoTracking().SingleAsync(title => title.ImdbId == "tt1111111");
         Assert.Equal("Existing Canonical Title", existing.TitleText);
         Assert.Equal(1999, existing.Year);
-        Assert.Equal(9.1m, existing.ImdbRating);
+        Assert.Equal("movie", existing.MediaType);
+        Assert.Equal(7.1m, existing.ImdbRating);
+        Assert.Equal(60_001, existing.ImdbVotes);
         Assert.Equal("enriched", existing.MetadataStatus);
 
         var imported = await dbContext.ImdbTitles.AsNoTracking().ToDictionaryAsync(title => title.ImdbId);
@@ -70,6 +73,7 @@ public sealed class ImdbTitleDatasetImporterTests
 
         var repeated = await importer.ImportAsync(Encoding.UTF8.GetBytes(tsv));
         Assert.Equal(0, repeated.RowsInserted);
+        Assert.Equal(0, repeated.RowsUpdated);
         Assert.Equal(5, repeated.RowsIgnored);
     }
 }

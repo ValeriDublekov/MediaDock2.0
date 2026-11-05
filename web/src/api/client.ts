@@ -553,6 +553,12 @@ export function enqueueGoldenGlobeImport(file: File, yearAfter: number, fetcher?
   return requestJson<BackgroundJobAccepted>('/background-jobs/golden-globe-import', { method: 'POST', body }, fetcher)
 }
 
+export function enqueueImdbTitleImport(file: File, fetcher?: typeof fetch) {
+  const body = new FormData()
+  body.append('File', file)
+  return requestJson<BackgroundJobAccepted>('/background-jobs/imdb-title-import', { method: 'POST', body }, fetcher)
+}
+
 export function getGoldenGlobeFilms(query: GoldenGlobeCatalogQuery, fetcher?: typeof fetch) {
   return requestJson<PageResponse<GoldenGlobeFilm>>(withQuery('/golden-globes', query, ['categories']), {}, fetcher)
 }

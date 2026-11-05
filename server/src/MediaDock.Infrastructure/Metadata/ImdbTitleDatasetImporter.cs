@@ -11,6 +11,7 @@ public sealed record ImdbTitleImportSummary(
     int RowsRead,
     int RowsSkippedByType,
     int RowsInserted,
+    int RowsUpdated,
     int RowsIgnored);
 
 internal sealed record ImdbTitleSeed(
@@ -141,6 +142,7 @@ public sealed class ImdbTitleDatasetImporter(MediaDockDbContext dbContext)
         }
 
         var inserted = 0;
+        var updated = 0;
         var rowsToImport = rows.DistinctBy(row => row.ImdbId, StringComparer.Ordinal).ToArray();
         if (rowsToImport.Length > 0)
         {
@@ -173,12 +175,29 @@ public sealed class ImdbTitleDatasetImporter(MediaDockDbContext dbContext)
                     ON CONFLICT (imdb_id) DO NOTHING
                     """,
                     cancellationToken);
+
+                updated += await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                    $"""
+                    UPDATE imdb_titles AS existing
+                    SET imdb_rating = seed.imdb_rating,
+                        imdb_votes = seed.imdb_votes,
+                        updated_at = {updatedAt}
+                    FROM unnest(
+                        {imdbIds}::text[],
+                        {ratings}::numeric[],
+                        {votes}::bigint[]
+                    ) AS seed(imdb_id, imdb_rating, imdb_votes)
+                    WHERE existing.imdb_id = seed.imdb_id
+                      AND (existing.imdb_rating IS DISTINCT FROM seed.imdb_rating
+                           OR existing.imdb_votes IS DISTINCT FROM seed.imdb_votes)
+                    """,
+                    cancellationToken);
             }
 
             await transaction.CommitAsync(cancellationToken);
         }
 
-        return new(rowsRead, rowsSkippedByType, inserted, rows.Count - inserted);
+        return new(rowsRead, rowsSkippedByType, inserted, updated, rows.Count - inserted - updated);
     }
 
     private static int? ParseYear(string value, long lineNumber)
