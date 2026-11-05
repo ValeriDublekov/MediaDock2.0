@@ -1,11 +1,19 @@
 using MediaDock.Infrastructure.Persistence;
+using MediaDock.Application.GoldenGlobes;
+using MediaDock.Application.Metadata;
+using MediaDock.Application.OscarAwards;
 using MediaDock.Application.PersonalRatings;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace MediaDock.Api.BackgroundJobs;
 
-public sealed class BackgroundJobScheduler(MediaDockDbContext dbContext, TimeProvider timeProvider)
+public sealed class BackgroundJobScheduler(
+    MediaDockDbContext dbContext,
+    IOscarEnrichmentRepository oscarEnrichmentRepository,
+    IGoldenGlobeEnrichmentRepository goldenGlobeEnrichmentRepository,
+    IImdbTitleEnrichmentRepository imdbTitleEnrichmentRepository,
+    TimeProvider timeProvider)
 {
     private const string ScheduleName = "rss_ingestion";
     private static readonly TimeZoneInfo SofiaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Sofia");
@@ -62,34 +70,26 @@ public sealed class BackgroundJobScheduler(MediaDockDbContext dbContext, TimePro
         });
         dbContext.BackgroundJobs.Add(job);
 
-        var activeImdbCatalogEnrichment = await dbContext.BackgroundJobs.AsNoTracking()
-            .AnyAsync(item => item.JobType == "imdb_catalog_enrichment"
-                && (item.Status == "queued" || item.Status == "running"), cancellationToken);
-        var hasEligibleImdbTitles = await dbContext.ImdbTitles.AsNoTracking().AnyAsync(title =>
-                title.MetadataStatus == ImdbTitleEnrichmentStatusValues.Pending
-                || ((title.MetadataStatus == ImdbTitleEnrichmentStatusValues.TemporaryError
-                    || title.MetadataStatus == ImdbTitleEnrichmentStatusValues.NotFound)
-                && (title.NextEnrichmentAttemptAt == null || title.NextEnrichmentAttemptAt <= now)),
-            cancellationToken);
-        if (!activeImdbCatalogEnrichment && hasEligibleImdbTitles)
+        if (await HasDailyOmdbBudgetAsync(now, cancellationToken))
         {
-            var enrichmentJob = new BackgroundJob
-            {
-                JobType = "imdb_catalog_enrichment",
-                Trigger = "schedule",
-                Status = "queued",
-                EnqueuedAt = now,
-                CurrentStage = "queued"
-            };
-            enrichmentJob.Events.Add(new BackgroundJobEvent
-            {
-                OccurredAt = now,
-                Level = "information",
-                EventCode = "job_scheduled",
-                Message = "Scheduled IMDb catalog enrichment queued.",
-                DataJson = "{}"
-            });
-            dbContext.BackgroundJobs.Add(enrichmentJob);
+            await EnqueueScheduledEnrichmentIfEligibleAsync(
+                "oscar_enrichment",
+                "Scheduled Oscar enrichment queued.",
+                (await oscarEnrichmentRepository.GetEligibleCandidatesAsync(now, cancellationToken)).Count > 0,
+                now,
+                cancellationToken);
+            await EnqueueScheduledEnrichmentIfEligibleAsync(
+                "golden_globe_enrichment",
+                "Scheduled Golden Globes enrichment queued.",
+                (await goldenGlobeEnrichmentRepository.GetEligibleCandidatesAsync(now, cancellationToken)).Count > 0,
+                now,
+                cancellationToken);
+            await EnqueueScheduledEnrichmentIfEligibleAsync(
+                "imdb_catalog_enrichment",
+                "Scheduled IMDb catalog enrichment queued.",
+                (await imdbTitleEnrichmentRepository.GetEligibleCatalogCandidatesAsync(now, 1, cancellationToken)).Count > 0,
+                now,
+                cancellationToken);
         }
 
         var trackedState = await dbContext.BackgroundSchedulerStates
@@ -97,6 +97,64 @@ public sealed class BackgroundJobScheduler(MediaDockDbContext dbContext, TimePro
         trackedState.LastEvaluatedSlotUtc = dueSlot;
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    private async Task EnqueueScheduledEnrichmentIfEligibleAsync(
+        string jobType,
+        string message,
+        bool hasEligibleCandidates,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        if (!hasEligibleCandidates || await dbContext.BackgroundJobs.AsNoTracking()
+                .AnyAsync(job => job.JobType == jobType
+                    && (job.Status == "queued" || job.Status == "running"), cancellationToken))
+        {
+            return;
+        }
+
+        var job = new BackgroundJob
+        {
+            JobType = jobType,
+            Trigger = "schedule",
+            Status = "queued",
+            EnqueuedAt = now,
+            CurrentStage = "queued"
+        };
+        job.Events.Add(new BackgroundJobEvent
+        {
+            OccurredAt = now,
+            Level = "information",
+            EventCode = "job_scheduled",
+            Message = message,
+            DataJson = "{}"
+        });
+        dbContext.BackgroundJobs.Add(job);
+    }
+
+    private async Task<bool> HasDailyOmdbBudgetAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var dailyRequestLimit = await dbContext.Settings.AsNoTracking()
+            .Where(settings => settings.Id == 1)
+            .Select(settings => settings.OmdbDailyRequestLimit)
+            .SingleOrDefaultAsync(cancellationToken);
+        dailyRequestLimit = Math.Min(dailyRequestLimit, OmdbRequestBudgetLimits.MaximumDailyRequests);
+        if (dailyRequestLimit <= 0)
+        {
+            return false;
+        }
+
+        var utcDate = DateOnly.FromDateTime(now.UtcDateTime);
+        var usage = await dbContext.OmdbDailyUsage.AsNoTracking()
+            .Where(item => item.UtcDate == utcDate)
+            .Select(item => new { item.TotalRequests, item.TorrentRequests, item.ProviderQuotaExceeded })
+            .SingleOrDefaultAsync(cancellationToken);
+        return usage is null
+            || !usage.ProviderQuotaExceeded
+                && usage.TotalRequests < dailyRequestLimit
+                && usage.TotalRequests - usage.TorrentRequests < OmdbRequestBudgetLimits.MaximumDailyEnrichmentRequests;
     }
 
     public static IReadOnlyList<DateTimeOffset> GetDueSlots(DateTimeOffset after, DateTimeOffset through)

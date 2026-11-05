@@ -67,6 +67,7 @@ public sealed class SettingsApiTests
             {
                 UtcDate = currentUtcDate,
                 TotalRequests = 12,
+                TorrentRequests = 3,
                 OscarRequests = 3,
                 DailyRequestLimitReached = true,
                 ProviderQuotaExceeded = true,
@@ -85,9 +86,11 @@ public sealed class SettingsApiTests
         var currentUsage = Assert.Single(omdbUsage);
         Assert.Equal(currentUtcDate, currentUsage.UtcDate);
         Assert.Equal(12, currentUsage.TotalRequests);
-        Assert.Equal(9, currentUsage.RssRequests);
+        Assert.Equal(3, currentUsage.TorrentRequests);
+        Assert.Equal(9, currentUsage.EnrichmentRequests);
         Assert.Equal(3, currentUsage.OscarRequests);
         Assert.True(currentUsage.DailyRequestLimitReached);
+        Assert.False(currentUsage.EnrichmentRequestLimitReached);
         Assert.True(currentUsage.ProviderQuotaExceeded);
         Assert.Equal("quota_exceeded", currentUsage.LastErrorCode);
 
@@ -99,6 +102,15 @@ public sealed class SettingsApiTests
             });
         Assert.Equal(HttpStatusCode.BadRequest, invalidProviderSettingsResponse.StatusCode);
         Assert.NotNull(await invalidProviderSettingsResponse.Content.ReadFromJsonAsync<ValidationProblemDetails>());
+
+        using var aboveMaximumProviderSettingsResponse = await client.PutAsJsonAsync(
+            "/api/settings/providers/omdb",
+            new UpdateProviderSettingsRequest
+            {
+                OmdbApiKey = "test-omdb-key-value",
+                OmdbDailyRequestLimit = 1001
+            });
+        Assert.Equal(HttpStatusCode.BadRequest, aboveMaximumProviderSettingsResponse.StatusCode);
 
         const string testOmdbApiKey = "test-omdb-key-value";
         using var updateProviderSettingsResponse = await client.PutAsJsonAsync(

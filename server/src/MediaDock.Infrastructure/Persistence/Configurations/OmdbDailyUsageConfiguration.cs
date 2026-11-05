@@ -10,10 +10,14 @@ internal sealed class OmdbDailyUsageConfiguration : IEntityTypeConfiguration<Omd
     {
         builder.ToTable("omdb_daily_usage", table => table.HasCheckConstraint(
             "ck_omdb_daily_usage_counts",
-            "total_requests >= 0 AND oscar_requests >= 0 AND oscar_requests <= total_requests"));
+            "total_requests >= 0 AND torrent_requests >= 0 AND oscar_requests >= 0 AND torrent_requests + oscar_requests <= total_requests"));
         builder.HasKey(entity => entity.UtcDate).HasName("pk_omdb_daily_usage");
         builder.Property(entity => entity.UtcDate).HasColumnName("utc_date").HasColumnType("date");
         builder.Property(entity => entity.TotalRequests).HasColumnName("total_requests").IsRequired();
+        builder.Property(entity => entity.TorrentRequests)
+            .HasColumnName("torrent_requests")
+            .HasDefaultValue(0)
+            .IsRequired();
         builder.Property(entity => entity.OscarRequests).HasColumnName("oscar_requests").IsRequired();
         builder.Property(entity => entity.ProviderQuotaExceeded)
             .HasColumnName("provider_quota_exceeded")

@@ -46,7 +46,7 @@ internal interface ISourceSettingsApiService
 
 internal sealed class SourceSettingsApiService(
     MediaDockDbContext dbContext,
-    HttpClient httpClient) : ISourceSettingsApiService
+    IOmdbClientFactory omdbClientFactory) : ISourceSettingsApiService
 {
     private const string DiagnosticImdbId = "tt16311594";
 
@@ -201,13 +201,11 @@ internal sealed class SourceSettingsApiService(
         var settings = await dbContext.Settings
             .AsNoTracking()
             .Where(setting => setting.Id == 1)
-            .Select(setting => new ProviderSettingsResponse(
-                !string.IsNullOrWhiteSpace(setting.OmdbApiKey),
-                setting.OmdbDailyRequestLimit,
-                setting.UpdatedAt))
             .SingleOrDefaultAsync(cancellationToken);
 
-        return settings ?? new ProviderSettingsResponse(false, 0, null);
+        return settings is null
+            ? new ProviderSettingsResponse(false, 0, null)
+            : ToProviderSettingsResponse(settings);
     }
 
     public async Task<IReadOnlyList<OmdbDailyUsageResponse>> GetOmdbDailyUsageAsync(
@@ -222,9 +220,11 @@ internal sealed class SourceSettingsApiService(
             .Select(usage => new OmdbDailyUsageResponse(
                 usage.UtcDate,
                 usage.TotalRequests,
-                usage.TotalRequests - usage.OscarRequests,
+                usage.TorrentRequests,
+                usage.TotalRequests - usage.TorrentRequests,
                 usage.OscarRequests,
                 usage.DailyRequestLimitReached,
+                usage.TotalRequests - usage.TorrentRequests >= OmdbRequestBudgetLimits.MaximumDailyEnrichmentRequests,
                 usage.ProviderQuotaExceeded,
                 usage.LastErrorCode))
             .ToArrayAsync(cancellationToken);
@@ -235,21 +235,24 @@ internal sealed class SourceSettingsApiService(
         var settings = await dbContext.Settings
             .AsNoTracking()
             .Where(setting => setting.Id == 1)
-            .Select(setting => new { setting.OmdbApiKey })
+            .Select(setting => new { setting.OmdbApiKey, setting.OmdbDailyRequestLimit })
             .SingleOrDefaultAsync(cancellationToken);
         if (string.IsNullOrWhiteSpace(settings?.OmdbApiKey))
         {
             throw new ApiConflictException("Configure an OMDb API key before running the diagnostic request.");
         }
+        if (settings.OmdbDailyRequestLimit <= 0)
+        {
+            throw new ApiConflictException("Configure a positive OMDb daily request limit before running the diagnostic request.");
+        }
 
-        var client = new OmdbClient(
-            httpClient,
-            settings.OmdbApiKey);
+        var client = omdbClientFactory.Create(settings.OmdbApiKey, settings.OmdbDailyRequestLimit);
         var result = await client.LookupAsync(
             "MediaDock diagnostic lookup",
             null,
             "movie",
             cancellationToken: cancellationToken,
+            requestPurpose: OmdbRequestPurpose.InteractiveLookup,
             imdbId: DiagnosticImdbId);
         var status = DiagnosticStatus(result.Status);
         var message = result.ProviderMessage ?? result.ErrorCode switch
@@ -302,6 +305,11 @@ internal sealed class SourceSettingsApiService(
         {
             errors[nameof(request.OmdbDailyRequestLimit)] =
                 ["A positive shared daily request limit is required when an API key is configured."];
+        }
+        if (request.OmdbDailyRequestLimit > OmdbRequestBudgetLimits.MaximumDailyRequests)
+        {
+            errors[nameof(request.OmdbDailyRequestLimit)] =
+                [$"The shared daily request limit cannot exceed {OmdbRequestBudgetLimits.MaximumDailyRequests}."];
         }
 
         if (errors.Count > 0)
@@ -382,7 +390,7 @@ internal sealed class SourceSettingsApiService(
 
     private static ProviderSettingsResponse ToProviderSettingsResponse(AppSetting settings) => new(
         !string.IsNullOrWhiteSpace(settings.OmdbApiKey),
-        settings.OmdbDailyRequestLimit,
+        Math.Min(settings.OmdbDailyRequestLimit, OmdbRequestBudgetLimits.MaximumDailyRequests),
         settings.UpdatedAt);
 
     private async Task<AppSetting> GetOrCreateSettingsAsync(CancellationToken cancellationToken)

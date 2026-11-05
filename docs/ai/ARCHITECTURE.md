@@ -80,7 +80,7 @@ Optional sign-in is an API/browser/Google flow, not an authorization boundary. S
 ```mermaid
 flowchart TD
     ui["Configuration UI / Account"] -->|"RSS scan / award enrichment / CSV uploads / manual IMDb refresh / personal-rating enrichment"| routes["BackgroundJobEndpoints and owner-scoped routes"]
-    scheduler["BackgroundJobDispatcher scheduler"] -->|"07:00 / 18:00 Europe/Sofia"| queue[("background_jobs")]
+    scheduler["BackgroundJobDispatcher scheduler"] -->|"RSS and eligible Oscar / Golden Globes / IMDb enrichment at 07:00 / 18:00 Europe/Sofia"| queue[("background_jobs")]
     routes -->|"durable enqueue"| queue
     queue -->|"atomic claim: FOR UPDATE SKIP LOCKED"| dispatcher["BackgroundJobDispatcher"]
     dispatcher --> lock["PostgresAdvisoryScanLock"]

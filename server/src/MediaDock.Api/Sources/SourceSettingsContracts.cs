@@ -66,9 +66,11 @@ public sealed record OmdbDiagnosticResponse(
 public sealed record OmdbDailyUsageResponse(
     DateOnly UtcDate,
     int TotalRequests,
-    int RssRequests,
+    int TorrentRequests,
+    int EnrichmentRequests,
     int OscarRequests,
     bool DailyRequestLimitReached,
+    bool EnrichmentRequestLimitReached,
     bool ProviderQuotaExceeded,
     string? LastErrorCode);
 
@@ -80,6 +82,6 @@ public sealed record UpdateProviderSettingsRequest
 
     public bool ClearOmdbApiKey { get; init; }
 
-    [Range(0, int.MaxValue)]
+    [Range(0, 1000)]
     public int OmdbDailyRequestLimit { get; init; }
 }

@@ -286,7 +286,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_background_jobs_type", "job_type IN ('rss_scan', 'oscar_import', 'golden_globe_import', 'imdb_title_import', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment', 'imdb_catalog_enrichment')");
 
-                            t.HasCheckConstraint("ck_background_jobs_type_trigger", "(job_type IN ('rss_scan', 'imdb_catalog_enrichment') AND trigger IN ('manual', 'schedule')) OR (job_type IN ('oscar_import', 'golden_globe_import', 'imdb_title_import', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment') AND trigger = 'manual')");
+                            t.HasCheckConstraint("ck_background_jobs_type_trigger", "(job_type IN ('rss_scan', 'oscar_enrichment', 'golden_globe_enrichment', 'imdb_catalog_enrichment') AND trigger IN ('manual', 'schedule')) OR (job_type IN ('oscar_import', 'golden_globe_import', 'imdb_title_import', 'golden_globe_manual_refresh', 'imdb_title_enrichment') AND trigger = 'manual')");
                         });
                 });
 
@@ -933,6 +933,12 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("provider_quota_exceeded");
 
+                    b.Property<int>("TorrentRequests")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("torrent_requests");
+
                     b.Property<int>("TotalRequests")
                         .HasColumnType("integer")
                         .HasColumnName("total_requests");
@@ -942,7 +948,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.ToTable("omdb_daily_usage", null, t =>
                         {
-                            t.HasCheckConstraint("ck_omdb_daily_usage_counts", "total_requests >= 0 AND oscar_requests >= 0 AND oscar_requests <= total_requests");
+                            t.HasCheckConstraint("ck_omdb_daily_usage_counts", "total_requests >= 0 AND torrent_requests >= 0 AND oscar_requests >= 0 AND torrent_requests + oscar_requests <= total_requests");
                         });
                 });
 

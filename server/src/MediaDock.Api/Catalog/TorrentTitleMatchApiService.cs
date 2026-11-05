@@ -124,19 +124,22 @@ internal sealed class TorrentTitleMatchApiService(
         string title,
         int page,
         CancellationToken cancellationToken) =>
-        SearchAsync(title, sourceType: null, page, cancellationToken);
+        SearchAsync(title, sourceType: null, page, cancellationToken, OmdbRequestPurpose.InteractiveLookup);
 
     public Task<ImdbCandidateSearchResponse> LookupManualImdbTitleCandidateAsync(
         string imdbId,
         CancellationToken cancellationToken) =>
-        LookupImdbCandidateAsync(expectedSourceType: null, imdbId, cancellationToken);
+        LookupImdbCandidateAsync(expectedSourceType: null, imdbId, cancellationToken, OmdbRequestPurpose.InteractiveLookup);
 
     public async Task<ManualImdbTitleResponse> AddManualImdbTitleAsync(
         string imdbId,
         CancellationToken cancellationToken)
     {
         var normalizedImdbId = NormalizeImdbId(imdbId);
-        var metadata = await ResolveMetadataAsync(normalizedImdbId, cancellationToken);
+        var metadata = await ResolveMetadataAsync(
+            normalizedImdbId,
+            cancellationToken,
+            OmdbRequestPurpose.InteractiveLookup);
         ValidateSourceType(expected: null, metadata.SourceType);
         var now = timeProvider.GetUtcNow();
         var imdbTitle = (await ImdbTitleMetadataMapper.EnsureAsync(
@@ -374,7 +377,8 @@ internal sealed class TorrentTitleMatchApiService(
         string title,
         string? sourceType,
         int page,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
     {
         title = title.Trim();
         if (string.IsNullOrWhiteSpace(title))
@@ -388,7 +392,7 @@ internal sealed class TorrentTitleMatchApiService(
             sourceType,
             page,
             cancellationToken,
-            OmdbRequestPurpose.RssIngestion);
+            requestPurpose);
         var candidates = result.Candidates
             .Select(candidate => new ImdbCandidateResponse(
                 candidate.Title,
@@ -406,10 +410,11 @@ internal sealed class TorrentTitleMatchApiService(
     private async Task<ImdbCandidateSearchResponse> LookupImdbCandidateAsync(
         string? expectedSourceType,
         string imdbId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
     {
         var normalizedImdbId = NormalizeImdbId(imdbId);
-        var metadata = await ResolveMetadataAsync(normalizedImdbId, cancellationToken);
+        var metadata = await ResolveMetadataAsync(normalizedImdbId, cancellationToken, requestPurpose);
         ValidateSourceType(expectedSourceType, metadata.SourceType);
         return new ImdbCandidateSearchResponse(
             "found",
@@ -418,7 +423,10 @@ internal sealed class TorrentTitleMatchApiService(
             null);
     }
 
-    private async Task<MetadataDetails> ResolveMetadataAsync(string imdbId, CancellationToken cancellationToken)
+    private async Task<MetadataDetails> ResolveMetadataAsync(
+        string imdbId,
+        CancellationToken cancellationToken,
+        OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion)
     {
         var omdbClient = await CreateOmdbClientAsync(cancellationToken);
         var metadataResolver = new MetadataResolver(omdbClient, metadataCache);
@@ -426,7 +434,7 @@ internal sealed class TorrentTitleMatchApiService(
             imdbId,
             timeProvider.GetUtcNow(),
             cancellationToken,
-            OmdbRequestPurpose.RssIngestion);
+            requestPurpose);
         if (resolution.Status != MetadataLookupStatus.Found
             || resolution.Metadata is null
             || !string.Equals(ImdbIdNormalizer.Normalize(resolution.Metadata.ImdbId), imdbId, StringComparison.Ordinal))

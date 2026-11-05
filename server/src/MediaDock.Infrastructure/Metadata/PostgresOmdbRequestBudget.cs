@@ -15,7 +15,8 @@ public sealed class PostgresOmdbRequestBudget(MediaDockDbContext dbContext) : IO
         if (requestPurpose is not (OmdbRequestPurpose.RssIngestion
             or OmdbRequestPurpose.OscarEnrichment
             or OmdbRequestPurpose.GoldenGlobeEnrichment
-            or OmdbRequestPurpose.ImdbTitleEnrichment))
+            or OmdbRequestPurpose.ImdbTitleEnrichment
+            or OmdbRequestPurpose.InteractiveLookup))
         {
             throw new ArgumentOutOfRangeException(nameof(requestPurpose));
         }
@@ -25,18 +26,22 @@ public sealed class PostgresOmdbRequestBudget(MediaDockDbContext dbContext) : IO
             throw new ArgumentOutOfRangeException(nameof(dailyRequestLimit));
         }
 
-        var isOscarRequest = requestPurpose == OmdbRequestPurpose.OscarEnrichment;
-        var oscarIncrement = isOscarRequest ? 1 : 0;
+        dailyRequestLimit = Math.Min(dailyRequestLimit, OmdbRequestBudgetLimits.MaximumDailyRequests);
+        var isTorrentRequest = requestPurpose == OmdbRequestPurpose.RssIngestion;
+        var torrentIncrement = isTorrentRequest ? 1 : 0;
+        var oscarIncrement = requestPurpose == OmdbRequestPurpose.OscarEnrichment ? 1 : 0;
         var affectedRows = await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"""
-            INSERT INTO omdb_daily_usage (utc_date, total_requests, oscar_requests, daily_request_limit_reached)
-            VALUES ({utcDate}, 1, {oscarIncrement}, 1 >= {dailyRequestLimit})
+            INSERT INTO omdb_daily_usage (utc_date, total_requests, torrent_requests, oscar_requests, daily_request_limit_reached)
+            VALUES ({utcDate}, 1, {torrentIncrement}, {oscarIncrement}, 1 >= {dailyRequestLimit})
             ON CONFLICT (utc_date) DO UPDATE
             SET total_requests = omdb_daily_usage.total_requests + 1,
+                torrent_requests = omdb_daily_usage.torrent_requests + EXCLUDED.torrent_requests,
                 oscar_requests = omdb_daily_usage.oscar_requests + EXCLUDED.oscar_requests,
                 daily_request_limit_reached = omdb_daily_usage.total_requests + 1 >= {dailyRequestLimit}
             WHERE omdb_daily_usage.total_requests < {dailyRequestLimit}
-              AND NOT omdb_daily_usage.provider_quota_exceeded;
+              AND NOT omdb_daily_usage.provider_quota_exceeded
+              AND ({isTorrentRequest} OR omdb_daily_usage.total_requests - omdb_daily_usage.torrent_requests < {OmdbRequestBudgetLimits.MaximumDailyEnrichmentRequests});
             """,
             cancellationToken);
 

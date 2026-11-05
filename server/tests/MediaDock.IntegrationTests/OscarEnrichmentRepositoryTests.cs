@@ -114,6 +114,56 @@ public sealed class OscarEnrichmentRepositoryTests
     }
 
     [Fact]
+    public async Task RequestBudgetCapsEnrichmentAt900AndLeaves100ForTorrentRequests()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_omdb_enrichment_reserve_test").Build();
+        await postgres.StartAsync();
+
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            db.OmdbDailyUsage.Add(new OmdbDailyUsage
+            {
+                UtcDate = new DateOnly(2026, 11, 5),
+                TotalRequests = 899
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var day = new DateOnly(2026, 11, 5);
+        var concurrentEnrichment = await Task.WhenAll(Enumerable.Range(0, 20).Select(async _ =>
+        {
+            await using var db = new MediaDockDbContext(options);
+            return await new PostgresOmdbRequestBudget(db)
+                .TryReserveAsync(day, OmdbRequestPurpose.GoldenGlobeEnrichment, 1000);
+        }));
+        Assert.Single(concurrentEnrichment, reserved => reserved);
+        await using (var interactiveDb = new MediaDockDbContext(options))
+        {
+            Assert.False(await new PostgresOmdbRequestBudget(interactiveDb)
+                .TryReserveAsync(day, OmdbRequestPurpose.InteractiveLookup, 1000));
+        }
+
+        var concurrentTorrentRequests = await Task.WhenAll(Enumerable.Range(0, 120).Select(async _ =>
+        {
+            await using var db = new MediaDockDbContext(options);
+            return await new PostgresOmdbRequestBudget(db)
+                .TryReserveAsync(day, OmdbRequestPurpose.RssIngestion, 1000);
+        }));
+        Assert.Equal(100, concurrentTorrentRequests.Count(reserved => reserved));
+
+        await using var resultDb = new MediaDockDbContext(options);
+        var usage = await resultDb.OmdbDailyUsage.SingleAsync(row => row.UtcDate == day);
+        Assert.Equal(1000, usage.TotalRequests);
+        Assert.Equal(100, usage.TorrentRequests);
+        Assert.Equal(900, usage.TotalRequests - usage.TorrentRequests);
+        Assert.True(usage.DailyRequestLimitReached);
+    }
+
+    [Fact]
     public async Task GetEligibleCandidatesOrdersNewestFirstAndExcludesTerminalOrNotDueFilms()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_oscar_enrichment_queue_test").Build();

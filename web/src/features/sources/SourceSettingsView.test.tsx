@@ -158,9 +158,11 @@ describe('SourceSettingsView', () => {
     vi.mocked(getOmdbDailyUsage).mockResolvedValue([{
       utcDate: '2026-10-01',
       totalRequests: 12,
-      rssRequests: 9,
+      torrentRequests: 3,
+      enrichmentRequests: 9,
       oscarRequests: 3,
       dailyRequestLimitReached: true,
+      enrichmentRequestLimitReached: false,
       providerQuotaExceeded: true,
       lastErrorCode: 'quota_exceeded',
     } satisfies OmdbDailyUsage])
@@ -169,6 +171,8 @@ describe('SourceSettingsView', () => {
 
     expect(await screen.findByText('2026-10-01')).toBeTruthy()
     expect(screen.getByText('OMDb quota exceeded; blocked for day')).toBeTruthy()
+    expect(screen.getByText('Enrichment / 900')).toBeTruthy()
+    expect(screen.getByText('Total / 1,000')).toBeTruthy()
     expect(screen.getByText('Last 30 UTC days. Counts are reserved HTTP attempts and may include a request interrupted before sending.')).toBeTruthy()
   })
 

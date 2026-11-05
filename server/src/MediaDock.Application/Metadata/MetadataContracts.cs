@@ -19,7 +19,14 @@ public enum OmdbRequestPurpose
     RssIngestion,
     OscarEnrichment,
     GoldenGlobeEnrichment,
-    ImdbTitleEnrichment
+    ImdbTitleEnrichment,
+    InteractiveLookup
+}
+
+public static class OmdbRequestBudgetLimits
+{
+    public const int MaximumDailyRequests = 1000;
+    public const int MaximumDailyEnrichmentRequests = 900;
 }
 
 public sealed record MetadataDetails(

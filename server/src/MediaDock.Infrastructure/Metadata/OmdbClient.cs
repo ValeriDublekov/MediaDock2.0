@@ -50,7 +50,7 @@ public sealed class OmdbClient : IOmdbClient
         _timeout = timeout ?? TimeSpan.FromSeconds(8);
         _maximumResponseBytes = maximumResponseBytes;
         _requestBudget = requestBudget;
-        _dailyRequestLimit = dailyRequestLimit;
+        _dailyRequestLimit = Math.Min(dailyRequestLimit, OmdbRequestBudgetLimits.MaximumDailyRequests);
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 

@@ -406,9 +406,11 @@ export interface ProviderSettings {
 export interface OmdbDailyUsage {
   utcDate: string
   totalRequests: number
-  rssRequests: number
+  torrentRequests: number
+  enrichmentRequests: number
   oscarRequests: number
   dailyRequestLimitReached: boolean
+  enrichmentRequestLimitReached: boolean
   providerQuotaExceeded: boolean
   lastErrorCode: string | null
 }

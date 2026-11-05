@@ -386,9 +386,9 @@ export function OmdbProviderView() {
         </label>
         <div className="field">
           <label htmlFor="omdb-daily-limit">Shared daily HTTP request limit</label>
-          <input id="omdb-daily-limit" min="0" onChange={(event) => setProviderDraft((current) => ({ ...current, omdbDailyRequestLimit: event.target.value }))} required type="number" value={providerDraft.omdbDailyRequestLimit} />
+          <input id="omdb-daily-limit" max="1000" min="0" onChange={(event) => setProviderDraft((current) => ({ ...current, omdbDailyRequestLimit: event.target.value }))} required type="number" value={providerDraft.omdbDailyRequestLimit} />
         </div>
-        <p className="section-caption">Set the shared daily limit to the OMDb key's confirmed quota. RSS and Oscar use the same limit; requests stop when it is reached or OMDb reports that its quota is exhausted.</p>
+        <p className="section-caption">The total cap is 1,000 requests per UTC day. Non-torrent enrichment is capped at 900, preserving up to 100 requests for RSS and torrent matching. Manual IMDb lookups and diagnostics count toward enrichment.</p>
         {providerSettings?.updatedAt && <p className="section-caption">Last updated {formatDate(providerSettings.updatedAt)}</p>}
         {providerError && <p className="form-error" role="alert">{providerError}</p>}
         {providerSaved && <p className="form-message" role="status">Provider settings saved.</p>}
@@ -414,21 +414,24 @@ export function OmdbProviderView() {
         ) : (
           <div className="table-wrap">
             <table className="data-table">
-              <thead><tr><th scope="col">Date (UTC)</th><th scope="col">Total</th><th scope="col">RSS</th><th scope="col">Oscar</th><th scope="col">Status</th></tr></thead>
+              <thead><tr><th scope="col">Date (UTC)</th><th scope="col">Total / 1,000</th><th scope="col">Enrichment / 900</th><th scope="col">Torrent</th><th scope="col">Oscar</th><th scope="col">Status</th></tr></thead>
               <tbody>
                 {omdbUsage.map((usage) => {
                   const status = usage.providerQuotaExceeded
                     ? 'OMDb quota exceeded; blocked for day'
                     : usage.dailyRequestLimitReached
-                      ? 'Daily limit reached; blocked for day'
-                      : usage.lastErrorCode
-                        ? `Last error: ${usage.lastErrorCode.replaceAll('_', ' ')}`
-                        : 'No error'
+                      ? 'Total daily limit reached; blocked for day'
+                      : usage.enrichmentRequestLimitReached
+                        ? 'Enrichment cap reached; torrent budget remains'
+                        : usage.lastErrorCode
+                          ? `Last error: ${usage.lastErrorCode.replaceAll('_', ' ')}`
+                          : 'No error'
                   return (
                     <tr key={usage.utcDate}>
                       <td>{usage.utcDate}</td>
                       <td>{usage.totalRequests}</td>
-                      <td>{usage.rssRequests}</td>
+                      <td>{usage.enrichmentRequests}</td>
+                      <td>{usage.torrentRequests}</td>
                       <td>{usage.oscarRequests}</td>
                       <td>{status}</td>
                     </tr>

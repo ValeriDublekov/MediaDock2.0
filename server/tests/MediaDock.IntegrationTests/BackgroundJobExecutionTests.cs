@@ -6,9 +6,14 @@ using MediaDock.Api.Catalog;
 using MediaDock.Api.BackgroundJobs;
 using MediaDock.Api.Common;
 using MediaDock.Api.GoldenGlobes;
+using MediaDock.Application.GoldenGlobes;
+using MediaDock.Application.OscarAwards;
 using MediaDock.Application.Ingestion;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
+using MediaDock.Infrastructure.GoldenGlobes;
+using MediaDock.Infrastructure.Metadata;
+using MediaDock.Infrastructure.OscarAwards;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -24,21 +29,47 @@ namespace MediaDock.IntegrationTests;
 public sealed class BackgroundJobExecutionTests
 {
     [Fact]
-    public async Task SchedulerQueuesCatalogEnrichmentAlongsideTheDailyScanWhenTitlesRemain()
+    public async Task SchedulerQueuesEligibleEnrichmentsAlongsideTheDailyScan()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_imdb_catalog_schedule_test").Build();
         await postgres.StartAsync();
         var options = new DbContextOptionsBuilder<MediaDockDbContext>()
             .UseNpgsql(postgres.GetConnectionString())
             .Options;
-        var now = new DateTimeOffset(2026, 10, 23, 20, 0, 0, TimeSpan.Zero);
+        var now = new DateTimeOffset(2026, 10, 23, 6, 0, 0, TimeSpan.Zero);
         await using var db = new MediaDockDbContext(options);
         await db.Database.MigrateAsync();
+        var settings = await db.Settings.SingleAsync(item => item.Id == 1);
+        settings.OmdbDailyRequestLimit = 100;
+        settings.UpdatedAt = now;
         db.ImdbTitles.Add(new Infrastructure.Persistence.Entities.ImdbTitle
         {
             ImdbId = "tt1111111",
             MetadataStatus = "pending",
             UpdatedAt = now
+        });
+        db.OscarMovies.Add(new OscarMovie
+        {
+            StableKey = "scheduled-oscar-title",
+            FilmTitle = "Scheduled Oscar Title",
+            NormalizedTitle = "scheduled oscar title",
+            FilmYear = 2025,
+            ImportedAt = now,
+            UpdatedAt = now
+        });
+        var goldenGlobeTitle = new GoldenGlobeTitle
+        {
+            Title = "Scheduled Golden Globes Title",
+            Year = 2025,
+            NomineeType = "movie"
+        };
+        var goldenGlobeAward = new GoldenGlobeAward { Name = "Scheduled Test Award" };
+        db.GoldenGlobeNominations.Add(new GoldenGlobeNomination
+        {
+            ImportKey = "scheduled-golden-globes-nomination",
+            Winner = false,
+            Award = goldenGlobeAward,
+            GoldenGlobeTitle = goldenGlobeTitle
         });
         db.BackgroundSchedulerStates.Add(new Infrastructure.Persistence.Entities.BackgroundSchedulerState
         {
@@ -47,15 +78,75 @@ public sealed class BackgroundJobExecutionTests
         });
         await db.SaveChangesAsync();
 
-        var scheduler = new BackgroundJobScheduler(db, new FixedTimeProvider(now));
+        var scheduler = new BackgroundJobScheduler(
+            db,
+            new PostgresOscarEnrichmentRepository(db),
+            new PostgresGoldenGlobeEnrichmentRepository(db),
+            new PostgresImdbTitleEnrichmentRepository(db),
+            new FixedTimeProvider(now));
         await scheduler.EnqueueDueSlotAsync(CancellationToken.None);
 
         var jobs = await db.BackgroundJobs.AsNoTracking().ToListAsync();
         Assert.Contains(jobs, job => job.JobType == "rss_scan" && job.Trigger == "schedule");
-        Assert.Contains(jobs, job =>
-            job.JobType == "imdb_catalog_enrichment"
-            && job.Trigger == "schedule"
-            && job.Status == "queued");
+        Assert.Contains(jobs, job => job.JobType == "oscar_enrichment" && job.Trigger == "schedule" && job.Status == "queued");
+        Assert.Contains(jobs, job => job.JobType == "golden_globe_enrichment" && job.Trigger == "schedule" && job.Status == "queued");
+        Assert.Contains(jobs, job => job.JobType == "imdb_catalog_enrichment" && job.Trigger == "schedule" && job.Status == "queued");
+
+        var completedJobs = await db.BackgroundJobs.ToListAsync();
+        foreach (var job in completedJobs)
+        {
+            job.Status = "partial";
+            job.StartedAt = now;
+            job.FinishedAt = now;
+            job.CurrentStage = "partial";
+            job.ErrorCode = "daily_budget_exhausted";
+        }
+        var schedulerState = await db.BackgroundSchedulerStates.SingleAsync(state => state.ScheduleName == "rss_ingestion");
+        schedulerState.LastEvaluatedSlotUtc = new DateTimeOffset(2026, 10, 23, 4, 0, 0, TimeSpan.Zero);
+        db.OmdbDailyUsage.Add(new OmdbDailyUsage
+        {
+            UtcDate = DateOnly.FromDateTime(now.UtcDateTime),
+            TotalRequests = 100,
+            DailyRequestLimitReached = true
+        });
+        await db.SaveChangesAsync();
+
+        var sameDaySlot = new DateTimeOffset(2026, 10, 23, 16, 0, 0, TimeSpan.Zero);
+        var sameDayScheduler = new BackgroundJobScheduler(
+            db,
+            new PostgresOscarEnrichmentRepository(db),
+            new PostgresGoldenGlobeEnrichmentRepository(db),
+            new PostgresImdbTitleEnrichmentRepository(db),
+            new FixedTimeProvider(sameDaySlot));
+        await sameDayScheduler.EnqueueDueSlotAsync(CancellationToken.None);
+        var sameDayScheduledEnrichments = await db.BackgroundJobs.AsNoTracking()
+            .Where(job => job.Trigger == "schedule"
+                && job.JobType != "rss_scan")
+            .CountAsync();
+        Assert.Equal(3, sameDayScheduledEnrichments);
+
+        var sameDayScan = await db.BackgroundJobs.SingleAsync(job => job.JobType == "rss_scan" && job.Status == "queued");
+        sameDayScan.Status = "succeeded";
+        sameDayScan.StartedAt = sameDaySlot;
+        sameDayScan.FinishedAt = sameDaySlot;
+        sameDayScan.CurrentStage = "succeeded";
+        await db.SaveChangesAsync();
+
+        var nextDay = new DateTimeOffset(2026, 10, 24, 5, 0, 0, TimeSpan.Zero);
+        var nextDayScheduler = new BackgroundJobScheduler(
+            db,
+            new PostgresOscarEnrichmentRepository(db),
+            new PostgresGoldenGlobeEnrichmentRepository(db),
+            new PostgresImdbTitleEnrichmentRepository(db),
+            new FixedTimeProvider(nextDay));
+        await nextDayScheduler.EnqueueDueSlotAsync(CancellationToken.None);
+
+        var scheduledJobs = await db.BackgroundJobs.AsNoTracking()
+            .Where(job => job.Trigger == "schedule")
+            .ToListAsync();
+        Assert.Equal(2, scheduledJobs.Count(job => job.JobType == "oscar_enrichment"));
+        Assert.Equal(2, scheduledJobs.Count(job => job.JobType == "golden_globe_enrichment"));
+        Assert.Equal(2, scheduledJobs.Count(job => job.JobType == "imdb_catalog_enrichment"));
     }
 
     [Fact]
