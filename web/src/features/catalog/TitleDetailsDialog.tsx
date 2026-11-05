@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { deleteCatalogTitle, getMovieAwards, getTitle, getTitleOccurrences, getTitleOscars } from '../../api/client'
 import type { DeleteTitleResponse, MovieAwardRecognition, Occurrence, PageResponse, TitleDetails } from '../../api/types'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
-import { MovieAwardsList, MovieDetailsIntro } from '../../components/MoviePresentation'
+import { MovieAwardsSummary, MovieDetailsIntro } from '../../components/MoviePresentation'
 import { formatDate, formatWords } from '../../shared/format'
 import { combineMovieAwards, getOscarRecognitions } from '../../shared/movieAwards'
 import { isHttpUrl } from '../../shared/urls'
@@ -87,61 +87,62 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
     <div className="detail-backdrop" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose()
     }}>
-      <section aria-labelledby="title-details-heading" aria-modal="true" className="detail-dialog" role="dialog">
-        <header className="detail-header">
+      <section aria-labelledby="title-details-heading" aria-modal="true" className="detail-dialog title-detail-dialog" role="dialog">
+        <header className="detail-header title-detail-header">
           <div>
-            <p className="eyebrow">TITLE DETAILS</p>
-            <h2 id="title-details-heading">{title?.title ?? 'Catalog title'}</h2>
-            {title && <div className="detail-meta">{title.year ?? 'Year unknown'} | {formatWords(title.mediaType)} | {title.occurrenceCount} observations</div>}
+            <h2 id="title-details-heading">
+              {title?.title ?? 'Catalog title'}
+              {title && <><span className="title-detail-year"> ({title.year ?? 'Year unknown'})</span>{title.mediaType !== 'movie' && <span className="title-detail-type"> · {formatWords(title.mediaType)}</span>}</>}
+            </h2>
           </div>
           <button aria-label="Close title details" className="button button-secondary" onClick={onClose} type="button">Close</button>
         </header>
 
-        <div className="detail-body">
+        <div className="detail-body title-detail-body">
           {loading && <LoadingState label="Loading title details" />}
           {!loading && error && <ErrorState message={error} onRetry={() => setAttempt((current) => current + 1)} />}
           {!loading && !error && title && (
             <>
-              <MovieDetailsIntro imdbId={title.imdbId} imdbRating={title.imdbRating} posterLabel={title.mediaType.slice(0, 3).toUpperCase()} posterUrl={title.posterUrl} title={title.title}>
-                <span>{title.genres.join(' · ') || 'Genres unavailable'}</span>
+              <MovieDetailsIntro imdbId={title.imdbId} imdbRating={title.imdbRating} posterLabel={title.mediaType.slice(0, 3).toUpperCase()} posterPreviewOnHover posterUrl={title.posterUrl} title={title.title}>
+                  <span className="title-detail-votes">{title.imdbVotes === null ? 'Votes not listed' : `${title.imdbVotes.toLocaleString()} votes`}{title.runtime && <> · {title.runtime}</>}</span>
+                  <span className="title-detail-genres">{title.genres.join(' · ') || 'Genres unavailable'}</span>
                 {title.plot && <p className="detail-description">{title.plot}</p>}
+                  <dl className="detail-facts title-detail-inline-facts">
+                    <div><dt>Director</dt><dd>{title.director ?? 'Not listed'}</dd></div>
+                    <div><dt>Countries</dt><dd>{title.countries.join(', ') || 'Not tagged'}</dd></div>
+                  </dl>
               </MovieDetailsIntro>
-              <dl className="detail-facts">
-                <div><dt>IMDb votes</dt><dd>{title.imdbVotes?.toLocaleString() ?? 'Not listed'}</dd></div>
-                <div><dt>Director</dt><dd>{title.director ?? 'Not listed'}</dd></div>
-                <div><dt>Runtime</dt><dd>{title.runtime ?? 'Not listed'}</dd></div>
-                <div><dt>Genres</dt><dd>{title.genres.join(', ') || 'Not tagged'}</dd></div>
-                <div><dt>Countries</dt><dd>{title.countries.join(', ') || 'Not tagged'}</dd></div>
-                <div><dt>First seen</dt><dd>{formatDate(title.firstSeenAt)}</dd></div>
-              </dl>
-              {onFindImdbMatch && <div className="imdb-match-trigger">
-                <button className="button button-secondary" onClick={() => onFindImdbMatch(title.id, title.title, occurrences?.items[0]?.rawTitle ?? title.title)} type="button">
+              <div aria-label="Title actions" className="title-action-bar" role="group">
+                {onFindImdbMatch && <button className="button button-secondary" onClick={() => onFindImdbMatch(title.id, title.title, occurrences?.items[0]?.rawTitle ?? title.title)} type="button">
                   {title.imdbId ? 'Change IMDb match' : 'Find IMDb match'}
-                </button>
-              </div>}
-              {onDeleted && <div className="title-delete-trigger">
-                {!confirmingDelete ? (
-                  <button className="button button-danger" onClick={() => { setDeleteError(null); setConfirmingDelete(true) }} type="button">Delete from catalog</button>
-                ) : (
-                  <div aria-labelledby="delete-title-question" className="delete-confirmation" role="group">
-                    <p id="delete-title-question">Delete {title.title} from the torrent catalog?</p>
-                    <p>Should its linked IMDb information also be deleted? Shared information used by other records will be kept.</p>
-                    <div className="delete-confirmation-actions">
-                      <button className="button button-danger" disabled={deletingTitle} onClick={() => void deleteTitle(true)} type="button">Yes</button>
-                      <button className="button button-secondary" disabled={deletingTitle} onClick={() => void deleteTitle(false)} type="button">No</button>
-                      <button className="text-button" disabled={deletingTitle} onClick={() => setConfirmingDelete(false)} type="button">Cancel</button>
+                </button>}
+                  <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} onRemoved={onFavoriteRemoved} onUpdated={onFavoriteUpdated} />
+                  <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} onIgnored={onIgnored} />
+                {onDeleted && <div className="title-action-delete">
+                  {!confirmingDelete ? (
+                    <button className="button button-danger" onClick={() => { setDeleteError(null); setConfirmingDelete(true) }} type="button">Delete from catalog</button>
+                  ) : (
+                    <div aria-labelledby="delete-title-question" className="delete-confirmation" role="group">
+                      <p id="delete-title-question">Delete {title.title} from the torrent catalog?</p>
+                      <p>Should its linked IMDb information also be deleted? Shared information used by other records will be kept.</p>
+                      <div className="delete-confirmation-actions">
+                        <button className="button button-danger" disabled={deletingTitle} onClick={() => void deleteTitle(true)} type="button">Yes</button>
+                        <button className="button button-secondary" disabled={deletingTitle} onClick={() => void deleteTitle(false)} type="button">No</button>
+                        <button className="text-button" disabled={deletingTitle} onClick={() => setConfirmingDelete(false)} type="button">Cancel</button>
+                      </div>
+                      {deletingTitle && <p role="status">Deleting title…</p>}
+                      {deleteError && <p className="form-error" role="alert">{deleteError}</p>}
                     </div>
-                    {deletingTitle && <p role="status">Deleting title…</p>}
-                    {deleteError && <p className="form-error" role="alert">{deleteError}</p>}
-                  </div>
-                )}
-              </div>}
-              <FavoriteControls from="catalog" imdbId={title.imdbId} metadataStatus={title.metadataStatus} mediaType={title.mediaType} occurrenceCount={title.occurrenceCount} onRemoved={onFavoriteRemoved} onUpdated={onFavoriteUpdated} />
-              <IgnoredMovieControl imdbId={title.imdbId} mediaType={title.mediaType} onIgnored={onIgnored} />
+                  )}
+                </div>}
+              </div>
               {awardsError && <p className="movie-awards-warning" role="status">Combined awards are temporarily unavailable.</p>}
-              <MovieAwardsList awards={awards} />
+              {awards.length > 0 && <section aria-labelledby="title-awards-heading" className="title-detail-awards">
+                <div className="section-title-row"><h2 id="title-awards-heading">Awards and nominations</h2></div>
+                <MovieAwardsSummary awards={awards} compact />
+              </section>}
               <section ref={torrentSectionRef}>
-                <div className="section-title-row"><div><h2>Torrent sources</h2><p>Most recently seen occurrences</p></div></div>
+                <div className="section-title-row"><h2>Torrent sources</h2></div>
                 {occurrences?.items.length ? (
                   <div className="occurrence-list">{occurrences.items.map((item) => <OccurrenceRow item={item} key={item.id} />)}</div>
                 ) : (
@@ -158,15 +159,17 @@ export function TitleDetailsDialog({ titleId, initialSection = 'details', onClos
 
 function OccurrenceRow({ item }: { item: Occurrence }) {
   const torrentUrl = isHttpUrl(item.torrentUrl) ? item.torrentUrl : null
+  const sourceLabel = item.sourceName === item.sourceFeedName ? item.sourceName : `${item.sourceName} | ${item.sourceFeedName}`
 
   return (
     <div className="occurrence-row">
       <div>
-        <strong>{item.sourceName} | {item.sourceFeedName}</strong>
-        <span>{item.rawTitle}</span>
+        <strong>{sourceLabel}</strong>
+        {torrentUrl
+          ? <a className="occurrence-title" href={torrentUrl} rel="noopener noreferrer" target="_blank">{item.rawTitle}</a>
+          : <span className="occurrence-title">{item.rawTitle}</span>}
         <span>Last seen {formatDate(item.lastSeenAt)}</span>
       </div>
-      {torrentUrl && <a href={torrentUrl} rel="noopener noreferrer" target="_blank">Open source</a>}
     </div>
   )
 }

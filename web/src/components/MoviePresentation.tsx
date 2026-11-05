@@ -1,4 +1,6 @@
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import type { MovieAwardRecognition, MovieAwardSource } from '../api/types'
 import { formatWords } from '../shared/format'
 import { Poster } from './Poster'
@@ -132,12 +134,88 @@ interface MovieDetailsIntroProps {
   posterLabel: string
   imdbId: string | null
   imdbRating: number | null
+  posterPreviewOnHover?: boolean
   children?: ReactNode
 }
 
-export function MovieDetailsIntro({ title, posterUrl, posterLabel, imdbId, imdbRating, children }: MovieDetailsIntroProps) {
+interface PosterPreviewPosition {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+interface DetailsPosterProps {
+  title: string
+  posterUrl: string | null
+  posterLabel: string
+  previewOnHover: boolean
+}
+
+function DetailsPoster({ title, posterUrl, posterLabel, previewOnHover }: DetailsPosterProps) {
+  const [previewPosition, setPreviewPosition] = useState<PosterPreviewPosition | null>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const closeTimer = useRef<number | null>(null)
+
+  function cancelClose() {
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+  }
+
+  function scheduleClose() {
+    cancelClose()
+    closeTimer.current = window.setTimeout(() => {
+      closeTimer.current = null
+      setPreviewPosition(null)
+    }, 120)
+  }
+
+  function showPreview() {
+    cancelClose()
+    const posterBounds = triggerRef.current?.getBoundingClientRect()
+    if (!posterBounds) return
+
+    const width = Math.max(1, Math.min(380, window.innerWidth - 32, (window.innerHeight - 32) * 380 / 562))
+    const height = width * 562 / 380
+    const left = Math.min(Math.max(posterBounds.left, 16), Math.max(16, window.innerWidth - width - 16))
+    const top = Math.min(Math.max(posterBounds.top, 16), Math.max(16, window.innerHeight - height - 16))
+    setPreviewPosition({ left, top, width, height })
+  }
+
+  useEffect(() => {
+    if (!previewPosition) return
+    const dismiss = () => setPreviewPosition(null)
+    window.addEventListener('resize', dismiss)
+    window.addEventListener('scroll', dismiss, true)
+    return () => {
+      window.removeEventListener('resize', dismiss)
+      window.removeEventListener('scroll', dismiss, true)
+    }
+  }, [previewPosition])
+
+  useEffect(() => () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+  }, [])
+
+  const poster = <Poster className="detail-poster" label={posterLabel} src={posterUrl} title={title} />
+  return <>
+    {previewOnHover
+      ? <button aria-expanded={previewPosition !== null} aria-label={`Enlarge poster for ${title}`} className="detail-poster-trigger" onBlur={scheduleClose} onClick={showPreview} onFocus={showPreview} onMouseEnter={showPreview} onMouseLeave={scheduleClose} ref={triggerRef} type="button">{poster}</button>
+      : poster}
+    {previewOnHover && previewPosition && createPortal(
+      <div aria-hidden="true" className="detail-poster-preview" onClick={() => setPreviewPosition(null)} onMouseEnter={cancelClose} onMouseLeave={scheduleClose} style={previewPosition}>
+        <Poster className="detail-poster-preview-image" label={posterLabel} src={posterUrl} title={title} />
+      </div>,
+      document.body,
+    )}
+  </>
+}
+
+export function MovieDetailsIntro({ title, posterUrl, posterLabel, imdbId, imdbRating, posterPreviewOnHover = false, children }: MovieDetailsIntroProps) {
   return <div className="film-details-intro">
-    <Poster className="detail-poster" label={posterLabel} src={posterUrl} title={title} />
+    <DetailsPoster posterLabel={posterLabel} posterUrl={posterUrl} previewOnHover={posterPreviewOnHover} title={title} />
     <div className="film-details-summary">
       <MovieImdbLink imdbId={imdbId} rating={imdbRating} title={title} />
       {children}

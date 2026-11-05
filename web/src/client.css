@@ -298,11 +298,22 @@ button:disabled { cursor: not-allowed; }
 
 .detail-backdrop { position: fixed; z-index: 5; inset: 0; display: grid; place-items: center; padding: 18px; background: rgba(12, 29, 24, 0.62); }
 .detail-dialog { width: min(760px, 100%); max-height: min(88vh, 900px); overflow: auto; border: 1px solid #bdcec1; background: #f8faf7; box-shadow: 0 18px 60px rgba(7, 25, 19, 0.28); }
+.title-detail-dialog { width: min(900px, 100%); }
+.title-detail-header { padding: 14px 20px 12px; }
+.title-detail-year { color: #a55239; font-family: inherit; font-size: 18px; font-weight: 700; line-height: 1; vertical-align: 0.06em; }
+.title-detail-type { color: #758179; font-family: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif; font-size: 12px; }
+.title-detail-body { gap: 14px; padding: 16px 20px 20px; }
 .recommendation-watch-dialog { width: min(440px, 100%); }
 .recommendation-watch-form { display: grid; gap: 12px; }
 .imdb-candidate-dialog { width: min(620px, 100%); }
-.imdb-match-trigger { border-block: 1px solid #d8e1d9; padding: 12px 0; }
-.title-delete-trigger { border-bottom: 1px solid #d8e1d9; padding: 12px 0; }
+.title-action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; border-block: 1px solid #d8e1d9; padding: 8px 0; }
+.title-action-bar > .button { min-height: 34px; padding-inline: 10px; font-size: 11px; }
+.title-action-bar .favorite-controls { min-width: 0; gap: 8px; }
+.title-action-bar .favorite-controls .subtle-line { width: auto; margin: 0; }
+.title-action-bar .favorite-controls > .text-button, .title-action-bar .ignored-movie-controls > .text-button { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; border: 1px solid #bfc9c1; border-radius: 3px; padding: 0 10px; color: #28322e; background: #fff; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.title-action-bar .favorite-controls > .text-button:hover, .title-action-bar .ignored-movie-controls > .text-button:hover { border-color: #b74430; color: #a7422e; background: #fff6f2; text-decoration: none; }
+.title-action-bar .favorite-controls > .text-button:disabled, .title-action-bar .ignored-movie-controls > .text-button:disabled { opacity: 0.55; }
+.title-action-delete { min-width: 0; }
 .delete-confirmation { display: grid; gap: 8px; }
 .delete-confirmation p { margin: 0; color: #4e6256; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
 .delete-confirmation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -359,6 +370,36 @@ button:disabled { cursor: not-allowed; }
 .detail-facts div { min-width: 0; border-top: 1px solid #d8e1d9; padding-top: 8px; }
 .detail-facts dt { color: #829087; font-size: 9px; font-weight: 800; letter-spacing: 0.7px; text-transform: uppercase; }
 .detail-facts dd { margin: 5px 0 0; color: #30463a; font-size: 11px; overflow-wrap: anywhere; }
+.title-detail-dialog .film-details-intro { grid-template-columns: 112px minmax(0, 1fr); gap: 18px; }
+.title-detail-dialog .film-details-summary { grid-template-columns: max-content minmax(0, 1fr); align-content: start; gap: 7px 10px; }
+.title-detail-dialog .film-details-summary > .movie-imdb-link { grid-area: 1 / 1; }
+.title-detail-dialog .title-detail-votes { grid-area: 1 / 2; align-self: center; color: #758179; font-size: 11px; }
+.title-detail-dialog .title-detail-genres,
+.title-detail-dialog .film-details-summary > .detail-description,
+.title-detail-dialog .title-detail-inline-facts { grid-column: 1 / -1; }
+.title-detail-dialog .title-detail-genres { color: #53665a; font-size: 11px; }
+.title-detail-dialog .title-detail-inline-facts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.title-detail-dialog .title-detail-inline-facts div { display: flex; align-items: baseline; gap: 4px; border: 0; padding: 0; }
+.title-detail-dialog .title-detail-inline-facts dt { color: #829087; font-size: 9px; letter-spacing: 0.3px; }
+.title-detail-dialog .title-detail-inline-facts dt::after { content: ":"; }
+.title-detail-dialog .title-detail-inline-facts dd { margin: 0; color: #30463a; font-size: 11px; }
+@media (max-width: 700px) {
+  .title-detail-dialog .film-details-intro { grid-template-columns: 80px minmax(0, 1fr); gap: 14px; }
+  .title-detail-dialog .detail-poster { width: 80px; }
+  .title-detail-dialog .title-detail-inline-facts { gap: 4px 10px; }
+}
+.title-detail-awards { display: grid; gap: 4px; }
+.title-detail-awards .section-title-row { margin-bottom: 0; }
+.title-detail-dialog .section-title-row h2 { font-size: 16px; }
+.title-detail-awards .movie-awards-summary { gap: 4px; border-top: 1px solid #d8e1d9; padding-top: 6px; color: #52665a; font-size: 11px; }
+.title-detail-awards .movie-awards-source { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; border-bottom: 1px solid #d8e1d9; padding: 5px 0; }
+.title-detail-awards .movie-awards-source-heading { align-items: baseline; gap: 4px 12px; }
+.title-detail-awards .movie-awards-source-heading strong { color: #30483c; }
+.title-detail-awards .movie-awards-source-heading span { color: #78847d; }
+.title-detail-awards .movie-awards-source-details { grid-column: 1 / -1; margin: 0; }
+.title-detail-awards .movie-awards-source-details summary { color: #a55239; font-size: 10px; }
+.title-detail-awards .movie-awards-category-list { color: #30463a; font-size: 11px; }
+.title-detail-awards .movie-awards-category-list li span { color: #78847d; }
 .golden-globe-imdb-link { display: grid; gap: 10px; border-top: 1px solid #d8e1d9; padding-top: 14px; }
 .golden-globe-imdb-link .filter-actions { justify-content: flex-start; }
 .golden-globe-imdb-link [role="status"] { margin: 0; color: #30463a; font-size: 11px; }
@@ -366,6 +407,8 @@ button:disabled { cursor: not-allowed; }
 .occurrence-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid #d4ded5; padding: 11px 2px; }
 .occurrence-row strong { display: block; color: #30483c; font-size: 11px; font-weight: 700; }
 .occurrence-row span { display: block; margin-top: 4px; color: #7b8780; font-size: 10px; }
+.occurrence-row .occurrence-title { display: block; min-width: 0; margin-top: 4px; color: #53665a; font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; text-decoration: none; }
+.occurrence-row .occurrence-title:hover { color: #a55239; text-decoration: underline; }
 .occurrence-row a { flex: 0 0 auto; color: #a55239; font-size: 10px; font-weight: 700; text-decoration: none; }
 .occurrence-row a:hover { text-decoration: underline; }
 
@@ -597,6 +640,9 @@ button:disabled { cursor: not-allowed; }
 .poster-small .poster-fallback-title, .poster-small .poster-imprint { display: none; }
 .poster-small .poster-kicker { border: 0; padding: 0; font-size: 9px; }
 .film-details-intro { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: start; gap: 22px; }
+.detail-poster-trigger { display: block; width: 100%; border: 0; padding: 0; background: transparent; cursor: zoom-in; text-align: left; }
+.detail-poster-preview { position: fixed; z-index: 1000; border: 1px solid #fff; padding: 3px; background: #fff; box-shadow: 0 8px 24px rgba(18, 25, 21, 0.38); }
+.detail-poster-preview .poster { width: 100%; height: 100%; aspect-ratio: auto; }
 .detail-poster { width: 112px; }
 .film-details-summary { display: grid; align-content: start; gap: 9px; min-width: 0; color: #53665a; font-size: 12px; }
 .film-details-summary strong { color: #8a5428; font-size: 15px; }
