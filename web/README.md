@@ -19,33 +19,15 @@ After PostgreSQL is running and migrations are applied, start the API from the r
 dotnet run --project ../server/src/MediaDock.Api/MediaDock.Api.csproj --launch-profile http
 ```
 
-### Restored-data Development instance
-
-Use this workflow for the API-backed UI against the local production snapshot. It uses the single active Google-linked database user as the local mock identity, so no browser sign-in is needed. It is separate from the standard HTTP launch profile above, which uses the `mediadock` development database, and from the Production Compose API on port 8080.
-
-From the repository root, run one command to start the restored-data UI and API and install the daily user-level start task:
+For local testing with the restored production snapshot, run this from the repository root instead:
 
 ```powershell
-.\scripts\start_local_restored_services.ps1 -InstallDailyTask
+.\scripts\run_local_restored.ps1
 ```
 
-The script starts the local Compose PostgreSQL service if needed and reuses its existing volume; it never creates, drops, or restores a database. The volume must already contain `mediadock_prod_restore_20261029` (or specify another restored database with `-Database <database-name>`). It reads local Compose credentials without printing them, checks loopback-only publication, and requires exactly one active user with one linked Google identity. Missing restore data or a mismatched user/identity count stops startup without changing database rows.
+It reads local Compose credentials without printing them, requires exactly one active user with one linked Google identity, and starts the API with local mock authentication and authorization enforcement on `http://localhost:5280`. Google OAuth and the background-job dispatcher are disabled. Stop the API with **Ctrl+C** in that same terminal; this leaves Vite and PostgreSQL running and retains the restored database. The script resets its process-level environment settings on exit. Never set `Authentication__LocalMock__Enabled` in production configuration; see the [security guide](../docs/ai/SECURITY.md#local-development-mock-authentication).
 
-The API uses local mock authentication with authorization enforcement still enabled, while Google OAuth and background jobs remain disabled. Healthy MediaDock API and Vite processes on ports 5280 and 5173 are reused; only missing services are started. The scheduled task runs at this user's logon and once daily at 08:00 local time, and skips duplicate instances. Docker Desktop must be running; the task waits up to two minutes for it.
-
-Open `http://127.0.0.1:5173/`. Vite proxies `/api` to the restored-data API on port 5280. Verify API readiness at `http://localhost:5280/health/ready`.
-
-Stop only the API and Vite processes managed by this script with:
-
-```powershell
-.\scripts\start_local_restored_services.ps1 -Stop
-```
-
-Add `-RemoveDailyTask` to remove the scheduled start; use both switches to stop the services and remove the task. PostgreSQL and the restored database are retained. The script's process IDs and logs are stored in the gitignored `.test-tmp/restored-local` directory; logs may contain restored-data details and should not be shared without review.
-
-Do not use the Compose UI on port 8080 or the standard HTTP launch profile when you intend to use this restored database. The restored snapshot contains production data and settings, including the plaintext OMDb key. Keep it local, never tunnel or port-forward ports 5173/5280, and do not enable background jobs until restored secrets have been replaced. Never set `Authentication__LocalMock__Enabled` in `.env`, Compose, or production configuration; the script sets it only for its child process. See the [security guide](../docs/ai/SECURITY.md#local-development-mock-authentication).
-
-The UI does not require the Worker, live RSS feeds, or an OMDb key.
+That profile listens on `http://localhost:5280` and uses the local development connection string. The Compose runbook serves its bundled UI at `http://127.0.0.1:8080/`; use the Vite server above when working with the frontend dev server and hot reload. The UI does not require the Worker, live RSS feeds, or an OMDb key.
 
 ## Golden Globes Design Explorations
 

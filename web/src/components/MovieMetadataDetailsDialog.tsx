@@ -2,7 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { getMovieAwards } from '../api/client'
 import type { MovieAwardRecognition } from '../api/types'
 import { formatWords } from '../shared/format'
-import { MovieAwardsList, MovieDetailsIntro } from './MoviePresentation'
+import { MovieAwardsList } from './MoviePresentation'
+import { MovieDetailsTemplate } from './MovieDetailsTemplate'
 
 export interface MovieMetadataDetails {
   imdbId: string | null
@@ -32,11 +33,17 @@ export function MovieMetadataDetailsDialog({
   eyebrow,
   title,
   onClose,
+  details,
+  actions,
+  actionsBeforeFacts = false,
   children,
 }: {
   eyebrow: string
   title: MovieMetadataDetails
   onClose: () => void
+  details?: ReactNode
+  actions?: ReactNode
+  actionsBeforeFacts?: boolean
   children?: ReactNode
 }) {
   const [awardsResponse, setAwardsResponse] = useState<AwardsResponse | null>(null)
@@ -56,44 +63,33 @@ export function MovieMetadataDetailsDialog({
   const awards = hasCurrentAwards ? awardsResponse.awards : []
   const awardsError = hasCurrentAwards && awardsResponse.error
 
-  return <div className="detail-backdrop" onMouseDown={(event) => {
-    if (event.target === event.currentTarget) onClose()
-  }}>
-    <section
-      aria-labelledby="movie-metadata-details-heading"
-      aria-modal="true"
-      className="detail-dialog"
-      onKeyDown={(event) => { if (event.key === 'Escape') onClose() }}
-      role="dialog"
-      tabIndex={-1}
-    >
-      <header className="detail-header">
-        <div>
-          <p className="eyebrow">{eyebrow}</p>
-          <h2 id="movie-metadata-details-heading">{title.title}</h2>
-          <div className="detail-meta">{title.year ?? 'Year unknown'} | {title.mediaType ? formatWords(title.mediaType) : 'Type unknown'}</div>
-        </div>
-        <button aria-label={`Close ${eyebrow.toLowerCase()} details`} className="button button-secondary" onClick={onClose} type="button">Close</button>
-      </header>
-      <div className="detail-body">
-        <MovieDetailsIntro imdbId={title.imdbId} imdbRating={title.imdbRating} posterLabel={title.mediaType?.slice(0, 3).toUpperCase() ?? 'FIL'} posterUrl={title.posterUrl} title={title.title}>
-          <span>{title.genres?.join(' · ') || 'Genres unavailable'}</span>
-          {title.plot && <p className="detail-description">{title.plot}</p>}
-        </MovieDetailsIntro>
-        <dl className="detail-facts">
-          <div><dt>IMDb votes</dt><dd>{title.imdbVotes?.toLocaleString() ?? 'Not listed'}</dd></div>
-          <div><dt>Metascore</dt><dd>{title.metascore ?? 'Not listed'}</dd></div>
-          <div><dt>Director</dt><dd>{title.director || 'Not listed'}</dd></div>
-          <div><dt>Runtime</dt><dd>{title.runtime || 'Not listed'}</dd></div>
-          <div><dt>Genres</dt><dd>{title.genres?.join(', ') || 'Not tagged'}</dd></div>
-          <div><dt>Countries</dt><dd>{title.countries?.join(', ') || 'Not tagged'}</dd></div>
-          <div><dt>Provider awards</dt><dd>{title.awards || 'Not listed'}</dd></div>
-          <div><dt>Box office</dt><dd>{title.boxOffice || 'Not listed'}</dd></div>
-        </dl>
-        {children}
-        {awardsError && <p className="movie-awards-warning" role="status">Linked awards are temporarily unavailable.</p>}
-        <MovieAwardsList awards={awards} />
-      </div>
-    </section>
-  </div>
+  return <MovieDetailsTemplate
+    actions={actions}
+    actionsBeforeFacts={actionsBeforeFacts}
+    details={details}
+    eyebrow={eyebrow}
+    facts={(title.metascore !== undefined || title.awards !== undefined || title.boxOffice !== undefined) && <>
+      {title.metascore !== undefined && <div><dt>Metascore</dt><dd>{title.metascore ?? 'Not listed'}</dd></div>}
+      {title.awards !== undefined && <div><dt>Provider awards</dt><dd>{title.awards || 'Not listed'}</dd></div>}
+      {title.boxOffice !== undefined && <div><dt>Box office</dt><dd>{title.boxOffice || 'Not listed'}</dd></div>}
+    </>}
+    genres={title.genres}
+    imdbId={title.imdbId}
+    imdbRating={title.imdbRating}
+    imdbVotes={title.imdbVotes}
+    posterLabel={title.mediaType?.slice(0, 3).toUpperCase() ?? 'FIL'}
+    posterUrl={title.posterUrl}
+    plot={title.plot}
+    runtime={title.runtime}
+    title={title.title}
+    typeLabel={title.mediaType ? formatWords(title.mediaType) : 'Type unknown'}
+    year={title.year}
+    director={title.director}
+    countries={title.countries}
+    onClose={onClose}
+  >
+    {children}
+    {awardsError && <p className="movie-awards-warning" role="status">Linked awards are temporarily unavailable.</p>}
+    <MovieAwardsList awards={awards} />
+  </MovieDetailsTemplate>
 }

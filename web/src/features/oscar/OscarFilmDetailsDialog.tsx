@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { getMovieAwards, getOscarFilm } from '../../api/client'
 import type { MovieAwardRecognition, OscarFilm } from '../../api/types'
 import { ErrorState, LoadingState } from '../../components/Feedback'
-import { MovieAwardsList, MovieDetailsIntro } from '../../components/MoviePresentation'
+import { MovieAwardsList } from '../../components/MoviePresentation'
+import { MovieDetailsTemplate } from '../../components/MovieDetailsTemplate'
 import { formatDate, formatWords } from '../../shared/format'
 import { combineMovieAwards, getOscarRecognitions } from '../../shared/movieAwards'
 import { FavoriteControls } from '../favorites/FavoriteControls'
@@ -45,54 +46,41 @@ export function OscarFilmDetailsDialog({ filmId, onClose, onIgnored }: OscarFilm
     setAttempt((current) => current + 1)
   }
 
-  return (
-    <div className="detail-backdrop" onMouseDown={(event) => {
-      if (event.target === event.currentTarget) onClose()
-    }}>
-      <section aria-labelledby="oscar-film-details-heading" aria-modal="true" className="detail-dialog oscar-detail-dialog" role="dialog">
-        <header className="detail-header">
-          <div>
-            <p className="eyebrow">ACADEMY AWARDS</p>
-            <h2 id="oscar-film-details-heading">{film?.title ?? 'Oscar film'}</h2>
-            {film && (
-              <div className="detail-meta">
-                {film.filmYear} | {film.metadataTitle}{film.enrichmentStatus !== 'enriched' && ` | ${formatWords(film.enrichmentStatus)}`}
-              </div>
-            )}
-          </div>
-          <button aria-label="Close Oscar film details" className="button button-secondary" onClick={onClose} type="button">Close</button>
-        </header>
-
-        <div className="detail-body">
-          {loading && <LoadingState label="Loading Oscar film details" />}
-          {!loading && error && <ErrorState message={error} onRetry={retry} />}
-          {!loading && !error && film && (
-            <>
-              <MovieDetailsIntro imdbId={film.imdbId} imdbRating={film.imdbRating} posterLabel="OSC" posterUrl={film.posterUrl} title={film.title}>
-                {film.plot && <p className="detail-description">{film.plot}</p>}
-              </MovieDetailsIntro>
-              <dl className="detail-facts oscar-detail-facts">
-                <div><dt>IMDb</dt><dd>{film.imdbId ?? 'Not listed'}</dd></div>
-                <div><dt>IMDb votes</dt><dd>{film.imdbVotes?.toLocaleString() ?? 'Not listed'}</dd></div>
-                <div><dt>Metascore</dt><dd>{film.metascore ?? 'Not listed'}</dd></div>
-                <div><dt>Director</dt><dd>{film.director ?? 'Not listed'}</dd></div>
-                <div><dt>Runtime</dt><dd>{film.runtime ?? 'Not listed'}</dd></div>
-                <div><dt>Genres</dt><dd>{film.genres.join(', ') || 'Not tagged'}</dd></div>
-                <div><dt>Countries</dt><dd>{film.countries.join(', ') || 'Not tagged'}</dd></div>
-                {film.enrichmentStatus !== 'enriched' && <div><dt>OMDb status</dt><dd><span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span></dd></div>}
-                <div><dt>Last attempt</dt><dd>{formatDate(film.lastEnrichmentAttemptAt)}</dd></div>
-                <div><dt>Next attempt</dt><dd>{formatDate(film.nextEnrichmentAttemptAt)}</dd></div>
-                <div><dt>Box office</dt><dd>{film.boxOffice ?? 'Not listed'}</dd></div>
-                {film.lastEnrichmentError && <div><dt>Last error</dt><dd>{film.lastEnrichmentError}</dd></div>}
-              </dl>
-              <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} />
-              <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} onIgnored={onIgnored} />
-
-              <MovieAwardsList awards={awards} />
-            </>
-          )}
-        </div>
-      </section>
-    </div>
-  )
+  return <MovieDetailsTemplate
+    actions={film && !loading && !error && <>
+      <FavoriteControls from="oscar" imdbId={film.imdbId} metadataStatus={film.metadataStatus} mediaType={film.mediaType} occurrenceCount={0} />
+      <IgnoredMovieControl imdbId={film.imdbId} mediaType={film.mediaType} onIgnored={onIgnored} />
+    </>}
+    className="oscar-detail-dialog"
+    countries={film?.countries}
+    director={film?.director}
+    eyebrow="ACADEMY AWARDS"
+    facts={film && <>
+      <div><dt>IMDb ID</dt><dd>{film.imdbId ?? 'Not listed'}</dd></div>
+      <div><dt>Matched title</dt><dd>{film.metadataTitle}{film.metadataYear ? ` (${film.metadataYear})` : ''}</dd></div>
+      <div><dt>Metascore</dt><dd>{film.metascore ?? 'Not listed'}</dd></div>
+      {film.enrichmentStatus !== 'enriched' && <div><dt>OMDb status</dt><dd><span className={`state-pill is-${film.enrichmentStatus.replaceAll('_', '-')}`}>{formatWords(film.enrichmentStatus)}</span></dd></div>}
+      <div><dt>Last attempt</dt><dd>{formatDate(film.lastEnrichmentAttemptAt)}</dd></div>
+      <div><dt>Next attempt</dt><dd>{formatDate(film.nextEnrichmentAttemptAt)}</dd></div>
+      <div><dt>Box office</dt><dd>{film.boxOffice ?? 'Not listed'}</dd></div>
+      {film.lastEnrichmentError && <div><dt>Last error</dt><dd>{film.lastEnrichmentError}</dd></div>}
+    </>}
+    genres={film?.genres}
+    imdbId={film?.imdbId ?? null}
+    imdbRating={film?.imdbRating ?? null}
+    imdbVotes={film?.imdbVotes}
+    onClose={onClose}
+    plot={film?.plot}
+    posterLabel="OSC"
+    posterUrl={film?.posterUrl ?? null}
+    runtime={film?.runtime}
+    showOverview={!loading && !error && Boolean(film)}
+    title={film?.title ?? 'Oscar film'}
+    typeLabel={film ? formatWords(film.mediaType) : null}
+    year={film?.filmYear}
+  >
+    {loading && <LoadingState label="Loading Oscar film details" />}
+    {!loading && error && <ErrorState message={error} onRetry={retry} />}
+    {!loading && !error && film && <MovieAwardsList awards={awards} />}
+  </MovieDetailsTemplate>
 }

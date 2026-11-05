@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getBackgroundJob, setGoldenGlobeImdbId } from '../../api/client'
 import type { BackgroundJobStatus, GoldenGlobeFilm, MovieAwardRecognition } from '../../api/types'
-import { MovieAwardsList, MovieDetailsIntro } from '../../components/MoviePresentation'
+import { MovieAwardsList } from '../../components/MoviePresentation'
+import { MovieDetailsTemplate } from '../../components/MovieDetailsTemplate'
 import { formatWords } from '../../shared/format'
 import { FavoriteControls } from '../favorites/FavoriteControls'
 import { IgnoredMovieControl } from '../ignored-movies/IgnoredMovieControl'
@@ -106,42 +107,42 @@ export function GoldenGlobeFilmDetailsDialog({ film, awards, onClose, onUpdated,
     }
   }
 
-  return <div className="detail-backdrop" onMouseDown={(event) => {
-    if (event.target === event.currentTarget) onClose()
-  }}>
-    <section aria-labelledby="golden-globe-film-details-heading" aria-modal="true" className="detail-dialog" role="dialog">
-      <header className="detail-header">
-        <div>
-          <p className="eyebrow">GOLDEN GLOBES</p>
-          <h2 id="golden-globe-film-details-heading">{currentFilm.title}</h2>
-          <div className="detail-meta">{formatWords(currentFilm.nomineeType)} | Ceremony year {currentFilm.year}{currentFilm.enrichmentStatus !== 'enriched' && ` | ${formatWords(currentFilm.enrichmentStatus)}`}</div>
+  return <MovieDetailsTemplate
+    actions={<>
+      <FavoriteControls from="golden-globes" imdbId={currentFilm.imdbId} metadataStatus={currentFilm.metadataStatus} mediaType={currentFilm.nomineeType} occurrenceCount={0} />
+      <IgnoredMovieControl imdbId={currentFilm.imdbId} mediaType={currentFilm.nomineeType} onIgnored={onIgnored} />
+    </>}
+    details={<>
+      <form className="golden-globe-imdb-link" onSubmit={(event) => { void saveImdbId(event) }}>
+        <div className="field">
+          <label htmlFor="golden-globe-imdb-id">IMDb ID</label>
+          <input autoComplete="off" id="golden-globe-imdb-id" maxLength={12} onChange={(event) => setImdbId(event.target.value)} pattern="[Tt][Tt][0-9]{7,10}" placeholder="tt1234567" value={imdbId} />
         </div>
-        <button aria-label="Close Golden Globes details" className="button button-secondary" onClick={onClose} type="button">Close</button>
-      </header>
-      <div className="detail-body">
-        <MovieDetailsIntro imdbId={currentFilm.imdbId} imdbRating={currentFilm.imdbRating} posterLabel="GLO" posterUrl={currentFilm.posterUrl} title={currentFilm.title}>
-          {currentFilm.enrichmentError && <p className="golden-globe-enrichment-error">{formatWords(currentFilm.enrichmentError.replaceAll('_', ' '))}</p>}
-        </MovieDetailsIntro>
-        <dl className="detail-facts">
-          <div><dt>IMDb ID</dt><dd>{currentFilm.imdbId ?? 'Not listed'}{currentFilm.isImdbIdManual ? ' (manual)' : ''}</dd></div>
-          <div><dt>IMDb rating</dt><dd>{currentFilm.imdbRating?.toFixed(1) ?? 'Not rated'}</dd></div>
-          {currentFilm.enrichmentStatus !== 'enriched' && <div><dt>OMDb status</dt><dd>{formatWords(currentFilm.enrichmentStatus)}</dd></div>}
-        </dl>
-        <FavoriteControls from="golden-globes" imdbId={currentFilm.imdbId} metadataStatus={currentFilm.metadataStatus} mediaType={currentFilm.nomineeType} occurrenceCount={0} />
-        <IgnoredMovieControl imdbId={currentFilm.imdbId} mediaType={currentFilm.nomineeType} onIgnored={onIgnored} />
-        <form className="golden-globe-imdb-link" onSubmit={(event) => { void saveImdbId(event) }}>
-          <div className="field">
-            <label htmlFor="golden-globe-imdb-id">IMDb ID</label>
-            <input autoComplete="off" id="golden-globe-imdb-id" maxLength={12} onChange={(event) => setImdbId(event.target.value)} pattern="[Tt][Tt][0-9]{7,10}" placeholder="tt1234567" value={imdbId} />
-          </div>
-          <div className="filter-actions">
-            <button className="button" disabled={saving || (!imdbId.trim() && !currentFilm.imdbId)} type="submit">{saving ? 'Saving…' : imdbId.trim() ? 'Save and refresh' : 'Clear IMDb ID'}</button>
-          </div>
-          {refreshStatus && <p role="status">{refreshStatus}</p>}
-          {error && <p className="golden-globe-enrichment-error" role="alert">{error}</p>}
-        </form>
-        <MovieAwardsList awards={awards} />
-      </div>
-    </section>
-  </div>
+        <div className="filter-actions">
+          <button className="button" disabled={saving || (!imdbId.trim() && !currentFilm.imdbId)} type="submit">{saving ? 'Saving…' : imdbId.trim() ? 'Save and refresh' : 'Clear IMDb ID'}</button>
+        </div>
+        {refreshStatus && <p role="status">{refreshStatus}</p>}
+        {error && <p className="golden-globe-enrichment-error" role="alert">{error}</p>}
+      </form>
+      <MovieAwardsList awards={awards} />
+    </>}
+    eyebrow="GOLDEN GLOBES"
+    facts={<>
+      <div><dt>IMDb ID</dt><dd>{currentFilm.imdbId ?? 'Not listed'}{currentFilm.isImdbIdManual ? ' (manual)' : ''}</dd></div>
+      {currentFilm.enrichmentStatus !== 'enriched' && <div><dt>OMDb status</dt><dd>{formatWords(currentFilm.enrichmentStatus)}</dd></div>}
+    </>}
+    genres={currentFilm.genres}
+    imdbId={currentFilm.imdbId}
+    imdbRating={currentFilm.imdbRating}
+    onClose={onClose}
+    posterLabel="GLO"
+    posterUrl={currentFilm.posterUrl}
+    plot={currentFilm.plot}
+    summaryContent={currentFilm.enrichmentError && <p className="golden-globe-enrichment-error">{formatWords(currentFilm.enrichmentError.replaceAll('_', ' '))}</p>}
+    title={currentFilm.title}
+    typeLabel={formatWords(currentFilm.nomineeType)}
+    year={null}
+    yearLabel={`Ceremony ${currentFilm.year}`}
+    director={currentFilm.director}
+  />
 }

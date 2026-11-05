@@ -477,31 +477,35 @@ export function RecommendationsView({
       </section>
     </div>}
     {selectedRecommendation && <MovieMetadataDetailsDialog
+      actions={renderTableActions(selectedRecommendation)}
+      actionsBeforeFacts
+      details={<RecommendationScoreDetails item={selectedRecommendation} />}
       eyebrow="RECOMMENDATION"
       onClose={() => setSelectedRecommendation(null)}
       title={selectedRecommendation}
-    >
-      <RecommendationScoreDetails item={selectedRecommendation} />
-      {renderTableActions(selectedRecommendation)}
-    </MovieMetadataDetailsDialog>}
+    />}
   </section>
 }
 
 function RecommendationScoreDetails({ item }: { item: Recommendation }) {
   return <section aria-label="Recommendation score details" className="recommendation-detail-score">
-    <h3>Recommendation score <strong>{scoreValue(item.finalScore)} / 10</strong></h3>
-    <dl className="recommendation-detail-breakdown">
-      <div><dt>IMDb rating</dt><dd>{scoreValue(item.ratingComponent)} × {coefficientLabel(item.ratingWeight)}</dd></div>
-      <div><dt>Popularity</dt><dd>{scoreValue(item.popularityComponent)} × {coefficientLabel(item.votesWeight)}</dd></div>
-      <div><dt>Award points</dt><dd>{scoreValue(item.awardComponent)} × {coefficientLabel(item.awardsWeight)}</dd></div>
-    </dl>
-    <h4>Award scoring events</h4>
-    {item.awardEvents.length === 0 ? <p>No award points were applied.</p> : <ul className="recommendation-award-events">
-      {item.awardEvents.map((event, index) => <li key={`${event.awardSource}/${event.categoryKey}/${event.ceremony ?? event.ceremonyYear ?? index}`}>
-        <strong>{event.categoryName}</strong>
-        <span>{sourceLabel(event.awardSource)} · {formatWords(event.outcome)}{eventOccasion(event) ? ` · ${eventOccasion(event)}` : ''}</span>
-        <span>{scoreValue(event.basePoints)} base × {scoreValue(event.tasteMultiplier)} taste = {scoreValue(event.adjustedPoints)}</span>
-      </li>)}
-    </ul>}
+    <details className="recommendation-score-disclosure">
+      <summary><span>Recommendation score</span><strong>{scoreValue(item.finalScore)} / 10</strong></summary>
+      <div className="recommendation-score-content">
+        <dl className="recommendation-detail-breakdown">
+          <div><dt>IMDb rating</dt><dd>{scoreValue(item.ratingComponent)} × {coefficientLabel(item.ratingWeight)}</dd></div>
+          <div><dt>Popularity</dt><dd>{scoreValue(item.popularityComponent)} × {coefficientLabel(item.votesWeight)}</dd></div>
+          <div><dt>Award points</dt><dd>{scoreValue(item.awardComponent)} × {coefficientLabel(item.awardsWeight)}</dd></div>
+        </dl>
+        <h4>Award scoring events</h4>
+        {item.awardEvents.length === 0 ? <p>No award points were applied.</p> : <ul className="recommendation-award-events">
+          {item.awardEvents.map((event, index) => <li key={`${event.awardSource}/${event.categoryKey}/${event.ceremony ?? event.ceremonyYear ?? index}`}>
+            <strong>{event.categoryName}</strong>
+            <span>{sourceLabel(event.awardSource)} · {formatWords(event.outcome)}{eventOccasion(event) ? ` · ${eventOccasion(event)}` : ''}</span>
+            <span>{scoreValue(event.basePoints)} base × {scoreValue(event.tasteMultiplier)} taste = {scoreValue(event.adjustedPoints)}</span>
+          </li>)}
+        </ul>}
+      </div>
+    </details>
   </section>
 }

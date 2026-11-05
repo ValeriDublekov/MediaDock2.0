@@ -33,6 +33,17 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, plac
     void update(favoriteImdbId, input).then((updated) => { if (updated) onUpdated?.(input) })
   }
 
+  const favoriteStateControls = favorite ? <>
+    <label className="favorite-action-toggle">
+      <span>To watch</span>
+      <input checked={favorite.toWatch} disabled={disabled} onChange={(event) => updateFavorite({ toWatch: event.target.checked })} role="switch" type="checkbox" />
+    </label>
+    <label className="favorite-action-toggle">
+      <span>To download</span>
+      <input checked={favorite.toDownload} disabled={disabled} onChange={(event) => updateFavorite({ toDownload: event.target.checked })} role="switch" type="checkbox" />
+    </label>
+  </> : null
+
   if (placement === 'poster') {
     if (!favorite && !allowAddFromHere) return null
     const removing = Boolean(favorite)
@@ -52,8 +63,7 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, plac
     return <div className="favorite-card-statuses">
       {favorite && <>
         {showFavoriteStatus && <span className="subtle-line">In favorites</span>}
-        <label><input checked={favorite.toWatch} disabled={disabled} onChange={(event) => updateFavorite({ toWatch: event.target.checked })} type="checkbox" /> To watch</label>
-        <label><input checked={favorite.toDownload} disabled={disabled} onChange={(event) => updateFavorite({ toDownload: event.target.checked })} type="checkbox" /> To download</label>
+        {favoriteStateControls}
         {showRemoveButton && <button className="text-button" disabled={disabled} onClick={removeFromFavorites} type="button">Remove from favorites</button>}
       </>}
       {error && <span role="alert">{error} <button className="text-button" onClick={retry} type="button">Retry</button></span>}
@@ -65,11 +75,8 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, plac
       Add to favorites
     </button>}
     {favorite && showFavoriteStatus && <span className="subtle-line">In favorites</span>}
+    {favoriteStateControls}
     {favorite && <button className="text-button" disabled={disabled} onClick={removeFromFavorites} type="button">Remove from favorites</button>}
-    {favorite && <>
-      <label><input checked={favorite.toWatch} disabled={disabled} onChange={(event) => updateFavorite({ toWatch: event.target.checked })} type="checkbox" /> To watch</label>
-      <label><input checked={favorite.toDownload} disabled={disabled} onChange={(event) => updateFavorite({ toDownload: event.target.checked })} type="checkbox" /> To download</label>
-    </>}
     {error && <span role="alert">{error} <button className="text-button" onClick={retry} type="button">Retry</button></span>}
   </div>
 }

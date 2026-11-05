@@ -168,15 +168,18 @@ function FavoriteDetailsDialog({ item, onClose, onRemoved, onUpdated }: {
   onRemoved: () => void
   onUpdated: (input: { toWatch?: boolean; toDownload?: boolean }) => void
 }) {
-  return <MovieMetadataDetailsDialog eyebrow="FAVORITE" onClose={onClose} title={item}>
-    <dl className="detail-facts">
+  return <MovieMetadataDetailsDialog
+    actions={<>
+      <FavoriteControls allowAddFromHere={false} showFavoriteStatus={false} from="catalog" imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={onRemoved} onUpdated={onUpdated} />
+      <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} />
+    </>}
+    eyebrow="FAVORITE"
+    facts={(item.nominationCount > 0 || item.winCount > 0 || item.occurrenceCount > 0) && <>
     {item.nominationCount > 0 && <div><dt>Oscar nominations</dt><dd>{item.nominationCount}</dd></div>}
     {item.winCount > 0 && <div><dt>Oscar wins</dt><dd>{item.winCount}</dd></div>}
     {item.occurrenceCount > 0 && <div><dt>Torrent sources</dt><dd>{item.occurrenceCount}</dd></div>}
-    <div><dt>Watch status</dt><dd>{item.toWatch ? 'To watch' : 'Not marked to watch'}</dd></div>
-    <div><dt>Download status</dt><dd>{item.toDownload ? 'To download' : 'Not marked to download'}</dd></div>
-    </dl>
-    <FavoriteControls allowAddFromHere={false} showFavoriteStatus={false} from="catalog" imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={onRemoved} onUpdated={onUpdated} />
-    <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} />
-  </MovieMetadataDetailsDialog>
+    </>}
+    onClose={onClose}
+    title={item}
+  />
 }
