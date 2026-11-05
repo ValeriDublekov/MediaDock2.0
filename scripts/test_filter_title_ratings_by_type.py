@@ -4,11 +4,76 @@ import csv
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from scripts.filter_title_ratings_by_type import DEFAULT_TITLE_TYPES, process_files
+from scripts.filter_title_ratings_by_type import DEFAULT_TITLE_TYPES, parse_args, process_files
 
 
 class FilterTitleRatingsByTypeTests(unittest.TestCase):
+    def test_cli_accepts_minimum_year(self) -> None:
+        with patch("sys.argv", ["filter_title_ratings_by_type.py", "--min-year", "2000"]):
+            args = parse_args()
+
+        self.assertEqual(args.min_year, 2000)
+
+    def test_minimum_year_is_inclusive_and_excludes_unknown_years(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            ratings_path = root / "ratings.tsv"
+            basics_path = root / "basics.tsv"
+            output_path = root / "filtered.tsv"
+            report_path = root / "categories.tsv"
+            unmatched_path = root / "unmatched.tsv"
+
+            self._write_tsv(
+                ratings_path,
+                ("tconst", "averageRating", "numVotes"),
+                (
+                    ("tt0000001", "7.1", "70000"),
+                    ("tt0000002", "7.2", "71000"),
+                    ("tt0000003", "7.3", "72000"),
+                    ("tt0000004", "7.4", "73000"),
+                ),
+            )
+            self._write_tsv(
+                basics_path,
+                (
+                    "tconst",
+                    "titleType",
+                    "primaryTitle",
+                    "originalTitle",
+                    "isAdult",
+                    "startYear",
+                    "endYear",
+                    "runtimeMinutes",
+                    "genres",
+                ),
+                (
+                    ("tt0000001", "movie", "Old", "Old", "0", "1999", "\\N", "90", "Drama"),
+                    ("tt0000002", "movie", "Boundary", "Boundary", "0", "2000", "\\N", "90", "Drama"),
+                    ("tt0000003", "movie", "Unknown", "Unknown", "0", "\\N", "\\N", "90", "Drama"),
+                    ("tt0000004", "movie", "New", "New", "0", "2001", "\\N", "90", "Drama"),
+                ),
+            )
+
+            stats = process_files(
+                ratings_path,
+                basics_path,
+                output_path,
+                report_path,
+                unmatched_path,
+                set(DEFAULT_TITLE_TYPES),
+                min_year=2000,
+            )
+
+            self.assertEqual(stats.year_excluded_rows, 2)
+            with output_path.open(encoding="utf-8", newline="") as output_file:
+                output_rows = list(csv.DictReader(output_file, delimiter="\t"))
+            self.assertEqual(
+                [(row["tconst"], row["startYear"]) for row in output_rows],
+                [("tt0000002", "2000"), ("tt0000004", "2001")],
+            )
+
     def test_merge_join_exports_selected_types_and_reports_all_categories(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

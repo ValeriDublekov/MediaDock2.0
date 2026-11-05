@@ -29,6 +29,7 @@ class JoinStats:
     matched_rows: int
     exported_rows: int
     excluded_rows: int
+    year_excluded_rows: int
     unmatched_rows: int
     invalid_ratings_rows: int
     invalid_basics_rows: int
@@ -68,6 +69,11 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_TITLE_TYPES,
         help="titleType values to include (default: movie tvSeries tvMiniSeries tvMovie)",
     )
+    parser.add_argument(
+        "--min-year",
+        type=int,
+        help="include only titles with startYear greater than or equal to this value",
+    )
     parser.add_argument("--force", action="store_true", help="overwrite existing output files")
     return parser.parse_args()
 
@@ -106,6 +112,7 @@ def process_files(
     unmatched_report: Path,
     title_types: set[str],
     force: bool = False,
+    min_year: int | None = None,
 ) -> JoinStats:
     ratings_source = ratings_source.resolve()
     basics_source = basics_source.resolve()
@@ -169,7 +176,8 @@ def process_files(
 
             category_counts: Counter[str] = Counter()
             invalid_basics_rows = 0
-            rating_rows = matched_rows = exported_rows = excluded_rows = unmatched_rows = 0
+            rating_rows = matched_rows = exported_rows = excluded_rows = 0
+            year_excluded_rows = unmatched_rows = 0
             invalid_ratings_rows = 0
 
             def iter_basics_rows() -> Iterator[BasicsRecord]:
@@ -281,6 +289,17 @@ def process_files(
                         basics_row = advance_basics()
                         continue
 
+                    if min_year is not None:
+                        start_year = basics_row.row[basics_columns["startYear"]].strip()
+                        try:
+                            meets_minimum_year = int(start_year) >= min_year
+                        except ValueError:
+                            meets_minimum_year = False
+                        if not meets_minimum_year:
+                            year_excluded_rows += 1
+                            basics_row = advance_basics()
+                            continue
+
                     output_row = list(ratings_row)
                     for field in TITLE_METADATA_FIELDS:
                         value = basics_row.row[basics_columns[field]]
@@ -308,6 +327,7 @@ def process_files(
                 matched_rows=matched_rows,
                 exported_rows=exported_rows,
                 excluded_rows=excluded_rows,
+                year_excluded_rows=year_excluded_rows,
                 unmatched_rows=unmatched_rows,
                 invalid_ratings_rows=invalid_ratings_rows,
                 invalid_basics_rows=invalid_basics_rows,
@@ -330,6 +350,7 @@ def main() -> None:
             args.unmatched_report,
             selected_types,
             force=args.force,
+            min_year=args.min_year,
         )
     except (OSError, ValueError) as error:
         raise SystemExit(str(error)) from error
@@ -340,6 +361,7 @@ def main() -> None:
     print(f"Filtered ratings rows: {stats.rating_rows}")
     print(f"Rows matched to basics: {stats.matched_rows}")
     print(f"Rows excluded by title type: {stats.excluded_rows}")
+    print(f"Rows excluded by minimum year: {stats.year_excluded_rows}")
     print(f"Unmatched rating rows: {stats.unmatched_rows}")
     print(f"Malformed ratings rows skipped: {stats.invalid_ratings_rows}")
     print(f"Malformed basics rows skipped: {stats.invalid_basics_rows}")
