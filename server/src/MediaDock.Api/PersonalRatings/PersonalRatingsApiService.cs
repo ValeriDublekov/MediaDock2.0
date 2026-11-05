@@ -87,7 +87,6 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
             FROM imdb_titles
             WHERE imdb_id = {imdbId}
                 AND metadata_status = 'enriched'
-                AND media_type IN ('movie', 'series')
             ON CONFLICT (user_id, imdb_id) DO NOTHING
             """, cancellationToken);
 
@@ -98,11 +97,10 @@ internal sealed class PersonalRatingsApiService(MediaDockDbContext dbContext)
 
         var titleExists = await dbContext.ImdbTitles.AsNoTracking()
             .AnyAsync(title => title.ImdbId == imdbId
-                && title.MetadataStatus == "enriched"
-                && (title.MediaType == "movie" || title.MediaType == "series"), cancellationToken);
+                && title.MetadataStatus == "enriched", cancellationToken);
         if (!titleExists)
         {
-            throw new ApiNotFoundException("Enriched IMDb movie or series not found.");
+            throw new ApiNotFoundException("Enriched IMDb title not found.");
         }
 
         throw new ApiConflictException("A personal rating already exists for this title.");

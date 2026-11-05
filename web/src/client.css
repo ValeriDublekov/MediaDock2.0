@@ -504,6 +504,28 @@ button:disabled { cursor: not-allowed; }
 .imdb-detail-link:hover { border-color: #ffc45f; color: #171b19; background: #ffc45f; }
 .filter-form.browse-filters { grid-template-columns: minmax(150px, 0.95fr) minmax(180px, 1.1fr) minmax(150px, 0.8fr) auto; gap: 10px; margin-bottom: 14px; border: 0; padding: 0; }
 .filter-form.browse-filters.oscar-filter-form { grid-template-columns: minmax(150px, 0.95fr) minmax(180px, 1.1fr) minmax(140px, 0.8fr) minmax(150px, 0.8fr) auto; }
+.filter-form.imdb-title-filter-form { grid-template-columns: minmax(190px, 1.5fr) minmax(170px, 1.1fr) repeat(3, minmax(125px, 0.8fr)); gap: 12px; margin-bottom: 18px; border: 0; padding: 0; }
+.imdb-title-filter-form .imdb-title-search { grid-column: 1; grid-row: 1; }
+.imdb-title-filter-form > .category-multiselect { grid-column: 2; grid-row: 1; }
+.imdb-title-filter-form .imdb-title-media-filter { grid-column: 3; grid-row: 1; }
+.imdb-title-filter-form .imdb-title-status-filter { grid-column: 4; grid-row: 1; }
+.imdb-title-filter-form .imdb-title-sort-filter { grid-column: 5; grid-row: 1; }
+.imdb-title-filter-form .imdb-title-visibility-filters { display: flex; grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; gap: 12px 22px; border-top: 1px solid #e0e6e1; padding-top: 10px; }
+.imdb-title-filter-form .imdb-title-range-filters { display: grid; grid-column: 1 / -1; grid-row: 3; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; }
+.imdb-title-filter-form .filter-actions { grid-column: 1 / -1; grid-row: 4; justify-content: flex-start; }
+.imdb-title-filter-form .filter-actions .button { min-height: 36px; }
+.imdb-title-personal-states { display: flex; min-width: 0; flex-wrap: wrap; gap: 4px; }
+.imdb-title-personal-states .state-pill { min-height: 20px; padding-inline: 6px; font-size: 9px; }
+.imdb-title-award-summary { display: block; width: 100%; min-width: 0; overflow: hidden; color: #b9c2bc; font-size: 10px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.imdb-title-card-controls { display: grid; width: 100%; gap: 6px; }
+.imdb-title-row-actions { min-width: 175px; }
+.imdb-title-row-actions > * { margin-bottom: 4px; }
+.imdb-titles-table { min-width: 1280px; }
+.imdb-title-detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-block: 1px solid #d8e1d9; padding: 10px 0; }
+.imdb-title-detail-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.imdb-title-omdb-awards { border-top: 1px solid #d8e1d9; padding-top: 12px; }
+.imdb-title-omdb-awards h2 { margin: 0; color: #203a30; font-family: Georgia, "Times New Roman", serif; font-size: 17px; font-weight: 400; }
+.imdb-title-omdb-awards p { margin: 8px 0 0; color: #4e6055; font-size: 12px; line-height: 1.5; }
 .catalog-section-toolbar { margin-bottom: 8px; }
 .page-heading-copy { display: flex; min-width: 0; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
 .page-heading-count { white-space: nowrap; }
@@ -593,6 +615,15 @@ button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offs
   .filter-search { grid-column: span 2; }
   .filter-actions { grid-column: span 3; }
   .filter-form.browse-filters { grid-template-columns: minmax(150px, 0.95fr) minmax(180px, 1.1fr) minmax(150px, 0.8fr) auto; }
+  .filter-form.imdb-title-filter-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .imdb-title-filter-form .imdb-title-search { grid-column: 1 / 3; grid-row: 1; }
+  .imdb-title-filter-form > .category-multiselect { grid-column: 3; grid-row: 1; }
+  .imdb-title-filter-form .imdb-title-media-filter { grid-column: 1; grid-row: 2; }
+  .imdb-title-filter-form .imdb-title-status-filter { grid-column: 2; grid-row: 2; }
+  .imdb-title-filter-form .imdb-title-sort-filter { grid-column: 3; grid-row: 2; }
+  .imdb-title-filter-form .imdb-title-visibility-filters { grid-column: 1 / -1; grid-row: 3; }
+  .imdb-title-filter-form .imdb-title-range-filters { grid-column: 1 / -1; grid-row: 4; }
+  .imdb-title-filter-form .filter-actions { grid-column: 1 / -1; grid-row: 5; }
   .filter-form.browse-filters.oscar-filter-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .oscar-filter-form .filter-search { grid-column: 1; grid-row: 1; }
   .oscar-filter-form > .category-multiselect { grid-column: 2; grid-row: 1; }
@@ -628,6 +659,17 @@ button:focus-visible, a:focus-visible { outline: 2px solid #ad593a; outline-offs
   .users-toolbar .result-count { margin: 0; }
   .users-table { min-width: 700px; }
   .filter-form.browse-filters { grid-template-columns: minmax(0, 1fr); }
+  .filter-form.imdb-title-filter-form { grid-template-columns: minmax(0, 1fr); }
+  .imdb-title-filter-form .imdb-title-search,
+  .imdb-title-filter-form > .category-multiselect,
+  .imdb-title-filter-form .imdb-title-media-filter,
+  .imdb-title-filter-form .imdb-title-status-filter,
+  .imdb-title-filter-form .imdb-title-sort-filter,
+  .imdb-title-filter-form .imdb-title-visibility-filters,
+  .imdb-title-filter-form .imdb-title-range-filters,
+  .imdb-title-filter-form .filter-actions { grid-column: 1; grid-row: auto; }
+  .imdb-title-filter-form .imdb-title-range-filters { grid-template-columns: minmax(0, 1fr); }
+  .imdb-title-detail-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .browse-filters .filter-search { grid-column: 1; grid-row: 1; }
   .browse-filters > .category-multiselect { grid-column: 1; grid-row: 2; }
   .browse-filters .browse-media-type { grid-column: 1; grid-row: 3; }

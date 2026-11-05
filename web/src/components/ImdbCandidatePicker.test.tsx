@@ -1,6 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { addManualImdbTitle, lookupManualImdbTitleCandidate, searchManualImdbTitleCandidates } from '../api/client'
+import {
+  addManualImdbTitle,
+  lookupManualImdbTitleCandidate,
+  searchManualImdbTitleCandidates,
+} from '../api/client'
 import type { ImdbCandidate, ImdbCandidateSearch } from '../api/types'
 import { ImdbCandidatePicker } from './ImdbCandidatePicker'
 
@@ -54,4 +58,5 @@ describe('manual IMDb title picker', () => {
     expect(addManualImdbTitle).toHaveBeenCalledWith(candidate.imdbId)
     expect(onApplied).toHaveBeenCalledWith(candidate, 9)
   })
+
 })

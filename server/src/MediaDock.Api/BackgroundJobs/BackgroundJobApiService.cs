@@ -615,4 +615,5 @@ internal sealed class BackgroundJobApiService(
             SqlState: PostgresErrorCodes.UniqueViolation,
             ConstraintName: "ux_background_jobs_active_imdb_catalog_enrichment"
         };
+
 }

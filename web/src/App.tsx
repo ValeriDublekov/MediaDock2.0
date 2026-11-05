@@ -6,6 +6,7 @@ import { CatalogView } from './features/catalog/CatalogView'
 import { HistoryView } from './features/history/HistoryView'
 import { OscarCatalogView } from './features/oscar/OscarCatalogView'
 import { GoldenGlobeCatalogView } from './features/golden-globes/GoldenGlobeCatalogView'
+import { ImdbTitlesCatalogView } from './features/imdb-titles/ImdbTitlesCatalogView'
 import { FavoriteProvider } from './features/favorites/FavoriteContext'
 import { FavoritesView } from './features/favorites/FavoritesView'
 import { IgnoredMoviesProvider } from './features/ignored-movies/IgnoredMoviesContext'
@@ -19,13 +20,14 @@ import { RecommendationSettingsView } from './features/recommendations/Recommend
 import { RecommendationsView, type RecommendationResultCount } from './features/recommendations/RecommendationsView'
 import { MovieTablesDashboardView } from './features/dashboard/MovieTablesDashboardView'
 
-type Section = 'catalog' | 'oscar' | 'golden-globes' | 'favorites' | 'account' | 'administration'
+type Section = 'catalog' | 'oscar' | 'golden-globes' | 'imdb-titles' | 'favorites' | 'account' | 'administration'
 const anonymousBrowsingStorageKey = 'mediadock.anonymous-browsing'
 
 const sections: { id: Section; path: string; label: string }[] = [
   { id: 'catalog', path: '/catalog', label: 'Torrents catalog' },
   { id: 'oscar', path: '/oscar', label: 'Oscar catalog' },
   { id: 'golden-globes', path: '/golden-globes', label: 'Golden Globes catalog' },
+  { id: 'imdb-titles', path: '/imdb-titles', label: 'IMDb titles' },
   { id: 'favorites', path: '/favorites', label: 'Favorites' },
 ]
 
@@ -33,6 +35,7 @@ const catalogNavigation = [
   { path: '/catalog', label: 'Torrents catalog' },
   { path: '/oscar', label: 'Oscar catalog' },
   { path: '/golden-globes', label: 'Golden Globes catalog' },
+  { path: '/imdb-titles', label: 'IMDb titles' },
 ]
 
 const administrationPages = [
@@ -66,6 +69,11 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
     eyebrow: 'GOLDEN GLOBES',
     title: 'Golden Globes catalog',
     description: 'Browse Golden Globes nominees, winners, and award categories.',
+  },
+  'imdb-titles': {
+    eyebrow: 'IMDb',
+    title: 'IMDb titles',
+    description: 'Browse the canonical IMDb catalog and your personal title states.',
   },
   favorites: {
     eyebrow: '',
@@ -501,6 +509,7 @@ function AppContent() {
             <Route path="/catalog" element={<CatalogView canDeleteTitles={isAdmin} canViewHistory={isAdmin} />} />
             <Route path="/oscar" element={<OscarCatalogView />} />
             <Route path="/golden-globes" element={<GoldenGlobeCatalogView />} />
+            <Route path="/imdb-titles" element={<ImdbTitlesCatalogView hasActiveAccount={Boolean(isActiveAccount)} />} />
             <Route path="/favorites" element={isActiveAccount
               ? <FavoritesView />
               : <RouteAccessRequired message="Sign in with an active linked account to view favorites." title="Favorites unavailable" />} />

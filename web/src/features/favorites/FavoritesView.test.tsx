@@ -166,6 +166,33 @@ it('allows enriched series from the catalog but not from Oscar', async () => {
   await waitFor(() => expect(addFavorite).toHaveBeenCalledWith(series.imdbId, 'catalog'))
 })
 
+it('allows enriched unknown and null types from the IMDb titles catalog only', async () => {
+  const episode: FavoriteTitle = {
+    imdbId: 'tt99887765', torrentMovieId: null, title: 'Shared Episode', year: 2025, mediaType: 'episode', metadataStatus: 'enriched',
+    imdbRating: 8.4, posterUrl: null, toWatch: true, toDownload: false,
+    addedFromOscar: false, addedFromCatalog: true, addedFromRecommendations: false, addedFromManual: false,
+    createdAt: '2026-10-29T00:00:00Z', updatedAt: '2026-10-29T00:00:00Z',
+    oscarFilmCount: 0, nominationCount: 0, winCount: 0, occurrenceCount: 0, lastSeenAt: null,
+  }
+  const untyped = { ...episode, imdbId: 'tt99887764', title: 'Untyped title', mediaType: null }
+  vi.mocked(getFavorites).mockResolvedValue({ items: [], page: 1, pageSize: 100, totalCount: 0, totalPages: 0 })
+  vi.mocked(addFavorite).mockImplementation(async (imdbId) => imdbId === episode.imdbId ? episode : untyped)
+  render(<FavoriteProvider accountKey="test-account">
+    <>
+      <FavoriteControls from="oscar" imdbId={episode.imdbId} metadataStatus="enriched" mediaType="episode" occurrenceCount={0} />
+      <FavoriteControls from="imdb-titles" imdbId={episode.imdbId} metadataStatus="enriched" mediaType="episode" occurrenceCount={0} />
+      <FavoriteControls from="imdb-titles" imdbId={untyped.imdbId} metadataStatus="enriched" mediaType={null} occurrenceCount={0} />
+    </>
+  </FavoriteProvider>)
+
+  const addButtons = await screen.findAllByRole('button', { name: 'Add to favorites' })
+  expect(addButtons).toHaveLength(2)
+  fireEvent.click(addButtons[0]!)
+  await waitFor(() => expect(addFavorite).toHaveBeenCalledWith(episode.imdbId, 'imdb-titles'))
+  fireEvent.click(await screen.findByRole('button', { name: 'Add to favorites' }))
+  await waitFor(() => expect(addFavorite).toHaveBeenCalledWith(untyped.imdbId, 'imdb-titles'))
+})
+
 it('treats series favorites like movie favorites and omits empty metadata', async () => {
   const series: FavoriteTitle = {
     imdbId: 'tt12345678', torrentMovieId: null, title: 'Shared Series', year: 2025, mediaType: 'series', metadataStatus: 'enriched',

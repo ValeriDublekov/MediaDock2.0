@@ -1,20 +1,25 @@
 import { useIgnoredMovies } from './IgnoredMoviesContext'
 import { Eye, EyeOff, RotateCw } from 'lucide-react'
 
-export function IgnoredMovieControl({ imdbId, mediaType, placement = 'inline', onIgnored }: { imdbId: string | null; mediaType: string | null; placement?: 'inline' | 'poster'; onIgnored?: () => void }) {
+export function IgnoredMovieControl({ imdbId, mediaType, placement = 'inline', onIgnored, onChanged }: { imdbId: string | null; mediaType: string | null; placement?: 'inline' | 'poster'; onIgnored?: () => void; onChanged?: () => void }) {
   const { available, movies, pending, loading, error, ignore, remove, retry } = useIgnoredMovies()
-  if (!available || (mediaType !== 'movie' && mediaType !== 'series') || !imdbId) return null
+  if (!available || !imdbId) return null
   const ignoredImdbId = imdbId
 
   const isIgnored = Boolean(movies[ignoredImdbId])
-  const titleType = mediaType === 'series' ? 'series' : 'movie'
+  const titleType = mediaType === 'movie' || mediaType === 'series' ? mediaType : 'title'
   const disabled = loading || pending !== null || Boolean(error)
   function handleClick() {
     if (isIgnored) {
-      void remove(ignoredImdbId)
+      void remove(ignoredImdbId).then(() => onChanged?.())
       return
     }
-    void ignore(ignoredImdbId).then((ignored) => { if (ignored) onIgnored?.() })
+    void ignore(ignoredImdbId).then((ignored) => {
+      if (ignored) {
+        onIgnored?.()
+        onChanged?.()
+      }
+    })
   }
   if (placement === 'poster') {
     const label = isIgnored ? 'Remove from ignore list' : `Ignore ${titleType}`

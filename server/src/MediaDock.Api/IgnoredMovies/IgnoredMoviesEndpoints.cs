@@ -38,7 +38,7 @@ internal static class IgnoredMoviesEndpoints
             return TypedResults.Ok(await service.AddAsync(currentUser.Id, request, cancellationToken));
         })
             .WithName("AddIgnoredMovie")
-            .WithSummary("Add an existing IMDb movie or series to the current user's ignore list.")
+            .WithSummary("Add an existing IMDb title to the current user's ignore list.")
             .RequireAuthorization(AccessPolicies.OwnerScopedIgnoredMovies)
             .Produces<IgnoredMovieResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest)

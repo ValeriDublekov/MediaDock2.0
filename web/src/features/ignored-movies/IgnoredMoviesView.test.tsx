@@ -88,15 +88,29 @@ describe('IgnoredMoviesView', () => {
     await waitFor(() => expect(addIgnoredMovie).toHaveBeenCalledWith(series.imdbId))
   })
 
-  it('does not offer ignore actions to anonymous users or unsupported media types', async () => {
+  it('offers ignore actions for unknown and null title types to active users', async () => {
+    render(<IgnoredMoviesProvider accountKey="issuer:subject">
+      <IgnoredMovieControl imdbId="tt12345678" mediaType="episode" />
+      <IgnoredMovieControl imdbId="tt87654321" mediaType={null} />
+    </IgnoredMoviesProvider>)
+
+    const ignoreButtons = await screen.findAllByRole('button', { name: 'Ignore title' })
+    expect(ignoreButtons).toHaveLength(2)
+    fireEvent.click(ignoreButtons[0]!)
+    await waitFor(() => expect(addIgnoredMovie).toHaveBeenCalledWith('tt12345678'))
+  })
+
+  it('does not offer ignore actions to anonymous users', async () => {
     const view = render(<IgnoredMoviesProvider accountKey={null}>
       <IgnoredMovieControl imdbId={movie.imdbId} mediaType="movie" />
       <IgnoredMovieControl imdbId={movie.imdbId} mediaType="series" />
       <IgnoredMovieControl imdbId={movie.imdbId} mediaType="episode" />
+      <IgnoredMovieControl imdbId={movie.imdbId} mediaType={null} />
     </IgnoredMoviesProvider>)
 
     expect(view.queryByRole('button', { name: 'Ignore movie' })).toBeNull()
     expect(view.queryByRole('button', { name: 'Ignore series' })).toBeNull()
+    expect(view.queryByRole('button', { name: 'Ignore title' })).toBeNull()
     expect(getIgnoredMovies).not.toHaveBeenCalled()
   })
 })

@@ -7,6 +7,7 @@ using MediaDock.Api.Administration;
 using MediaDock.Api.Authentication;
 using MediaDock.Api.Common;
 using MediaDock.Api.Favorites;
+using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.AspNetCore.Authentication;
@@ -100,7 +101,8 @@ internal static class GoogleAuthenticationApiTestSupport
         string environmentName = "Development",
         bool googleSignInEnabled = false,
         IReadOnlyDictionary<string, string?>? additionalConfiguration = null,
-        string? webRootPath = null) : WebApplicationFactory<Program>
+        string? webRootPath = null,
+        IOmdbClientFactory? omdbClientFactory = null) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -135,6 +137,11 @@ internal static class GoogleAuthenticationApiTestSupport
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IHostedService>();
+                if (omdbClientFactory is not null)
+                {
+                    services.RemoveAll<IOmdbClientFactory>();
+                    services.AddSingleton(omdbClientFactory);
+                }
                 if (!localMockEnabled)
                 {
                     services.AddAuthentication()

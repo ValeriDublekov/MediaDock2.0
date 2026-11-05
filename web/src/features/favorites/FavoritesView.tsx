@@ -97,7 +97,7 @@ export function FavoritesView() {
           onOpen={() => setSelected(item)}
           openLabel={`View ${item.title} details`}
           posterActions={<FavoriteControls allowAddFromHere={false} from="catalog" imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={() => removeFavoriteTitle(item.imdbId)} placement="poster" showFavoriteStatus={false} />}
-          posterLabel={item.mediaType.slice(0, 3).toUpperCase()}
+          posterLabel={item.mediaType?.slice(0, 3).toUpperCase() ?? 'IMDb'}
           posterUrl={item.posterUrl}
           title={item.title}
           year={item.year}
@@ -110,12 +110,12 @@ export function FavoritesView() {
             metadata={{ director: item.director ?? null, plot: item.plot ?? null }}
             onOpen={() => setSelected(item)}
             openLabel={`View ${item.title} details`}
-            posterLabel={item.mediaType.slice(0, 3).toUpperCase()}
+            posterLabel={item.mediaType?.slice(0, 3).toUpperCase() ?? 'IMDb'}
             posterUrl={item.posterUrl}
             subtitle={item.year ?? 'Year unknown'}
             title={item.title}
           /></td>
-          <td><span className="type-label">{formatWords(item.mediaType)}</span></td>
+          <td><span className="type-label">{formatWords(item.mediaType ?? 'unknown')}</span></td>
           <td><MovieImdbLink imdbId={item.imdbId} rating={item.imdbRating} title={item.title} /></td>
           <td>{[item.nominationCount > 0 && `${item.nominationCount} nominations`, item.winCount > 0 && `${item.winCount} wins`].filter(Boolean).join(', ')}</td>
           <td>{item.genres?.slice(0, 2).join(', ') || 'Not tagged'}</td>

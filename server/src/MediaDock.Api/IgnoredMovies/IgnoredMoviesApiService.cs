@@ -44,7 +44,7 @@ internal sealed class IgnoredMoviesApiService(MediaDockDbContext dbContext)
             INSERT INTO user_ignored_movies (user_id, imdb_id, created_at)
             SELECT {userId}, imdb_id, {now}
             FROM imdb_titles
-            WHERE imdb_id = {imdbId} AND media_type IN ('movie', 'series')
+            WHERE imdb_id = {imdbId}
             ON CONFLICT (user_id, imdb_id) DO NOTHING
             """, cancellationToken);
 

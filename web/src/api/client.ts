@@ -3,6 +3,8 @@ import type {
   AdminUsersPage,
   CatalogQuery,
   CatalogTitle,
+  ImdbTitlesQuery,
+  ImdbTitlesPage,
   CurrentSession,
   DeleteTitleResponse,
   RegistrationRequestStatus,
@@ -166,6 +168,10 @@ export function getCatalog(query: CatalogQuery, fetcher?: typeof fetch) {
   return requestJson<PageResponse<CatalogTitle>>(withQuery('/catalog', query, ['genres']), {}, fetcher)
 }
 
+export function getImdbTitles(query: ImdbTitlesQuery, fetcher?: typeof fetch) {
+  return requestJson<ImdbTitlesPage>(withQuery('/imdb-titles', query, ['genres']), {}, fetcher)
+}
+
 export function getCatalogGenres(fetcher?: typeof fetch) {
   return requestJson<string[]>('/catalog/genres', {}, fetcher)
 }
@@ -228,7 +234,7 @@ export function addPersonalRating(imdbId: string, rating: number, fetcher?: type
   }, fetcher)
 }
 
-export function addFavorite(imdbId: string, from: 'oscar' | 'catalog' | 'golden-globes' | 'recommendation' | 'manual', fetcher?: typeof fetch) {
+export function addFavorite(imdbId: string, from: 'oscar' | 'catalog' | 'golden-globes' | 'imdb-titles' | 'recommendation' | 'manual', fetcher?: typeof fetch) {
   return requestJson<FavoriteTitle>('/favorites', { method: 'POST', body: JSON.stringify({ imdbId, from }) }, fetcher)
 }
 

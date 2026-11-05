@@ -7,6 +7,7 @@ using MediaDock.Api.Catalog;
 using MediaDock.Api.Favorites;
 using MediaDock.Api.GoldenGlobes;
 using MediaDock.Api.Health;
+using MediaDock.Api.ImdbTitles;
 using MediaDock.Api.IgnoredMovies;
 using MediaDock.Api.Middleware;
 using MediaDock.Api.Operations;
@@ -64,6 +65,7 @@ public static class ApiServiceCollectionExtensions
 			services.AddHostedService<BackgroundJobDispatcher>();
 		}
 		services.AddScoped<ICatalogApiService, CatalogApiService>();
+		services.AddScoped<ImdbTitlesApiService>();
 		services.AddScoped<IRssFeedPreviewApiService, RssFeedPreviewApiService>();
 		services.AddScoped<ITorrentTitleMatchApiService, TorrentTitleMatchApiService>();
 		services.AddScoped<IMovieAwardsApiService, MovieAwardsApiService>();

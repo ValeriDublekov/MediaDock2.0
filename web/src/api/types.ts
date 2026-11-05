@@ -42,6 +42,54 @@ export interface CatalogTitle {
   plot: string | null
 }
 
+export interface ImdbTitleCatalogItem {
+  imdbId: string
+  title: string
+  year: number | null
+  mediaType: string | null
+  imdbRating: number | null
+  imdbVotes: number | null
+  metascore: number | null
+  genres: string[]
+  countries: string[]
+  director: string | null
+  plot: string | null
+  posterUrl: string | null
+  runtime: string | null
+  awards: string | null
+  boxOffice: string | null
+  metadataStatus: string
+  isFavorite: boolean
+  toWatch: boolean
+  toDownload: boolean
+  isIgnored: boolean
+  personalRating: number | null
+}
+
+export interface ImdbTitleYearBounds {
+  minYear: number | null
+  maxYear: number | null
+}
+
+export interface ImdbTitleRatingBounds {
+  minRating: number | null
+  maxRating: number | null
+}
+
+export interface ImdbTitlesPage {
+  items: ImdbTitleCatalogItem[]
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+  yearBounds: ImdbTitleYearBounds
+  imdbRatingBounds: ImdbTitleRatingBounds
+  mediaTypes: string[]
+  hasUntypedTitles: boolean
+  genres: string[]
+  metadataStatuses: string[]
+}
+
 export interface TitleDetails extends CatalogTitle {
   broadcastRangeStartYear: number | null
   broadcastRangeEndYear: number | null
@@ -487,6 +535,24 @@ export interface CatalogQuery {
   sourceId?: number
 }
 
+export interface ImdbTitlesQuery {
+  page: number
+  pageSize: number
+  search?: string
+  mediaType?: string
+  mediaTypeIsNull?: boolean
+  genres?: string[]
+  genreFilter?: boolean
+  yearFrom?: number
+  yearTo?: number
+  imdbRatingFrom?: number
+  imdbRatingTo?: number
+  metadataStatus?: string
+  sort?: 'year' | 'rating' | 'votes'
+  showIgnored?: boolean
+  showWatched?: boolean
+}
+
 export interface OscarCatalogQuery {
   page: number
   pageSize: number
@@ -547,7 +613,7 @@ export interface FavoriteTitle {
   torrentMovieId: number | null
   title: string
   year: number | null
-  mediaType: MediaType
+  mediaType: string | null
   metadataStatus: string | null
   imdbRating: number | null
   imdbVotes?: number | null
@@ -579,7 +645,7 @@ export interface IgnoredMovie {
   imdbId: string
   title: string
   year: number | null
-  mediaType: MediaType | null
+  mediaType: string | null
   imdbRating: number | null
   posterUrl: string | null
   createdAt: string
@@ -678,7 +744,7 @@ export type BackgroundJobStatus = 'queued' | 'running' | 'succeeded' | 'partial'
 
 export interface BackgroundJob {
   id: number
-  jobType: 'rss_scan' | 'oscar_import' | 'golden_globe_import' | 'oscar_enrichment' | 'golden_globe_enrichment' | 'golden_globe_manual_refresh' | 'imdb_title_enrichment'
+  jobType: 'rss_scan' | 'oscar_import' | 'golden_globe_import' | 'imdb_title_import' | 'oscar_enrichment' | 'golden_globe_enrichment' | 'golden_globe_manual_refresh' | 'imdb_title_enrichment' | 'imdb_catalog_enrichment'
   trigger: 'manual' | 'schedule'
   status: BackgroundJobStatus
   enqueuedAt: string

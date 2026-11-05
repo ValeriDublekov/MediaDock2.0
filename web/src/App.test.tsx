@@ -46,6 +46,11 @@ vi.mock('./features/catalog/CatalogView', () => ({
 }))
 vi.mock('./features/oscar/OscarCatalogView', () => ({ OscarCatalogView: () => <div>Oscar route content</div> }))
 vi.mock('./features/golden-globes/GoldenGlobeCatalogView', () => ({ GoldenGlobeCatalogView: () => <div>Golden Globes route content</div> }))
+vi.mock('./features/imdb-titles/ImdbTitlesCatalogView', () => ({
+  ImdbTitlesCatalogView: ({ hasActiveAccount }: { hasActiveAccount: boolean }) => (
+    <div data-active-account={hasActiveAccount}>IMDb titles route content</div>
+  ),
+}))
 vi.mock('./features/favorites/FavoritesView', () => ({ FavoritesView: () => <div>Favorites route content</div> }))
 vi.mock('./features/ignored-movies/IgnoredMoviesView', () => ({ IgnoredMoviesView: () => <div>Ignored movies route content</div> }))
 vi.mock('./features/recommendations/RecommendationSettingsView', () => ({
@@ -159,6 +164,7 @@ describe('App routes', () => {
     '/catalog',
     '/oscar',
     '/golden-globes',
+    '/imdb-titles',
     '/favorites',
     '/account/personal-ratings',
     '/configuration/system',
@@ -218,6 +224,16 @@ describe('App routes', () => {
 
     expect(await screen.findByText('Catalog route content')).toBeTruthy()
     expect(screen.getByTestId('location').textContent).toBe('/catalog')
+  })
+
+  it('makes the canonical IMDb catalog available to regular active users', async () => {
+    authMock.session = activeUserSession
+    renderAt('/imdb-titles')
+
+    const catalog = await screen.findByText('IMDb titles route content')
+    expect(catalog.getAttribute('data-active-account')).toBe('true')
+    expect(screen.getByRole('heading', { name: 'IMDb titles' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'IMDb titles' })).toBeTruthy()
   })
 
   it('redirects back to login when the account signs out', async () => {
@@ -291,6 +307,7 @@ describe('App routes', () => {
       'Torrents catalog',
       'Oscar catalog',
       'Golden Globes catalog',
+      'IMDb titles',
       'Movie recommendations',
       'Series recommendations',
       'Favorites',

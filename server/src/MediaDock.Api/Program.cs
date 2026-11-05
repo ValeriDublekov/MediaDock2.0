@@ -1,4 +1,5 @@
 using MediaDock.Api.Catalog;
+using MediaDock.Api.ImdbTitles;
 using MediaDock.Api.Awards;
 using MediaDock.Api.Authentication;
 using MediaDock.Api.BackgroundJobs;
@@ -114,6 +115,7 @@ app.MapAuthenticationEndpoints();
 app.MapUserAdministrationEndpoints();
 app.MapMovieTablesDashboardEndpoints();
 app.MapCatalogEndpoints();
+app.MapImdbTitlesEndpoints();
 app.MapTorrentTitleMatchEndpoints();
 app.MapManualImdbTitleEndpoints();
 app.MapMovieAwardsEndpoints();

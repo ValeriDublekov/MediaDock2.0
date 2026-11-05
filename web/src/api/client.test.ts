@@ -15,6 +15,7 @@ import {
   getActiveBackgroundJob,
   getBackgroundJobEvents,
   getCatalog,
+  getImdbTitles,
   getCurrentSession,
   getIgnoredMovies,
   getAdminUsers,
@@ -164,6 +165,49 @@ describe('typed API client', () => {
     expect(JSON.parse(String(stub.calls[3]?.init?.body))).toEqual({ imdbId: 'tt12345678', from: 'manual' })
     expect(String(stub.calls[4]?.input)).toBe('/api/personal-ratings')
     expect(JSON.parse(String(stub.calls[4]?.init?.body))).toEqual({ imdbId: 'tt12345678', rating: 9 })
+  })
+
+  it('serializes canonical IMDb title filters and repeated genres', async () => {
+    const stub = fetchStub(response(200, {
+      items: [], page: 2, pageSize: 24, totalCount: 0, totalPages: 0,
+      yearBounds: { minYear: null, maxYear: null },
+      imdbRatingBounds: { minRating: null, maxRating: null },
+      mediaTypes: [], hasUntypedTitles: true, genres: [], metadataStatuses: [],
+    }))
+
+    await getImdbTitles({
+      page: 2,
+      pageSize: 24,
+      search: 'tt12345678',
+      mediaTypeIsNull: true,
+      genres: ['Drama', 'Sci-Fi'],
+      genreFilter: true,
+      yearFrom: 1980,
+      yearTo: 2025,
+      imdbRatingFrom: 6,
+      imdbRatingTo: 9,
+      metadataStatus: 'pending',
+      sort: 'votes',
+      showIgnored: true,
+      showWatched: false,
+    }, stub.fetcher)
+
+    const requestUrl = new URL(String(stub.calls[0]?.input), 'http://localhost')
+    expect(requestUrl.pathname).toBe('/api/imdb-titles')
+    expect(requestUrl.searchParams.get('page')).toBe('2')
+    expect(requestUrl.searchParams.get('pageSize')).toBe('24')
+    expect(requestUrl.searchParams.get('search')).toBe('tt12345678')
+    expect(requestUrl.searchParams.get('mediaTypeIsNull')).toBe('true')
+    expect(requestUrl.searchParams.getAll('genres')).toEqual(['Drama', 'Sci-Fi'])
+    expect(requestUrl.searchParams.get('genreFilter')).toBe('true')
+    expect(requestUrl.searchParams.get('yearFrom')).toBe('1980')
+    expect(requestUrl.searchParams.get('yearTo')).toBe('2025')
+    expect(requestUrl.searchParams.get('imdbRatingFrom')).toBe('6')
+    expect(requestUrl.searchParams.get('imdbRatingTo')).toBe('9')
+    expect(requestUrl.searchParams.get('metadataStatus')).toBe('pending')
+    expect(requestUrl.searchParams.get('sort')).toBe('votes')
+    expect(requestUrl.searchParams.get('showIgnored')).toBe('true')
+    expect(requestUrl.searchParams.get('showWatched')).toBe('false')
   })
 
   it('uses IMDb IDs for favorite create and marker requests', async () => {

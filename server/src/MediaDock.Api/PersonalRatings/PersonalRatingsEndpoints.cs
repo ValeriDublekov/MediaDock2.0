@@ -45,7 +45,7 @@ internal static class PersonalRatingsEndpoints
             return TypedResults.NoContent();
         })
             .WithName("AddPersonalRating")
-            .WithSummary("Add a manually rated enriched IMDb movie or series to the current user's ratings.")
+            .WithSummary("Add a manually rated enriched IMDb title to the current user's ratings.")
             .RequireAuthorization(AccessPolicies.OwnerScopedPersonalRatings)
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status400BadRequest)

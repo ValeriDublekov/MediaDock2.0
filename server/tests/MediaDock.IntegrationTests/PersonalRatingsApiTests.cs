@@ -139,6 +139,115 @@ public sealed class PersonalRatingsApiTests
     }
 
     [Fact]
+    public async Task PersonalStateWritesAcceptUnknownAndNullTypesWithTheRequiredMetadataRules()
+    {
+        const string subject = "all-type-state-owner";
+        const string email = "all-type-state-owner@example.com";
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_all_type_personal_state_api_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            var now = DateTimeOffset.UtcNow;
+            var owner = new User
+            {
+                NormalizedEmail = email,
+                GivenName = "Test",
+                FamilyName = "User",
+                Status = "active",
+                Role = "user",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            owner.ExternalIdentities.Add(new ExternalIdentity
+            {
+                User = owner,
+                Issuer = GoogleSignInSettings.GoogleIssuer,
+                Subject = subject,
+                CreatedAt = now
+            });
+            db.Users.Add(owner);
+            db.ImdbTitles.AddRange(
+                new Infrastructure.Persistence.Entities.ImdbTitle
+                {
+                    ImdbId = "tt9300001",
+                    TitleText = "An Episode",
+                    MediaType = "episode",
+                    MetadataStatus = "enriched",
+                    UpdatedAt = now
+                },
+                new Infrastructure.Persistence.Entities.ImdbTitle
+                {
+                    ImdbId = "tt9300002",
+                    TitleText = "An Untyped Title",
+                    MediaType = null,
+                    MetadataStatus = "enriched",
+                    UpdatedAt = now
+                },
+                new Infrastructure.Persistence.Entities.ImdbTitle
+                {
+                    ImdbId = "tt9300003",
+                    TitleText = "A Pending Game",
+                    MediaType = "game",
+                    MetadataStatus = "pending",
+                    UpdatedAt = now
+                });
+            await db.SaveChangesAsync();
+        }
+
+        using var factory = new ApiFactory(
+            connectionString,
+            CreatePrincipal(subject, email));
+        using var client = factory.CreateClient();
+
+        using var episodeFavoriteResponse = await client.PostAsJsonAsync(
+            "/api/favorites",
+            new CreateFavoriteRequest { ImdbId = "tt9300001", From = "imdb-titles" });
+        Assert.Equal(HttpStatusCode.OK, episodeFavoriteResponse.StatusCode);
+        var episodeFavorite = await episodeFavoriteResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.Equal("episode", episodeFavorite!.MediaType);
+        Assert.True(episodeFavorite.ToWatch);
+        Assert.False(episodeFavorite.ToDownload);
+
+        using var untypedFavoriteResponse = await client.PostAsJsonAsync(
+            "/api/favorites",
+            new CreateFavoriteRequest { ImdbId = "tt9300002", From = "imdb-titles" });
+        Assert.Equal(HttpStatusCode.OK, untypedFavoriteResponse.StatusCode);
+        var untypedFavorite = await untypedFavoriteResponse.Content.ReadFromJsonAsync<FavoriteMovieResponse>();
+        Assert.Null(untypedFavorite!.MediaType);
+
+        using var oscarEpisodeResponse = await client.PostAsJsonAsync(
+            "/api/favorites",
+            new CreateFavoriteRequest { ImdbId = "tt9300001", From = "oscar" });
+        Assert.Equal(HttpStatusCode.NotFound, oscarEpisodeResponse.StatusCode);
+
+        foreach (var imdbId in new[] { "tt9300001", "tt9300002", "tt9300003" })
+        {
+            using var ignoredResponse = await client.PostAsJsonAsync(
+                "/api/ignored-movies",
+                new CreateIgnoredMovieRequest { ImdbId = imdbId });
+            Assert.Equal(HttpStatusCode.OK, ignoredResponse.StatusCode);
+        }
+
+        foreach (var imdbId in new[] { "tt9300001", "tt9300002" })
+        {
+            using var ratingResponse = await client.PostAsJsonAsync(
+                "/api/personal-ratings",
+                new CreatePersonalRatingRequest(imdbId, 8));
+            Assert.Equal(HttpStatusCode.NoContent, ratingResponse.StatusCode);
+        }
+
+        using var pendingRatingResponse = await client.PostAsJsonAsync(
+            "/api/personal-ratings",
+            new CreatePersonalRatingRequest("tt9300003", 8));
+        Assert.Equal(HttpStatusCode.NotFound, pendingRatingResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task DeleteRemovesOnlyManuallyAddedRatingsOwnedByTheActiveUser()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_personal_ratings_delete_api_test").Build();

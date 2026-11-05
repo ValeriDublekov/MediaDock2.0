@@ -21,7 +21,7 @@ public sealed record CreateFavoriteRequest
     [Required, RegularExpression("^[Tt][Tt][0-9]{7,10}$")]
     public string ImdbId { get; init; } = string.Empty;
 
-    [Required, RegularExpression("^(oscar|catalog|golden-globes|recommendation|manual)$")]
+    [Required, RegularExpression("^(oscar|catalog|golden-globes|imdb-titles|recommendation|manual)$")]
     public string? From { get; init; }
 }
 
@@ -38,7 +38,7 @@ public sealed record FavoriteMovieResponse(
     long? TorrentMovieId,
     string Title,
     int? Year,
-    string MediaType,
+    string? MediaType,
     string? MetadataStatus,
     decimal? ImdbRating,
     long? ImdbVotes,

@@ -1,16 +1,17 @@
 import { useFavorites } from './FavoriteContext'
 import { BookmarkCheck, BookmarkPlus, Star } from 'lucide-react'
 
-export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, placement = 'inline', allowAddFromHere = true, showFavoriteStatus = true, showRemoveButton = true, onRemoved, onUpdated }: {
+export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, placement = 'inline', allowAddFromHere = true, showFavoriteStatus = true, showRemoveButton = true, onAdded, onRemoved, onUpdated }: {
   imdbId: string | null
   metadataStatus: string | null
-  from: 'oscar' | 'catalog' | 'golden-globes' | 'manual'
-  mediaType: string
+  from: 'oscar' | 'catalog' | 'golden-globes' | 'imdb-titles' | 'manual'
+  mediaType: string | null
   occurrenceCount: number
   placement?: 'inline' | 'poster' | 'status'
   allowAddFromHere?: boolean
   showFavoriteStatus?: boolean
   showRemoveButton?: boolean
+  onAdded?: () => void
   onRemoved?: () => void
   onUpdated?: (input: { toWatch?: boolean; toDownload?: boolean }) => void
 }) {
@@ -19,11 +20,11 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, plac
   const favoriteImdbId = imdbId
   const favorite = titles[favoriteImdbId]
   const canAddFromHere = metadataStatus === 'enriched'
-    && (mediaType === 'movie' || (from !== 'oscar' && mediaType === 'series'))
+    && (from !== 'oscar' || mediaType === 'movie')
   if (!favorite && !canAddFromHere) return null
   const disabled = pending === favoriteImdbId || loading || Boolean(error)
   function addFromHere() {
-    void add(favoriteImdbId, from)
+    void add(favoriteImdbId, from).then((added) => { if (added) onAdded?.() })
   }
   function removeFromFavorites() {
     void remove(favoriteImdbId).then((removed) => { if (removed) onRemoved?.() })

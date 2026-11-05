@@ -39,7 +39,8 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
         var fromOscar = request.From == "oscar";
         var fromRecommendations = request.From == "recommendation";
         var fromManual = request.From == "manual";
-        var addedFromCatalog = fromCatalog || fromGoldenGlobes;
+        var fromImdbTitles = request.From == "imdb-titles";
+        var addedFromCatalog = fromCatalog || fromGoldenGlobes || fromImdbTitles;
         var toWatch = !fromCatalog;
         var toDownload = fromCatalog;
         var now = DateTimeOffset.UtcNow;
@@ -49,7 +50,7 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
             FROM imdb_titles
             WHERE imdb_id = {imdbId}
                 AND metadata_status = 'enriched'
-                AND (media_type = 'movie' OR (media_type = 'series' AND ({fromCatalog} OR {fromGoldenGlobes} OR {fromRecommendations} OR {fromManual})))
+                AND (NOT {fromOscar} OR media_type = 'movie')
             ON CONFLICT (user_id, imdb_id) DO UPDATE SET
                 to_watch = favorite_movies.to_watch OR EXCLUDED.to_watch,
                 to_download = favorite_movies.to_download OR EXCLUDED.to_download,
@@ -104,7 +105,7 @@ internal sealed class FavoriteApiService(MediaDockDbContext dbContext)
                 .Select(movie => (long?)movie.Id).FirstOrDefault(),
             favorite.ImdbTitle.TitleText ?? favorite.ImdbId,
             favorite.ImdbTitle.Year,
-            favorite.ImdbTitle.MediaType ?? "movie",
+            favorite.ImdbTitle.MediaType,
             favorite.ImdbTitle.MetadataStatus,
             favorite.ImdbTitle.ImdbRating,
             favorite.ImdbTitle.ImdbVotes,

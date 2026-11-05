@@ -11,6 +11,7 @@ Start here for work in this repository. Use the [local operations runbook](../..
 | Task | Read |
 | --- | --- |
 | Frontend | [Architecture](ARCHITECTURE.md) for the web/API boundary and request flow; [Testing](TESTING.md) for frontend tests and commands. |
+| IMDb titles catalog | [Implementation plan](plans/all-imdb-titles-catalog.md) for the all-title catalog, personal states, filtering/sorting, and administrator add/OMDb refresh. |
 | Restored-data local UI/API | [Restored-data Development instance](../../web/README.md#restored-data-development-instance) for the local snapshot, mock identity, startup order, verification, and stop procedure; [Security](SECURITY.md#local-development-mock-authentication) for its constraints. |
 | Frontend design review | [Remaining UI design improvements](plans/ui-design-improvements-remaining.md) for open and unverified catalog, personal, award, and administration findings. |
 | API | [Shared API conventions](API_CONTRACTS.md); [catalogs and awards](API_CATALOGS_AND_AWARDS.md), [identity and personal data](API_IDENTITY_AND_PERSONAL_DATA.md), or [operations and jobs](API_OPERATIONS_AND_JOBS.md) for route-specific contracts; [Architecture](ARCHITECTURE.md) for cross-layer flows. |
