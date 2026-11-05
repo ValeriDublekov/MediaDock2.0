@@ -213,7 +213,10 @@ it('does not offer adding another origin from the favorites view', async () => {
   expect(await screen.findByRole('button', { name: 'View Recommendation Film details' })).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Add from catalog to favorites' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Add from catalog' })).toBeNull()
+  const removeButton = screen.getByRole('button', { name: 'Remove from favorites' })
+  expect(removeButton.closest('.poster-overlay-actions')).toBeTruthy()
   expect(screen.getAllByRole('button', { name: 'Remove from favorites' })).toHaveLength(1)
+  expect(screen.queryByRole('button', { name: 'Ignore movie' })).toBeNull()
 
   fireEvent.click(screen.getByRole('button', { name: 'View Recommendation Film details' }))
   expect(await screen.findByRole('dialog')).toBeTruthy()

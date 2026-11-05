@@ -87,7 +87,7 @@ export function FavoritesView() {
       {viewMode === 'posters' ? <div className="poster-grid">
         {result.items.map((item) => <MoviePosterCard
           awards={combineMovieAwards([], pageAwards, item.imdbId)}
-          footer={<FavoriteControls allowAddFromHere={false} showFavoriteStatus={false} from="catalog" imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={() => removeFavoriteTitle(item.imdbId)} onUpdated={(input) => updateFavoriteTitle(item.imdbId, input)} placement="status" />}
+          footer={<FavoriteControls allowAddFromHere={false} showFavoriteStatus={false} showRemoveButton={false} from="catalog" imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={() => removeFavoriteTitle(item.imdbId)} onUpdated={(input) => updateFavoriteTitle(item.imdbId, input)} placement="status" />}
           genres={item.genres}
           imdbId={item.imdbId}
           imdbRating={item.imdbRating}
@@ -96,9 +96,7 @@ export function FavoritesView() {
           mediaType={item.mediaType}
           onOpen={() => setSelected(item)}
           openLabel={`View ${item.title} details`}
-          posterActions={<>
-            <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} placement="poster" />
-          </>}
+          posterActions={<FavoriteControls allowAddFromHere={false} from="catalog" imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={item.occurrenceCount} onRemoved={() => removeFavoriteTitle(item.imdbId)} placement="poster" showFavoriteStatus={false} />}
           posterLabel={item.mediaType.slice(0, 3).toUpperCase()}
           posterUrl={item.posterUrl}
           title={item.title}

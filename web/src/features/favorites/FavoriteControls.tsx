@@ -1,7 +1,7 @@
 import { useFavorites } from './FavoriteContext'
 import { BookmarkCheck, BookmarkPlus, Star } from 'lucide-react'
 
-export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, placement = 'inline', allowAddFromHere = true, showFavoriteStatus = true, onRemoved, onUpdated }: {
+export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, placement = 'inline', allowAddFromHere = true, showFavoriteStatus = true, showRemoveButton = true, onRemoved, onUpdated }: {
   imdbId: string | null
   metadataStatus: string | null
   from: 'oscar' | 'catalog' | 'golden-globes' | 'manual'
@@ -10,6 +10,7 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, plac
   placement?: 'inline' | 'poster' | 'status'
   allowAddFromHere?: boolean
   showFavoriteStatus?: boolean
+  showRemoveButton?: boolean
   onRemoved?: () => void
   onUpdated?: (input: { toWatch?: boolean; toDownload?: boolean }) => void
 }) {
@@ -32,6 +33,7 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, plac
   }
 
   if (placement === 'poster') {
+    if (!favorite && !allowAddFromHere) return null
     const removing = Boolean(favorite)
     const label = removing ? 'Remove from favorites' : 'Add to favorites'
     return <button
@@ -51,7 +53,7 @@ export function FavoriteControls({ imdbId, metadataStatus, from, mediaType, plac
         {showFavoriteStatus && <span className="subtle-line">In favorites</span>}
         <label><input checked={favorite.toWatch} disabled={disabled} onChange={(event) => updateFavorite({ toWatch: event.target.checked })} type="checkbox" /> To watch</label>
         <label><input checked={favorite.toDownload} disabled={disabled} onChange={(event) => updateFavorite({ toDownload: event.target.checked })} type="checkbox" /> To download</label>
-        <button className="text-button" disabled={disabled} onClick={removeFromFavorites} type="button">Remove from favorites</button>
+        {showRemoveButton && <button className="text-button" disabled={disabled} onClick={removeFromFavorites} type="button">Remove from favorites</button>}
       </>}
       {error && <span role="alert">{error} <button className="text-button" onClick={retry} type="button">Retry</button></span>}
     </div>
