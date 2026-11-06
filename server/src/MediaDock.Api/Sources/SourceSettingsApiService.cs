@@ -46,7 +46,8 @@ internal interface ISourceSettingsApiService
 
 internal sealed class SourceSettingsApiService(
     MediaDockDbContext dbContext,
-    IOmdbClientFactory omdbClientFactory) : ISourceSettingsApiService
+    IOmdbClientFactory omdbClientFactory,
+    IOmdbRequestBudget omdbRequestBudget) : ISourceSettingsApiService
 {
     private const string DiagnosticImdbId = "tt16311594";
 
@@ -252,8 +253,15 @@ internal sealed class SourceSettingsApiService(
             null,
             "movie",
             cancellationToken: cancellationToken,
-            requestPurpose: OmdbRequestPurpose.InteractiveLookup,
+            requestPurpose: OmdbRequestPurpose.InteractiveDiagnostic,
             imdbId: DiagnosticImdbId);
+        if (result.Status is MetadataLookupStatus.Found or MetadataLookupStatus.ConfirmedNotFound)
+        {
+            await omdbRequestBudget.ResetDailyUsageAsync(
+                DateOnly.FromDateTime(DateTime.UtcNow),
+                cancellationToken);
+        }
+
         var status = DiagnosticStatus(result.Status);
         var message = result.ProviderMessage ?? result.ErrorCode switch
         {

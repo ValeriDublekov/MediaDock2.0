@@ -388,7 +388,7 @@ export function OmdbProviderView() {
           <label htmlFor="omdb-daily-limit">Shared daily HTTP request limit</label>
           <input id="omdb-daily-limit" max="1000" min="0" onChange={(event) => setProviderDraft((current) => ({ ...current, omdbDailyRequestLimit: event.target.value }))} required type="number" value={providerDraft.omdbDailyRequestLimit} />
         </div>
-        <p className="section-caption">The total cap is 1,000 requests per UTC day. Non-torrent enrichment is capped at 900, preserving up to 100 requests for RSS and torrent matching. Manual IMDb lookups and diagnostics count toward enrichment.</p>
+        <p className="section-caption">The total cap is 1,000 requests per UTC day. Non-torrent enrichment is capped at 900, preserving up to 100 requests for RSS and torrent matching. Manual IMDb lookups count toward enrichment. The diagnostic test bypasses local caps and clears the current UTC day's counters only after a valid OMDb response.</p>
         {providerSettings?.updatedAt && <p className="section-caption">Last updated {formatDate(providerSettings.updatedAt)}</p>}
         {providerError && <p className="form-error" role="alert">{providerError}</p>}
         {providerSaved && <p className="form-message" role="status">Provider settings saved.</p>}

@@ -174,6 +174,7 @@ describe('SourceSettingsView', () => {
     expect(screen.getByText('Enrichment / 900')).toBeTruthy()
     expect(screen.getByText('Total / 1,000')).toBeTruthy()
     expect(screen.getByText('Last 30 UTC days. Counts are reserved HTTP attempts and may include a request interrupted before sending.')).toBeTruthy()
+    expect(screen.getByText(/diagnostic test bypasses local caps and clears the current UTC day's counters only after a valid OMDb response/)).toBeTruthy()
   })
 
   it('keeps the saved key write-only and clears a replacement after saving', async () => {

@@ -35,6 +35,7 @@
   --theme-ink: #f3eee2;
   --theme-muted: #a39d90;
   --theme-line: #2e2e34;
+  --theme-range-track: #625a49;
   --theme-accent: #d7b066;
   --theme-accent-ink: #1a1405;
   --theme-accent-hover: #e6c27a;
@@ -58,6 +59,7 @@
   --theme-ink: #f0f0ee;
   --theme-muted: #b3b4b1;
   --theme-line: #414345;
+  --theme-range-track: #626668;
   --theme-accent: #eb9484;
   --theme-accent-ink: #271411;
   --theme-accent-hover: #ffc0af;
@@ -194,6 +196,69 @@
 :root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .category-multiselect-menu[open] {
   border-color: var(--theme-line) !important;
   background: var(--theme-surface) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .category-multiselect-options {
+  border-color: var(--theme-line);
+  background: var(--theme-surface-raised) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .category-multiselect-actions {
+  border-bottom-color: var(--theme-line);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .category-multiselect-action {
+  color: var(--theme-accent) !important;
+  background: var(--theme-surface-raised) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .category-multiselect-action:hover:not(:disabled) {
+  color: var(--theme-accent-hover) !important;
+  background: var(--theme-nav-hover) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .category-multiselect-action:disabled {
+  color: var(--theme-muted) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .category-multiselect-option:hover {
+  background: var(--theme-nav-hover) !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .category-multiselect-option input {
+  accent-color: var(--theme-accent);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .year-range-input {
+  background: transparent !important;
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .year-range-track {
+  background: var(--theme-range-track);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .year-range-input:focus-visible::-webkit-slider-thumb {
+  outline-color: var(--theme-accent);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .year-range-input:focus-visible::-moz-range-thumb {
+  outline-color: var(--theme-accent);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .year-range-input::-webkit-slider-thumb {
+  border-color: var(--theme-bg);
+  background: var(--theme-accent);
+  box-shadow: 0 0 0 1px var(--theme-accent);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell .year-range-input::-moz-range-thumb {
+  border-color: var(--theme-bg);
+  background: var(--theme-accent);
+  box-shadow: 0 0 0 1px var(--theme-accent);
+}
+
+:root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(.year-range-readout > span, .year-range-endpoints) {
+  color: var(--theme-muted) !important;
 }
 
 :root:is([data-color-theme="noir-gold"], [data-color-theme="carbon-cinema"]) .main-shell :where(.button) {

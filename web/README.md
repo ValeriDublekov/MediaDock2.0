@@ -19,7 +19,7 @@ After PostgreSQL is running and migrations are applied, start the API from the r
 dotnet run --project ../server/src/MediaDock.Api/MediaDock.Api.csproj --launch-profile http
 ```
 
-For local testing with the restored production snapshot, run this from the repository root instead:
+For an API-only session with the restored production snapshot, run this from the repository root instead:
 
 ```powershell
 .\scripts\run_local_restored.ps1
@@ -28,6 +28,16 @@ For local testing with the restored production snapshot, run this from the repos
 It reads local Compose credentials without printing them, requires exactly one active user with one linked Google identity, and starts the API with local mock authentication and authorization enforcement on `http://localhost:5280`. Google OAuth and the background-job dispatcher are disabled. Stop the API with **Ctrl+C** in that same terminal; this leaves Vite and PostgreSQL running and retains the restored database. The script resets its process-level environment settings on exit. Never set `Authentication__LocalMock__Enabled` in production configuration; see the [security guide](../docs/ai/SECURITY.md#local-development-mock-authentication).
 
 That profile listens on `http://localhost:5280` and uses the local development connection string. The Compose runbook serves its bundled UI at `http://127.0.0.1:8080/`; use the Vite server above when working with the frontend dev server and hot reload. The UI does not require the Worker, live RSS feeds, or an OMDb key.
+
+## Restored-data Development instance
+
+For API-backed UI work against the restored production snapshot, start the managed local services from the repository root:
+
+```powershell
+.\scripts\start_local_restored_services.ps1 -InstallDailyTask
+```
+
+This starts or reuses the restored local PostgreSQL database, the mock-authenticated API at `http://localhost:5280`, and Vite at `http://127.0.0.1:5173`. The daily/logon task reuses healthy services. The script does not apply migrations; use `-Stop` before restarting after API code changes. To stop the managed API and Vite processes, run `.\scripts\start_local_restored_services.ps1 -Stop`. Add `-RemoveDailyTask` to unregister the scheduled task; PostgreSQL keeps running and the restored database is retained.
 
 ## Golden Globes Design Explorations
 

@@ -228,6 +228,7 @@ public sealed class OmdbClientBudgetTests
         public List<OmdbRequestPurpose> RequestPurposes { get; } = [];
         public List<DateOnly> ReservedDays { get; } = [];
         public DateOnly? ProviderErrorDate { get; private set; }
+        public DateOnly? ResetDate { get; private set; }
         public string? ProviderErrorCode { get; private set; }
         public bool ProviderQuotaExceeded { get; private set; }
 
@@ -251,6 +252,12 @@ public sealed class OmdbClientBudgetTests
             ProviderErrorDate = utcDate;
             ProviderErrorCode = errorCode;
             ProviderQuotaExceeded = providerQuotaExceeded;
+            return Task.CompletedTask;
+        }
+
+        public Task ResetDailyUsageAsync(DateOnly utcDate, CancellationToken cancellationToken = default)
+        {
+            ResetDate = utcDate;
             return Task.CompletedTask;
         }
     }

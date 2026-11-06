@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using MediaDock.Api.Operations;
 using MediaDock.Api.Sources;
+using MediaDock.Application.Metadata;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -144,5 +145,95 @@ public sealed class SettingsApiTests
         Assert.Equal(HttpStatusCode.OK, clearProviderSettingsResponse.StatusCode);
         Assert.False((await clearProviderSettingsResponse.Content
             .ReadFromJsonAsync<ProviderSettingsResponse>())?.OmdbApiKeyConfigured);
+    }
+
+    [Fact]
+    public async Task OmdbDiagnosticResetsDailyUsageOnlyAfterSuccessfulProviderResponse()
+    {
+        var omdbClient = new StubOmdbClient
+        {
+            Result = new MetadataLookupResult(
+                MetadataLookupStatus.ProviderFailure,
+                HttpAttempts: 1,
+                ErrorCode: "provider_error")
+        };
+        await using var host = await CatalogApiTestHost.CreateAsync(
+            "mediadock_omdb_diagnostic_api_test",
+            omdbClientFactory: new StubOmdbClientFactory(omdbClient));
+
+        using var settingsResponse = await host.Client.PutAsJsonAsync(
+            "/api/settings/providers/omdb",
+            new UpdateProviderSettingsRequest
+            {
+                OmdbApiKey = "test-omdb-key",
+                OmdbDailyRequestLimit = 1
+            });
+        Assert.Equal(HttpStatusCode.OK, settingsResponse.StatusCode);
+
+        var utcDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        host.Db.OmdbDailyUsage.Add(new OmdbDailyUsage
+        {
+            UtcDate = utcDate,
+            TotalRequests = 12,
+            TorrentRequests = 3,
+            OscarRequests = 3,
+            DailyRequestLimitReached = true,
+            ProviderQuotaExceeded = true,
+            LastErrorCode = "quota_exceeded"
+        });
+        await host.Db.SaveChangesAsync();
+
+        using var failedResponse = await host.Client.PostAsync("/api/settings/providers/omdb/test", content: null);
+        Assert.Equal(HttpStatusCode.OK, failedResponse.StatusCode);
+        var failedDiagnostic = await failedResponse.Content.ReadFromJsonAsync<OmdbDiagnosticResponse>();
+        Assert.NotNull(failedDiagnostic);
+        Assert.False(failedDiagnostic.IsSuccessful);
+        Assert.Equal(OmdbRequestPurpose.InteractiveDiagnostic, omdbClient.LastRequestPurpose);
+
+        host.Db.ChangeTracker.Clear();
+        var usageAfterFailure = await host.Db.OmdbDailyUsage.SingleAsync(row => row.UtcDate == utcDate);
+        Assert.Equal(12, usageAfterFailure.TotalRequests);
+        Assert.True(usageAfterFailure.DailyRequestLimitReached);
+        Assert.True(usageAfterFailure.ProviderQuotaExceeded);
+        Assert.Equal("quota_exceeded", usageAfterFailure.LastErrorCode);
+
+        omdbClient.Result = new MetadataLookupResult(MetadataLookupStatus.ConfirmedNotFound, HttpAttempts: 1);
+        using var successfulResponse = await host.Client.PostAsync("/api/settings/providers/omdb/test", content: null);
+        Assert.Equal(HttpStatusCode.OK, successfulResponse.StatusCode);
+        var successfulDiagnostic = await successfulResponse.Content.ReadFromJsonAsync<OmdbDiagnosticResponse>();
+        Assert.NotNull(successfulDiagnostic);
+        Assert.True(successfulDiagnostic.IsSuccessful);
+
+        host.Db.ChangeTracker.Clear();
+        var resetUsage = await host.Db.OmdbDailyUsage.SingleAsync(row => row.UtcDate == utcDate);
+        Assert.Equal(0, resetUsage.TotalRequests);
+        Assert.Equal(0, resetUsage.TorrentRequests);
+        Assert.Equal(0, resetUsage.OscarRequests);
+        Assert.False(resetUsage.DailyRequestLimitReached);
+        Assert.False(resetUsage.ProviderQuotaExceeded);
+        Assert.Null(resetUsage.LastErrorCode);
+    }
+
+    private sealed class StubOmdbClientFactory(StubOmdbClient client) : IOmdbClientFactory
+    {
+        public IOmdbClient Create(string apiKey, int dailyRequestLimit) => client;
+    }
+
+    private sealed class StubOmdbClient : IOmdbClient
+    {
+        public MetadataLookupResult Result { get; set; } = new(MetadataLookupStatus.ProviderFailure);
+        public OmdbRequestPurpose? LastRequestPurpose { get; private set; }
+
+        public Task<MetadataLookupResult> LookupAsync(
+            string title,
+            int? year,
+            string sourceType,
+            CancellationToken cancellationToken = default,
+            OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion,
+            string? imdbId = null)
+        {
+            LastRequestPurpose = requestPurpose;
+            return Task.FromResult(Result);
+        }
     }
 }

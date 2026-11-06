@@ -138,7 +138,7 @@ internal static class SourceSettingsEndpoints
         })
             .WithName("TestOmdbProvider")
             .WithSummary("Send one OMDb diagnostic request for a fixed IMDb ID.")
-            .WithDescription("LAN-trusted diagnostic endpoint. Sends exactly one request to OMDb and consumes the shared daily enrichment budget.")
+            .WithDescription("LAN-trusted diagnostic endpoint. Sends one request while bypassing MediaDock's local budget gates; a valid OMDb response resets the current UTC day's shared usage counters and block flags.")
             .RequireAuthorization(AccessPolicies.Administrator)
             .Produces<OmdbDiagnosticResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status409Conflict);

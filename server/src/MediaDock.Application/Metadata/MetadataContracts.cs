@@ -20,7 +20,8 @@ public enum OmdbRequestPurpose
     OscarEnrichment,
     GoldenGlobeEnrichment,
     ImdbTitleEnrichment,
-    InteractiveLookup
+    InteractiveLookup,
+    InteractiveDiagnostic
 }
 
 public static class OmdbRequestBudgetLimits
@@ -128,6 +129,10 @@ public interface IOmdbRequestBudget
         DateOnly utcDate,
         string errorCode,
         bool providerQuotaExceeded,
+        CancellationToken cancellationToken = default);
+
+    Task ResetDailyUsageAsync(
+        DateOnly utcDate,
         CancellationToken cancellationToken = default);
 }
 

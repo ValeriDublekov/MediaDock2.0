@@ -16,7 +16,8 @@ public sealed class PostgresOmdbRequestBudget(MediaDockDbContext dbContext) : IO
             or OmdbRequestPurpose.OscarEnrichment
             or OmdbRequestPurpose.GoldenGlobeEnrichment
             or OmdbRequestPurpose.ImdbTitleEnrichment
-            or OmdbRequestPurpose.InteractiveLookup))
+            or OmdbRequestPurpose.InteractiveLookup
+            or OmdbRequestPurpose.InteractiveDiagnostic))
         {
             throw new ArgumentOutOfRangeException(nameof(requestPurpose));
         }
@@ -28,6 +29,7 @@ public sealed class PostgresOmdbRequestBudget(MediaDockDbContext dbContext) : IO
 
         dailyRequestLimit = Math.Min(dailyRequestLimit, OmdbRequestBudgetLimits.MaximumDailyRequests);
         var isTorrentRequest = requestPurpose == OmdbRequestPurpose.RssIngestion;
+        var bypassBudget = requestPurpose == OmdbRequestPurpose.InteractiveDiagnostic;
         var torrentIncrement = isTorrentRequest ? 1 : 0;
         var oscarIncrement = requestPurpose == OmdbRequestPurpose.OscarEnrichment ? 1 : 0;
         var affectedRows = await dbContext.Database.ExecuteSqlInterpolatedAsync(
@@ -39,9 +41,12 @@ public sealed class PostgresOmdbRequestBudget(MediaDockDbContext dbContext) : IO
                 torrent_requests = omdb_daily_usage.torrent_requests + EXCLUDED.torrent_requests,
                 oscar_requests = omdb_daily_usage.oscar_requests + EXCLUDED.oscar_requests,
                 daily_request_limit_reached = omdb_daily_usage.total_requests + 1 >= {dailyRequestLimit}
-            WHERE omdb_daily_usage.total_requests < {dailyRequestLimit}
-              AND NOT omdb_daily_usage.provider_quota_exceeded
-              AND ({isTorrentRequest} OR omdb_daily_usage.total_requests - omdb_daily_usage.torrent_requests < {OmdbRequestBudgetLimits.MaximumDailyEnrichmentRequests});
+                WHERE {bypassBudget}
+                   OR (
+                    omdb_daily_usage.total_requests < {dailyRequestLimit}
+                AND NOT omdb_daily_usage.provider_quota_exceeded
+                AND ({isTorrentRequest} OR omdb_daily_usage.total_requests - omdb_daily_usage.torrent_requests < {OmdbRequestBudgetLimits.MaximumDailyEnrichmentRequests})
+                   );
             """,
             cancellationToken);
 
@@ -56,6 +61,24 @@ public sealed class PostgresOmdbRequestBudget(MediaDockDbContext dbContext) : IO
     {
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"UPDATE omdb_daily_usage SET last_error_code = {errorCode}, provider_quota_exceeded = provider_quota_exceeded OR {providerQuotaExceeded} WHERE utc_date = {utcDate};",
+            cancellationToken);
+    }
+
+    public async Task ResetDailyUsageAsync(
+        DateOnly utcDate,
+        CancellationToken cancellationToken = default)
+    {
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            UPDATE omdb_daily_usage
+            SET total_requests = 0,
+                torrent_requests = 0,
+                oscar_requests = 0,
+                provider_quota_exceeded = FALSE,
+                daily_request_limit_reached = FALSE,
+                last_error_code = NULL
+            WHERE utc_date = {utcDate};
+            """,
             cancellationToken);
     }
 }

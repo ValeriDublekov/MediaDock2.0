@@ -73,6 +73,17 @@ public sealed class OscarEnrichmentRepositoryTests
         Assert.Equal("quota_exceeded", quotaUsage.LastErrorCode);
         Assert.False(await budget.TryReserveAsync(dayThree, OmdbRequestPurpose.RssIngestion, 60));
 
+        Assert.True(await budget.TryReserveAsync(dayThree, OmdbRequestPurpose.InteractiveDiagnostic, 1));
+        await budget.ResetDailyUsageAsync(dayThree);
+        resultDb.ChangeTracker.Clear();
+        var resetUsage = await resultDb.OmdbDailyUsage.SingleAsync(row => row.UtcDate == dayThree);
+        Assert.Equal(0, resetUsage.TotalRequests);
+        Assert.Equal(0, resetUsage.TorrentRequests);
+        Assert.Equal(0, resetUsage.OscarRequests);
+        Assert.False(resetUsage.DailyRequestLimitReached);
+        Assert.False(resetUsage.ProviderQuotaExceeded);
+        Assert.Null(resetUsage.LastErrorCode);
+
         var bufferDay = dayThree.AddDays(1);
         await using (var seedDb = new MediaDockDbContext(options))
         {
