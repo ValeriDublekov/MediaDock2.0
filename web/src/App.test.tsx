@@ -48,7 +48,7 @@ vi.mock('./features/oscar/OscarCatalogView', () => ({ OscarCatalogView: () => <d
 vi.mock('./features/golden-globes/GoldenGlobeCatalogView', () => ({ GoldenGlobeCatalogView: () => <div>Golden Globes route content</div> }))
 vi.mock('./features/imdb-titles/ImdbTitlesCatalogView', () => ({
   ImdbTitlesCatalogView: ({ hasActiveAccount }: { hasActiveAccount: boolean }) => (
-    <div data-active-account={hasActiveAccount}>IMDb titles route content</div>
+    <div data-active-account={hasActiveAccount}><h1>IMDb titles</h1>IMDb titles route content</div>
   ),
 }))
 vi.mock('./features/favorites/FavoritesView', () => ({ FavoritesView: () => <div>Favorites route content</div> }))
