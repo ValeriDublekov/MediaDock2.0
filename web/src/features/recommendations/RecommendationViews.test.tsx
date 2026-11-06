@@ -263,7 +263,10 @@ describe('RecommendationsView', () => {
     vi.mocked(recalculateRecommendationVoteWeights).mockReset()
   })
 
-  afterEach(cleanup)
+  afterEach(() => {
+    cleanup()
+    vi.useRealTimers()
+  })
 
   it('defaults to poster cards and keeps the table as an alternate view', async () => {
     vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()]))
@@ -357,6 +360,35 @@ describe('RecommendationsView', () => {
     expect(await screen.findByRole('button', { name: 'Mark Quiet River as watched' })).toBeTruthy()
     expect(await screen.findByRole('button', { name: 'Add Quiet River to watch list' })).toBeTruthy()
     expect(await screen.findByRole('button', { name: 'Ignore movie' })).toBeTruthy()
+  })
+
+  it('debounces rapid slider changes into one recommendation request', async () => {
+    vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()]))
+    render(<RecommendationsView mediaType="movie" />)
+
+    expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
+    const requestCount = vi.mocked(getRecommendations).mock.calls.length
+    const scoreWeights = within(screen.getByRole('group', { name: 'Recommendation score weights' }))
+    const ratingSlider = scoreWeights.getAllByRole('slider')[0] as HTMLInputElement
+    vi.useFakeTimers()
+
+    fireEvent.change(ratingSlider, { target: { value: '60' } })
+    fireEvent.change(ratingSlider, { target: { value: '70' } })
+    fireEvent.change(ratingSlider, { target: { value: '80' } })
+
+    await act(async () => { vi.advanceTimersByTime(199) })
+    expect(getRecommendations).toHaveBeenCalledTimes(requestCount)
+
+    await act(async () => { vi.advanceTimersByTime(1) })
+    expect(getRecommendations).toHaveBeenCalledTimes(requestCount + 1)
+    expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'movie',
+      page: 1,
+      pageSize: titlePageSize,
+      ratingWeight: 0.8,
+      votesWeight: 0.1,
+      awardsWeight: 0.1,
+    })
   })
 
   it('renders only server-returned candidates and keeps all three coefficients at 100%', async () => {

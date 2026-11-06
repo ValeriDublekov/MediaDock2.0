@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Check, Info } from 'lucide-react'
 import { getRecommendationGenres, getRecommendations, markRecommendationWatched } from '../../api/client'
 import type { PageResponse, Recommendation, RecommendationCoefficients, RecommendationMediaType, RecommendationQuery } from '../../api/types'
@@ -37,6 +37,7 @@ const initialSliderPercentages: SliderPercentages = {
   votesWeight: 25,
   awardsWeight: 25,
 }
+const recommendationSliderDebounceMilliseconds = 200
 const emptyYearFilter = { from: '', to: '' }
 
 function toCoefficients(percentages: SliderPercentages): RecommendationCoefficients {
@@ -100,6 +101,8 @@ export function RecommendationsView({
   const [viewMode, setViewMode] = useState<ViewMode>('posters')
   const [scoreGuideOpen, setScoreGuideOpen] = useState(false)
   const [sliderPercentages, setSliderPercentages] = useState(initialSliderPercentages)
+  const [requestSliderPercentages, setRequestSliderPercentages] = useState(initialSliderPercentages)
+  const sliderQueryDebounceHandle = useRef<number | null>(null)
   const [pageNumber, setPageNumber] = useState(1)
   const [draftYearFilter, setDraftYearFilter] = useState(emptyYearFilter)
   const [appliedYearFilter, setAppliedYearFilter] = useState(emptyYearFilter)
@@ -123,6 +126,12 @@ export function RecommendationsView({
     setResult((current) => removePageItems(current, (item) => item.imdbId === imdbId))
   }
 
+  useEffect(() => () => {
+    if (sliderQueryDebounceHandle.current !== null) {
+      window.clearTimeout(sliderQueryDebounceHandle.current)
+    }
+  }, [])
+
   useEffect(() => {
     let active = true
     getRecommendationGenres(mediaType)
@@ -144,7 +153,7 @@ export function RecommendationsView({
       mediaType,
       page: pageNumber,
       pageSize: titlePageSize,
-      ...toCoefficients(sliderPercentages),
+      ...toCoefficients(requestSliderPercentages),
       ...(excludeWatched ? {} : { excludeWatched: false }),
       ...(appliedYearFilter.from ? { yearFrom: Number(appliedYearFilter.from) } : {}),
       ...(appliedYearFilter.to ? { yearTo: Number(appliedYearFilter.to) } : {}),
@@ -163,10 +172,18 @@ export function RecommendationsView({
       .finally(() => { if (active) setLoading(false) })
 
     return () => { active = false }
-  }, [appliedYearFilter, attempt, excludeWatched, mediaType, onResultCountChange, pageNumber, selectedGenres, sliderPercentages])
+  }, [appliedYearFilter, attempt, excludeWatched, mediaType, onResultCountChange, pageNumber, requestSliderPercentages, selectedGenres])
 
   function updateSlider(key: CoefficientKey, value: string) {
-    setSliderPercentages((current) => changeSliderPercentages(current, key, value))
+    const nextPercentages = changeSliderPercentages(sliderPercentages, key, value)
+    setSliderPercentages(nextPercentages)
+    if (sliderQueryDebounceHandle.current !== null) {
+      window.clearTimeout(sliderQueryDebounceHandle.current)
+    }
+    sliderQueryDebounceHandle.current = window.setTimeout(() => {
+      setRequestSliderPercentages(nextPercentages)
+      sliderQueryDebounceHandle.current = null
+    }, recommendationSliderDebounceMilliseconds)
     setPageNumber(1)
     setLoading(true)
     setError(null)
