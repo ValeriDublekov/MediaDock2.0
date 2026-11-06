@@ -172,6 +172,7 @@ describe('IMDb titles catalog view', () => {
 
   afterEach(() => {
     cleanup()
+    vi.restoreAllMocks()
     vi.resetAllMocks()
   })
 
@@ -190,18 +191,37 @@ describe('IMDb titles catalog view', () => {
     expect(screen.getByLabelText('Personal state for Episode file').textContent).toContain('Ignored')
     expect(screen.getByLabelText('Personal state for Episode file').textContent).toContain('Your rating 8/10')
     expect(screen.getByRole('button', { name: 'Rate Untyped file' })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: 'Rate Untyped file' })).toHaveLength(1)
     expect(screen.queryByRole('button', { name: 'Rate Pending title' })).toBeNull()
-    expect(screen.getAllByRole('button', { name: 'Ignore title' }).length).toBeGreaterThan(0)
-    expect(await screen.findByText('Oscars 0 wins / 1 nomination')).toBeTruthy()
-    const awardSummary = screen.getAllByLabelText('Awards and nominations')[0]
-    expect(awardSummary?.classList.contains('imdb-title-award-summary')).toBe(true)
-    expect(awardSummary?.textContent).toContain('Oscars 0 wins / 1 nomination')
+    expect(screen.getAllByRole('button', { name: 'Ignore title' })).toHaveLength(2)
+    expect(screen.queryByText('No personal state')).toBeNull()
+    expect(screen.queryByText('No linked nominations')).toBeNull()
+    expect(screen.queryByText('Enriched')).toBeNull()
+    expect(screen.getAllByText('1,500 votes')).toHaveLength(3)
+    const awardSummary = (await screen.findAllByLabelText('Awards and nominations'))[0]
+    expect(await within(awardSummary!).findByText('Oscars 0 wins / 1 nomination')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Table' }))
     expect(await screen.findByRole('row', { name: /Episode file/ })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'View Episode file details' }))
     expect(await screen.findByText('Best Picture')).toBeTruthy()
     expect(screen.getAllByText('Untyped file').length).toBeGreaterThan(0)
+  })
+
+  it('orders poster actions and asks for delete confirmation without making a request', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    renderCatalog()
+    expect(await screen.findByRole('button', { name: 'View Untyped file details' })).toBeTruthy()
+
+    const posterActions = screen.getByRole('button', { name: 'View Untyped file details' }).closest('.movie-tile')?.querySelector('.poster-overlay-actions')
+    expect(posterActions).not.toBeNull()
+    const actionLabels = within(posterActions as HTMLElement).getAllByRole('button').map((button) => button.getAttribute('aria-label'))
+    expect(actionLabels).toEqual(['Add to favorites', 'Rate Untyped file', 'Ignore title', 'Delete Untyped file'])
+
+    const requestCount = vi.mocked(getImdbTitles).mock.calls.length
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Untyped file' }))
+    expect(confirm).toHaveBeenCalledWith('Delete Untyped file? This action is not connected yet.')
+    expect(getImdbTitles).toHaveBeenCalledTimes(requestCount)
   })
 
   it('sends visibility, sort, and explicit empty-genre filters to the server and resets the page', async () => {

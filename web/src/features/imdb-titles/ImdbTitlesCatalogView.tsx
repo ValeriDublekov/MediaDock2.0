@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { RotateCcw, Star } from 'lucide-react'
+import { Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import { addPersonalRating, getImdbTitles } from '../../api/client'
 import type { ImdbTitleCatalogItem, ImdbTitlesPage, ImdbTitlesQuery } from '../../api/types'
 import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
@@ -85,7 +85,7 @@ function PersonalStateBadges({ item, hasActiveAccount }: { item: ImdbTitleCatalo
   if (item.toDownload) states.push({ label: 'To download', className: 'is-muted' })
   if (item.isIgnored) states.push({ label: 'Ignored', className: 'is-muted' })
   if (item.personalRating !== null) states.push({ label: `Your rating ${item.personalRating}/10` })
-  if (states.length === 0) return <span className="subtle-line">No personal state</span>
+  if (states.length === 0) return null
   return <div aria-label={`Personal state for ${item.title}`} className="imdb-title-personal-states">
     {states.map((state) => <span className={`state-pill ${state.className ?? ''}`.trim()} key={state.label}>{state.label}</span>)}
   </div>
@@ -103,11 +103,12 @@ function ImdbTitleAwardsSummary({ awards }: { awards: ReturnType<typeof combineM
     return `${label} ${wins} ${wins === 1 ? 'win' : 'wins'} / ${records.length} ${records.length === 1 ? 'nomination' : 'nominations'}`
   }
   const lines = [summary('oscars', 'Oscars'), summary('golden_globes', 'Golden Globes')].filter(Boolean)
+  if (lines.length === 0) return null
   return <span
     aria-label="Awards and nominations"
     className="imdb-title-award-summary"
-    title={lines.length ? lines.join(' · ') : 'No linked nominations'}
-  >{lines.length ? lines.join(' · ') : 'No linked nominations'}</span>
+    title={lines.join(' · ')}
+  >{lines.join(' · ')}</span>
 }
 
 function RateTitleAction({ item, hasActiveAccount, onRate, placement = 'inline' }: {
@@ -124,7 +125,7 @@ function RateTitleAction({ item, hasActiveAccount, onRate, placement = 'inline' 
       data-tooltip="Add your rating"
       onClick={onRate}
       type="button"
-    ><Star aria-hidden="true" size={16} /></button>
+    ><Pencil aria-hidden="true" size={16} /></button>
     : <button className="text-button" onClick={onRate} type="button">Rate title</button>
 }
 
@@ -301,41 +302,45 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
     : null
 
   function renderPosterActions(item: ImdbTitleCatalogItem) {
-    if (!hasActiveAccount) return undefined
     return <>
-      <FavoriteControls
-        from="imdb-titles"
-        imdbId={item.imdbId}
-        metadataStatus={item.metadataStatus}
-        mediaType={item.mediaType}
-        occurrenceCount={0}
-        onAdded={reload}
-        onRemoved={reload}
-        onUpdated={reload}
-        placement="poster"
-      />
-      <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} onChanged={reload} placement="poster" />
-      <RateTitleAction hasActiveAccount={hasActiveAccount} item={item} onRate={() => setRatingTitle(item)} placement="poster" />
+      {hasActiveAccount && <>
+        <FavoriteControls
+          from="imdb-titles"
+          imdbId={item.imdbId}
+          metadataStatus={item.metadataStatus}
+          mediaType={item.mediaType}
+          occurrenceCount={0}
+          onAdded={reload}
+          onRemoved={reload}
+          onUpdated={reload}
+          placement="poster"
+        />
+        <RateTitleAction hasActiveAccount={hasActiveAccount} item={item} onRate={() => setRatingTitle(item)} placement="poster" />
+        <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} onChanged={reload} placement="poster" />
+      </>}
+      <button
+        aria-label={`Delete ${item.title}`}
+        className="tile-icon-action delete-icon"
+        data-tooltip={`Delete ${item.title}`}
+        onClick={() => { window.confirm(`Delete ${item.title}? This action is not connected yet.`) }}
+        type="button"
+      ><Trash2 aria-hidden="true" size={16} /></button>
     </>
   }
 
   function renderFooter(item: ImdbTitleCatalogItem) {
-    return <div className="imdb-title-card-controls">
-      <FavoriteControls
-        allowAddFromHere={false}
-        from="imdb-titles"
-        imdbId={item.imdbId}
-        metadataStatus={item.metadataStatus}
-        mediaType={item.mediaType}
-        occurrenceCount={0}
-        onAdded={reload}
-        onRemoved={reload}
-        onUpdated={reload}
-        placement="status"
-      />
-      <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} onChanged={reload} />
-      <RateTitleAction hasActiveAccount={hasActiveAccount} item={item} onRate={() => setRatingTitle(item)} />
-    </div>
+    return <FavoriteControls
+      allowAddFromHere={false}
+      from="imdb-titles"
+      imdbId={item.imdbId}
+      metadataStatus={item.metadataStatus}
+      mediaType={item.mediaType}
+      occurrenceCount={0}
+      onAdded={reload}
+      onRemoved={reload}
+      onUpdated={reload}
+      placement="status"
+    />
   }
 
   return <section aria-label="IMDb titles catalog" className="media-view imdb-titles-view">
@@ -449,6 +454,7 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
             genres={item.genres}
             imdbId={item.imdbId}
             imdbRating={item.imdbRating}
+            imdbVotes={item.imdbVotes}
             key={item.imdbId}
             mediaType={item.mediaType}
             metadata={{ director: item.director, plot: item.plot }}
@@ -464,7 +470,7 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
           >
             <ImdbTitleAwardsSummary awards={combineMovieAwards([], pageAwards, item.imdbId)} />
             <PersonalStateBadges hasActiveAccount={hasActiveAccount} item={item} />
-            <MetadataStatus status={item.metadataStatus} />
+            {item.metadataStatus !== 'enriched' && <MetadataStatus status={item.metadataStatus} />}
           </MoviePosterCard>)}
         </div>
       ) : <div className="table-wrap">
@@ -482,7 +488,7 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
             /></td>
             <td><span className="type-label">{item.mediaType ? formatWords(item.mediaType) : 'Unknown'}</span></td>
             <td>{item.year ?? 'Year unknown'}</td>
-            <td><MovieImdbLink imdbId={item.imdbId} rating={item.imdbRating} title={item.title} /></td>
+            <td><MovieImdbLink imdbId={item.imdbId} rating={item.imdbRating} title={item.title} votes={item.imdbVotes} /></td>
             <td><ImdbTitleAwardsSummary awards={combineMovieAwards([], pageAwards, item.imdbId)} /></td>
             <td>{item.genres.slice(0, 2).join(', ') || 'Not tagged'}</td>
             <td><MetadataStatus status={item.metadataStatus} /></td>

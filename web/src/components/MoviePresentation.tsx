@@ -25,6 +25,7 @@ interface MoviePosterCardProps {
   mediaType: string | null
   imdbId: string | null
   imdbRating: number | null
+  imdbVotes?: number | null
   posterUrl: string | null
   posterLabel?: string
   genres?: string[]
@@ -47,6 +48,7 @@ export function MoviePosterCard({
   mediaType,
   imdbId,
   imdbRating,
+  imdbVotes,
   posterUrl,
   posterLabel = 'FILM',
   genres,
@@ -86,7 +88,7 @@ export function MoviePosterCard({
             : <h3 className="tile-title">{title}</h3>}
         <span className="tile-year" title={year === null ? `${yearLabel} unknown` : `${yearLabel} ${year}`}>{year ?? '—'}</span>
       </div>
-      <MovieImdbLink imdbId={imdbId} rating={imdbRating} title={title} />
+      <MovieImdbLink imdbId={imdbId} rating={imdbRating} title={title} votes={imdbVotes} />
       {metadata && <MovieTitleFacts director={metadata.director} plot={metadata.plot} />}
       <div className="tile-genres">
         {genres === undefined ? null : genres.length > 0
@@ -228,9 +230,10 @@ interface MovieImdbLinkProps {
   rating: number | null
   title: string
   className?: string
+  votes?: number | null
 }
 
-export function MovieImdbLink({ imdbId, rating, title, className = '' }: MovieImdbLinkProps) {
+export function MovieImdbLink({ imdbId, rating, title, className = '', votes }: MovieImdbLinkProps) {
   const value = rating === null ? 'Not rated' : rating.toFixed(1)
   const content = <>
     <span>IMDb</span>
@@ -239,9 +242,14 @@ export function MovieImdbLink({ imdbId, rating, title, className = '' }: MovieIm
   </>
   const classes = `tile-rating movie-imdb-link ${className}`.trim()
 
-  return imdbId
+  const ratingLink = imdbId
     ? <a aria-label={`Open ${title} on IMDb (opens in new tab)`} className={classes} href={`https://www.imdb.com/title/${imdbId}/`} rel="noopener noreferrer" target="_blank">{content}</a>
     : <span aria-label={`IMDb rating for ${title}: ${value}`} className={classes}>{content}</span>
+  if (votes === undefined || votes === null) return ratingLink
+  return <span className="movie-imdb-rating-group">
+    {ratingLink}
+    <span className="movie-imdb-votes">{votes.toLocaleString('en')} votes</span>
+  </span>
 }
 
 const sourceLabels: Record<MovieAwardSource, string> = {
