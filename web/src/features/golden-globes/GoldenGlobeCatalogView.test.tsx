@@ -205,7 +205,7 @@ describe('GoldenGlobeCatalogView', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'View A Film details' }))
 
     const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByRole('heading', { name: 'A Film' })).toBeTruthy()
+    expect(within(dialog).getByRole('heading', { name: /^A Film/ })).toBeTruthy()
     expect(within(dialog).queryByText('enriched')).toBeNull()
     expect(within(dialog).getByRole('heading', { name: 'Awards and nominations' })).toBeTruthy()
     expect(within(dialog).getByText('Ceremony year 2025')).toBeTruthy()

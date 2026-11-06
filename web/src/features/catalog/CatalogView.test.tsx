@@ -414,7 +414,7 @@ describe('CatalogView', () => {
 
     render(<CatalogView />)
     fireEvent.click(await screen.findByRole('button', { name: 'View Quiet River details' }))
-    const sourceLinks = await screen.findAllByRole('link', { name: 'Open source' })
+    const sourceLinks = await screen.findAllByRole('link', { name: 'Quiet River (2004) 1080p' })
     expect(sourceLinks).toHaveLength(1)
     expect(sourceLinks[0].getAttribute('href')).toBe('https://example.test/torrent/1')
     expect(sourceLinks[0].getAttribute('rel')).toBe('noopener noreferrer')

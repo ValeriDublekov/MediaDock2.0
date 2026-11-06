@@ -136,7 +136,7 @@ it('shares state by IMDb ID, blocks ineligible adds, and allows download before 
   expect(screen.queryByRole('button', { name: 'Add to favorites' })).toBeNull()
   expect(screen.getAllByText('In favorites')).toHaveLength(3)
 
-  const download = screen.getAllByRole('checkbox', { name: 'To download' })[0] as HTMLInputElement
+  const download = screen.getAllByRole('switch', { name: 'To download' })[0] as HTMLInputElement
   expect(download.disabled).toBe(false)
   fireEvent.click(download)
   await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith('tt12345678', { toDownload: true }))
@@ -210,17 +210,18 @@ it('treats series favorites like movie favorites and omits empty metadata', asyn
   expect(screen.queryByText('Recommendations')).toBeNull()
   expect(screen.queryByText('0 nominations')).toBeNull()
   expect(screen.queryByText('No torrent source available')).toBeNull()
-  const downloadToggle = screen.getByRole('checkbox', { name: 'To download' }) as HTMLInputElement
+  const downloadToggle = screen.getByRole('switch', { name: 'To download' }) as HTMLInputElement
   expect(downloadToggle.checked).toBe(false)
   fireEvent.click(downloadToggle)
   await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith('tt12345678', { toDownload: true }))
-  const watchToggle = screen.getByRole('checkbox', { name: 'To watch' }) as HTMLInputElement
+  const watchToggle = screen.getByRole('switch', { name: 'To watch' }) as HTMLInputElement
   expect(watchToggle.checked).toBe(true)
   fireEvent.click(watchToggle)
   await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith('tt12345678', { toWatch: false }))
 
   fireEvent.click(screen.getByRole('button', { name: 'View Shared Series details' }))
-  expect(await screen.findByText('Download status')).toBeTruthy()
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByRole('switch', { name: 'To download' })).toBeTruthy()
   expect(screen.queryByText('Oscar nominations')).toBeNull()
   expect(screen.queryByText('Oscar wins')).toBeNull()
   expect(screen.queryByText('Torrent sources')).toBeNull()
@@ -279,7 +280,7 @@ it('uses the shared poster card and opens details for a favorite without a torre
   fireEvent.click(detailsButton)
 
   const dialog = await screen.findByRole('dialog')
-  expect(within(dialog).getByRole('heading', { name: 'Award Film' })).toBeTruthy()
+  expect(within(dialog).getByRole('heading', { name: /^Award Film/ })).toBeTruthy()
   expect(within(dialog).getByText('A story about a changing city.')).toBeTruthy()
   expect(within(dialog).getByRole('heading', { name: 'Best Picture' })).toBeTruthy()
   expect(screen.getByText('2', { selector: 'dd' })).toBeTruthy()
@@ -318,8 +319,8 @@ it('removes a favorite locally when it no longer matches the active status filte
   render(<FavoriteProvider accountKey="test-account"><FavoritesView /></FavoriteProvider>)
 
   fireEvent.click(await screen.findByRole('button', { name: 'To watch' }))
-  const checkbox = await screen.findByRole('checkbox', { name: 'To watch' })
-  fireEvent.click(checkbox)
+  const watchToggle = await screen.findByRole('switch', { name: 'To watch' })
+  fireEvent.click(watchToggle)
 
   await waitFor(() => expect(updateFavorite).toHaveBeenCalledWith(movie.imdbId, { toWatch: false }))
   expect(await screen.findByText('No favorites here')).toBeTruthy()

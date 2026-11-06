@@ -34,6 +34,7 @@ export function MovieMetadataDetailsDialog({
   title,
   onClose,
   details,
+  facts,
   actions,
   actionsBeforeFacts = false,
   children,
@@ -42,6 +43,7 @@ export function MovieMetadataDetailsDialog({
   title: MovieMetadataDetails
   onClose: () => void
   details?: ReactNode
+  facts?: ReactNode
   actions?: ReactNode
   actionsBeforeFacts?: boolean
   children?: ReactNode
@@ -62,17 +64,19 @@ export function MovieMetadataDetailsDialog({
   const hasCurrentAwards = awardsResponse?.imdbId === imdbId
   const awards = hasCurrentAwards ? awardsResponse.awards : []
   const awardsError = hasCurrentAwards && awardsResponse.error
+  const metadataFacts = (title.metascore !== undefined || title.awards !== undefined || title.boxOffice !== undefined) && <>
+    {title.metascore !== undefined && <div><dt>Metascore</dt><dd>{title.metascore ?? 'Not listed'}</dd></div>}
+    {title.awards !== undefined && <div><dt>Provider awards</dt><dd>{title.awards || 'Not listed'}</dd></div>}
+    {title.boxOffice !== undefined && <div><dt>Box office</dt><dd>{title.boxOffice || 'Not listed'}</dd></div>}
+  </>
+  const allFacts = (facts || metadataFacts) ? <>{facts}{metadataFacts}</> : undefined
 
   return <MovieDetailsTemplate
     actions={actions}
     actionsBeforeFacts={actionsBeforeFacts}
     details={details}
     eyebrow={eyebrow}
-    facts={(title.metascore !== undefined || title.awards !== undefined || title.boxOffice !== undefined) && <>
-      {title.metascore !== undefined && <div><dt>Metascore</dt><dd>{title.metascore ?? 'Not listed'}</dd></div>}
-      {title.awards !== undefined && <div><dt>Provider awards</dt><dd>{title.awards || 'Not listed'}</dd></div>}
-      {title.boxOffice !== undefined && <div><dt>Box office</dt><dd>{title.boxOffice || 'Not listed'}</dd></div>}
-    </>}
+    facts={allFacts}
     genres={title.genres}
     imdbId={title.imdbId}
     imdbRating={title.imdbRating}
