@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Check, Info } from 'lucide-react'
-import { getRecommendationGenres, getRecommendations, markRecommendationWatched } from '../../api/client'
+import { cancelRecommendationRequest, getRecommendationGenres, getRecommendations, markRecommendationWatched } from '../../api/client'
 import type { PageResponse, Recommendation, RecommendationCoefficients, RecommendationMediaType, RecommendationQuery } from '../../api/types'
 import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
@@ -171,7 +171,10 @@ export function RecommendationsView({
       })
       .finally(() => { if (active) setLoading(false) })
 
-    return () => { active = false }
+    return () => {
+      active = false
+      cancelRecommendationRequest(mediaType)
+    }
   }, [appliedYearFilter, attempt, excludeWatched, mediaType, onResultCountChange, pageNumber, requestSliderPercentages, selectedGenres])
 
   function updateSlider(key: CoefficientKey, value: string) {

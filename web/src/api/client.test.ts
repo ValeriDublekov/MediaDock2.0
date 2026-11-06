@@ -418,6 +418,36 @@ describe('typed API client', () => {
     expect(String(stub.calls[0]?.input)).toBe('/api/recommendations/genres?mediaType=series')
   })
 
+  it('aborts an in-flight recommendation request when its replacement starts', async () => {
+    const query = {
+      mediaType: 'movie' as const,
+      page: 1,
+      pageSize: 25,
+      ratingWeight: 0.5,
+      votesWeight: 0.25,
+      awardsWeight: 0.25,
+    }
+    let firstSignal: AbortSignal | undefined
+    let fetchCount = 0
+    const fetcher: typeof fetch = async (_input, init) => {
+      fetchCount += 1
+      if (fetchCount === 1) {
+        firstSignal = init?.signal ?? undefined
+        return await new Promise<Response>((_resolve, reject) => {
+          firstSignal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
+        })
+      }
+      return response(200, { items: [], page: 1, pageSize: 25, totalCount: 0, totalPages: 0 })
+    }
+
+    const staleRequest = getRecommendations(query, fetcher)
+    const staleFailure = expect(staleRequest).rejects.toMatchObject({ status: 0 })
+    await getRecommendations(query, fetcher)
+    await staleFailure
+
+    expect(firstSignal?.aborted).toBe(true)
+  })
+
   it('includes the recommendation media type when marking a title watched', async () => {
     const calls: Array<{ input: RequestInfo | URL; init?: RequestInit }> = []
     const fetcher: typeof fetch = async (input, init) => {

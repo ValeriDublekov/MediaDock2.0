@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   addFavorite,
+  cancelRecommendationRequest,
   getFavorites,
   getIgnoredMovies,
   getMovieAwards,
@@ -27,6 +28,7 @@ vi.mock('../../api/client', () => ({
   getMovieAwards: vi.fn().mockResolvedValue([]),
   getRecommendationGenres: vi.fn(),
   getRecommendations: vi.fn(),
+  cancelRecommendationRequest: vi.fn(),
   getRecommendationSettings: vi.fn(),
   markRecommendationWatched: vi.fn(),
   removeIgnoredMovie: vi.fn(),
@@ -255,6 +257,7 @@ describe('RecommendationsView', () => {
     vi.mocked(getRecommendationGenres).mockReset()
     vi.mocked(getRecommendationGenres).mockResolvedValue(['Comedy', 'Drama'])
     vi.mocked(getRecommendations).mockReset()
+    vi.mocked(cancelRecommendationRequest).mockReset()
     vi.mocked(getMovieAwards).mockReset().mockResolvedValue([])
     vi.mocked(getIgnoredMovies).mockReset()
     vi.mocked(markRecommendationWatched).mockReset().mockResolvedValue(undefined)
@@ -389,6 +392,38 @@ describe('RecommendationsView', () => {
       votesWeight: 0.1,
       awardsWeight: 0.1,
     })
+  })
+
+  it('keeps the newest recommendation response when requests finish out of order', async () => {
+    let resolveOlderRequest!: (page: PageResponse<Recommendation>) => void
+    let resolveLatestRequest!: (page: PageResponse<Recommendation>) => void
+    const olderRequest = new Promise<PageResponse<Recommendation>>((resolve) => { resolveOlderRequest = resolve })
+    const latestRequest = new Promise<PageResponse<Recommendation>>((resolve) => { resolveLatestRequest = resolve })
+    vi.mocked(getRecommendations).mockReturnValueOnce(olderRequest).mockReturnValueOnce(latestRequest)
+    vi.useFakeTimers()
+
+    render(<RecommendationsView mediaType="movie" />)
+
+    const scoreWeights = within(screen.getByRole('group', { name: 'Recommendation score weights' }))
+    const ratingSlider = scoreWeights.getAllByRole('slider')[0] as HTMLInputElement
+    fireEvent.change(ratingSlider, { target: { value: '80' } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(200) })
+
+    expect(getRecommendations).toHaveBeenCalledTimes(2)
+    expect(cancelRecommendationRequest).toHaveBeenCalledWith('movie')
+
+    await act(async () => {
+      resolveLatestRequest(recommendationPage([recommendation({ imdbId: 'tt22222222', title: 'Latest River' })]))
+      await latestRequest
+    })
+    expect(screen.getByRole('button', { name: 'View Latest River details' })).toBeTruthy()
+
+    await act(async () => {
+      resolveOlderRequest(recommendationPage([recommendation({ imdbId: 'tt33333333', title: 'Stale River' })]))
+      await olderRequest
+    })
+    expect(screen.getByRole('button', { name: 'View Latest River details' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'View Stale River details' })).toBeNull()
   })
 
   it('renders only server-returned candidates and keeps all three coefficients at 100%', async () => {

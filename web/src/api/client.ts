@@ -57,6 +57,7 @@ import type {
 } from './types'
 
 const API_ROOT = '/api'
+const recommendationRequestControllers = new Map<RecommendationMediaType, AbortController>()
 
 export class ApiError extends Error {
   readonly status: number
@@ -356,11 +357,30 @@ export function recalculateRecommendationVoteWeights(fetcher?: typeof fetch) {
   )
 }
 
+export function cancelRecommendationRequest(mediaType: RecommendationMediaType) {
+  const controller = recommendationRequestControllers.get(mediaType)
+  if (!controller) return
+  recommendationRequestControllers.delete(mediaType)
+  controller.abort()
+}
+
 export function getRecommendations(
   query: RecommendationQuery,
   fetcher?: typeof fetch,
 ) {
-  return requestJson<PageResponse<Recommendation>>(withQuery('/recommendations', query, ['genres']), {}, fetcher)
+  const mediaType = query.mediaType ?? 'movie'
+  cancelRecommendationRequest(mediaType)
+  const controller = new AbortController()
+  recommendationRequestControllers.set(mediaType, controller)
+  return requestJson<PageResponse<Recommendation>>(
+    withQuery('/recommendations', query, ['genres']),
+    { signal: controller.signal },
+    fetcher,
+  ).finally(() => {
+    if (recommendationRequestControllers.get(mediaType) === controller) {
+      recommendationRequestControllers.delete(mediaType)
+    }
+  })
 }
 
 export function getRecommendationGenres(mediaType: RecommendationMediaType, fetcher?: typeof fetch) {

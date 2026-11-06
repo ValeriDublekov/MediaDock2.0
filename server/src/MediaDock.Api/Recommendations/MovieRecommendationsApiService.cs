@@ -1,4 +1,5 @@
 using System.Data;
+using System.Diagnostics;
 using MediaDock.Api.Common;
 using MediaDock.Api.Middleware;
 using MediaDock.Application.PersonalRatings;
@@ -9,11 +10,40 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MediaDock.Api.Recommendations;
 
-internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContext)
+internal sealed class MovieRecommendationsApiService(
+    MediaDockDbContext dbContext,
+    ILogger<MovieRecommendationsApiService> logger)
 {
     public async Task<PageResponse<RecommendationResponse>> GetAsync(
         long userId,
         RecommendationsQuery query,
+        string traceId,
+        CancellationToken cancellationToken)
+    {
+        var requestTimer = Stopwatch.StartNew();
+        try
+        {
+            return await GetCoreAsync(userId, query, traceId, cancellationToken);
+        }
+        finally
+        {
+            var mediaType = query.MediaType == RecommendationMediaTypes.Series
+                ? RecommendationMediaTypes.Series
+                : query.MediaType is null || query.MediaType == RecommendationMediaTypes.Movie
+                    ? RecommendationMediaTypes.Movie
+                    : "invalid";
+            logger.LogInformation(
+                "Recommendation request completed. TraceId={TraceId} MediaType={MediaType} ElapsedMilliseconds={ElapsedMilliseconds}",
+                traceId,
+                mediaType,
+                requestTimer.ElapsedMilliseconds);
+        }
+    }
+
+    private async Task<PageResponse<RecommendationResponse>> GetCoreAsync(
+        long userId,
+        RecommendationsQuery query,
+        string traceId,
         CancellationToken cancellationToken)
     {
         var mediaType = query.MediaType ?? RecommendationMediaTypes.Movie;
@@ -51,7 +81,9 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
         await using var transaction = await dbContext.Database.BeginTransactionAsync(
             IsolationLevel.RepeatableRead,
             cancellationToken);
+        await dbContext.Database.ExecuteSqlRawAsync("SET LOCAL jit = off", cancellationToken);
 
+        var phaseTimer = Stopwatch.StartNew();
         var allCandidates = await GetEligibleCandidatesQuery(userId, mediaType, query.ExcludeWatched ?? true)
             .Select(title => new CandidateTitle(
                 title.ImdbId,
@@ -71,7 +103,9 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                 title.Awards,
                 title.BoxOffice))
             .ToListAsync(cancellationToken);
+        LogStage(traceId, mediaType, "candidate-query", phaseTimer, candidateCount: allCandidates.Count);
 
+        phaseTimer.Restart();
         var candidateYears = allCandidates
             .Where(candidate => candidate.Year.HasValue)
             .Select(candidate => candidate.Year!.Value)
@@ -89,6 +123,7 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                 && (query.YearTo is null || (candidate.Year.HasValue && candidate.Year.Value <= query.YearTo.Value))
                 && (selectedGenres.Count == 0 || candidate.Genres.Any(selectedGenres.Contains)))
             .ToList();
+        LogStage(traceId, mediaType, "candidate-filter", phaseTimer, candidateCount: candidates.Count);
 
         if (candidates.Count == 0)
         {
@@ -96,6 +131,7 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             return CreatePage([], page, pageSize, 0, yearBounds);
         }
 
+        phaseTimer.Restart();
         var ratingRows = await dbContext.PersonalRatings
             .AsNoTracking()
             .Where(rating => rating.UserId == userId)
@@ -130,6 +166,16 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                 "golden_globes",
                 nomination.Award.CategoryKey))
             .ToListAsync(cancellationToken);
+        LogStage(
+            traceId,
+            mediaType,
+            "ratings-and-taste-queries",
+            phaseTimer,
+            candidateCount: candidates.Count,
+            ratingCount: ratingRows.Count,
+            ratedAwardCount: ratedOscarMovies.Count + ratedGoldenGlobeMovies.Count);
+
+        phaseTimer.Restart();
         var tasteProfile = MovieRecommendationScorer.BuildTasteProfile(
             ratingRows.Select(rating => rating.Rating).ToArray(),
             ratedOscarMovies.Concat(ratedGoldenGlobeMovies)
@@ -139,7 +185,16 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                     awardMovie.CategoryKey,
                     ratingsByImdbId[awardMovie.ImdbId].Rating))
                 .ToArray());
+        LogStage(
+            traceId,
+            mediaType,
+            "taste-profile",
+            phaseTimer,
+            candidateCount: candidates.Count,
+            ratingCount: ratingRows.Count,
+            ratedAwardCount: ratedOscarMovies.Count + ratedGoldenGlobeMovies.Count);
 
+        phaseTimer.Restart();
         var recommendationSettings = await dbContext.GeneralRecommendationSettings
             .AsNoTracking()
             .SingleAsync(settings => settings.Id == 1, cancellationToken);
@@ -148,8 +203,18 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             .Where(title => title.MediaType == mediaType)
             .Select(title => new MovieVoteNormalizationInput(title.ImdbId, title.Year, title.ImdbVotes))
             .ToListAsync(cancellationToken);
+        LogStage(traceId, mediaType, "settings-and-vote-input-queries", phaseTimer, voteInputCount: voteInputs.Count);
+
+        phaseTimer.Restart();
         var periodDataByImdbId = MovieVoteNormalizer.Normalize(voteInputs, recommendationSettings.MedianPeriodYears)
             .ToDictionary(result => result.ImdbId, StringComparer.Ordinal);
+        LogStage(
+            traceId,
+            mediaType,
+            "vote-normalization",
+            phaseTimer,
+            voteInputCount: voteInputs.Count,
+            normalizedTitleCount: periodDataByImdbId.Count);
         var scoringSettings = new MovieRecommendationScoringSettings(
             recommendationSettings.BayesianDefaultC,
             recommendationSettings.BayesianMRatio,
@@ -159,6 +224,7 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             recommendationSettings.GgNomPoints);
 
         var candidateIds = candidates.Select(candidate => candidate.ImdbId).ToArray();
+        phaseTimer.Restart();
         var oscarEvents = await dbContext.OscarNominations
             .AsNoTracking()
             .Where(nomination => mediaType == RecommendationMediaTypes.Movie
@@ -189,6 +255,16 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                 nomination.GoldenGlobeTitle.Year,
                 nomination.Winner))
             .ToListAsync(cancellationToken);
+        LogStage(
+            traceId,
+            mediaType,
+            "award-event-queries",
+            phaseTimer,
+            candidateCount: candidates.Count,
+            oscarEventCount: oscarEvents.Count,
+            goldenGlobeEventCount: goldenGlobeEvents.Count);
+
+        phaseTimer.Restart();
         var awardEventsByImdbId = oscarEvents.Concat(goldenGlobeEvents)
             .GroupBy(awardEvent => awardEvent.ImdbId)
             .ToDictionary(
@@ -201,6 +277,16 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                         awardEvent.EventId,
                         awardEvent.IsWinner))
                     .ToArray());
+        LogStage(
+            traceId,
+            mediaType,
+            "award-event-grouping",
+            phaseTimer,
+            candidateCount: candidates.Count,
+            oscarEventCount: oscarEvents.Count,
+            goldenGlobeEventCount: goldenGlobeEvents.Count);
+
+        phaseTimer.Restart();
         var awardWeights = await dbContext.RecommendationAwardWeights
             .AsNoTracking()
             .Select(weight => new MovieRecommendationAwardWeight(
@@ -210,7 +296,9 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
                 weight.NominationPoints,
                 weight.IsOverride))
             .ToListAsync(cancellationToken);
+        LogStage(traceId, mediaType, "award-weight-query", phaseTimer, awardWeightCount: awardWeights.Count);
 
+        phaseTimer.Restart();
         var scoredCandidates = candidates
             .Select(candidate =>
             {
@@ -279,6 +367,13 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             .OrderByDescending(recommendation => recommendation.FinalScore)
             .ThenBy(recommendation => recommendation.ImdbId, StringComparer.Ordinal)
             .ToArray();
+        LogStage(
+            traceId,
+            mediaType,
+            "scoring-and-sort",
+            phaseTimer,
+            candidateCount: candidates.Count,
+            scoredCount: scoredCandidates.Length);
 
         await transaction.CommitAsync(cancellationToken);
         return CreatePage(
@@ -288,6 +383,36 @@ internal sealed class MovieRecommendationsApiService(MediaDockDbContext dbContex
             scoredCandidates.Length,
             yearBounds);
     }
+
+    private void LogStage(
+        string traceId,
+        string mediaType,
+        string stage,
+        Stopwatch timer,
+        int? candidateCount = null,
+        int? ratingCount = null,
+        int? ratedAwardCount = null,
+        int? voteInputCount = null,
+        int? normalizedTitleCount = null,
+        int? oscarEventCount = null,
+        int? goldenGlobeEventCount = null,
+        int? awardWeightCount = null,
+        int? scoredCount = null) =>
+        logger.LogInformation(
+            "Recommendation stage completed. TraceId={TraceId} MediaType={MediaType} Stage={Stage} ElapsedMilliseconds={ElapsedMilliseconds} CandidateCount={CandidateCount} RatingCount={RatingCount} RatedAwardCount={RatedAwardCount} VoteInputCount={VoteInputCount} NormalizedTitleCount={NormalizedTitleCount} OscarEventCount={OscarEventCount} GoldenGlobeEventCount={GoldenGlobeEventCount} AwardWeightCount={AwardWeightCount} ScoredCount={ScoredCount}",
+            traceId,
+            mediaType,
+            stage,
+            timer.ElapsedMilliseconds,
+            candidateCount,
+            ratingCount,
+            ratedAwardCount,
+            voteInputCount,
+            normalizedTitleCount,
+            oscarEventCount,
+            goldenGlobeEventCount,
+            awardWeightCount,
+            scoredCount);
 
     public async Task<bool> MarkWatchedAsync(
         long userId,

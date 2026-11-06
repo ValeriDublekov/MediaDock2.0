@@ -33,12 +33,17 @@ internal static class MovieRecommendationsEndpoints
             [AsParameters] RecommendationsQuery query,
             ClaimsPrincipal principal,
             CurrentUserContext currentUserContext,
+            HttpContext httpContext,
             MovieRecommendationsApiService service,
             CancellationToken cancellationToken) =>
         {
             var currentUser = await currentUserContext.ResolveAsync(principal, cancellationToken)
                 ?? throw new MediaDock.Api.Middleware.ApiForbiddenException("An active linked user is required.");
-            return TypedResults.Ok(await service.GetAsync(currentUser.Id, query, cancellationToken));
+            return TypedResults.Ok(await service.GetAsync(
+                currentUser.Id,
+                query,
+                httpContext.TraceIdentifier,
+                cancellationToken));
         })
             .WithName("GetRecommendations")
             .WithSummary("List personal movie recommendations for the current user.")
