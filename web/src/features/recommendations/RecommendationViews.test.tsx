@@ -394,6 +394,42 @@ describe('RecommendationsView', () => {
     })
   })
 
+  it('waits for pointer and keyboard slider interactions to finish before requesting', async () => {
+    vi.mocked(getRecommendations).mockResolvedValue(recommendationPage([recommendation()]))
+    render(<RecommendationsView mediaType="movie" />)
+
+    expect(await screen.findByRole('button', { name: 'View Quiet River details' })).toBeTruthy()
+    const requestCount = vi.mocked(getRecommendations).mock.calls.length
+    const ratingSlider = within(screen.getByRole('group', { name: 'Recommendation score weights' }))
+      .getAllByRole('slider')[0] as HTMLInputElement
+    vi.useFakeTimers()
+
+    fireEvent.pointerDown(ratingSlider)
+    fireEvent.change(ratingSlider, { target: { value: '60' } })
+    await act(async () => { vi.advanceTimersByTime(250) })
+    fireEvent.change(ratingSlider, { target: { value: '80' } })
+    await act(async () => { vi.advanceTimersByTime(250) })
+    expect(getRecommendations).toHaveBeenCalledTimes(requestCount)
+
+    fireEvent.pointerUp(ratingSlider)
+    expect(getRecommendations).toHaveBeenCalledTimes(requestCount + 1)
+    expect(getRecommendations).toHaveBeenLastCalledWith({
+      mediaType: 'movie',
+      page: 1,
+      pageSize: titlePageSize,
+      ratingWeight: 0.8,
+      votesWeight: 0.1,
+      awardsWeight: 0.1,
+    })
+
+    fireEvent.keyDown(ratingSlider, { key: 'ArrowLeft' })
+    fireEvent.change(ratingSlider, { target: { value: '75' } })
+    await act(async () => { vi.advanceTimersByTime(250) })
+    expect(getRecommendations).toHaveBeenCalledTimes(requestCount + 1)
+    fireEvent.keyUp(ratingSlider, { key: 'ArrowLeft' })
+    expect(getRecommendations).toHaveBeenCalledTimes(requestCount + 2)
+  })
+
   it('keeps the newest recommendation response when requests finish out of order', async () => {
     let resolveOlderRequest!: (page: PageResponse<Recommendation>) => void
     let resolveLatestRequest!: (page: PageResponse<Recommendation>) => void

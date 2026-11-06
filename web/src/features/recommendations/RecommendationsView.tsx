@@ -103,6 +103,7 @@ export function RecommendationsView({
   const [sliderPercentages, setSliderPercentages] = useState(initialSliderPercentages)
   const [requestSliderPercentages, setRequestSliderPercentages] = useState(initialSliderPercentages)
   const sliderQueryDebounceHandle = useRef<number | null>(null)
+  const sliderInteractionRef = useRef(false)
   const [pageNumber, setPageNumber] = useState(1)
   const [draftYearFilter, setDraftYearFilter] = useState(emptyYearFilter)
   const [appliedYearFilter, setAppliedYearFilter] = useState(emptyYearFilter)
@@ -131,6 +132,29 @@ export function RecommendationsView({
       window.clearTimeout(sliderQueryDebounceHandle.current)
     }
   }, [])
+
+  useEffect(() => {
+    function finishSliderInteraction() {
+      if (!sliderInteractionRef.current) return
+      sliderInteractionRef.current = false
+      if (sliderQueryDebounceHandle.current !== null) {
+        window.clearTimeout(sliderQueryDebounceHandle.current)
+        sliderQueryDebounceHandle.current = null
+      }
+      setRequestSliderPercentages(sliderPercentages)
+    }
+
+    window.addEventListener('pointerup', finishSliderInteraction)
+    window.addEventListener('pointercancel', finishSliderInteraction)
+    window.addEventListener('keyup', finishSliderInteraction)
+    window.addEventListener('blur', finishSliderInteraction)
+    return () => {
+      window.removeEventListener('pointerup', finishSliderInteraction)
+      window.removeEventListener('pointercancel', finishSliderInteraction)
+      window.removeEventListener('keyup', finishSliderInteraction)
+      window.removeEventListener('blur', finishSliderInteraction)
+    }
+  }, [sliderPercentages])
 
   useEffect(() => {
     let active = true
@@ -183,13 +207,23 @@ export function RecommendationsView({
     if (sliderQueryDebounceHandle.current !== null) {
       window.clearTimeout(sliderQueryDebounceHandle.current)
     }
-    sliderQueryDebounceHandle.current = window.setTimeout(() => {
-      setRequestSliderPercentages(nextPercentages)
-      sliderQueryDebounceHandle.current = null
-    }, recommendationSliderDebounceMilliseconds)
+    if (!sliderInteractionRef.current) {
+      sliderQueryDebounceHandle.current = window.setTimeout(() => {
+        setRequestSliderPercentages(nextPercentages)
+        sliderQueryDebounceHandle.current = null
+      }, recommendationSliderDebounceMilliseconds)
+    }
     setPageNumber(1)
     setLoading(true)
     setError(null)
+  }
+
+  function beginSliderInteraction() {
+    sliderInteractionRef.current = true
+    if (sliderQueryDebounceHandle.current !== null) {
+      window.clearTimeout(sliderQueryDebounceHandle.current)
+      sliderQueryDebounceHandle.current = null
+    }
   }
 
   function changePage(page: number) {
@@ -356,6 +390,8 @@ export function RecommendationsView({
           <input
             id={id}
             max="100"
+            onKeyDown={beginSliderInteraction}
+            onPointerDown={beginSliderInteraction}
             min="0"
             onChange={(event) => updateSlider(key, event.currentTarget.value)}
             step="1"
