@@ -28,6 +28,8 @@ interface Filters {
   yearTo: string
   imdbRatingFrom: string
   imdbRatingTo: string
+  imdbVotesFrom: string
+  imdbVotesTo: string
   metadataStatus: string
   sort: 'year' | 'rating' | 'votes'
   showIgnored: boolean
@@ -44,13 +46,14 @@ const emptyFilters: Filters = {
   yearTo: '',
   imdbRatingFrom: '',
   imdbRatingTo: '',
+  imdbVotesFrom: '',
+  imdbVotesTo: '',
   metadataStatus: '',
   sort: 'year',
   showIgnored: true,
   showWatched: true,
 }
 const untypedMediaType = '__untagged__'
-const countryOptions = ['USA']
 const compactVoteCount = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 0 })
 const searchDebounceMs = 350
 
@@ -70,6 +73,8 @@ function queryFor(page: number, filters: Filters): ImdbTitlesQuery {
     ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}),
     ...(filters.imdbRatingFrom ? { imdbRatingFrom: Number(filters.imdbRatingFrom) } : {}),
     ...(filters.imdbRatingTo ? { imdbRatingTo: Number(filters.imdbRatingTo) } : {}),
+    ...(filters.imdbVotesFrom ? { imdbVotesFrom: Number(filters.imdbVotesFrom) } : {}),
+    ...(filters.imdbVotesTo ? { imdbVotesTo: Number(filters.imdbVotesTo) } : {}),
     ...(filters.metadataStatus ? { metadataStatus: filters.metadataStatus } : {}),
     sort: filters.sort,
     showIgnored: filters.showIgnored,
@@ -252,7 +257,7 @@ export function ImdbTitlesCatalogView({ hasActiveAccount, canDeleteTitles = fals
   }
 
   function updateCountries(countries: string[] | null) {
-    const selectedCountries = countries ?? countryOptions
+    const selectedCountries = countries ?? result?.countries ?? []
     setDraft((current) => ({ ...current, countries: selectedCountries, countryFilter: true }))
     commitFilterChanges({ countries: selectedCountries, countryFilter: true })
   }
@@ -295,6 +300,17 @@ export function ImdbTitlesCatalogView({ hasActiveAccount, canDeleteTitles = fals
     if (applyRange) commitFilterChanges(range)
   }
 
+  function updateVotesRange(from: number, to: number, applyRange: boolean) {
+    const bounds = result?.imdbVotesBounds
+    if (bounds?.minVotes === null || bounds?.minVotes === undefined || bounds.maxVotes === null) return
+    const range = {
+      imdbVotesFrom: from === bounds.minVotes ? '' : String(from),
+      imdbVotesTo: to === bounds.maxVotes ? '' : String(to),
+    }
+    setDraft((current) => ({ ...current, ...range }))
+    if (applyRange) commitFilterChanges(range)
+  }
+
   const yearBounds = result?.yearBounds.minYear !== null && result?.yearBounds.minYear !== undefined
     && result.yearBounds.maxYear !== null
     ? { minYear: result.yearBounds.minYear, maxYear: result.yearBounds.maxYear }
@@ -302,6 +318,10 @@ export function ImdbTitlesCatalogView({ hasActiveAccount, canDeleteTitles = fals
   const ratingBounds = result?.imdbRatingBounds.minRating !== null && result?.imdbRatingBounds.minRating !== undefined
     && result.imdbRatingBounds.maxRating !== null
     ? { minRating: result.imdbRatingBounds.minRating, maxRating: result.imdbRatingBounds.maxRating }
+    : null
+  const votesBounds = result?.imdbVotesBounds.minVotes !== null && result?.imdbVotesBounds.minVotes !== undefined
+    && result.imdbVotesBounds.maxVotes !== null
+    ? { minVotes: result.imdbVotesBounds.minVotes, maxVotes: result.imdbVotesBounds.maxVotes }
     : null
 
   async function deleteTitle(item: ImdbTitleCatalogItem) {
@@ -405,7 +425,7 @@ export function ImdbTitlesCatalogView({ hasActiveAccount, canDeleteTitles = fals
         <CategoryMultiSelect
           label="Countries"
           onChange={updateCountries}
-          options={countryOptions}
+          options={result?.countries ?? []}
           optionsLabel="countries"
           selectedValues={draft.countries}
         />
@@ -451,19 +471,19 @@ export function ImdbTitlesCatalogView({ hasActiveAccount, canDeleteTitles = fals
           valueFrom={draft.imdbRatingFrom ? Number(draft.imdbRatingFrom) : ratingBounds.minRating}
           valueTo={draft.imdbRatingTo ? Number(draft.imdbRatingTo) : ratingBounds.maxRating}
         />}
-        <DualRangeFilter
+        {votesBounds && <DualRangeFilter
           className="year-range-filter imdb-votes-range-filter"
           id="imdb-titles-votes-range"
           label="Number of votes"
-          max={1_000_000}
-          min={0}
-          onCommit={() => undefined}
-          onPreview={() => undefined}
+          max={votesBounds.maxVotes}
+          min={votesBounds.minVotes}
+          onCommit={(from, to) => updateVotesRange(from, to, true)}
+          onPreview={(from, to) => updateVotesRange(from, to, false)}
           outputLabel="Number of votes selected"
-          valueFrom={0}
-          valueTo={1_000_000}
+          valueFrom={draft.imdbVotesFrom ? Number(draft.imdbVotesFrom) : votesBounds.minVotes}
+          valueTo={draft.imdbVotesTo ? Number(draft.imdbVotesTo) : votesBounds.maxVotes}
           formatValue={(value) => compactVoteCount.format(value)}
-        />
+        />}
         <div className="imdb-title-visibility-filters">
           <label className="checkbox-field"><input checked={draft.showIgnored} onChange={(event) => updateFilter('showIgnored', event.target.checked)} type="checkbox" />Show ignored</label>
           <label className="checkbox-field"><input checked={draft.showWatched} onChange={(event) => updateFilter('showWatched', event.target.checked)} type="checkbox" />Show watched / rated</label>

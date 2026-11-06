@@ -36,9 +36,11 @@ public sealed class ImdbTitlesApiTests
             db.Users.AddRange(owner, other);
             var usaTitle = CreateTitle("tt9300001", "Zeta Game", 2026, "game", 8.5m, 200, "enriched", now, "Action");
             usaTitle.Countries = ["USA"];
+            var canadianTitle = CreateTitle("tt9300002", "Alpha Episode", 2026, "episode", null, null, "pending", now, "Drama");
+            canadianTitle.Countries = ["Canada"];
             db.ImdbTitles.AddRange(
                 usaTitle,
-                CreateTitle("tt9300002", "Alpha Episode", 2026, "episode", null, null, "pending", now, "Drama"),
+                canadianTitle,
                 CreateTitle("tt9300003", "Beta Movie", 2025, "movie", 7.2m, 900, "enriched", now, "Drama"),
                 CreateTitle("tt9300004", "Untyped Archive", null, null, 9.0m, 1000, "not_found", now, "Classics"),
                 CreateTitle("tt9300005", "Retryable Feature", 2023, "movie", null, null, "temporary_error", now, "Comedy"));
@@ -107,9 +109,11 @@ public sealed class ImdbTitlesApiTests
             page.Items.Select(item => item.ImdbId));
         Assert.Equal(new ImdbTitleYearBounds(2023, 2026), page.YearBounds);
         Assert.Equal(new ImdbTitleRatingBounds(7.2m, 9.0m), page.ImdbRatingBounds);
+        Assert.Equal(new ImdbTitleVotesBounds(200, 1000), page.ImdbVotesBounds);
         Assert.Equal(["episode", "game", "movie"], page.MediaTypes);
         Assert.True(page.HasUntypedTitles);
         Assert.Equal(["Action", "Classics", "Comedy", "Drama"], page.Genres);
+        Assert.Equal(["Canada", "USA"], page.Countries);
         Assert.Contains(page.Items, item => item.ImdbId == "tt9300001" && item.IsFavorite && item.ToWatch);
         Assert.Contains(page.Items, item => item.ImdbId == "tt9300003" && item.PersonalRating == 8);
         Assert.Contains(page.Items, item => item.ImdbId == "tt9300004" && item.IsIgnored);
@@ -132,6 +136,8 @@ public sealed class ImdbTitlesApiTests
         Assert.Single((await GetPageAsync(ownerClient, "countries=USA&countryFilter=true")).Items);
         Assert.Equal(0, (await GetPageAsync(ownerClient, "countryFilter=true")).TotalCount);
         Assert.Single((await GetPageAsync(ownerClient, "yearFrom=2025&imdbRatingFrom=8")).Items);
+        Assert.Equal("tt9300003", Assert.Single((await GetPageAsync(ownerClient, "imdbVotesFrom=900&imdbVotesTo=900")).Items).ImdbId);
+        Assert.Equal(0, (await GetPageAsync(ownerClient, "imdbVotesFrom=1001")).TotalCount);
 
         var firstStablePage = await ownerClient.GetFromJsonAsync<ImdbTitlesPageResponse>("/api/imdb-titles?page=1&pageSize=2");
         var secondStablePage = await ownerClient.GetFromJsonAsync<ImdbTitlesPageResponse>("/api/imdb-titles?page=2&pageSize=2");
@@ -152,6 +158,8 @@ public sealed class ImdbTitlesApiTests
         Assert.Equal(3, (await GetPageAsync(ownerClient, "showIgnored=false&showWatched=false")).TotalCount);
         Assert.Equal(HttpStatusCode.BadRequest,
             (await ownerClient.GetAsync("/api/imdb-titles?yearFrom=2026&yearTo=2025")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await ownerClient.GetAsync("/api/imdb-titles?imdbVotesFrom=1001&imdbVotesTo=1000")).StatusCode);
     }
 
     [Fact]

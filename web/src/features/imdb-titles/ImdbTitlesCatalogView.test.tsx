@@ -67,6 +67,7 @@ const untyped: ImdbTitleCatalogItem = {
   ...episode,
   imdbId: 'tt9300002',
   title: 'Untyped file',
+  countries: ['USA'],
   mediaType: null,
   isFavorite: false,
   toWatch: false,
@@ -139,9 +140,11 @@ function page(items: ImdbTitleCatalogItem[], requestedPage = 1, totalCount = ite
     totalPages: totalCount === 0 ? 0 : Math.ceil(totalCount / 24),
     yearBounds: { minYear: 1980, maxYear: 2025 },
     imdbRatingBounds: { minRating: 5.2, maxRating: 9.0 },
+    imdbVotesBounds: { minVotes: 100, maxVotes: 1_000_000 },
     mediaTypes: ['episode', 'game'],
     hasUntypedTitles: true,
     genres: ['Drama', 'Sci-Fi'],
+    countries: [...new Set(items.flatMap((item) => item.countries))].sort(),
     metadataStatuses: ['pending', 'enriched', 'not_found', 'temporary_error'],
   }
 }
@@ -259,7 +262,9 @@ describe('IMDb titles catalog view', () => {
     fireEvent.click(within(screen.getByText(/All genres/).closest('details')!).getByRole('button', { name: 'Select none' }))
     await waitFor(() => expect(getImdbTitles).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, genreFilter: true, genres: [] })))
 
-    fireEvent.click(screen.getByLabelText('Countries: 0 of 1 selected'))
+    fireEvent.click(screen.getByLabelText('Countries: 0 of 2 selected'))
+    expect(screen.getByLabelText('Canada')).toBeTruthy()
+    expect(screen.queryByLabelText('United Kingdom')).toBeNull()
     fireEvent.click(screen.getByLabelText('USA'))
     await waitFor(() => expect(getImdbTitles).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, countryFilter: true, countries: ['USA'] })))
     fireEvent.click(within(screen.getByLabelText('USA').closest('details')!).getByRole('button', { name: 'Select none' }))
@@ -305,6 +310,16 @@ describe('IMDb titles catalog view', () => {
     fireEvent.change(maximumRating, { target: { value: '8' } })
     fireEvent.keyUp(maximumRating, { key: 'ArrowLeft' })
     await waitFor(() => expect(getImdbTitles).toHaveBeenLastCalledWith(expect.objectContaining({ imdbRatingTo: 8 })))
+
+    const minimumVotes = screen.getByRole('slider', { name: 'Number of votes minimum' })
+    fireEvent.change(minimumVotes, { target: { value: '500000' } })
+    fireEvent.keyUp(minimumVotes, { key: 'ArrowRight' })
+    await waitFor(() => expect(getImdbTitles).toHaveBeenLastCalledWith(expect.objectContaining({ imdbVotesFrom: 500000 })))
+
+    const maximumVotes = screen.getByRole('slider', { name: 'Number of votes maximum' })
+    fireEvent.change(maximumVotes, { target: { value: '900000' } })
+    fireEvent.keyUp(maximumVotes, { key: 'ArrowLeft' })
+    await waitFor(() => expect(getImdbTitles).toHaveBeenLastCalledWith(expect.objectContaining({ imdbVotesFrom: 500000, imdbVotesTo: 900000 })))
   })
 
   it('shows loading, error, and empty states', async () => {

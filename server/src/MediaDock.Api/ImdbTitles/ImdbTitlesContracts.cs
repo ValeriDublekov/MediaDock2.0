@@ -41,6 +41,12 @@ public sealed record ImdbTitlesQuery
     [Range(typeof(decimal), "0", "10")]
     public decimal? ImdbRatingTo { get; init; }
 
+    [Range(typeof(long), "0", "9223372036854775807")]
+    public long? ImdbVotesFrom { get; init; }
+
+    [Range(typeof(long), "0", "9223372036854775807")]
+    public long? ImdbVotesTo { get; init; }
+
     [RegularExpression("^(pending|enriched|not_found|temporary_error)$")]
     public string? MetadataStatus { get; init; }
 
@@ -61,9 +67,11 @@ public sealed record ImdbTitlesPageResponse(
     int TotalPages,
     ImdbTitleYearBounds YearBounds,
     ImdbTitleRatingBounds ImdbRatingBounds,
+    ImdbTitleVotesBounds ImdbVotesBounds,
     IReadOnlyList<string> MediaTypes,
     bool HasUntypedTitles,
     IReadOnlyList<string> Genres,
+    IReadOnlyList<string> Countries,
     IReadOnlyList<string> MetadataStatuses);
 
 public sealed record DeleteImdbTitleResponse(int UnlinkedTorrentTitles);
@@ -97,4 +105,7 @@ public sealed record ImdbTitleYearBounds(int? MinYear, int? MaxYear);
 
 /// <summary>Minimum and maximum non-null IMDb ratings in the canonical catalog.</summary>
 public sealed record ImdbTitleRatingBounds(decimal? MinRating, decimal? MaxRating);
+
+/// <summary>Minimum and maximum non-null IMDb vote counts in the canonical catalog.</summary>
+public sealed record ImdbTitleVotesBounds(long? MinVotes, long? MaxVotes);
 

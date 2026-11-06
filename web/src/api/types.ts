@@ -76,6 +76,11 @@ export interface ImdbTitleRatingBounds {
   maxRating: number | null
 }
 
+export interface ImdbTitleVotesBounds {
+  minVotes: number | null
+  maxVotes: number | null
+}
+
 export interface ImdbTitlesPage {
   items: ImdbTitleCatalogItem[]
   page: number
@@ -84,9 +89,11 @@ export interface ImdbTitlesPage {
   totalPages: number
   yearBounds: ImdbTitleYearBounds
   imdbRatingBounds: ImdbTitleRatingBounds
+  imdbVotesBounds: ImdbTitleVotesBounds
   mediaTypes: string[]
   hasUntypedTitles: boolean
   genres: string[]
+  countries: string[]
   metadataStatuses: string[]
 }
 
@@ -555,6 +562,8 @@ export interface ImdbTitlesQuery {
   yearTo?: number
   imdbRatingFrom?: number
   imdbRatingTo?: number
+  imdbVotesFrom?: number
+  imdbVotesTo?: number
   metadataStatus?: string
   sort?: 'year' | 'rating' | 'votes'
   showIgnored?: boolean

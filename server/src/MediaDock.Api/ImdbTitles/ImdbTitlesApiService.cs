@@ -36,6 +36,14 @@ internal sealed class ImdbTitlesApiService(MediaDockDbContext dbContext)
                 group.Max(title => title.ImdbRating)))
             .FirstOrDefaultAsync(cancellationToken)
             ?? new ImdbTitleRatingBounds(null, null);
+        var votesBounds = await allTitles
+            .Where(title => title.ImdbVotes.HasValue)
+            .GroupBy(_ => 1)
+            .Select(group => new ImdbTitleVotesBounds(
+                group.Min(title => title.ImdbVotes),
+                group.Max(title => title.ImdbVotes)))
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? new ImdbTitleVotesBounds(null, null);
         var mediaTypes = await allTitles
             .Where(title => title.MediaType != null && title.MediaType != string.Empty)
             .Select(title => title.MediaType!)
@@ -48,6 +56,12 @@ internal sealed class ImdbTitlesApiService(MediaDockDbContext dbContext)
             .Where(genre => genre != string.Empty)
             .Distinct()
             .OrderBy(genre => genre)
+            .ToListAsync(cancellationToken);
+        var countries = await allTitles
+            .SelectMany(title => title.Countries)
+            .Where(country => country != string.Empty)
+            .Distinct()
+            .OrderBy(country => country)
             .ToListAsync(cancellationToken);
 
         IQueryable<ImdbTitle> titles = allTitles;
@@ -99,6 +113,16 @@ internal sealed class ImdbTitlesApiService(MediaDockDbContext dbContext)
         else if (selectedCountries.Length > 0)
         {
             titles = titles.Where(title => title.Countries.Any(country => selectedCountries.Contains(country)));
+        }
+
+        if (query.ImdbVotesFrom is { } votesFrom)
+        {
+            titles = titles.Where(title => title.ImdbVotes >= votesFrom);
+        }
+
+        if (query.ImdbVotesTo is { } votesTo)
+        {
+            titles = titles.Where(title => title.ImdbVotes <= votesTo);
         }
 
         if (query.YearFrom is { } yearFrom)
@@ -231,9 +255,11 @@ internal sealed class ImdbTitlesApiService(MediaDockDbContext dbContext)
             totalPages,
             yearBounds,
             ratingBounds,
+            votesBounds,
             mediaTypes,
             hasUntypedTitles,
             genres,
+            countries,
             MetadataStatusOptions);
     }
 
@@ -297,6 +323,16 @@ internal sealed class ImdbTitlesApiService(MediaDockDbContext dbContext)
             throw new ApiValidationException(new Dictionary<string, string[]>
             {
                 [nameof(query.ImdbRatingTo)] = ["ImdbRatingTo must be greater than or equal to ImdbRatingFrom."]
+            });
+        }
+
+        if (query.ImdbVotesFrom is { } votesFrom
+            && query.ImdbVotesTo is { } votesTo
+            && votesFrom > votesTo)
+        {
+            throw new ApiValidationException(new Dictionary<string, string[]>
+            {
+                [nameof(query.ImdbVotesTo)] = ["ImdbVotesTo must be greater than or equal to ImdbVotesFrom."]
             });
         }
 
