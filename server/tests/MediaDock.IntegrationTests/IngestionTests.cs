@@ -250,6 +250,92 @@ public sealed class IngestionTests
     #region RSS scans
 
     [Fact]
+    public async Task ScanUsesImportedImdbTitleBeforeCallingOmdb()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_imdb_lookup_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString()).Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+        db.Sources.Add(new Source
+        {
+            StableKey = "imdb-lookup-source",
+            Name = "Movies",
+            FeedType = "movie",
+            Url = SuccessfulFeedUrl
+        });
+        db.ImdbTitles.Add(new ImdbTitle
+        {
+            ImdbId = "tt0133093",
+            TitleText = "The Matrix",
+            Year = 1999,
+            MediaType = "movie",
+            ImdbVotes = 1234,
+            MetadataStatus = "pending",
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new MockProviderHandler();
+        using var httpClient = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        var service = CreateService(db, httpClient, new RssFeedTransport(httpClient, new PublicDnsResolver()));
+
+        var result = await service.RunAsync();
+
+        var matrixLog = await db.ParseLogs.SingleAsync(log => log.RawTitle.StartsWith("The Matrix"));
+        Assert.Equal(0, matrixLog.AttemptCount);
+        Assert.Equal(2, result.Summary.OmdbRequests);
+        Assert.Equal(2, handler.OmdbRequestCount);
+        Assert.Equal("tt0133093", (await db.TorrentMovies.SingleAsync()).ImdbId);
+        Assert.Equal("pending", (await db.ImdbTitles.SingleAsync()).MetadataStatus);
+        Assert.Contains(await db.ParseLogs.ToListAsync(), log => log.OmdbStatus == "found");
+    }
+
+    [Fact]
+    public async Task ScanUsesOmdbForPendingImdbTitleWhenGenreExclusionsAreActive()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_imdb_filter_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString()).Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+        db.Sources.Add(new Source
+        {
+            StableKey = "imdb-filter-source",
+            Name = "Movies",
+            FeedType = "movie",
+            Url = SuccessfulFeedUrl
+        });
+        var settings = await db.Settings.SingleAsync();
+        settings.ExcludedGenres = ["Action"];
+        db.ImdbTitles.Add(new ImdbTitle
+        {
+            ImdbId = "tt0133093",
+            TitleText = "The Matrix",
+            Year = 1999,
+            MediaType = "movie",
+            MetadataStatus = "pending",
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var handler = new MockProviderHandler();
+        using var httpClient = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        var service = CreateService(db, httpClient, new RssFeedTransport(httpClient, new PublicDnsResolver()));
+
+        var result = await service.RunAsync();
+
+        var matrixLog = await db.ParseLogs.SingleAsync(log => log.RawTitle.StartsWith("The Matrix"));
+        Assert.True(matrixLog.AttemptCount > 0);
+        Assert.Equal(handler.OmdbRequestCount, result.Summary.OmdbRequests);
+        Assert.Equal("excluded_genre", matrixLog.IgnoreReason);
+        Assert.Equal(0, result.Summary.TitlesCreated);
+        Assert.Equal("pending", (await db.ImdbTitles.SingleAsync()).MetadataStatus);
+    }
+
+    [Fact]
     public async Task AmbiguousHitIsNotPersistedAndAlternateTitleIsBoundedAndAudited()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_ingestion_title_match_test").Build();
@@ -910,7 +996,7 @@ public sealed class IngestionTests
     {
         var client = new OmdbClient(httpClient, FakeApiKey, TimeSpan.FromSeconds(2));
         var cache = new PostgresMetadataCacheStore(db);
-        var resolver = new MetadataResolver(client, cache);
+        var resolver = new MetadataResolver(client, cache, new PostgresImdbTitleLookup(db));
         return new RssIngestionService(
             new PostgresRssIngestionRepository(db),
             new RssFeedTransportAdapter(rssTransport),

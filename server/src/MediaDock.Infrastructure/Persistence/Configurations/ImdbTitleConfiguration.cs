@@ -54,5 +54,7 @@ internal sealed class ImdbTitleConfiguration : IEntityTypeConfiguration<ImdbTitl
         builder.Property(entity => entity.NextEnrichmentAttemptAt).HasColumnName("next_enrichment_attempt_at");
         builder.Property(entity => entity.LastEnrichmentError).HasColumnName("last_enrichment_error");
         builder.Property(entity => entity.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("now()");
+        builder.HasIndex(entity => new { entity.TitleText, entity.MediaType, entity.Year })
+            .HasDatabaseName("ix_imdb_titles_title_media_type_year");
     }
 }

@@ -10,11 +10,16 @@ public sealed class MetadataResolver
 
     private readonly IOmdbClient _client;
     private readonly IMetadataCacheStore _cache;
+    private readonly IImdbTitleLookup? _imdbTitleLookup;
 
-    public MetadataResolver(IOmdbClient client, IMetadataCacheStore cache)
+    public MetadataResolver(
+        IOmdbClient client,
+        IMetadataCacheStore cache,
+        IImdbTitleLookup? imdbTitleLookup = null)
     {
         _client = client;
         _cache = cache;
+        _imdbTitleLookup = imdbTitleLookup;
     }
 
     public async Task<MetadataResolution> ResolveAsync(
@@ -24,7 +29,9 @@ public sealed class MetadataResolver
         DateTimeOffset now,
         CancellationToken cancellationToken = default,
         OmdbRequestPurpose requestPurpose = OmdbRequestPurpose.RssIngestion,
-        string? imdbId = null)
+        string? imdbId = null,
+        bool allowImdbTitleLookup = false,
+        bool allowIncompleteImdbTitleLookup = false)
     {
         var normalizedTitle = NormalizeTitle(title);
         var normalizedSourceType = sourceType.Trim().ToLowerInvariant();
@@ -42,6 +49,25 @@ public sealed class MetadataResolver
         var yearSemantics = normalizedSourceType == "series" ? "series_season_year" : "movie_release_year";
         var lookupYear = year;
         var cacheKey = CreateCacheKey(normalizedTitle, lookupYear, normalizedSourceType, yearSemantics, normalizedImdbId);
+        if (allowImdbTitleLookup && _imdbTitleLookup is not null && lookupYear.HasValue)
+        {
+            var candidates = await _imdbTitleLookup.FindByTitleAndYearAsync(
+                title.Trim(), lookupYear.Value, normalizedSourceType, cancellationToken);
+            if (candidates.Count == 1)
+            {
+                var candidate = candidates[0];
+                if ((candidate.IsEnriched || allowIncompleteImdbTitleLookup)
+                    && ImdbIdNormalizer.IsValid(candidate.Metadata.ImdbId)
+                    && NormalizeTitle(candidate.Metadata.Title) == normalizedTitle
+                    && ImdbIdNormalizer.IsCompatible(normalizedImdbId, candidate.Metadata.ImdbId))
+                {
+                    return new MetadataResolution(
+                        MetadataLookupStatus.Found, candidate.Metadata, true, 0,
+                        IsImdbTitleCatalogHit: true);
+                }
+            }
+        }
+
         var cached = await _cache.GetAsync(cacheKey, cancellationToken);
         if (cached is not null && cached.ExpiresAt > now)
         {

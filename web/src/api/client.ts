@@ -169,7 +169,7 @@ export function getCatalog(query: CatalogQuery, fetcher?: typeof fetch) {
 }
 
 export function getImdbTitles(query: ImdbTitlesQuery, fetcher?: typeof fetch) {
-  return requestJson<ImdbTitlesPage>(withQuery('/imdb-titles', query, ['genres']), {}, fetcher)
+  return requestJson<ImdbTitlesPage>(withQuery('/imdb-titles', query, ['genres', 'countries']), {}, fetcher)
 }
 
 export function getCatalogGenres(fetcher?: typeof fetch) {

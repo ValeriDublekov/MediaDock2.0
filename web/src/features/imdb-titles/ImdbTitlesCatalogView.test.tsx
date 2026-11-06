@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   addFavorite,
@@ -178,6 +178,13 @@ describe('IMDb titles catalog view', () => {
   it('renders open media types, all personal states, compact awards, and only eligible rating actions', async () => {
     renderCatalog()
 
+    expect(await screen.findByRole('heading', { name: 'IMDb titles' })).toBeTruthy()
+    expect(screen.getByText('3 titles')).toBeTruthy()
+    expect(screen.getByRole('slider', { name: 'Number of votes minimum' })).toBeTruthy()
+    expect(screen.getByRole('slider', { name: 'Number of votes maximum' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Refresh results' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Add' }).hasAttribute('disabled')).toBe(true)
+    expect(screen.getByRole('button', { name: 'Clear filters' })).toBeTruthy()
     expect(await screen.findByRole('button', { name: 'View Episode file details' })).toBeTruthy()
     expect(screen.getByLabelText('Personal state for Episode file').textContent).toContain('Favorite')
     expect(screen.getByLabelText('Personal state for Episode file').textContent).toContain('Ignored')
@@ -208,8 +215,14 @@ describe('IMDb titles catalog view', () => {
     await waitFor(() => expect(getImdbTitles).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, sort: 'rating' })))
 
     fireEvent.click(screen.getByText(/All genres/))
-    fireEvent.click(screen.getByRole('button', { name: 'Select none' }))
+    fireEvent.click(within(screen.getByText(/All genres/).closest('details')!).getByRole('button', { name: 'Select none' }))
     await waitFor(() => expect(getImdbTitles).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, genreFilter: true, genres: [] })))
+
+    fireEvent.click(screen.getByLabelText('Countries: 0 of 1 selected'))
+    fireEvent.click(screen.getByLabelText('USA'))
+    await waitFor(() => expect(getImdbTitles).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, countryFilter: true, countries: ['USA'] })))
+    fireEvent.click(within(screen.getByLabelText('USA').closest('details')!).getByRole('button', { name: 'Select none' }))
+    await waitFor(() => expect(getImdbTitles).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, countryFilter: true, countries: [] })))
 
     fireEvent.click(screen.getByLabelText('Show ignored'))
     await waitFor(() => expect(getImdbTitles).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, showIgnored: false, showWatched: true })))
@@ -223,6 +236,7 @@ describe('IMDb titles catalog view', () => {
       showIgnored: true,
       showWatched: true,
       genreFilter: false,
+      countryFilter: false,
     })))
   })
 

@@ -117,9 +117,9 @@ const sectionContent: Record<Section, { eyebrow: string; title: string; descript
     description: 'Browse Golden Globes nominees, winners, and award categories.',
   },
   'imdb-titles': {
-    eyebrow: 'IMDb',
+    eyebrow: '',
     title: 'IMDb titles',
-    description: 'Browse the canonical IMDb catalog and your personal title states.',
+    description: '',
   },
   favorites: {
     eyebrow: '',
@@ -543,7 +543,7 @@ function AppContent() {
               <AuthDiagnosticDetails diagnostic={authDiagnostic} />
             </section>
           )}
-          {location.pathname !== '/catalog' && <div className="page-heading">
+          {location.pathname !== '/catalog' && location.pathname !== '/imdb-titles' && <div className="page-heading">
             <div className={recommendationPage ? 'page-heading-copy' : undefined}>
               {pageContent.eyebrow && <p className="eyebrow">{pageContent.eyebrow}</p>}
               <h1>{title}</h1>

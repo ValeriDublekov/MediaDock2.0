@@ -3,6 +3,7 @@ import { RotateCcw, Star } from 'lucide-react'
 import { addPersonalRating, getImdbTitles } from '../../api/client'
 import type { ImdbTitleCatalogItem, ImdbTitlesPage, ImdbTitlesQuery } from '../../api/types'
 import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
+import { DualRangeFilter } from '../../components/DualRangeFilter'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
 import { ImdbRatingRangeFilter } from '../../components/ImdbRatingRangeFilter'
 import { MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
@@ -21,6 +22,8 @@ interface Filters {
   search: string
   mediaType: string
   genres: string[] | null
+  countries: string[]
+  countryFilter: boolean
   yearFrom: string
   yearTo: string
   imdbRatingFrom: string
@@ -35,6 +38,8 @@ const emptyFilters: Filters = {
   search: '',
   mediaType: '',
   genres: null,
+  countries: [],
+  countryFilter: false,
   yearFrom: '',
   yearTo: '',
   imdbRatingFrom: '',
@@ -45,6 +50,8 @@ const emptyFilters: Filters = {
   showWatched: true,
 }
 const untypedMediaType = '__untagged__'
+const countryOptions = ['USA']
+const compactVoteCount = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 0 })
 const searchDebounceMs = 350
 
 function queryFor(page: number, filters: Filters): ImdbTitlesQuery {
@@ -57,6 +64,8 @@ function queryFor(page: number, filters: Filters): ImdbTitlesQuery {
       : filters.mediaType ? { mediaType: filters.mediaType } : {}),
     ...(filters.genres !== null ? { genres: filters.genres } : {}),
     genreFilter: filters.genres !== null,
+    ...(filters.countryFilter ? { countries: filters.countries } : {}),
+    countryFilter: filters.countryFilter,
     ...(filters.yearFrom ? { yearFrom: Number(filters.yearFrom) } : {}),
     ...(filters.yearTo ? { yearTo: Number(filters.yearTo) } : {}),
     ...(filters.imdbRatingFrom ? { imdbRatingFrom: Number(filters.imdbRatingFrom) } : {}),
@@ -238,6 +247,12 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
     commitFilterChanges({ genres })
   }
 
+  function updateCountries(countries: string[] | null) {
+    const selectedCountries = countries ?? countryOptions
+    setDraft((current) => ({ ...current, countries: selectedCountries, countryFilter: true }))
+    commitFilterChanges({ countries: selectedCountries, countryFilter: true })
+  }
+
   function applyFilters(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoading(true)
@@ -324,11 +339,17 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
   }
 
   return <section aria-label="IMDb titles catalog" className="media-view imdb-titles-view">
+    <div className="page-heading">
+      <div className="page-heading-copy">
+        <h1>IMDb titles</h1>
+        <span className="result-count page-heading-count">{result ? `${result.totalCount.toLocaleString()} titles` : 'Catalog records'}</span>
+      </div>
+    </div>
     <div className="section-toolbar catalog-section-toolbar">
-      <span className="result-count">{result ? `${result.totalCount.toLocaleString()} IMDb titles` : 'Canonical IMDb titles'}</span>
       <div className="toolbar-actions">
         <ViewModeControl onChange={setViewMode} value={viewMode} />
-        <button className="text-button" onClick={reload} type="button">Refresh results</button>
+        <button className="button button-secondary" onClick={clearFilters} type="button"><RotateCcw aria-hidden="true" size={15} />Clear filters</button>
+        <button className="button button-secondary" disabled type="button">Add</button>
       </div>
     </div>
 
@@ -345,6 +366,15 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
         optionsLabel="genres"
         selectedValues={draft.genres}
       />
+      <div className="imdb-title-country-filter">
+        <CategoryMultiSelect
+          label="Countries"
+          onChange={updateCountries}
+          options={countryOptions}
+          optionsLabel="countries"
+          selectedValues={draft.countries}
+        />
+      </div>
       <div className="field imdb-title-media-filter">
         <label htmlFor="imdb-titles-media-type">Media type</label>
         <select id="imdb-titles-media-type" onChange={(event) => updateFilter('mediaType', event.target.value)} value={draft.mediaType}>
@@ -368,10 +398,6 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
           <option value="votes">IMDb vote count</option>
         </select>
       </div>
-      <div className="imdb-title-visibility-filters">
-        <label className="checkbox-field"><input checked={draft.showIgnored} onChange={(event) => updateFilter('showIgnored', event.target.checked)} type="checkbox" />Show ignored</label>
-        <label className="checkbox-field"><input checked={draft.showWatched} onChange={(event) => updateFilter('showWatched', event.target.checked)} type="checkbox" />Show watched / rated</label>
-      </div>
       <div className="browse-range-filters imdb-title-range-filters">
         {yearBounds && <YearRangeFilter
           bounds={yearBounds}
@@ -390,9 +416,23 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
           valueFrom={draft.imdbRatingFrom ? Number(draft.imdbRatingFrom) : ratingBounds.minRating}
           valueTo={draft.imdbRatingTo ? Number(draft.imdbRatingTo) : ratingBounds.maxRating}
         />}
-      </div>
-      <div className="filter-actions">
-        <button className="button button-secondary" onClick={clearFilters} type="button"><RotateCcw aria-hidden="true" size={15} />Clear filters</button>
+        <DualRangeFilter
+          className="year-range-filter imdb-votes-range-filter"
+          id="imdb-titles-votes-range"
+          label="Number of votes"
+          max={1_000_000}
+          min={0}
+          onCommit={() => undefined}
+          onPreview={() => undefined}
+          outputLabel="Number of votes selected"
+          valueFrom={0}
+          valueTo={1_000_000}
+          formatValue={(value) => compactVoteCount.format(value)}
+        />
+        <div className="imdb-title-visibility-filters">
+          <label className="checkbox-field"><input checked={draft.showIgnored} onChange={(event) => updateFilter('showIgnored', event.target.checked)} type="checkbox" />Show ignored</label>
+          <label className="checkbox-field"><input checked={draft.showWatched} onChange={(event) => updateFilter('showWatched', event.target.checked)} type="checkbox" />Show watched / rated</label>
+        </div>
       </div>
     </form>
 

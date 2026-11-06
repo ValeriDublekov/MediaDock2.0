@@ -87,6 +87,20 @@ internal sealed class ImdbTitlesApiService(MediaDockDbContext dbContext)
             titles = titles.Where(title => title.Genres.Any(genre => selectedGenres.Contains(genre)));
         }
 
+        var selectedCountries = (query.Countries ?? [])
+            .Where(country => !string.IsNullOrWhiteSpace(country))
+            .Select(country => country.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (query.CountryFilter == true && selectedCountries.Length == 0)
+        {
+            titles = titles.Where(_ => false);
+        }
+        else if (selectedCountries.Length > 0)
+        {
+            titles = titles.Where(title => title.Countries.Any(country => selectedCountries.Contains(country)));
+        }
+
         if (query.YearFrom is { } yearFrom)
         {
             titles = titles.Where(title => title.Year >= yearFrom);

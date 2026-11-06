@@ -170,7 +170,8 @@ public interface IRssIngestionRepository
         ParsedRutrackerTitle parsed,
         MetadataDetails metadata,
         DateTimeOffset observedAt,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        bool updateCanonicalImdbTitleMetadata = true);
 
     Task<bool> TrySkipProcessedItemAsync(
         IngestionSource source,

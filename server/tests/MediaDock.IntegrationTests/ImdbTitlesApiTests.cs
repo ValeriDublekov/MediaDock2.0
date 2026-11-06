@@ -33,8 +33,10 @@ public sealed class ImdbTitlesApiTests
             var owner = CreateUser(ownerEmail, ownerSubject, now);
             var other = CreateUser(otherEmail, otherSubject, now);
             db.Users.AddRange(owner, other);
+            var usaTitle = CreateTitle("tt9300001", "Zeta Game", 2026, "game", 8.5m, 200, "enriched", now, "Action");
+            usaTitle.Countries = ["USA"];
             db.ImdbTitles.AddRange(
-                CreateTitle("tt9300001", "Zeta Game", 2026, "game", 8.5m, 200, "enriched", now, "Action"),
+                usaTitle,
                 CreateTitle("tt9300002", "Alpha Episode", 2026, "episode", null, null, "pending", now, "Drama"),
                 CreateTitle("tt9300003", "Beta Movie", 2025, "movie", 7.2m, 900, "enriched", now, "Drama"),
                 CreateTitle("tt9300004", "Untyped Archive", null, null, 9.0m, 1000, "not_found", now, "Classics"),
@@ -126,6 +128,8 @@ public sealed class ImdbTitlesApiTests
         Assert.Single((await GetPageAsync(ownerClient, "metadataStatus=temporary_error")).Items);
         Assert.Equal(2, (await GetPageAsync(ownerClient, "genres=Drama")).TotalCount);
         Assert.Equal(0, (await GetPageAsync(ownerClient, "genreFilter=true")).TotalCount);
+        Assert.Single((await GetPageAsync(ownerClient, "countries=USA&countryFilter=true")).Items);
+        Assert.Equal(0, (await GetPageAsync(ownerClient, "countryFilter=true")).TotalCount);
         Assert.Single((await GetPageAsync(ownerClient, "yearFrom=2025&imdbRatingFrom=8")).Items);
 
         var firstStablePage = await ownerClient.GetFromJsonAsync<ImdbTitlesPageResponse>("/api/imdb-titles?page=1&pageSize=2");

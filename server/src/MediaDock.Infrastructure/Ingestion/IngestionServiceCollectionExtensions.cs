@@ -29,6 +29,7 @@ public static class IngestionServiceCollectionExtensions
         services.AddScoped<PostgresAdvisoryScanLock>();
         services.AddScoped<IRssIngestionRepository, PostgresRssIngestionRepository>();
         services.AddScoped<IMetadataCacheStore, PostgresMetadataCacheStore>();
+        services.AddScoped<IImdbTitleLookup, PostgresImdbTitleLookup>();
         services.AddScoped<IOmdbRequestBudget, PostgresOmdbRequestBudget>();
         services.AddScoped<IOmdbClientFactory, OmdbClientFactory>();
         services.AddScoped<IOscarEnrichmentRepository, PostgresOscarEnrichmentRepository>();

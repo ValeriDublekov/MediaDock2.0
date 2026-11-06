@@ -173,13 +173,15 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         ParsedRutrackerTitle parsed,
         MetadataDetails metadata,
         DateTimeOffset observedAt,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool updateCanonicalImdbTitleMetadata = true)
     {
         feedItem = feedItem with { TorrentUrl = TorrentUrlIdentity.Normalize(feedItem.TorrentUrl!) };
         try
         {
             return await UpsertCatalogItemOnceAsync(
-                source, feedItem, sourceItemKey, itemFingerprint, parsed, metadata, observedAt, cancellationToken);
+                source, feedItem, sourceItemKey, itemFingerprint, parsed, metadata, observedAt,
+                updateCanonicalImdbTitleMetadata, cancellationToken);
         }
         catch (DbUpdateException exception) when (
             IsImdbIdentityUniqueViolation(exception) || IsTorrentUrlUniqueViolation(exception))
@@ -192,7 +194,8 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
             }
 
             return await UpsertCatalogItemOnceAsync(
-                source, feedItem, sourceItemKey, itemFingerprint, parsed, metadata, observedAt, cancellationToken);
+                source, feedItem, sourceItemKey, itemFingerprint, parsed, metadata, observedAt,
+                updateCanonicalImdbTitleMetadata, cancellationToken);
         }
     }
 
@@ -204,6 +207,7 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
         ParsedRutrackerTitle parsed,
         MetadataDetails metadata,
         DateTimeOffset observedAt,
+        bool updateCanonicalImdbTitleMetadata,
         CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
@@ -238,7 +242,7 @@ public sealed class PostgresRssIngestionRepository(MediaDockDbContext dbContext)
                 ? null
                 : (await ImdbTitleMetadataMapper.EnsureAsync(
                     dbContext, [canonicalImdbId], observedAt, cancellationToken))[canonicalImdbId];
-            if (imdbTitle is not null)
+            if (imdbTitle is not null && updateCanonicalImdbTitleMetadata)
             {
                 ImdbTitleMetadataMapper.Apply(imdbTitle, metadata with { ImdbId = canonicalImdbId }, observedAt);
             }

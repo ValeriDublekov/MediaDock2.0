@@ -41,7 +41,7 @@ internal sealed class RssEntryProcessor
             return;
         }
 
-        var lookup = await ResolveMetadataAsync(prepared, context, cancellationToken);
+        var lookup = await ResolveMetadataAsync(prepared, settings, context, cancellationToken);
         if (lookup is not null)
         {
             await ApplyResolutionAsync(prepared, lookup, settings, context, cancellationToken);
@@ -135,6 +135,7 @@ internal sealed class RssEntryProcessor
 
     private async Task<MetadataLookup?> ResolveMetadataAsync(
         PreparedEntry entry,
+        IngestionMatchSettings settings,
         IngestionRunContext context,
         CancellationToken cancellationToken)
     {
@@ -153,7 +154,10 @@ internal sealed class RssEntryProcessor
                 entry.Parsed.Year,
                 RssFeedTypes.MetadataSourceType(entry.Source.FeedType),
                 entry.ObservedAt,
-                cancellationToken);
+                cancellationToken,
+                allowImdbTitleLookup: true,
+                allowIncompleteImdbTitleLookup:
+                    settings.ExcludedCountries.Length == 0 && settings.ExcludedGenres.Length == 0);
             context.CacheHits += resolution.CacheHit ? 1 : 0;
             context.OmdbRequests += resolution.HttpAttempts;
             totalAttempts += resolution.HttpAttempts;
@@ -274,7 +278,8 @@ internal sealed class RssEntryProcessor
             entry.Parsed,
             metadata,
             entry.ObservedAt,
-            cancellationToken);
+            cancellationToken,
+            updateCanonicalImdbTitleMetadata: !lookup.Resolution.IsImdbTitleCatalogHit);
         context.TitlesCreated += upsert.TitleCreated ? 1 : 0;
         context.OccurrencesCreated += upsert.OccurrenceCreated ? 1 : 0;
         context.AddLog(CreateLog(

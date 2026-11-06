@@ -147,6 +147,17 @@ public sealed record MetadataCacheValue(
     DateTimeOffset ExpiresAt,
     string? LookupIdentity = null);
 
+public sealed record ImdbTitleLookupCandidate(bool IsEnriched, MetadataDetails Metadata);
+
+public interface IImdbTitleLookup
+{
+    Task<IReadOnlyList<ImdbTitleLookupCandidate>> FindByTitleAndYearAsync(
+        string title,
+        int year,
+        string sourceType,
+        CancellationToken cancellationToken = default);
+}
+
 public interface IMetadataCacheStore
 {
     Task<MetadataCacheValue?> GetAsync(
@@ -174,4 +185,5 @@ public sealed record MetadataResolution(
     MetadataDetails? Metadata,
     bool CacheHit,
     int HttpAttempts,
-    string? ErrorCode = null);
+    string? ErrorCode = null,
+    bool IsImdbTitleCatalogHit = false);

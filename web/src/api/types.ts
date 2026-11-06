@@ -545,6 +545,8 @@ export interface ImdbTitlesQuery {
   mediaTypeIsNull?: boolean
   genres?: string[]
   genreFilter?: boolean
+  countries?: string[]
+  countryFilter?: boolean
   yearFrom?: number
   yearTo?: number
   imdbRatingFrom?: number

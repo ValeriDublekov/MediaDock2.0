@@ -168,7 +168,7 @@ describe('typed API client', () => {
     expect(JSON.parse(String(stub.calls[4]?.init?.body))).toEqual({ imdbId: 'tt12345678', rating: 9 })
   })
 
-  it('serializes canonical IMDb title filters and repeated genres', async () => {
+  it('serializes canonical IMDb title filters and repeated genres and countries', async () => {
     const stub = fetchStub(response(200, {
       items: [], page: 2, pageSize: 24, totalCount: 0, totalPages: 0,
       yearBounds: { minYear: null, maxYear: null },
@@ -183,6 +183,8 @@ describe('typed API client', () => {
       mediaTypeIsNull: true,
       genres: ['Drama', 'Sci-Fi'],
       genreFilter: true,
+      countries: ['USA', 'Canada'],
+      countryFilter: true,
       yearFrom: 1980,
       yearTo: 2025,
       imdbRatingFrom: 6,
@@ -201,6 +203,8 @@ describe('typed API client', () => {
     expect(requestUrl.searchParams.get('mediaTypeIsNull')).toBe('true')
     expect(requestUrl.searchParams.getAll('genres')).toEqual(['Drama', 'Sci-Fi'])
     expect(requestUrl.searchParams.get('genreFilter')).toBe('true')
+    expect(requestUrl.searchParams.getAll('countries')).toEqual(['USA', 'Canada'])
+    expect(requestUrl.searchParams.get('countryFilter')).toBe('true')
     expect(requestUrl.searchParams.get('yearFrom')).toBe('1980')
     expect(requestUrl.searchParams.get('yearTo')).toBe('2025')
     expect(requestUrl.searchParams.get('imdbRatingFrom')).toBe('6')

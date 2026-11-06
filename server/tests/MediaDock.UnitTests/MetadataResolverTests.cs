@@ -6,6 +6,91 @@ namespace MediaDock.UnitTests;
 public sealed class MetadataResolverTests
 {
     [Fact]
+    public async Task ResolveAsyncUsesUniqueEnrichedImdbTitleBeforeCallingProvider()
+    {
+        var now = new DateTimeOffset(2026, 10, 2, 8, 0, 0, TimeSpan.Zero);
+        var client = new RecordingOmdbClient();
+        var titleLookup = new StaticImdbTitleLookup(
+        [
+            new(true, CreateMovieMetadata("Existing Film", 2024, "tt1234567"))
+        ]);
+        var resolver = new MetadataResolver(client, new InMemoryMetadataCacheStore(), titleLookup);
+
+        var result = await resolver.ResolveAsync(
+            "Existing Film", 2024, "movie", now, allowImdbTitleLookup: true);
+
+        Assert.Equal(MetadataLookupStatus.Found, result.Status);
+        Assert.Equal("tt1234567", result.Metadata?.ImdbId);
+        Assert.True(result.CacheHit);
+        Assert.Equal(0, result.HttpAttempts);
+        Assert.Empty(client.RequestedTitles);
+    }
+
+    [Fact]
+    public async Task ResolveAsyncFallsBackToProviderForPendingImdbTitle()
+    {
+        var now = new DateTimeOffset(2026, 10, 2, 8, 0, 0, TimeSpan.Zero);
+        var client = new RecordingOmdbClient();
+        var titleLookup = new StaticImdbTitleLookup(
+        [
+            new(false, CreateMovieMetadata("Existing Film", 2024, "tt1234567"))
+        ]);
+        var resolver = new MetadataResolver(client, new InMemoryMetadataCacheStore(), titleLookup);
+
+        var result = await resolver.ResolveAsync(
+            "Existing Film", 2024, "movie", now, allowImdbTitleLookup: true);
+
+        Assert.Equal(MetadataLookupStatus.Found, result.Status);
+        Assert.False(result.CacheHit);
+        Assert.Equal(1, result.HttpAttempts);
+        Assert.Equal(["Existing Film"], client.RequestedTitles);
+    }
+
+    [Fact]
+    public async Task ResolveAsyncUsesPendingImdbTitleWhenIncompleteCatalogMatchIsAllowed()
+    {
+        var now = new DateTimeOffset(2026, 10, 2, 8, 0, 0, TimeSpan.Zero);
+        var client = new RecordingOmdbClient();
+        var titleLookup = new StaticImdbTitleLookup(
+        [
+            new(false, CreateMovieMetadata("Existing Film", 2024, "tt1234567"))
+        ]);
+        var resolver = new MetadataResolver(client, new InMemoryMetadataCacheStore(), titleLookup);
+
+        var result = await resolver.ResolveAsync(
+            "Existing Film", 2024, "movie", now,
+            allowImdbTitleLookup: true,
+            allowIncompleteImdbTitleLookup: true);
+
+        Assert.Equal(MetadataLookupStatus.Found, result.Status);
+        Assert.True(result.IsImdbTitleCatalogHit);
+        Assert.Equal("tt1234567", result.Metadata?.ImdbId);
+        Assert.Equal(0, result.HttpAttempts);
+        Assert.Empty(client.RequestedTitles);
+    }
+
+    [Fact]
+    public async Task ResolveAsyncFallsBackToProviderForAmbiguousImdbTitle()
+    {
+        var now = new DateTimeOffset(2026, 10, 2, 8, 0, 0, TimeSpan.Zero);
+        var client = new RecordingOmdbClient();
+        var titleLookup = new StaticImdbTitleLookup(
+        [
+            new(true, CreateMovieMetadata("Existing Film", 2024, "tt1234567")),
+            new(true, CreateMovieMetadata("Existing Film", 2024, "tt7654321"))
+        ]);
+        var resolver = new MetadataResolver(client, new InMemoryMetadataCacheStore(), titleLookup);
+
+        var result = await resolver.ResolveAsync(
+            "Existing Film", 2024, "movie", now, allowImdbTitleLookup: true);
+
+        Assert.Equal(MetadataLookupStatus.Found, result.Status);
+        Assert.False(result.CacheHit);
+        Assert.Equal(1, result.HttpAttempts);
+        Assert.Equal(["Existing Film"], client.RequestedTitles);
+    }
+
+    [Fact]
     public async Task ResolveByTitleUsesConfirmedNotFoundCacheWithoutCallingProvider()
     {
         var now = DateTimeOffset.UtcNow;
@@ -306,6 +391,26 @@ public sealed class MetadataResolverTests
             null),
         1);
 
+    private static MetadataDetails CreateMovieMetadata(string title, int year, string imdbId) => new(
+        title,
+        year,
+        imdbId,
+        "movie",
+        "movie",
+        "standard",
+        null,
+        7.5m,
+        1000,
+        80m,
+        [],
+        [],
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
+
     private static GoldenGlobeMetadataResolver CreateGoldenGlobeResolver(IOmdbClient client) =>
         new(client, new MetadataResolver(client, new InMemoryMetadataCacheStore()));
 
@@ -458,6 +563,16 @@ public sealed class MetadataResolverTests
                 null);
             return Task.FromResult(new MetadataLookupResult(MetadataLookupStatus.Found, metadata, 1));
         }
+    }
+
+    private sealed class StaticImdbTitleLookup(
+        IReadOnlyList<ImdbTitleLookupCandidate> candidates) : IImdbTitleLookup
+    {
+        public Task<IReadOnlyList<ImdbTitleLookupCandidate>> FindByTitleAndYearAsync(
+            string title,
+            int year,
+            string sourceType,
+            CancellationToken cancellationToken = default) => Task.FromResult(candidates);
     }
 
     private sealed class InMemoryMetadataCacheStore : IMetadataCacheStore

@@ -24,6 +24,11 @@ public sealed record ImdbTitlesQuery
 
     public bool? GenreFilter { get; init; }
 
+    [MaxLength(100)]
+    public string[]? Countries { get; init; }
+
+    public bool? CountryFilter { get; init; }
+
     [Range(1800, 2200)]
     public int? YearFrom { get; init; }
 

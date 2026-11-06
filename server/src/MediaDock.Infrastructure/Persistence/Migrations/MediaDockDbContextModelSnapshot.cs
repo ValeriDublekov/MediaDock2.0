@@ -820,6 +820,9 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                     b.HasKey("ImdbId")
                         .HasName("pk_imdb_titles");
 
+                    b.HasIndex("TitleText", "MediaType", "Year")
+                        .HasDatabaseName("ix_imdb_titles_title_media_type_year");
+
                     b.ToTable("imdb_titles", null, t =>
                         {
                             t.HasCheckConstraint("ck_imdb_titles_enrichment_attempt_count", "enrichment_attempt_count >= 0");
