@@ -24,6 +24,21 @@ internal static class ImdbTitlesEndpoints
             .Produces<ImdbTitlesPageResponse>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        app.MapDelete("/api/imdb-titles/{imdbId}", async Task<Ok<DeleteImdbTitleResponse>> (
+            string imdbId,
+            ImdbTitlesApiService service,
+            CancellationToken cancellationToken) =>
+        {
+            return TypedResults.Ok(await service.DeleteAsync(imdbId, cancellationToken));
+        })
+            .WithName("DeleteImdbTitle")
+            .WithSummary("Delete canonical IMDb metadata.")
+            .WithDescription("Unlinks torrent catalog titles before deleting IMDb metadata. Records still referenced by awards or personal data cannot be deleted.")
+            .RequireAuthorization(AccessPolicies.Administrator)
+            .Produces<DeleteImdbTitleResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
         return app;
     }
 }

@@ -3,6 +3,7 @@ import type {
   AdminUsersPage,
   CatalogQuery,
   CatalogTitle,
+  DeleteImdbTitleResponse,
   ImdbTitlesQuery,
   ImdbTitlesPage,
   CurrentSession,
@@ -170,6 +171,10 @@ export function getCatalog(query: CatalogQuery, fetcher?: typeof fetch) {
 
 export function getImdbTitles(query: ImdbTitlesQuery, fetcher?: typeof fetch) {
   return requestJson<ImdbTitlesPage>(withQuery('/imdb-titles', query, ['genres', 'countries']), {}, fetcher)
+}
+
+export function deleteImdbTitle(imdbId: string, fetcher?: typeof fetch) {
+  return requestJson<DeleteImdbTitleResponse>(`/imdb-titles/${encodeURIComponent(imdbId)}`, { method: 'DELETE' }, fetcher)
 }
 
 export function getCatalogGenres(fetcher?: typeof fetch) {

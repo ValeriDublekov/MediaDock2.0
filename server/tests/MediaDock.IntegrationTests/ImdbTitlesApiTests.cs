@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using MediaDock.Api.Catalog;
 using MediaDock.Api.Authentication;
 using MediaDock.Api.Common;
 using MediaDock.Api.ImdbTitles;
@@ -151,6 +152,48 @@ public sealed class ImdbTitlesApiTests
         Assert.Equal(3, (await GetPageAsync(ownerClient, "showIgnored=false&showWatched=false")).TotalCount);
         Assert.Equal(HttpStatusCode.BadRequest,
             (await ownerClient.GetAsync("/api/imdb-titles?yearFrom=2026&yearTo=2025")).StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteUnlinksTorrentTitleAndRejectsOtherReferences()
+    {
+        await using var host = await CatalogApiTestHost.CreateAsync("mediadock_imdb_titles_delete_api_test");
+        var now = DateTimeOffset.UtcNow;
+        var linkedTorrentTitle = new TorrentMovie
+        {
+            TitleText = "Linked film",
+            NormalizedTitle = "linked film",
+            MediaType = "movie",
+            ImdbId = "tt9300011",
+            UpdatedAt = now
+        };
+        host.Db.ImdbTitles.AddRange(
+            CreateTitle("tt9300011", "Linked film", 2024, "movie", null, null, "enriched", now),
+            CreateTitle("tt9300012", "Awarded film", 2023, "movie", null, null, "enriched", now));
+        host.Db.TorrentMovies.Add(linkedTorrentTitle);
+        host.Db.OscarMovies.Add(new OscarMovie
+        {
+            StableKey = "awarded-film",
+            FilmTitle = "Awarded film",
+            NormalizedTitle = "awarded film",
+            FilmYear = 2023,
+            ImdbId = "tt9300012",
+            ImportedAt = now,
+            UpdatedAt = now
+        });
+        await host.Db.SaveChangesAsync();
+
+        using var deletedResponse = await host.Client.DeleteAsync("/api/imdb-titles/tt9300011");
+        Assert.Equal(HttpStatusCode.OK, deletedResponse.StatusCode);
+        var deletedResult = await deletedResponse.Content.ReadFromJsonAsync<DeleteImdbTitleResponse>();
+        Assert.Equal(new DeleteImdbTitleResponse(1), deletedResult);
+        Assert.False(await host.Db.ImdbTitles.AnyAsync(title => title.ImdbId == "tt9300011"));
+        Assert.Null((await host.Db.TorrentMovies.AsNoTracking().SingleAsync(movie => movie.Id == linkedTorrentTitle.Id)).ImdbId);
+
+        using var conflictResponse = await host.Client.DeleteAsync("/api/imdb-titles/tt9300012");
+        Assert.Equal(HttpStatusCode.Conflict, conflictResponse.StatusCode);
+        Assert.True(await host.Db.ImdbTitles.AnyAsync(title => title.ImdbId == "tt9300012"));
+        Assert.True(await host.Db.OscarMovies.AnyAsync(movie => movie.ImdbId == "tt9300012"));
     }
 
     private static async Task<ImdbTitlesPageResponse> GetPageAsync(HttpClient client, string query) =>

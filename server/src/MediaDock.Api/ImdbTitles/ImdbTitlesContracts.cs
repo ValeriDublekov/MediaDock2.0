@@ -66,6 +66,8 @@ public sealed record ImdbTitlesPageResponse(
     IReadOnlyList<string> Genres,
     IReadOnlyList<string> MetadataStatuses);
 
+public sealed record DeleteImdbTitleResponse(int UnlinkedTorrentTitles);
+
 /// <summary>Canonical IMDb metadata and the active user's personal state for one title.</summary>
 public sealed record ImdbTitleCatalogItem(
     string ImdbId,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Pencil, RotateCcw, Trash2 } from 'lucide-react'
-import { addPersonalRating, getImdbTitles } from '../../api/client'
+import { addPersonalRating, deleteImdbTitle, getImdbTitles } from '../../api/client'
 import type { ImdbTitleCatalogItem, ImdbTitlesPage, ImdbTitlesQuery } from '../../api/types'
 import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
 import { DualRangeFilter } from '../../components/DualRangeFilter'
@@ -183,7 +183,7 @@ function PersonalRatingDialog({ item, onClose, onSaved }: {
   </div>
 }
 
-export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: boolean }) {
+export function ImdbTitlesCatalogView({ hasActiveAccount, canDeleteTitles = false }: { hasActiveAccount: boolean; canDeleteTitles?: boolean }) {
   const [viewMode, setViewMode] = useState<ViewMode>('posters')
   const [page, setPage] = useState(1)
   const [draft, setDraft] = useState<Filters>(emptyFilters)
@@ -194,6 +194,9 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
   const [attempt, setAttempt] = useState(0)
   const [selectedTitle, setSelectedTitle] = useState<ImdbTitleCatalogItem | null>(null)
   const [ratingTitle, setRatingTitle] = useState<ImdbTitleCatalogItem | null>(null)
+  const [deletingTitleId, setDeletingTitleId] = useState<string | null>(null)
+  const [deleteMessage, setDeleteMessage] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const awardsRequestKey = movieAwardsRequestKey(result?.items.map((item) => item.imdbId) ?? [])
   const { awards: pageAwards, error: awardsError } = useMovieAwards(awardsRequestKey)
 
@@ -301,6 +304,37 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
     ? { minRating: result.imdbRatingBounds.minRating, maxRating: result.imdbRatingBounds.maxRating }
     : null
 
+  async function deleteTitle(item: ImdbTitleCatalogItem) {
+    if (!canDeleteTitles || deletingTitleId !== null) return
+    if (!window.confirm(`Delete ${item.title} from IMDb titles? A linked torrent title will remain in the catalog without IMDb metadata.`)) return
+
+    setDeleteMessage(null)
+    setDeleteError(null)
+    setDeletingTitleId(item.imdbId)
+    try {
+      const response = await deleteImdbTitle(item.imdbId)
+      setDeleteMessage(response.unlinkedTorrentTitles > 0
+        ? `Deleted ${item.title} from IMDb titles. ${response.unlinkedTorrentTitles === 1 ? 'Its linked torrent title is' : `${response.unlinkedTorrentTitles} linked torrent titles are`} now unmatched (not enriched).`
+        : `Deleted ${item.title} from IMDb titles.`)
+      reload()
+    } catch (requestError: unknown) {
+      setDeleteError(requestError instanceof Error ? requestError.message : 'Could not delete the IMDb title.')
+    } finally {
+      setDeletingTitleId(null)
+    }
+  }
+
+  function renderDeleteAction(item: ImdbTitleCatalogItem) {
+    return canDeleteTitles && <button
+      aria-label={`Delete ${item.title}`}
+      className="tile-icon-action delete-icon"
+      data-tooltip={`Delete ${item.title}`}
+      disabled={deletingTitleId !== null}
+      onClick={() => { void deleteTitle(item) }}
+      type="button"
+    ><Trash2 aria-hidden="true" size={16} /></button>
+  }
+
   function renderPosterActions(item: ImdbTitleCatalogItem) {
     return <>
       {hasActiveAccount && <>
@@ -318,13 +352,7 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
         <RateTitleAction hasActiveAccount={hasActiveAccount} item={item} onRate={() => setRatingTitle(item)} placement="poster" />
         <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} onChanged={reload} placement="poster" />
       </>}
-      <button
-        aria-label={`Delete ${item.title}`}
-        className="tile-icon-action delete-icon"
-        data-tooltip={`Delete ${item.title}`}
-        onClick={() => { window.confirm(`Delete ${item.title}? This action is not connected yet.`) }}
-        type="button"
-      ><Trash2 aria-hidden="true" size={16} /></button>
+      {renderDeleteAction(item)}
     </>
   }
 
@@ -357,6 +385,8 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
         <button className="button button-secondary" disabled type="button">Add</button>
       </div>
     </div>
+    {deleteMessage && <p role="status">{deleteMessage}</p>}
+    {deleteError && <p className="form-error" role="alert">{deleteError}</p>}
 
     <form className="filter-form imdb-title-filter-form" onSubmit={applyFilters}>
       <div className="field filter-search imdb-title-search">
@@ -497,6 +527,7 @@ export function ImdbTitlesCatalogView({ hasActiveAccount }: { hasActiveAccount: 
               <FavoriteControls from="imdb-titles" imdbId={item.imdbId} metadataStatus={item.metadataStatus} mediaType={item.mediaType} occurrenceCount={0} onAdded={reload} onRemoved={reload} onUpdated={reload} />
               <IgnoredMovieControl imdbId={item.imdbId} mediaType={item.mediaType} onChanged={reload} />
               <RateTitleAction hasActiveAccount={hasActiveAccount} item={item} onRate={() => setRatingTitle(item)} />
+              {renderDeleteAction(item)}
             </td>
           </tr>)}</tbody>
         </table>

@@ -4,6 +4,7 @@ import {
   addFavorite,
   addIgnoredMovie,
   addPersonalRating,
+  deleteImdbTitle,
   getFavorites,
   getIgnoredMovies,
   getImdbTitles,
@@ -28,6 +29,7 @@ vi.mock('../../api/client', () => ({
   addFavorite: vi.fn(),
   addIgnoredMovie: vi.fn(),
   addPersonalRating: vi.fn(),
+  deleteImdbTitle: vi.fn(),
   getFavorites: vi.fn(),
   getIgnoredMovies: vi.fn(),
   getImdbTitles: vi.fn(),
@@ -148,10 +150,10 @@ function personalPage<T>(items: T[]): PageResponse<T> {
   return { items, page: 1, pageSize: 24, totalCount: items.length, totalPages: items.length ? 1 : 0 }
 }
 
-function renderCatalog() {
+function renderCatalog(canDeleteTitles = false) {
   return render(<IgnoredMoviesProvider accountKey="issuer:user">
     <FavoriteProvider accountKey="issuer:user">
-      <ImdbTitlesCatalogView hasActiveAccount />
+      <ImdbTitlesCatalogView canDeleteTitles={canDeleteTitles} hasActiveAccount />
     </FavoriteProvider>
   </IgnoredMoviesProvider>)
 }
@@ -168,6 +170,7 @@ describe('IMDb titles catalog view', () => {
     vi.mocked(addIgnoredMovie).mockReset().mockResolvedValue(ignored)
     vi.mocked(removeIgnoredMovie).mockReset().mockResolvedValue(undefined)
     vi.mocked(addPersonalRating).mockReset().mockResolvedValue(undefined)
+    vi.mocked(deleteImdbTitle).mockReset().mockResolvedValue({ unlinkedTorrentTitles: 1 })
   })
 
   afterEach(() => {
@@ -208,9 +211,9 @@ describe('IMDb titles catalog view', () => {
     expect(screen.getAllByText('Untyped file').length).toBeGreaterThan(0)
   })
 
-  it('orders poster actions and asks for delete confirmation without making a request', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    renderCatalog()
+  it('confirms IMDb deletion and reports that its torrent title is no longer enriched', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true)
+    renderCatalog(true)
     expect(await screen.findByRole('button', { name: 'View Untyped file details' })).toBeTruthy()
 
     const posterActions = screen.getByRole('button', { name: 'View Untyped file details' }).closest('.movie-tile')?.querySelector('.poster-overlay-actions')
@@ -220,8 +223,26 @@ describe('IMDb titles catalog view', () => {
 
     const requestCount = vi.mocked(getImdbTitles).mock.calls.length
     fireEvent.click(screen.getByRole('button', { name: 'Delete Untyped file' }))
-    expect(confirm).toHaveBeenCalledWith('Delete Untyped file? This action is not connected yet.')
+    expect(confirm).toHaveBeenCalledWith('Delete Untyped file from IMDb titles? A linked torrent title will remain in the catalog without IMDb metadata.')
+    expect(deleteImdbTitle).not.toHaveBeenCalled()
     expect(getImdbTitles).toHaveBeenCalledTimes(requestCount)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Untyped file' }))
+    await waitFor(() => expect(deleteImdbTitle).toHaveBeenCalledWith(untyped.imdbId))
+    expect(await screen.findByText('Deleted Untyped file from IMDb titles. Its linked torrent title is now unmatched (not enriched).')).toBeTruthy()
+    await waitFor(() => expect(getImdbTitles).toHaveBeenCalledTimes(requestCount + 1))
+  })
+
+  it('shows the delete action in table view for administrators only', async () => {
+    renderCatalog()
+    await screen.findByRole('button', { name: 'View Untyped file details' })
+    expect(screen.queryByRole('button', { name: 'Delete Untyped file' })).toBeNull()
+
+    cleanup()
+    renderCatalog(true)
+    fireEvent.click(await screen.findByRole('button', { name: 'Table' }))
+    const row = await screen.findByRole('row', { name: /Untyped file/ })
+    expect(within(row).getByRole('button', { name: 'Delete Untyped file' })).toBeTruthy()
   })
 
   it('sends visibility, sort, and explicit empty-genre filters to the server and resets the page', async () => {

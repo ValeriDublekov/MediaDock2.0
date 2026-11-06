@@ -23,6 +23,7 @@ import {
   decideRegistrationRequest,
   setAdminUserStatus,
   deleteCatalogTitle,
+  deleteImdbTitle,
   deleteOldOperationalHistory,
   getDeploymentStatus,
   getGoldenGlobeCategories,
@@ -101,6 +102,15 @@ describe('typed API client', () => {
     await deleteCatalogTitle(7, true, stub.fetcher)
 
     expect(String(stub.calls[0]?.input)).toBe('/api/titles/7?deleteImdbInfo=true')
+    expect(stub.calls[0]?.init?.method).toBe('DELETE')
+  })
+
+  it('deletes a canonical IMDb title', async () => {
+    const stub = fetchStub(response(200, { unlinkedTorrentTitles: 1 }))
+
+    await deleteImdbTitle('tt12345678', stub.fetcher)
+
+    expect(String(stub.calls[0]?.input)).toBe('/api/imdb-titles/tt12345678')
     expect(stub.calls[0]?.init?.method).toBe('DELETE')
   })
 

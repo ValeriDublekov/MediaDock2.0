@@ -237,6 +237,49 @@ internal sealed class ImdbTitlesApiService(MediaDockDbContext dbContext)
             MetadataStatusOptions);
     }
 
+    public async Task<DeleteImdbTitleResponse> DeleteAsync(string imdbId, CancellationToken cancellationToken)
+    {
+        var normalizedImdbId = imdbId.Trim().ToLowerInvariant();
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var title = await dbContext.ImdbTitles
+            .FromSqlInterpolated($"SELECT * FROM imdb_titles WHERE imdb_id = {normalizedImdbId} FOR UPDATE")
+            .SingleOrDefaultAsync(cancellationToken);
+        if (title is null)
+        {
+            throw new ApiNotFoundException("IMDb title not found.");
+        }
+
+        var isReferencedOutsideTorrentCatalog = await dbContext.OscarMovies
+                .AnyAsync(movie => movie.ImdbId == normalizedImdbId, cancellationToken)
+            || await dbContext.GoldenGlobeTitles
+                .AnyAsync(movie => movie.ImdbId == normalizedImdbId, cancellationToken)
+            || await dbContext.ImdbFavoriteMovies
+                .AnyAsync(movie => movie.ImdbId == normalizedImdbId, cancellationToken)
+            || await dbContext.UserIgnoredMovies
+                .AnyAsync(movie => movie.ImdbId == normalizedImdbId, cancellationToken)
+            || await dbContext.PersonalRatings
+                .AnyAsync(rating => rating.ImdbId == normalizedImdbId, cancellationToken);
+        if (isReferencedOutsideTorrentCatalog)
+        {
+            throw new ApiConflictException("IMDb title is still referenced by awards or personal data and cannot be deleted.");
+        }
+
+        var torrentTitles = await dbContext.TorrentMovies
+            .Where(movie => movie.ImdbId == normalizedImdbId)
+            .ToListAsync(cancellationToken);
+        var updatedAt = DateTimeOffset.UtcNow;
+        foreach (var torrentTitle in torrentTitles)
+        {
+            torrentTitle.ImdbId = null;
+            torrentTitle.UpdatedAt = updatedAt;
+        }
+
+        dbContext.ImdbTitles.Remove(title);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return new DeleteImdbTitleResponse(torrentTitles.Count);
+    }
+
     private static void ValidateRanges(ImdbTitlesQuery query)
     {
         if (query.YearFrom is { } yearFrom && query.YearTo is { } yearTo && yearFrom > yearTo)

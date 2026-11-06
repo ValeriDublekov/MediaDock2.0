@@ -558,7 +558,7 @@ function AppContent() {
             <Route path="/catalog" element={<CatalogView canDeleteTitles={isAdmin} canViewHistory={isAdmin} />} />
             <Route path="/oscar" element={<OscarCatalogView />} />
             <Route path="/golden-globes" element={<GoldenGlobeCatalogView />} />
-            <Route path="/imdb-titles" element={<ImdbTitlesCatalogView hasActiveAccount={Boolean(isActiveAccount)} />} />
+            <Route path="/imdb-titles" element={<ImdbTitlesCatalogView canDeleteTitles={isAdmin} hasActiveAccount={Boolean(isActiveAccount)} />} />
             <Route path="/favorites" element={isActiveAccount
               ? <FavoritesView />
               : <RouteAccessRequired message="Sign in with an active linked account to view favorites." title="Favorites unavailable" />} />

@@ -109,6 +109,10 @@ export interface DeleteTitleResponse {
   imdbInfoDeleted: boolean
 }
 
+export interface DeleteImdbTitleResponse {
+  unlinkedTorrentTitles: number
+}
+
 export interface ImdbCandidate {
   title: string
   year: number | null
