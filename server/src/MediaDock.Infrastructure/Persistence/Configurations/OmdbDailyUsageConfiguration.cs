@@ -30,5 +30,11 @@ internal sealed class OmdbDailyUsageConfiguration : IEntityTypeConfiguration<Omd
         builder.Property(entity => entity.LastErrorCode)
             .HasColumnName("last_error_code")
             .HasMaxLength(64);
+        builder.Property(entity => entity.LastProviderRequestAt).HasColumnName("last_provider_request_at");
+        builder.Property(entity => entity.LastProviderSuccessAt).HasColumnName("last_provider_success_at");
+        builder.Property(entity => entity.LastProviderErrorAt).HasColumnName("last_provider_error_at");
+        builder.Property(entity => entity.ProviderQuotaExceededAt).HasColumnName("provider_quota_exceeded_at");
+        builder.Property(entity => entity.QuotaRecoveryAttemptedAt).HasColumnName("quota_recovery_attempted_at");
+        builder.Property(entity => entity.QuotaRecoverySucceededAt).HasColumnName("quota_recovery_succeeded_at");
     }
 }

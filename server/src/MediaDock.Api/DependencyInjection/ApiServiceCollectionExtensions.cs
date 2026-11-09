@@ -59,6 +59,7 @@ public static class ApiServiceCollectionExtensions
 		services.AddKeyedScoped<IBackgroundJobHandler, GoldenGlobeEnrichmentBackgroundJobHandler>("golden_globe_enrichment");
 		services.AddKeyedScoped<IBackgroundJobHandler, ImdbTitleEnrichmentBackgroundJobHandler>("imdb_title_enrichment");
 		services.AddKeyedScoped<IBackgroundJobHandler, ImdbCatalogEnrichmentBackgroundJobHandler>("imdb_catalog_enrichment");
+		services.AddKeyedScoped<IBackgroundJobHandler, OmdbQuotaRecoveryBackgroundJobHandler>("omdb_quota_recovery");
 		services.AddKeyedScoped<IBackgroundJobHandler, GoldenGlobeManualRefreshBackgroundJobHandler>("golden_globe_manual_refresh");
 		if (configuration.GetValue("BackgroundJobs:DispatcherEnabled", true))
 		{

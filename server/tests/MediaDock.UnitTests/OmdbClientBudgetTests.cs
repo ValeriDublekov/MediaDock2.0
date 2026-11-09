@@ -163,6 +163,28 @@ public sealed class OmdbClientBudgetTests
     }
 
     [Fact]
+    public async Task LookupPersistsSuccessfulProviderResponseTime()
+    {
+        var budget = new SequentialRequestBudget(true);
+        using var httpClient = new HttpClient(new NotFoundHandler());
+        var client = new OmdbClient(
+            httpClient,
+            "test-key",
+            requestBudget: budget,
+            dailyRequestLimit: 10);
+
+        var result = await client.LookupAsync(
+            "Example Film",
+            null,
+            "movie",
+            requestPurpose: OmdbRequestPurpose.RssIngestion);
+
+        Assert.Equal(MetadataLookupStatus.ConfirmedNotFound, result.Status);
+        Assert.NotNull(budget.ProviderSuccessDate);
+        Assert.NotNull(budget.ProviderSuccessAt);
+    }
+
+    [Fact]
     public async Task SearchReservesEachPageAndSendsSearchParameters()
     {
         var budget = new SequentialRequestBudget(true, false);
@@ -228,6 +250,8 @@ public sealed class OmdbClientBudgetTests
         public List<OmdbRequestPurpose> RequestPurposes { get; } = [];
         public List<DateOnly> ReservedDays { get; } = [];
         public DateOnly? ProviderErrorDate { get; private set; }
+        public DateOnly? ProviderSuccessDate { get; private set; }
+        public DateTimeOffset? ProviderSuccessAt { get; private set; }
         public DateOnly? ResetDate { get; private set; }
         public string? ProviderErrorCode { get; private set; }
         public bool ProviderQuotaExceeded { get; private set; }
@@ -236,7 +260,8 @@ public sealed class OmdbClientBudgetTests
             DateOnly utcDate,
             OmdbRequestPurpose requestPurpose,
             int dailyRequestLimit,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            DateTimeOffset? requestAt = null)
         {
             RequestPurposes.Add(requestPurpose);
             ReservedDays.Add(utcDate);
@@ -247,13 +272,34 @@ public sealed class OmdbClientBudgetTests
             DateOnly utcDate,
             string errorCode,
             bool providerQuotaExceeded,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            DateTimeOffset? errorAt = null)
         {
             ProviderErrorDate = utcDate;
             ProviderErrorCode = errorCode;
             ProviderQuotaExceeded = providerQuotaExceeded;
             return Task.CompletedTask;
         }
+
+        public Task RecordProviderSuccessAsync(
+            DateOnly utcDate,
+            CancellationToken cancellationToken = default,
+            DateTimeOffset? completedAt = null)
+        {
+            ProviderSuccessDate = utcDate;
+            ProviderSuccessAt = completedAt;
+            return Task.CompletedTask;
+        }
+
+        public Task MarkQuotaRecoveryAttemptedAsync(
+            DateOnly utcDate,
+            DateTimeOffset attemptedAt,
+            CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task MarkQuotaRecoverySucceededAsync(
+            DateOnly utcDate,
+            DateTimeOffset succeededAt,
+            CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task ResetDailyUsageAsync(DateOnly utcDate, CancellationToken cancellationToken = default)
         {

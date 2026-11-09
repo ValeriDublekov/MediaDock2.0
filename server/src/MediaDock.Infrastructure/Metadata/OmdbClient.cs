@@ -167,14 +167,16 @@ public sealed class OmdbClient : IOmdbClient
         Func<MetadataLookupResult, T> convertError,
         Func<T, MetadataLookupResult> asLookupResult)
     {
-        var utcDate = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
+        var requestAt = _timeProvider.GetUtcNow();
+        var utcDate = DateOnly.FromDateTime(requestAt.UtcDateTime);
         if (_requestBudget is not null)
         {
             var reserved = await _requestBudget.TryReserveAsync(
                 utcDate,
                 requestPurpose,
                 _dailyRequestLimit,
-                cancellationToken);
+            cancellationToken,
+            requestAt);
             if (!reserved)
             {
                 return convertError(new MetadataLookupResult(
@@ -215,68 +217,79 @@ public sealed class OmdbClient : IOmdbClient
                     ErrorCode: status == MetadataLookupStatus.ProviderFailure ? "http_error" : ErrorCode(status),
                     ProviderMessage: SanitizeProviderMessage(providerMessage)
                         ?? $"HTTP {(int)response.StatusCode} {response.ReasonPhrase}".Trim());
-                var recordedError = await RecordProviderErrorAsync(utcDate, errorResult, cancellationToken);
+                var recordedError = await RecordProviderResultAsync(utcDate, errorResult, cancellationToken);
                 return convertError(recordedError);
             }
 
             var body = await ReadBoundedAsync(response.Content, timeoutSource.Token);
             var result = parseResponse(body);
-            await RecordProviderErrorAsync(utcDate, asLookupResult(result), cancellationToken);
+            await RecordProviderResultAsync(utcDate, asLookupResult(result), cancellationToken);
             return result;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return convertError(await RecordProviderErrorAsync(
+            return convertError(await RecordProviderResultAsync(
                 utcDate,
                 new MetadataLookupResult(MetadataLookupStatus.TransportFailure, HttpAttempts: 1, ErrorCode: "timeout"),
                 cancellationToken));
         }
         catch (HttpRequestException)
         {
-            return convertError(await RecordProviderErrorAsync(
+            return convertError(await RecordProviderResultAsync(
                 utcDate,
                 new MetadataLookupResult(MetadataLookupStatus.TransportFailure, HttpAttempts: 1, ErrorCode: "transport_error"),
                 cancellationToken));
         }
         catch (IOException)
         {
-            return convertError(await RecordProviderErrorAsync(
+            return convertError(await RecordProviderResultAsync(
                 utcDate,
                 new MetadataLookupResult(MetadataLookupStatus.TransportFailure, HttpAttempts: 1, ErrorCode: "transport_error"),
                 cancellationToken));
         }
         catch (JsonException)
         {
-            return convertError(await RecordProviderErrorAsync(
+            return convertError(await RecordProviderResultAsync(
                 utcDate,
                 new MetadataLookupResult(MetadataLookupStatus.ProviderFailure, HttpAttempts: 1, ErrorCode: "invalid_response"),
                 cancellationToken));
         }
         catch (InvalidDataException)
         {
-            return convertError(await RecordProviderErrorAsync(
+            return convertError(await RecordProviderResultAsync(
                 utcDate,
                 new MetadataLookupResult(MetadataLookupStatus.ProviderFailure, HttpAttempts: 1, ErrorCode: "response_too_large"),
                 cancellationToken));
         }
     }
 
-    private async Task<MetadataLookupResult> RecordProviderErrorAsync(
+    private async Task<MetadataLookupResult> RecordProviderResultAsync(
         DateOnly utcDate,
         MetadataLookupResult result,
         CancellationToken cancellationToken)
     {
-        if (_requestBudget is not null
-            && result.Status is not (MetadataLookupStatus.Found
-                or MetadataLookupStatus.ConfirmedNotFound
-                or MetadataLookupStatus.InvalidRequest
-                or MetadataLookupStatus.RequestBudgetExhausted))
+        if (_requestBudget is null
+            || result.Status is MetadataLookupStatus.InvalidRequest or MetadataLookupStatus.RequestBudgetExhausted)
+        {
+            return result;
+        }
+
+        var completedAt = _timeProvider.GetUtcNow();
+        if (result.Status is MetadataLookupStatus.Found or MetadataLookupStatus.ConfirmedNotFound)
+        {
+            await _requestBudget.RecordProviderSuccessAsync(
+                utcDate,
+                cancellationToken,
+                completedAt);
+        }
+        else
         {
             await _requestBudget.RecordProviderErrorAsync(
                 utcDate,
                 result.ErrorCode ?? "provider_error",
                 result.Status == MetadataLookupStatus.QuotaExceeded,
-                cancellationToken);
+                cancellationToken,
+                completedAt);
         }
 
         return result;

@@ -5,6 +5,7 @@ using MediaDock.Application.OscarAwards;
 using MediaDock.Application.PersonalRatings;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace MediaDock.Api.BackgroundJobs;
 
@@ -36,10 +37,13 @@ public sealed class BackgroundJobScheduler(
         var state = await dbContext.BackgroundSchedulerStates.AsNoTracking()
             .SingleAsync(item => item.ScheduleName == ScheduleName, cancellationToken);
 
+        await EnqueueQuotaRecoveryIfDueAsync(now, cancellationToken);
+
         var activeRssJob = await dbContext.BackgroundJobs.AsNoTracking()
             .AnyAsync(job => job.JobType == "rss_scan" && (job.Status == "queued" || job.Status == "running"), cancellationToken);
         if (activeRssJob)
         {
+            await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return;
         }
@@ -47,6 +51,7 @@ public sealed class BackgroundJobScheduler(
         var dueSlot = GetDueSlots(state.LastEvaluatedSlotUtc, now).LastOrDefault();
         if (dueSlot == default)
         {
+            await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return;
         }
@@ -72,24 +77,7 @@ public sealed class BackgroundJobScheduler(
 
         if (await HasDailyOmdbBudgetAsync(now, cancellationToken))
         {
-            await EnqueueScheduledEnrichmentIfEligibleAsync(
-                "oscar_enrichment",
-                "Scheduled Oscar enrichment queued.",
-                (await oscarEnrichmentRepository.GetEligibleCandidatesAsync(now, cancellationToken)).Count > 0,
-                now,
-                cancellationToken);
-            await EnqueueScheduledEnrichmentIfEligibleAsync(
-                "golden_globe_enrichment",
-                "Scheduled Golden Globes enrichment queued.",
-                (await goldenGlobeEnrichmentRepository.GetEligibleCandidatesAsync(now, cancellationToken)).Count > 0,
-                now,
-                cancellationToken);
-            await EnqueueScheduledEnrichmentIfEligibleAsync(
-                "imdb_catalog_enrichment",
-                "Scheduled IMDb catalog enrichment queued.",
-                (await imdbTitleEnrichmentRepository.GetEligibleCatalogCandidatesAsync(now, 1, cancellationToken)).Count > 0,
-                now,
-                cancellationToken);
+            await EnqueueEligibleEnrichmentJobsAsync(now, "schedule", cancellationToken);
         }
 
         var trackedState = await dbContext.BackgroundSchedulerStates
@@ -99,8 +87,128 @@ public sealed class BackgroundJobScheduler(
         await transaction.CommitAsync(cancellationToken);
     }
 
-    private async Task EnqueueScheduledEnrichmentIfEligibleAsync(
+    public async Task EnqueueEnrichmentJobsAfterQuotaRecoveryAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        if (await HasDailyOmdbBudgetAsync(now, cancellationToken))
+        {
+            await EnqueueEligibleEnrichmentJobsAsync(now, "quota_recovery", cancellationToken);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    private async Task EnqueueQuotaRecoveryIfDueAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var quotaEvent = await dbContext.OmdbDailyUsage.AsNoTracking()
+            .Where(item => item.ProviderQuotaExceededAt != null)
+            .OrderByDescending(item => item.ProviderQuotaExceededAt)
+            .Select(item => new
+            {
+                item.UtcDate,
+                item.ProviderQuotaExceededAt,
+                item.QuotaRecoveryAttemptedAt
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (quotaEvent?.ProviderQuotaExceededAt is not DateTimeOffset quotaAt)
+        {
+            return;
+        }
+
+        var lastSuccessAt = await dbContext.OmdbDailyUsage.AsNoTracking()
+            .Where(item => item.LastProviderSuccessAt != null)
+            .OrderByDescending(item => item.LastProviderSuccessAt)
+            .Select(item => item.LastProviderSuccessAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (lastSuccessAt >= quotaAt)
+        {
+            return;
+        }
+
+        var lastErrorAt = await dbContext.OmdbDailyUsage.AsNoTracking()
+            .Where(item => item.LastProviderErrorAt != null)
+            .OrderByDescending(item => item.LastProviderErrorAt)
+            .Select(item => item.LastProviderErrorAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        var lastAttemptAt = await dbContext.OmdbDailyUsage.AsNoTracking()
+            .Where(item => item.QuotaRecoveryAttemptedAt != null)
+            .OrderByDescending(item => item.QuotaRecoveryAttemptedAt)
+            .Select(item => item.QuotaRecoveryAttemptedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        var retryAfter = quotaAt;
+        if (lastErrorAt > retryAfter)
+        {
+            retryAfter = lastErrorAt.Value;
+        }
+        if (lastAttemptAt > retryAfter)
+        {
+            retryAfter = lastAttemptAt.Value;
+        }
+
+        var dueAt = GetNextQuotaRecoverySlot(retryAfter);
+        if (now < dueAt || await dbContext.BackgroundJobs.AsNoTracking()
+                .AnyAsync(job => job.JobType == "omdb_quota_recovery"
+                    && (job.Status == "queued" || job.Status == "running"), cancellationToken))
+        {
+            return;
+        }
+
+        var job = new BackgroundJob
+        {
+            JobType = "omdb_quota_recovery",
+            Trigger = "schedule",
+            Status = "queued",
+            EnqueuedAt = now,
+            CurrentStage = "queued",
+            ResultSummary = JsonSerializer.Serialize(new { quotaUtcDate = quotaEvent.UtcDate.ToString("yyyy-MM-dd") })
+        };
+        job.Events.Add(new BackgroundJobEvent
+        {
+            OccurredAt = now,
+            Level = "information",
+            EventCode = "omdb_quota_recovery_scheduled",
+            Message = "OMDb quota recovery probe queued.",
+            DataJson = "{}"
+        });
+        dbContext.BackgroundJobs.Add(job);
+    }
+
+    private async Task EnqueueEligibleEnrichmentJobsAsync(
+        DateTimeOffset now,
+        string trigger,
+        CancellationToken cancellationToken)
+    {
+        await EnqueueEnrichmentIfEligibleAsync(
+            "oscar_enrichment",
+            trigger,
+            trigger == "schedule" ? "Scheduled Oscar enrichment queued." : "Oscar enrichment requeued after OMDb quota recovery.",
+            (await oscarEnrichmentRepository.GetEligibleCandidatesAsync(now, cancellationToken)).Count > 0,
+            now,
+            cancellationToken);
+        await EnqueueEnrichmentIfEligibleAsync(
+            "golden_globe_enrichment",
+            trigger,
+            trigger == "schedule" ? "Scheduled Golden Globes enrichment queued." : "Golden Globes enrichment requeued after OMDb quota recovery.",
+            (await goldenGlobeEnrichmentRepository.GetEligibleCandidatesAsync(now, cancellationToken)).Count > 0,
+            now,
+            cancellationToken);
+        await EnqueueEnrichmentIfEligibleAsync(
+            "imdb_catalog_enrichment",
+            trigger,
+            trigger == "schedule" ? "Scheduled IMDb catalog enrichment queued." : "IMDb catalog enrichment requeued after OMDb quota recovery.",
+            (await imdbTitleEnrichmentRepository.GetEligibleCatalogCandidatesAsync(now, 1, cancellationToken)).Count > 0,
+            now,
+            cancellationToken);
+    }
+
+    private async Task EnqueueEnrichmentIfEligibleAsync(
         string jobType,
+        string trigger,
         string message,
         bool hasEligibleCandidates,
         DateTimeOffset now,
@@ -116,7 +224,7 @@ public sealed class BackgroundJobScheduler(
         var job = new BackgroundJob
         {
             JobType = jobType,
-            Trigger = "schedule",
+            Trigger = trigger,
             Status = "queued",
             EnqueuedAt = now,
             CurrentStage = "queued"
@@ -180,6 +288,18 @@ public sealed class BackgroundJobScheduler(
         }
 
         return slots.Order().ToArray();
+    }
+
+    public static DateTimeOffset GetNextQuotaRecoverySlot(DateTimeOffset after)
+    {
+        var localTime = TimeZoneInfo.ConvertTime(after, SofiaTimeZone);
+        var slot = localTime.Date.AddHours(9);
+        if (localTime.TimeOfDay >= TimeSpan.FromHours(9))
+        {
+            slot = slot.AddDays(1);
+        }
+
+        return ConvertLocalSlotToUtc(slot);
     }
 
     private static DateTimeOffset GetLatestDueSlot(DateTimeOffset now) =>

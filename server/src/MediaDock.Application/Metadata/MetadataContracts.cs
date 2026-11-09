@@ -123,12 +123,29 @@ public interface IOmdbRequestBudget
         DateOnly utcDate,
         OmdbRequestPurpose requestPurpose,
         int dailyRequestLimit,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        DateTimeOffset? requestAt = null);
 
     Task RecordProviderErrorAsync(
         DateOnly utcDate,
         string errorCode,
         bool providerQuotaExceeded,
+        CancellationToken cancellationToken = default,
+        DateTimeOffset? errorAt = null);
+
+    Task RecordProviderSuccessAsync(
+        DateOnly utcDate,
+        CancellationToken cancellationToken = default,
+        DateTimeOffset? completedAt = null);
+
+    Task MarkQuotaRecoveryAttemptedAsync(
+        DateOnly utcDate,
+        DateTimeOffset attemptedAt,
+        CancellationToken cancellationToken = default);
+
+    Task MarkQuotaRecoverySucceededAsync(
+        DateOnly utcDate,
+        DateTimeOffset succeededAt,
         CancellationToken cancellationToken = default);
 
     Task ResetDailyUsageAsync(

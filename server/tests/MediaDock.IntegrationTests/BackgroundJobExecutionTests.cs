@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using MediaDock.Api.Catalog;
 using MediaDock.Api.BackgroundJobs;
 using MediaDock.Api.Common;
@@ -147,6 +148,187 @@ public sealed class BackgroundJobExecutionTests
         Assert.Equal(2, scheduledJobs.Count(job => job.JobType == "oscar_enrichment"));
         Assert.Equal(2, scheduledJobs.Count(job => job.JobType == "golden_globe_enrichment"));
         Assert.Equal(2, scheduledJobs.Count(job => job.JobType == "imdb_catalog_enrichment"));
+    }
+
+    [Fact]
+    public async Task SchedulerQueuesQuotaRecoveryAtNineSofiaAfterEarlierQuotaFailure()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_omdb_quota_schedule_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        var beforeProbeSlot = new DateTimeOffset(2026, 10, 23, 5, 59, 0, TimeSpan.Zero);
+        var probeSlot = beforeProbeSlot.AddMinutes(1);
+        var quotaAt = new DateTimeOffset(2026, 10, 23, 5, 0, 0, TimeSpan.Zero);
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+        var settings = await db.Settings.SingleAsync(item => item.Id == 1);
+        settings.OmdbDailyRequestLimit = 100;
+        db.OmdbDailyUsage.Add(new OmdbDailyUsage
+        {
+            UtcDate = DateOnly.FromDateTime(quotaAt.UtcDateTime),
+            TotalRequests = 10,
+            ProviderQuotaExceeded = true,
+            ProviderQuotaExceededAt = quotaAt,
+            LastProviderErrorAt = quotaAt
+        });
+        db.BackgroundSchedulerStates.Add(new Infrastructure.Persistence.Entities.BackgroundSchedulerState
+        {
+            ScheduleName = "rss_ingestion",
+            LastEvaluatedSlotUtc = beforeProbeSlot.AddMinutes(-15)
+        });
+        await db.SaveChangesAsync();
+
+        BackgroundJobScheduler CreateScheduler(DateTimeOffset now) => new(
+            db,
+            new PostgresOscarEnrichmentRepository(db),
+            new PostgresGoldenGlobeEnrichmentRepository(db),
+            new PostgresImdbTitleEnrichmentRepository(db),
+            new FixedTimeProvider(now));
+
+        await CreateScheduler(beforeProbeSlot).EnqueueDueSlotAsync(CancellationToken.None);
+        Assert.Empty(await db.BackgroundJobs.AsNoTracking()
+            .Where(job => job.JobType == "omdb_quota_recovery")
+            .ToListAsync());
+
+        await CreateScheduler(probeSlot).EnqueueDueSlotAsync(CancellationToken.None);
+        var recoveryJob = await db.BackgroundJobs.AsNoTracking()
+            .SingleAsync(job => job.JobType == "omdb_quota_recovery");
+        Assert.Equal("queued", recoveryJob.Status);
+        Assert.Equal("2026-10-23", JsonDocument.Parse(recoveryJob.ResultSummary!).RootElement
+            .GetProperty("quotaUtcDate").GetString());
+    }
+
+    [Fact]
+    public async Task QuotaRecoveryProbeResetsDailyUsageAndQueuesFailedRecheck()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_omdb_quota_recovery_test").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        var now = new DateTimeOffset(2026, 6, 15, 6, 0, 0, TimeSpan.Zero);
+        var quotaAt = now.AddHours(-1);
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            await ConfigureSettingsAsync(db, now);
+            db.OmdbDailyUsage.Add(new OmdbDailyUsage
+            {
+                UtcDate = DateOnly.FromDateTime(now.UtcDateTime),
+                TotalRequests = 10,
+                TorrentRequests = 2,
+                OscarRequests = 1,
+                ProviderQuotaExceeded = true,
+                DailyRequestLimitReached = true,
+                LastProviderRequestAt = quotaAt,
+                LastProviderErrorAt = quotaAt,
+                ProviderQuotaExceededAt = quotaAt
+            });
+            db.BackgroundSchedulerStates.Add(new Infrastructure.Persistence.Entities.BackgroundSchedulerState
+            {
+                ScheduleName = "rss_ingestion",
+                LastEvaluatedSlotUtc = now.AddMinutes(-30)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var handler = new OmdbRecoveryHandler();
+        using var factory = new BackgroundJobsApiFactory(
+            connectionString,
+            handler,
+            timeProvider: new FixedTimeProvider(now));
+        using var client = factory.CreateClient();
+        Infrastructure.Persistence.Entities.BackgroundJob? recoveryJob = null;
+        for (var attempt = 0; attempt < 60; attempt++)
+        {
+            await using var verificationDb = new MediaDockDbContext(options);
+            recoveryJob = await verificationDb.BackgroundJobs.AsNoTracking()
+                .Where(job => job.JobType == "omdb_quota_recovery")
+                .OrderByDescending(job => job.EnqueuedAt)
+                .FirstOrDefaultAsync();
+            if (recoveryJob?.Status is "succeeded" or "partial" or "failed")
+            {
+                break;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+        }
+
+        Assert.NotNull(recoveryJob);
+        Assert.Equal("succeeded", recoveryJob.Status);
+        Assert.Equal(1, handler.RequestCount);
+        await using var resultDb = new MediaDockDbContext(options);
+        var usage = await resultDb.OmdbDailyUsage.AsNoTracking()
+            .SingleAsync(item => item.UtcDate == DateOnly.FromDateTime(now.UtcDateTime));
+        Assert.Equal(0, usage.TotalRequests);
+        Assert.Equal(0, usage.TorrentRequests);
+        Assert.Equal(0, usage.OscarRequests);
+        Assert.False(usage.ProviderQuotaExceeded);
+        Assert.NotNull(usage.QuotaRecoveryAttemptedAt);
+        Assert.NotNull(usage.QuotaRecoverySucceededAt);
+        Assert.True(usage.LastProviderSuccessAt >= quotaAt);
+        Assert.Contains(await resultDb.BackgroundJobs.AsNoTracking().ToListAsync(), job =>
+            job.JobType == "rss_scan" && job.Trigger == "manual");
+    }
+
+    [Fact]
+    public async Task QuotaRecoveryQueuesEligibleAwardAndCatalogEnrichments()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_omdb_quota_requeue_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString())
+            .Options;
+        var now = new DateTimeOffset(2026, 10, 23, 6, 0, 0, TimeSpan.Zero);
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+        await ConfigureSettingsAsync(db, now);
+        db.OscarMovies.Add(new OscarMovie
+        {
+            StableKey = "quota-recovery-oscar-title",
+            FilmTitle = "Quota Recovery Oscar Title",
+            NormalizedTitle = "quota recovery oscar title",
+            FilmYear = 2025,
+            ImportedAt = now,
+            UpdatedAt = now
+        });
+        var goldenGlobeTitle = new GoldenGlobeTitle
+        {
+            Title = "Quota Recovery Golden Globes Title",
+            Year = 2025,
+            NomineeType = "movie"
+        };
+        var goldenGlobeAward = new GoldenGlobeAward { Name = "Quota Recovery Award" };
+        db.GoldenGlobeNominations.Add(new GoldenGlobeNomination
+        {
+            ImportKey = "quota-recovery-golden-globes-nomination",
+            Winner = false,
+            Award = goldenGlobeAward,
+            GoldenGlobeTitle = goldenGlobeTitle
+        });
+        db.ImdbTitles.Add(new Infrastructure.Persistence.Entities.ImdbTitle
+        {
+            ImdbId = "tt3333333",
+            MetadataStatus = "pending",
+            UpdatedAt = now
+        });
+        await db.SaveChangesAsync();
+
+        var scheduler = new BackgroundJobScheduler(
+            db,
+            new PostgresOscarEnrichmentRepository(db),
+            new PostgresGoldenGlobeEnrichmentRepository(db),
+            new PostgresImdbTitleEnrichmentRepository(db),
+            new FixedTimeProvider(now));
+        await scheduler.EnqueueEnrichmentJobsAfterQuotaRecoveryAsync(now, CancellationToken.None);
+
+        var jobs = await db.BackgroundJobs.AsNoTracking().ToListAsync();
+        Assert.Contains(jobs, job => job.JobType == "oscar_enrichment" && job.Trigger == "quota_recovery");
+        Assert.Contains(jobs, job => job.JobType == "golden_globe_enrichment" && job.Trigger == "quota_recovery");
+        Assert.Contains(jobs, job => job.JobType == "imdb_catalog_enrichment" && job.Trigger == "quota_recovery");
     }
 
     [Fact]
@@ -763,7 +945,8 @@ public sealed class BackgroundJobExecutionTests
     private sealed class BackgroundJobsApiFactory(
         string connectionString,
         HttpMessageHandler? messageHandler = null,
-        IRssFeedTransport? rssFeedTransport = null) : WebApplicationFactory<Program>
+        IRssFeedTransport? rssFeedTransport = null,
+        TimeProvider? timeProvider = null) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -785,6 +968,30 @@ public sealed class BackgroundJobExecutionTests
                     services.RemoveAll<IRssFeedTransport>();
                     services.AddScoped(_ => rssFeedTransport);
                 }
+
+                if (timeProvider is not null)
+                {
+                    services.RemoveAll<TimeProvider>();
+                    services.AddSingleton(timeProvider);
+                }
+            });
+        }
+    }
+
+    private sealed class OmdbRecoveryHandler : HttpMessageHandler
+    {
+        public int RequestCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            RequestCount++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                    {"Response":"True","Title":"Quota Recovery Probe","Year":"2026","imdbID":"tt16311594","Type":"movie","imdbRating":"7.0","imdbVotes":"100","Metascore":"70","Genre":"Drama","Country":"USA"}
+                    """, Encoding.UTF8, "application/json")
             });
         }
     }

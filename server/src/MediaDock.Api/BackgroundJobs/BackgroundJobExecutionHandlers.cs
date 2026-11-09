@@ -1,8 +1,11 @@
+using System.Globalization;
 using System.Text.Json;
 using MediaDock.Application.GoldenGlobes;
 using MediaDock.Application.Ingestion;
+using MediaDock.Application.Metadata;
 using MediaDock.Application.OscarAwards;
 using MediaDock.Application.PersonalRatings;
+using MediaDock.Infrastructure.Ingestion;
 using MediaDock.Infrastructure.GoldenGlobes;
 using MediaDock.Infrastructure.Metadata;
 using MediaDock.Infrastructure.OscarAwards;
@@ -261,6 +264,89 @@ internal sealed class ImdbCatalogEnrichmentBackgroundJobHandler(
         var enrichmentService = enrichmentServiceFactory.GetRequired();
         var result = await enrichmentService.RunCatalogAsync(cancellationToken);
         return new BackgroundJobExecutionResult(result.Status, result.Summary);
+    }
+}
+
+internal sealed class OmdbQuotaRecoveryBackgroundJobHandler(
+    IOmdbClientFactory omdbClientFactory,
+    IOmdbRequestBudget omdbRequestBudget,
+    IngestionProviderSettings providerSettings,
+    BackgroundJobApiService backgroundJobApiService,
+    BackgroundJobScheduler scheduler,
+    TimeProvider timeProvider) : IBackgroundJobHandler
+{
+    private const string DiagnosticImdbId = "tt16311594";
+
+    public async Task<BackgroundJobExecutionResult> ExecuteAsync(
+        BackgroundJobExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        var quotaDate = GetQuotaDate(context.Job.ResultSummary);
+        var attemptedAt = timeProvider.GetUtcNow();
+        await omdbRequestBudget.MarkQuotaRecoveryAttemptedAsync(quotaDate, attemptedAt, cancellationToken);
+        await context.LoadProviderSettingsAsync(cancellationToken);
+        await context.SetStageAsync(
+            "omdb_quota_recovery",
+            "OMDb quota recovery probe started.",
+            cancellationToken);
+
+        var client = omdbClientFactory.Create(
+            providerSettings.ApiKey ?? throw new InvalidOperationException("OMDb settings were not loaded."),
+            providerSettings.DailyRequestLimit);
+        var result = await client.LookupAsync(
+            string.Empty,
+            null,
+            "movie",
+            cancellationToken,
+            OmdbRequestPurpose.InteractiveDiagnostic,
+            DiagnosticImdbId);
+        var recovered = result.Status is MetadataLookupStatus.Found or MetadataLookupStatus.ConfirmedNotFound;
+        if (!recovered)
+        {
+            return new BackgroundJobExecutionResult("partial", new
+            {
+                recovered = false,
+                errorCode = result.ErrorCode,
+                httpAttempts = result.HttpAttempts,
+                quotaDate
+            });
+        }
+
+        var succeededAt = timeProvider.GetUtcNow();
+        await omdbRequestBudget.MarkQuotaRecoverySucceededAsync(quotaDate, succeededAt, cancellationToken);
+        await omdbRequestBudget.ResetDailyUsageAsync(
+            DateOnly.FromDateTime(succeededAt.UtcDateTime),
+            cancellationToken);
+        await backgroundJobApiService.EnqueueFailedRecheckAsync(cancellationToken);
+        await scheduler.EnqueueEnrichmentJobsAfterQuotaRecoveryAsync(succeededAt, cancellationToken);
+        return new BackgroundJobExecutionResult("succeeded", new
+        {
+            recovered = true,
+            httpAttempts = result.HttpAttempts,
+            quotaDate
+        });
+    }
+
+    private static DateOnly GetQuotaDate(string? resultSummary)
+    {
+        if (resultSummary is null)
+        {
+            throw new InvalidDataException("The queued OMDb quota recovery payload is unavailable.");
+        }
+
+        using var payload = JsonDocument.Parse(resultSummary);
+        if (!payload.RootElement.TryGetProperty("quotaUtcDate", out var date)
+            || !DateOnly.TryParseExact(
+                date.GetString(),
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var quotaDate))
+        {
+            throw new InvalidDataException("The queued OMDb quota recovery date is invalid.");
+        }
+
+        return quotaDate;
     }
 }
 

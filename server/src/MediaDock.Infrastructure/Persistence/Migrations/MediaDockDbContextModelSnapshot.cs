@@ -274,7 +274,7 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                     b.ToTable("background_jobs", null, t =>
                         {
-                            t.HasCheckConstraint("ck_background_jobs_input_type", "(job_type IN ('oscar_import', 'golden_globe_import', 'imdb_title_import') AND (input_bytes IS NOT NULL OR status IN ('succeeded', 'partial', 'failed'))) OR (job_type IN ('rss_scan', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment', 'imdb_catalog_enrichment') AND input_bytes IS NULL)");
+                            t.HasCheckConstraint("ck_background_jobs_input_type", "(job_type IN ('oscar_import', 'golden_globe_import', 'imdb_title_import') AND (input_bytes IS NOT NULL OR status IN ('succeeded', 'partial', 'failed'))) OR (job_type IN ('rss_scan', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment', 'imdb_catalog_enrichment', 'omdb_quota_recovery') AND input_bytes IS NULL)");
 
                             t.HasCheckConstraint("ck_background_jobs_lifecycle", "(status = 'queued' AND started_at IS NULL AND finished_at IS NULL) OR (status = 'running' AND started_at IS NOT NULL AND finished_at IS NULL) OR (status IN ('succeeded', 'partial', 'failed') AND started_at IS NOT NULL AND finished_at IS NOT NULL)");
 
@@ -282,11 +282,11 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_background_jobs_status", "status IN ('queued', 'running', 'succeeded', 'partial', 'failed')");
 
-                            t.HasCheckConstraint("ck_background_jobs_trigger", "trigger IN ('manual', 'schedule')");
+                            t.HasCheckConstraint("ck_background_jobs_trigger", "trigger IN ('manual', 'schedule', 'quota_recovery')");
 
-                            t.HasCheckConstraint("ck_background_jobs_type", "job_type IN ('rss_scan', 'oscar_import', 'golden_globe_import', 'imdb_title_import', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment', 'imdb_catalog_enrichment')");
+                            t.HasCheckConstraint("ck_background_jobs_type", "job_type IN ('rss_scan', 'oscar_import', 'golden_globe_import', 'imdb_title_import', 'oscar_enrichment', 'golden_globe_enrichment', 'golden_globe_manual_refresh', 'imdb_title_enrichment', 'imdb_catalog_enrichment', 'omdb_quota_recovery')");
 
-                            t.HasCheckConstraint("ck_background_jobs_type_trigger", "(job_type IN ('rss_scan', 'oscar_enrichment', 'golden_globe_enrichment', 'imdb_catalog_enrichment') AND trigger IN ('manual', 'schedule')) OR (job_type IN ('oscar_import', 'golden_globe_import', 'imdb_title_import', 'golden_globe_manual_refresh', 'imdb_title_enrichment') AND trigger = 'manual')");
+                            t.HasCheckConstraint("ck_background_jobs_type_trigger", "(job_type IN ('rss_scan', 'oscar_enrichment', 'golden_globe_enrichment', 'imdb_catalog_enrichment') AND trigger IN ('manual', 'schedule')) OR (job_type = 'omdb_quota_recovery' AND trigger = 'schedule') OR (job_type IN ('oscar_enrichment', 'golden_globe_enrichment', 'imdb_catalog_enrichment') AND trigger = 'quota_recovery') OR (job_type IN ('oscar_import', 'golden_globe_import', 'imdb_title_import', 'golden_globe_manual_refresh', 'imdb_title_enrichment') AND trigger = 'manual')");
                         });
                 });
 
@@ -926,6 +926,18 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("last_error_code");
 
+                    b.Property<DateTimeOffset?>("LastProviderErrorAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_provider_error_at");
+
+                    b.Property<DateTimeOffset?>("LastProviderRequestAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_provider_request_at");
+
+                    b.Property<DateTimeOffset?>("LastProviderSuccessAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_provider_success_at");
+
                     b.Property<int>("OscarRequests")
                         .HasColumnType("integer")
                         .HasColumnName("oscar_requests");
@@ -935,6 +947,18 @@ namespace MediaDock.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("provider_quota_exceeded");
+
+                    b.Property<DateTimeOffset?>("ProviderQuotaExceededAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("provider_quota_exceeded_at");
+
+                    b.Property<DateTimeOffset?>("QuotaRecoveryAttemptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("quota_recovery_attempted_at");
+
+                    b.Property<DateTimeOffset?>("QuotaRecoverySucceededAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("quota_recovery_succeeded_at");
 
                     b.Property<int>("TorrentRequests")
                         .ValueGeneratedOnAdd()
