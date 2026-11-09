@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  addManualImdbTitle,
   addFavorite,
   addIgnoredMovie,
   addPersonalRating,
@@ -9,6 +10,7 @@ import {
   getIgnoredMovies,
   getImdbTitles,
   getMovieAwards,
+  lookupManualImdbTitleCandidate,
   removeFavorite,
   removeIgnoredMovie,
   updateFavorite,
@@ -26,6 +28,7 @@ import { IgnoredMoviesProvider } from '../ignored-movies/IgnoredMoviesContext'
 import { ImdbTitlesCatalogView } from './ImdbTitlesCatalogView'
 
 vi.mock('../../api/client', () => ({
+  addManualImdbTitle: vi.fn(),
   addFavorite: vi.fn(),
   addIgnoredMovie: vi.fn(),
   addPersonalRating: vi.fn(),
@@ -34,6 +37,7 @@ vi.mock('../../api/client', () => ({
   getIgnoredMovies: vi.fn(),
   getImdbTitles: vi.fn(),
   getMovieAwards: vi.fn(),
+  lookupManualImdbTitleCandidate: vi.fn(),
   removeFavorite: vi.fn(),
   removeIgnoredMovie: vi.fn(),
   updateFavorite: vi.fn(),
@@ -190,7 +194,7 @@ describe('IMDb titles catalog view', () => {
     expect(screen.getByRole('slider', { name: 'Number of votes minimum' })).toBeTruthy()
     expect(screen.getByRole('slider', { name: 'Number of votes maximum' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Refresh results' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Add' }).hasAttribute('disabled')).toBe(true)
+    expect(screen.getByRole('button', { name: 'Add' }).hasAttribute('disabled')).toBe(false)
     expect(screen.getByRole('button', { name: 'Clear filters' })).toBeTruthy()
     expect(await screen.findByRole('button', { name: 'View Episode file details' })).toBeTruthy()
     expect(screen.getByLabelText('Personal state for Episode file').textContent).toContain('Favorite')
@@ -212,6 +216,30 @@ describe('IMDb titles catalog view', () => {
     fireEvent.click(screen.getByRole('button', { name: 'View Episode file details' }))
     expect(await screen.findByText('Best Picture')).toBeTruthy()
     expect(screen.getAllByText('Untyped file').length).toBeGreaterThan(0)
+  })
+
+  it('opens the manual IMDb picker and reloads after adding a confirmed ID', async () => {
+    vi.mocked(lookupManualImdbTitleCandidate).mockResolvedValue({
+      status: 'found',
+      candidates: [{ title: 'Quiet River', year: 2004, imdbId: 'tt12345678', sourceType: 'movie' }],
+      totalResults: 1,
+      errorCode: null,
+    })
+    vi.mocked(addManualImdbTitle).mockResolvedValue({ imdbId: 'tt12345678', title: 'Quiet River', year: 2004, mediaType: 'movie' })
+    renderCatalog()
+    await screen.findByRole('button', { name: 'View Episode file details' })
+    const requestCount = vi.mocked(getImdbTitles).mock.calls.length
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+    expect(await screen.findByRole('heading', { name: 'Add to IMDb titles' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('tab', { name: 'IMDb ID' }))
+    fireEvent.change(screen.getByLabelText('IMDb ID'), { target: { value: 'tt12345678' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Load IMDb info' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Add to IMDb titles' }))
+
+    await waitFor(() => expect(addManualImdbTitle).toHaveBeenCalledWith('tt12345678'))
+    await waitFor(() => expect(getImdbTitles).toHaveBeenCalledTimes(requestCount + 1))
+    expect(screen.queryByRole('heading', { name: 'Add to IMDb titles' })).toBeNull()
   })
 
   it('confirms IMDb deletion and reports that its torrent title is no longer enriched', async () => {

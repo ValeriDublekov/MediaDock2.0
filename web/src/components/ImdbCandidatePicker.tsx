@@ -17,7 +17,7 @@ import { formatWords } from '../shared/format'
 export type ImdbCandidateTarget =
   | { source: 'catalog'; id: number; title: string; rawTitle: string }
   | { source: 'parse-log'; id: number; title: string; rawTitle: string }
-  | { source: 'manual'; list: 'favorites' | 'ignored' | 'personal-ratings' }
+  | { source: 'manual'; list: 'favorites' | 'ignored' | 'personal-ratings' | 'imdb-titles' }
 
 export function ImdbCandidatePicker({
   target,
@@ -44,10 +44,10 @@ export function ImdbCandidatePicker({
   const validRating = Number.isInteger(rating) && rating >= 1 && rating <= 10
   const manualActionLabel = target.source !== 'manual' ? 'Use match' : target.list === 'favorites'
     ? 'Add to favorites'
-    : target.list === 'ignored' ? 'Ignore title' : 'Add rating'
+    : target.list === 'ignored' ? 'Ignore title' : target.list === 'personal-ratings' ? 'Add rating' : 'Add to IMDb titles'
   const dialogTitle = target.source !== 'manual' ? 'Change IMDb match' : target.list === 'favorites'
     ? 'Add to favorites'
-    : target.list === 'ignored' ? 'Add to ignore list' : 'Add personal rating'
+    : target.list === 'ignored' ? 'Add to ignore list' : target.list === 'personal-ratings' ? 'Add personal rating' : 'Add to IMDb titles'
 
   function setLookupResult(result: ImdbCandidateSearch) {
     setSearchResult(result)

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Pencil, RotateCcw, Trash2 } from 'lucide-react'
+import { Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { addPersonalRating, deleteImdbTitle, getImdbTitles } from '../../api/client'
 import type { ImdbTitleCatalogItem, ImdbTitlesPage, ImdbTitlesQuery } from '../../api/types'
 import { CategoryMultiSelect } from '../../components/CategoryMultiSelect'
 import { DualRangeFilter } from '../../components/DualRangeFilter'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback'
+import { ImdbCandidatePicker } from '../../components/ImdbCandidatePicker'
 import { ImdbRatingRangeFilter } from '../../components/ImdbRatingRangeFilter'
 import { MovieImdbLink, MoviePosterCard, MovieTableTitle } from '../../components/MoviePresentation'
 import { Pagination } from '../../components/Pagination'
@@ -199,6 +200,7 @@ export function ImdbTitlesCatalogView({ hasActiveAccount, canDeleteTitles = fals
   const [attempt, setAttempt] = useState(0)
   const [selectedTitle, setSelectedTitle] = useState<ImdbTitleCatalogItem | null>(null)
   const [ratingTitle, setRatingTitle] = useState<ImdbTitleCatalogItem | null>(null)
+  const [addTitleOpen, setAddTitleOpen] = useState(false)
   const [deletingTitleId, setDeletingTitleId] = useState<string | null>(null)
   const [deleteMessage, setDeleteMessage] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -402,7 +404,7 @@ export function ImdbTitlesCatalogView({ hasActiveAccount, canDeleteTitles = fals
       <div className="toolbar-actions">
         <ViewModeControl onChange={setViewMode} value={viewMode} />
         <button className="button button-secondary" onClick={clearFilters} type="button"><RotateCcw aria-hidden="true" size={15} />Clear filters</button>
-        <button className="button button-secondary" disabled type="button">Add</button>
+        <button className="button button-secondary" disabled={!hasActiveAccount} onClick={() => setAddTitleOpen(true)} type="button"><Plus aria-hidden="true" size={16} />Add</button>
       </div>
     </div>
     {deleteMessage && <p role="status">{deleteMessage}</p>}
@@ -564,5 +566,10 @@ export function ImdbTitlesCatalogView({ hasActiveAccount, canDeleteTitles = fals
       onUpdated={reload}
     />}
     {ratingTitle && <PersonalRatingDialog item={ratingTitle} onClose={() => setRatingTitle(null)} onSaved={reload} />}
+    {addTitleOpen && <ImdbCandidatePicker
+      onApplied={() => { setAddTitleOpen(false); reload() }}
+      onClose={() => setAddTitleOpen(false)}
+      target={{ source: 'manual', list: 'imdb-titles' }}
+    />}
   </section>
 }

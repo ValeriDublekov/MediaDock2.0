@@ -59,4 +59,17 @@ describe('manual IMDb title picker', () => {
     expect(onApplied).toHaveBeenCalledWith(candidate, 9)
   })
 
+  it('adds a confirmed candidate to the IMDb titles catalog', async () => {
+    vi.mocked(searchManualImdbTitleCandidates).mockResolvedValue(result)
+    const onApplied = vi.fn()
+    render(<ImdbCandidatePicker onApplied={onApplied} onClose={vi.fn()} target={{ source: 'manual', list: 'imdb-titles' }} />)
+
+    fireEvent.change(screen.getByLabelText('Title to search'), { target: { value: 'Quiet River' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Add to IMDb titles' }))
+
+    await waitFor(() => expect(addManualImdbTitle).toHaveBeenCalledWith(candidate.imdbId))
+    expect(onApplied).toHaveBeenCalledWith(candidate)
+  })
+
 })
