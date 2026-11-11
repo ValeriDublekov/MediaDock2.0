@@ -4,6 +4,8 @@ using System.Net.Http.Headers;
 using MediaDock.Infrastructure.Persistence;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace MediaDock.Infrastructure.Metadata;
 
@@ -32,8 +34,10 @@ public sealed class ImdbRatingRefreshService(
     MediaDockDbContext dbContext,
     HttpClient httpClient,
     ImdbRatingSnapshotParser parser,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogger<ImdbRatingRefreshService>? logger = null)
 {
+    private readonly ILogger<ImdbRatingRefreshService> _logger = logger ?? NullLogger<ImdbRatingRefreshService>.Instance;
     private const int BatchSize = 500;
     private const int MaximumDownloadAttempts = 3;
     private static readonly Uri DatasetUri = new("https://datasets.imdbws.com/title.ratings.tsv.gz");
@@ -47,6 +51,10 @@ public sealed class ImdbRatingRefreshService(
         var processingTimer = Stopwatch.StartNew();
         var databaseReadTimer = new Stopwatch();
         var targetYear = TimeZoneInfo.ConvertTime(timeProvider.GetUtcNow(), SofiaTimeZone).Year;
+        _logger.LogInformation(
+            "IMDb ratings refresh started for years {FirstYear}-{TargetYear}.",
+            targetYear - 1,
+            targetYear);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(10));
 
@@ -54,6 +62,10 @@ public sealed class ImdbRatingRefreshService(
         {
             for (var attempt = 1; attempt <= MaximumDownloadAttempts; attempt++)
             {
+                _logger.LogInformation(
+                    "IMDb ratings snapshot request attempt {Attempt}/{MaximumAttempts} started.",
+                    attempt,
+                    MaximumDownloadAttempts);
                 try
                 {
                     using var request = new HttpRequestMessage(HttpMethod.Get, DatasetUri);
@@ -65,6 +77,11 @@ public sealed class ImdbRatingRefreshService(
 
                     if (IsTransientStatusCode(response.StatusCode) && attempt < MaximumDownloadAttempts)
                     {
+                        _logger.LogWarning(
+                            "IMDb ratings snapshot returned HTTP {StatusCode} on attempt {Attempt}/{MaximumAttempts}; retrying.",
+                            (int)response.StatusCode,
+                            attempt,
+                            MaximumDownloadAttempts);
                         await Task.Delay(TimeSpan.FromSeconds(attempt), timeout.Token);
                         continue;
                     }
@@ -77,17 +94,45 @@ public sealed class ImdbRatingRefreshService(
                             response.StatusCode);
                     }
 
+                    _logger.LogInformation(
+                        "IMDb ratings snapshot response received with HTTP {StatusCode}, content length {ContentLength}, and Last-Modified {PublishedLastModified}.",
+                        (int)response.StatusCode,
+                        response.Content.Headers.ContentLength,
+                        response.Content.Headers.LastModified);
                     var retrievedAt = timeProvider.GetUtcNow();
                     var lastModified = response.Content.Headers.LastModified;
                     await using var contentStream = await response.Content.ReadAsStreamAsync(timeout.Token);
                     using var transportStream = new TransportReadStream(contentStream);
                     var summary = await RefreshFromSnapshotAsync(
                         transportStream, targetYear, totalTimer, processingTimer, databaseReadTimer, timeout.Token, onDatabaseApply);
-                    return summary with { RetrievedAt = retrievedAt, PublishedLastModified = lastModified };
+                    var result = summary with { RetrievedAt = retrievedAt, PublishedLastModified = lastModified };
+                    _logger.LogInformation(
+                        "IMDb ratings refresh completed for {FirstYear}-{TargetYear}: {RowsScanned} rows scanned, {MatchedRows} matched, {UpdatedRows} updated, {UnchangedRows} unchanged, {AbsentFromSnapshot} absent, {ConcurrentConflicts} conflicts; {CompressedBytes} compressed and {DecompressedBytes} decompressed bytes; database read {DatabaseReadMilliseconds} ms, processing {ProcessingMilliseconds} ms, database apply {DatabaseApplyMilliseconds} ms, service total {TotalMilliseconds} ms.",
+                        targetYear - 1,
+                        targetYear,
+                        result.RowsScanned,
+                        result.MatchedRows,
+                        result.UpdatedRows,
+                        result.UnchangedRows,
+                        result.AbsentFromSnapshot,
+                        result.ConcurrentConflicts,
+                        result.CompressedBytes,
+                        result.DecompressedBytes,
+                        result.DatabaseReadMilliseconds,
+                        result.ProcessingMilliseconds,
+                        result.DatabaseApplyMilliseconds,
+                        result.TotalMilliseconds);
+                    return result;
                 }
                 catch (HttpRequestException exception) when (
                     attempt < MaximumDownloadAttempts && IsRetryableHttpRequest(exception))
                 {
+                    _logger.LogWarning(
+                        "IMDb ratings snapshot request failed on attempt {Attempt}/{MaximumAttempts} ({FailureType}, HTTP {StatusCode}); retrying.",
+                        attempt,
+                        MaximumDownloadAttempts,
+                        exception.GetType().Name,
+                        exception.StatusCode is { } statusCode ? (int)statusCode : null);
                     await Task.Delay(TimeSpan.FromSeconds(attempt), timeout.Token);
                 }
                 catch (HttpRequestException exception) when (attempt == MaximumDownloadAttempts)
@@ -104,6 +149,9 @@ public sealed class ImdbRatingRefreshService(
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
+            _logger.LogWarning(
+                "IMDb ratings refresh exceeded its overall time limit after {ElapsedMilliseconds} ms.",
+                totalTimer.ElapsedMilliseconds);
             throw new TimeoutException("IMDb ratings refresh exceeded its 10-minute time limit.");
         }
     }

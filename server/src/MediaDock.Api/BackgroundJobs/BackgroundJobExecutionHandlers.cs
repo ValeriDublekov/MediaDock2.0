@@ -182,28 +182,50 @@ internal sealed class ImdbTitleImportBackgroundJobHandler(
 }
 
 internal sealed class ImdbRatingRefreshBackgroundJobHandler(
-    ImdbRatingRefreshService refreshService) : IBackgroundJobHandler
+    ImdbRatingRefreshService refreshService,
+    ILogger<ImdbRatingRefreshBackgroundJobHandler> logger) : IBackgroundJobHandler
 {
     public async Task<BackgroundJobExecutionResult> ExecuteAsync(
         BackgroundJobExecutionContext context,
         CancellationToken cancellationToken)
     {
         var jobTimer = System.Diagnostics.Stopwatch.StartNew();
+        using var logScope = logger.BeginScope(new Dictionary<string, object?>
+        {
+            ["BackgroundJobId"] = context.Job.Id,
+            ["JobType"] = context.Job.JobType,
+            ["Trigger"] = context.Job.Trigger
+        });
+        logger.LogInformation("IMDb ratings refresh background job started.");
         await context.SetStageAsync(
             "imdb_rating_refresh_download",
             "Downloading and validating the official IMDb ratings snapshot.",
             cancellationToken);
-        var summary = await refreshService.RefreshAsync(cancellationToken, token => context.SetStageAsync(
-            "imdb_rating_refresh_apply", "Applying validated IMDb rating changes.", token));
+        var summary = await refreshService.RefreshAsync(cancellationToken, async token =>
+        {
+            logger.LogInformation("IMDb ratings snapshot validation completed; database apply is starting.");
+            await context.SetStageAsync("imdb_rating_refresh_apply", "Applying validated IMDb rating changes.", token);
+        });
         var finalizationTimer = System.Diagnostics.Stopwatch.StartNew();
         await context.SetStageAsync("imdb_rating_refresh_completed", summary.Message, cancellationToken);
         finalizationTimer.Stop();
         jobTimer.Stop();
-        return new BackgroundJobExecutionResult("succeeded", summary with
+        var result = summary with
         {
             FinalizationMilliseconds = finalizationTimer.ElapsedMilliseconds,
             JobTotalMilliseconds = jobTimer.ElapsedMilliseconds
-        });
+        };
+        logger.LogInformation(
+            "IMDb ratings refresh completed: {UpdatedRows} updated, {UnchangedRows} unchanged, {AbsentFromSnapshot} absent, {ConcurrentConflicts} conflicts; {CompressedBytes} compressed and {DecompressedBytes} decompressed bytes; finalization {FinalizationMilliseconds} ms, job total {JobTotalMilliseconds} ms.",
+            result.UpdatedRows,
+            result.UnchangedRows,
+            result.AbsentFromSnapshot,
+            result.ConcurrentConflicts,
+            result.CompressedBytes,
+            result.DecompressedBytes,
+            result.FinalizationMilliseconds,
+            result.JobTotalMilliseconds);
+        return new BackgroundJobExecutionResult("succeeded", result);
     }
 }
 

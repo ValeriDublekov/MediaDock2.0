@@ -203,6 +203,9 @@ internal sealed class BackgroundJobDispatcher(
         catch (Exception exception)
         {
             var errorCode = exception is InvalidDataException ? "invalid_dataset" : "operation_failed";
+            var failureType = job.JobType == "imdb_rating_refresh"
+                ? GetImdbRatingRefreshFailureType(exception)
+                : null;
             logger.LogError(
                 exception,
                 "Background job {JobId} failed ({ErrorType}); safe code {ErrorCode}.",
@@ -223,16 +226,27 @@ internal sealed class BackgroundJobDispatcher(
                             : "IMDb ratings download failed due to a network error."
                         : exception.Message,
                 exception.GetType().FullName,
-                exception.InnerException?.Message);
+                exception.InnerException?.Message,
+                failureType);
         }
     }
+
+    private static string GetImdbRatingRefreshFailureType(Exception exception) => exception switch
+    {
+        InvalidDataException => "invalid_snapshot",
+        TimeoutException => "timeout",
+        HttpRequestException => "network",
+        DbException or DbUpdateException => "database",
+        _ => "operation"
+    };
 
     private async Task MarkJobFailedWithFreshContextAsync(
         long jobId,
         string errorCode,
         string? errorMessage = null,
         string? exceptionType = null,
-        string? innerError = null)
+        string? innerError = null,
+        string? failureType = null)
     {
         try
         {
@@ -251,6 +265,7 @@ internal sealed class BackgroundJobDispatcher(
                 : job.JobType == "imdb_rating_refresh"
                 ? JsonSerializer.Serialize(new
                 {
+                    failureType,
                     error = errorCode == "invalid_dataset" || exceptionType == typeof(TimeoutException).FullName
                         || exceptionType == typeof(HttpRequestException).FullName
                         ? (errorMessage is { Length: > 300 } ? errorMessage[..300] : errorMessage)

@@ -5,6 +5,8 @@ using MediaDock.Application.OscarAwards;
 using MediaDock.Application.PersonalRatings;
 using MediaDock.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Text.Json;
 
 namespace MediaDock.Api.BackgroundJobs;
@@ -14,8 +16,10 @@ public sealed class BackgroundJobScheduler(
     IOscarEnrichmentRepository oscarEnrichmentRepository,
     IGoldenGlobeEnrichmentRepository goldenGlobeEnrichmentRepository,
     IImdbTitleEnrichmentRepository imdbTitleEnrichmentRepository,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogger<BackgroundJobScheduler>? logger = null)
 {
+    private readonly ILogger<BackgroundJobScheduler> _logger = logger ?? NullLogger<BackgroundJobScheduler>.Instance;
     private const string ScheduleName = "rss_ingestion";
     private const string ImdbRatingScheduleName = "imdb_rating_refresh";
     private static readonly TimeZoneInfo SofiaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Sofia");
@@ -39,7 +43,7 @@ public sealed class BackgroundJobScheduler(
             .SingleAsync(item => item.ScheduleName == ScheduleName, cancellationToken);
 
         await EnqueueQuotaRecoveryIfDueAsync(now, cancellationToken);
-        await EnqueueImdbRatingRefreshIfDueAsync(now, cancellationToken);
+        var imdbRatingRefreshJob = await EnqueueImdbRatingRefreshIfDueAsync(now, cancellationToken);
 
         var activeRssJob = await dbContext.BackgroundJobs.AsNoTracking()
             .AnyAsync(job => job.JobType == "rss_scan" && (job.Status == "queued" || job.Status == "running"), cancellationToken);
@@ -47,6 +51,7 @@ public sealed class BackgroundJobScheduler(
         {
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
+            LogQueuedImdbRatingRefresh(imdbRatingRefreshJob);
             return;
         }
 
@@ -55,6 +60,7 @@ public sealed class BackgroundJobScheduler(
         {
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
+            LogQueuedImdbRatingRefresh(imdbRatingRefreshJob);
             return;
         }
 
@@ -87,6 +93,7 @@ public sealed class BackgroundJobScheduler(
         trackedState.LastEvaluatedSlotUtc = dueSlot;
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        LogQueuedImdbRatingRefresh(imdbRatingRefreshJob);
     }
 
     public async Task EnqueueEnrichmentJobsAfterQuotaRecoveryAsync(
@@ -103,26 +110,47 @@ public sealed class BackgroundJobScheduler(
         await transaction.CommitAsync(cancellationToken);
     }
 
-    private async Task EnqueueImdbRatingRefreshIfDueAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task<BackgroundJob?> EnqueueImdbRatingRefreshIfDueAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
     {
         var latestSlot = GetLatestImdbRatingSlot(now);
-        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+        var initializedCheckpoint = await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"""
             INSERT INTO background_scheduler_state (schedule_name, last_evaluated_slot_utc)
             VALUES ({ImdbRatingScheduleName}, {latestSlot})
             ON CONFLICT (schedule_name) DO NOTHING;
             """,
             cancellationToken);
+        if (initializedCheckpoint > 0)
+        {
+            _logger.LogInformation(
+                "Initialized IMDb ratings schedule checkpoint at {ScheduledSlotUtc}; earlier slots will not be replayed.",
+                latestSlot);
+        }
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"UPDATE background_scheduler_state SET schedule_name = schedule_name WHERE schedule_name = {ImdbRatingScheduleName};",
             cancellationToken);
         var state = await dbContext.BackgroundSchedulerStates
             .SingleAsync(item => item.ScheduleName == ImdbRatingScheduleName, cancellationToken);
-        if (latestSlot <= state.LastEvaluatedSlotUtc || await dbContext.BackgroundJobs.AsNoTracking()
-                .AnyAsync(job => job.JobType == "imdb_rating_refresh"
-                    && (job.Status == "queued" || job.Status == "running"), cancellationToken))
+        if (latestSlot <= state.LastEvaluatedSlotUtc)
         {
-            return;
+            return null;
+        }
+
+        var activeJob = await dbContext.BackgroundJobs.AsNoTracking()
+            .Where(job => job.JobType == "imdb_rating_refresh"
+                && (job.Status == "queued" || job.Status == "running"))
+            .Select(job => new { job.Id, job.Status })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (activeJob is not null)
+        {
+            _logger.LogDebug(
+                "IMDb ratings scheduled slot {ScheduledSlotUtc} remains pending because refresh job {BackgroundJobId} is {JobStatus}.",
+                latestSlot,
+                activeJob.Id,
+                activeJob.Status);
+            return null;
         }
 
         var job = new BackgroundJob
@@ -140,10 +168,24 @@ public sealed class BackgroundJobScheduler(
             Level = "information",
             EventCode = "job_scheduled",
             Message = "Scheduled IMDb ratings refresh queued.",
-            DataJson = "{}"
+            DataJson = JsonSerializer.Serialize(new { scheduledSlotUtc = latestSlot })
         });
         dbContext.BackgroundJobs.Add(job);
         state.LastEvaluatedSlotUtc = latestSlot;
+        return job;
+    }
+
+    private void LogQueuedImdbRatingRefresh(BackgroundJob? job)
+    {
+        if (job is null)
+        {
+            return;
+        }
+
+        _logger.LogInformation(
+            "Queued scheduled IMDb ratings refresh job {BackgroundJobId} for slot {ScheduledSlotUtc}.",
+            job.Id,
+            job.ScheduledSlotUtc);
     }
 
     private async Task EnqueueQuotaRecoveryIfDueAsync(

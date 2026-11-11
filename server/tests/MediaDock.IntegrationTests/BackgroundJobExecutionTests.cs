@@ -459,6 +459,39 @@ public sealed class BackgroundJobExecutionTests
     }
 
     [Fact]
+    public async Task ImdbRatingRefreshInvalidSnapshotPersistsSafeFailureType()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_imdb_refresh_invalid_job").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>().UseNpgsql(connectionString).Options;
+        await using (var setup = new MediaDockDbContext(options))
+        {
+            await setup.Database.MigrateAsync();
+        }
+
+        using var factory = new BackgroundJobsApiFactory(
+            connectionString,
+            imdbSnapshot: Encoding.UTF8.GetBytes("not a gzip snapshot"));
+        using var client = factory.CreateClient();
+        using var response = await client.PostAsync("/api/background-jobs/imdb-rating-refresh", null);
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var accepted = await response.Content.ReadFromJsonAsync<BackgroundJobAcceptedResponse>();
+        BackgroundJobResponse? completed = null;
+        for (var attempt = 0; attempt < 60; attempt++)
+        {
+            completed = await client.GetFromJsonAsync<BackgroundJobResponse>($"/api/background-jobs/{accepted!.Id}");
+            if (completed?.Status is "succeeded" or "failed") break;
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+        }
+
+        Assert.Equal("failed", completed?.Status);
+        Assert.Equal("invalid_dataset", completed?.ErrorCode);
+        Assert.Equal("invalid_snapshot", completed!.ResultSummary!.Value.GetProperty("failureType").GetString());
+        Assert.Contains("gzip", completed.ResultSummary.Value.GetProperty("error").GetString());
+    }
+
+    [Fact]
     public async Task ApiHostedDispatcherCompletesManualScanAndAssociatesScanRun()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_background_scan_execution_test").Build();
