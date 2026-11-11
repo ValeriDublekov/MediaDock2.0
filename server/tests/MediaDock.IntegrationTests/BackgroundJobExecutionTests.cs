@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using MediaDock.Api.Catalog;
@@ -29,6 +30,69 @@ namespace MediaDock.IntegrationTests;
 [Trait("Category", "Api")]
 public sealed class BackgroundJobExecutionTests
 {
+    [Fact]
+    public async Task ImdbRatingRefreshSchedulerCoalescesMissedSlotsAndWaitsForActiveJob()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_imdb_rating_scheduler_test").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>()
+            .UseNpgsql(postgres.GetConnectionString()).Options;
+        var now = new DateTimeOffset(2026, 11, 11, 1, 0, 0, TimeSpan.Zero);
+        var previousCheckpoint = now.AddDays(-28);
+        await using (var setup = new MediaDockDbContext(options))
+        {
+            await setup.Database.MigrateAsync();
+            setup.BackgroundSchedulerStates.Add(new BackgroundSchedulerState
+            {
+                ScheduleName = "imdb_rating_refresh",
+                LastEvaluatedSlotUtc = previousCheckpoint
+            });
+            setup.BackgroundJobs.Add(new BackgroundJob
+            {
+                JobType = "imdb_rating_refresh", Trigger = "manual", Status = "queued",
+                EnqueuedAt = now.AddMinutes(-1), CurrentStage = "queued"
+            });
+            setup.BackgroundJobs.Add(new BackgroundJob
+            {
+                JobType = "rss_scan", Trigger = "manual", Status = "queued",
+                EnqueuedAt = now.AddMinutes(-1), CurrentStage = "queued"
+            });
+            await setup.SaveChangesAsync();
+        }
+
+        async Task TickAsync()
+        {
+            await using var context = new MediaDockDbContext(options);
+            var scheduler = new BackgroundJobScheduler(context,
+                new PostgresOscarEnrichmentRepository(context),
+                new PostgresGoldenGlobeEnrichmentRepository(context),
+                new PostgresImdbTitleEnrichmentRepository(context), new FixedTimeProvider(now));
+            await scheduler.EnqueueDueSlotAsync(CancellationToken.None);
+        }
+
+        await TickAsync();
+        await using (var verify = new MediaDockDbContext(options))
+        {
+            Assert.Equal(previousCheckpoint, (await verify.BackgroundSchedulerStates.SingleAsync(
+                state => state.ScheduleName == "imdb_rating_refresh")).LastEvaluatedSlotUtc);
+            var manual = await verify.BackgroundJobs.SingleAsync(job => job.JobType == "imdb_rating_refresh");
+            manual.Status = "succeeded";
+            manual.StartedAt = now;
+            manual.FinishedAt = now;
+            manual.CurrentStage = "succeeded";
+            await verify.SaveChangesAsync();
+        }
+
+        await Task.WhenAll(TickAsync(), TickAsync());
+        await using var result = new MediaDockDbContext(options);
+        var scheduled = await result.BackgroundJobs.AsNoTracking().SingleAsync(job =>
+            job.JobType == "imdb_rating_refresh" && job.Trigger == "schedule");
+        Assert.Equal(now, scheduled.ScheduledSlotUtc);
+        Assert.Equal(now, (await result.BackgroundSchedulerStates.SingleAsync(
+            state => state.ScheduleName == "imdb_rating_refresh")).LastEvaluatedSlotUtc);
+        Assert.Equal(1, await result.BackgroundJobEvents.CountAsync(item => item.JobId == scheduled.Id));
+    }
+
     [Fact]
     public async Task SchedulerQueuesEligibleEnrichmentsAlongsideTheDailyScan()
     {
@@ -329,6 +393,69 @@ public sealed class BackgroundJobExecutionTests
         Assert.Contains(jobs, job => job.JobType == "oscar_enrichment" && job.Trigger == "quota_recovery");
         Assert.Contains(jobs, job => job.JobType == "golden_globe_enrichment" && job.Trigger == "quota_recovery");
         Assert.Contains(jobs, job => job.JobType == "imdb_catalog_enrichment" && job.Trigger == "quota_recovery");
+    }
+
+    [Fact]
+    public async Task ImdbRatingRefreshHandlerRecoversInterruptedJobAndReportsSuccessfulStages()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_imdb_refresh_handler").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>().UseNpgsql(connectionString).Options;
+        var now = DateTimeOffset.UtcNow;
+        long interruptedId;
+        await using (var setup = new MediaDockDbContext(options))
+        {
+            await setup.Database.MigrateAsync();
+            setup.ImdbTitles.Add(new ImdbTitle { ImdbId = "tt0000001", Year = TimeZoneInfo.ConvertTime(now,
+                TimeZoneInfo.FindSystemTimeZoneById("Europe/Sofia")).Year, ImdbRating = 5m, ImdbVotes = 100, UpdatedAt = now });
+            var interrupted = new BackgroundJob { JobType = "imdb_rating_refresh", Trigger = "manual", Status = "running",
+                EnqueuedAt = now, StartedAt = now, CurrentStage = "imdb_rating_refresh_download" };
+            setup.BackgroundJobs.Add(interrupted);
+            await setup.SaveChangesAsync();
+            interruptedId = interrupted.Id;
+        }
+
+        using var buffer = new MemoryStream();
+        using (var gzip = new GZipStream(buffer, CompressionMode.Compress, leaveOpen: true))
+        {
+            await gzip.WriteAsync(Encoding.UTF8.GetBytes("tconst\taverageRating\tnumVotes\ntt0000001\t8.0\t200\n"));
+        }
+        using var factory = new BackgroundJobsApiFactory(connectionString, imdbSnapshot: buffer.ToArray());
+        using var client = factory.CreateClient();
+        BackgroundJobResponse? recovered = null;
+        for (var attempt = 0; attempt < 60; attempt++)
+        {
+            recovered = await client.GetFromJsonAsync<BackgroundJobResponse>($"/api/background-jobs/{interruptedId}");
+            if (recovered?.Status == "failed") break;
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+        }
+        Assert.Equal("interrupted", recovered?.ErrorCode);
+
+        using var response = await client.PostAsync("/api/background-jobs/imdb-rating-refresh", null);
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var accepted = await response.Content.ReadFromJsonAsync<BackgroundJobAcceptedResponse>();
+        BackgroundJobResponse? completed = null;
+        for (var attempt = 0; attempt < 60; attempt++)
+        {
+            completed = await client.GetFromJsonAsync<BackgroundJobResponse>($"/api/background-jobs/{accepted!.Id}");
+            if (completed?.Status is "succeeded" or "failed") break;
+            await Task.Delay(TimeSpan.FromMilliseconds(250));
+        }
+        Assert.Equal("succeeded", completed?.Status);
+        var summary = completed!.ResultSummary!.Value;
+        Assert.Equal(1, summary.GetProperty("UpdatedRows").GetInt32());
+        Assert.Equal(0, summary.GetProperty("ConcurrentConflicts").GetInt32());
+        Assert.True(summary.GetProperty("CompressedBytes").GetInt64() > 0);
+        Assert.True(summary.GetProperty("DecompressedBytes").GetInt64() > 0);
+        Assert.True(summary.TryGetProperty("RetrievedAt", out _));
+        Assert.True(summary.TryGetProperty("FinalizationMilliseconds", out _));
+        Assert.True(summary.TryGetProperty("JobTotalMilliseconds", out _));
+        await using var verify = new MediaDockDbContext(options);
+        var events = await verify.BackgroundJobEvents.Where(item => item.JobId == accepted!.Id).ToListAsync();
+        Assert.Contains(events, item => item.Message == "Applying validated IMDb rating changes.");
+        Assert.Contains(events, item => item.Message.Contains("1 title updated"));
+        Assert.Equal(8m, (await verify.ImdbTitles.AsNoTracking().SingleAsync()).ImdbRating);
     }
 
     [Fact]
@@ -946,7 +1073,8 @@ public sealed class BackgroundJobExecutionTests
         string connectionString,
         HttpMessageHandler? messageHandler = null,
         IRssFeedTransport? rssFeedTransport = null,
-        TimeProvider? timeProvider = null) : WebApplicationFactory<Program>
+        TimeProvider? timeProvider = null,
+        byte[]? imdbSnapshot = null) : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -957,6 +1085,11 @@ public sealed class BackgroundJobExecutionTests
                 }));
             builder.ConfigureTestServices(services =>
             {
+                if (imdbSnapshot is not null)
+                {
+                    services.AddHttpClient<ImdbRatingRefreshService>()
+                        .ConfigurePrimaryHttpMessageHandler(() => new ImdbSnapshotHandler(imdbSnapshot));
+                }
                 if (messageHandler is not null)
                 {
                     services.RemoveAll<HttpClient>();
@@ -976,6 +1109,12 @@ public sealed class BackgroundJobExecutionTests
                 }
             });
         }
+    }
+
+    private sealed class ImdbSnapshotHandler(byte[] snapshot) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(snapshot) });
     }
 
     private sealed class OmdbRecoveryHandler : HttpMessageHandler

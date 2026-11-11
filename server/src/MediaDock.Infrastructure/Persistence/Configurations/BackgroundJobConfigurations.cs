@@ -15,7 +15,7 @@ internal sealed class BackgroundJobConfiguration : IEntityTypeConfiguration<Back
             table.HasCheckConstraint("ck_background_jobs_status", "status IN ('queued', 'running', 'succeeded', 'partial', 'failed')");
             table.HasCheckConstraint(
                 "ck_background_jobs_type_trigger",
-                "(job_type IN ('rss_scan', 'oscar_enrichment', 'golden_globe_enrichment', 'imdb_catalog_enrichment') AND trigger IN ('manual', 'schedule')) OR (job_type = 'omdb_quota_recovery' AND trigger = 'schedule') OR (job_type IN ('oscar_enrichment', 'golden_globe_enrichment', 'imdb_catalog_enrichment') AND trigger = 'quota_recovery') OR (job_type IN ('oscar_import', 'golden_globe_import', 'imdb_title_import', 'imdb_rating_refresh', 'golden_globe_manual_refresh', 'imdb_title_enrichment') AND trigger = 'manual')");
+                "(job_type IN ('rss_scan', 'oscar_enrichment', 'golden_globe_enrichment', 'imdb_catalog_enrichment', 'imdb_rating_refresh') AND trigger IN ('manual', 'schedule')) OR (job_type = 'omdb_quota_recovery' AND trigger = 'schedule') OR (job_type IN ('oscar_enrichment', 'golden_globe_enrichment', 'imdb_catalog_enrichment') AND trigger = 'quota_recovery') OR (job_type IN ('oscar_import', 'golden_globe_import', 'imdb_title_import', 'golden_globe_manual_refresh', 'imdb_title_enrichment') AND trigger = 'manual')");
             table.HasCheckConstraint(
                 "ck_background_jobs_owner_user_id",
                 "(job_type = 'imdb_title_enrichment' AND owner_user_id IS NOT NULL) OR (job_type <> 'imdb_title_enrichment' AND owner_user_id IS NULL)");

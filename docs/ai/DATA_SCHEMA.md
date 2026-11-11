@@ -23,7 +23,7 @@ Compact map of the PostgreSQL persistence model in `server/`. This is an orienta
 | `parse_logs` | [`ParseLog`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/ParseLog.cs) | Parse, lookup, ignore, and retry decisions for feed items. |
 | `background_jobs` | [`BackgroundJob`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/BackgroundJob.cs) | Queued scans, imports, enrichment, and IMDb ratings refresh; personal IMDb enrichment is owner-scoped. |
 | `background_job_events` | [`BackgroundJobEvent`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/BackgroundJobEvent.cs) | Bounded event history for a background job. |
-| `background_scheduler_state` | [`BackgroundSchedulerState`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/BackgroundSchedulerState.cs) | Scheduler checkpoint, stored as a singleton. |
+| `background_scheduler_state` | [`BackgroundSchedulerState`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/BackgroundSchedulerState.cs) | Independent durable checkpoints keyed by schedule name. |
 | `settings` | [`AppSetting`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/AppSetting.cs) | Singleton provider and matching settings; legacy Oscar-specific limits are ignored. |
 | `general_recommendation_settings` | [`GeneralRecommendationSettings`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/GeneralRecommendationSettings.cs) | Singleton vote period, Bayesian prior, source-level award defaults, and recalculation freshness state. |
 | `metadata_cache` | [`MetadataCacheEntry`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/MetadataCacheEntry.cs) | TTL resolver cache; not the canonical metadata store. |
@@ -38,7 +38,7 @@ Compact map of the PostgreSQL persistence model in `server/`. This is an orienta
 
 ## Important Database Invariants
 
-- Most entity tables use generated `bigint` IDs. Exceptions include `imdb_titles` keyed by normalized IMDb ID, `omdb_daily_usage` keyed by UTC date, owner-scoped composite keys for favorites, ignored movies, and ratings, and the scheduler singleton key.
+- Most entity tables use generated `bigint` IDs. Exceptions include `imdb_titles` keyed by normalized IMDb ID, `omdb_daily_usage` keyed by UTC date, owner-scoped composite keys for favorites, ignored movies, and ratings, and the scheduler's schedule-name key.
 - `imdb_titles` is the sole provider-metadata owner. `oscar_movies`, `golden_globe_titles`, and `torrent_movies` may reference it; these source-owned tables keep source identity and optional IMDb links, not provider-field copies. `metadata_cache` is temporary resolver state, not canonical data.
 - `imdb_titles.normalized_vote_weight` is global per canonical IMDb title and defaults to `0.0`; it is not personal data. `general_recommendation_settings.id = 1` owns `median_period_years`, `bayesian_default_c`, `bayesian_m_ratio`, the four source-level award-point defaults, `requires_vote_recalculation`, and last-success metadata. Recommendation coefficients are request values, not stored settings.
 - Oscar nominations retain imported facts and can link to `oscar_movies` without requiring a catalog or torrent record. Golden Globes titles are unique by `(title, year, nominee_type)` and preserve both movies and series; nominations retain award, winner, and import facts.

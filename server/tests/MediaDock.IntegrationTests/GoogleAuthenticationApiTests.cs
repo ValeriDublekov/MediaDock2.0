@@ -301,6 +301,36 @@ public sealed class GoogleAuthenticationApiTests
     }
 
     [Fact]
+    public async Task ImdbRatingRefreshRoutesRequireAnAdministrator()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_imdb_refresh_auth").Build();
+        await postgres.StartAsync();
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>().UseNpgsql(connectionString).Options;
+        await using (var db = new MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+            var now = DateTimeOffset.UtcNow;
+            var user = new User { NormalizedEmail = "refresh-user@example.com", GivenName = "Test", FamilyName = "User",
+                Status = "active", Role = "user", CreatedAt = now, UpdatedAt = now };
+            user.ExternalIdentities.Add(new ExternalIdentity { User = user, Issuer = GoogleSignInSettings.GoogleIssuer,
+                Subject = "refresh-user", CreatedAt = now });
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+        }
+
+        using var factory = new ApiFactory(connectionString, accessControlEnforced: true, localMockEnabled: true);
+        using var client = factory.CreateClient();
+        using var latest = await client.GetAsync("/api/background-jobs/imdb-rating-refresh/latest");
+        Assert.Equal(HttpStatusCode.Forbidden, latest.StatusCode);
+        var token = await GetAntiforgeryTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/background-jobs/imdb-rating-refresh");
+        request.Headers.Add("RequestVerificationToken", token);
+        using var trigger = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Forbidden, trigger.StatusCode);
+    }
+
+    [Fact]
     public async Task DevelopmentLocalMockUsesTheOnlyActiveLinkedUser()
     {
         await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_local_mock_auth_test").Build();

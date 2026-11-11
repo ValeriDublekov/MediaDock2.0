@@ -4,6 +4,16 @@ namespace MediaDock.IntegrationTests;
 
 public sealed class BackgroundJobSchedulerTests
 {
+    [Theory]
+    [InlineData("2026-01-07T00:59:59Z", "2025-12-31T01:00:00Z")]
+    [InlineData("2026-01-07T01:00:00Z", "2026-01-07T01:00:00Z")]
+    [InlineData("2026-07-08T00:00:00Z", "2026-07-08T00:00:00Z")]
+    [InlineData("2026-11-11T12:00:00Z", "2026-11-11T01:00:00Z")]
+    public void ImdbRatingRefreshUsesLatestWednesdayThreeAmSofiaSlot(string now, string expected)
+    {
+        Assert.Equal(DateTimeOffset.Parse(expected), BackgroundJobScheduler.GetLatestImdbRatingSlot(DateTimeOffset.Parse(now)));
+    }
+
     [Fact]
     public void CalculatesTheScheduledSlotsAcrossTheSpringDstTransition()
     {

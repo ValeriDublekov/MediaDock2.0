@@ -51,7 +51,7 @@ public sealed class ImdbRatingSnapshotParser
         {
             if (!columns.TryAdd(headers[index], index))
             {
-                throw new InvalidDataException($"IMDb ratings dataset has a duplicate column: {headers[index]}.");
+                throw new InvalidDataException("IMDb ratings dataset has a duplicate column.");
             }
         }
 

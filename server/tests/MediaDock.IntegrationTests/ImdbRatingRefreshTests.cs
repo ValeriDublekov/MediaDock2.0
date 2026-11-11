@@ -196,24 +196,57 @@ public sealed class ImdbRatingRefreshTests
         var handler = new RetryBodyHandler(snapshot.ToArray());
         using var client = new HttpClient(handler);
         var service = new ImdbRatingRefreshService(db, client, new ImdbRatingSnapshotParser(), new AdvancingTimeProvider());
+        var applying = false;
 
-        var result = await service.RefreshAsync();
+        var result = await service.RefreshAsync(onDatabaseApply: _ => { applying = true; return Task.CompletedTask; });
 
         Assert.Equal(2, handler.RequestCount);
         Assert.Equal(2026, result.TargetYear);
         Assert.Equal(1, result.UpdatedRows);
         Assert.True(result.ProcessingMilliseconds >= 1000);
         Assert.True(result.TotalMilliseconds >= result.ProcessingMilliseconds);
+        Assert.True(applying);
+        Assert.Equal(new DateTimeOffset(2026, 12, 31, 22, 1, 0, TimeSpan.Zero), result.RetrievedAt);
+        Assert.Equal(new DateTimeOffset(2026, 12, 30, 12, 0, 0, TimeSpan.Zero), result.PublishedLastModified);
     }
 
-    private sealed class RetryBodyHandler(byte[] bytes) : HttpMessageHandler
+    [Fact]
+    public async Task RefreshAsyncCancellationBeforeApplyLeavesTitlesUnchanged()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_imdb_refresh_cancel").Build();
+        await postgres.StartAsync();
+        var options = new DbContextOptionsBuilder<MediaDockDbContext>().UseNpgsql(postgres.GetConnectionString()).Options;
+        await using var db = new MediaDockDbContext(options);
+        await db.Database.MigrateAsync();
+        db.ImdbTitles.Add(CreateTitle("tt0000001", 2026, 5m, 100, "Title"));
+        await db.SaveChangesAsync();
+        using var snapshot = Compress("tconst\taverageRating\tnumVotes\ntt0000001\t8.0\t200\n");
+        using var client = new HttpClient(new RetryBodyHandler(snapshot.ToArray(), failFirst: false));
+        using var cancellation = new CancellationTokenSource();
+        var service = new ImdbRatingRefreshService(db, client, new ImdbRatingSnapshotParser(),
+            new FixedTimeProvider(new DateTimeOffset(2026, 11, 11, 12, 0, 0, TimeSpan.Zero)));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.RefreshAsync(cancellation.Token, token =>
+        {
+            cancellation.Cancel();
+            token.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }));
+        var title = await db.ImdbTitles.AsNoTracking().SingleAsync();
+        Assert.Equal(5m, title.ImdbRating);
+        Assert.Equal(100, title.ImdbVotes);
+    }
+
+    private sealed class RetryBodyHandler(byte[] bytes, bool failFirst = true) : HttpMessageHandler
     {
         public int RequestCount { get; private set; }
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             RequestCount++;
-            Stream body = RequestCount == 1 ? new FailingReadStream(bytes) : new MemoryStream(bytes);
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(body) });
+            Stream body = failFirst && RequestCount == 1 ? new FailingReadStream(bytes) : new MemoryStream(bytes);
+            var content = new StreamContent(body);
+            content.Headers.LastModified = new DateTimeOffset(2026, 12, 30, 12, 0, 0, TimeSpan.Zero);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
         }
     }
 

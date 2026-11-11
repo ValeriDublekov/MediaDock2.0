@@ -8,9 +8,11 @@ import {
   enqueueOscarImport,
   enqueueGoldenGlobeImport,
   enqueueImdbTitleImport,
+  enqueueImdbRatingRefresh,
   getActiveBackgroundJob,
   getBackgroundJob,
   getBackgroundJobEvents,
+  getLatestImdbRatingRefresh,
 } from '../../api/client'
 import type { BackgroundJob, BackgroundJobEvent } from '../../api/types'
 import { formatDate, formatWords } from '../../shared/format'
@@ -57,6 +59,7 @@ function jobLabel(job: BackgroundJob): string {
   if (job.jobType === 'golden_globe_enrichment') return 'Golden Globes film metadata'
   if (job.jobType === 'golden_globe_manual_refresh') return 'Manual Golden Globes metadata refresh'
   if (job.jobType === 'imdb_title_import') return 'IMDb title dataset import'
+  if (job.jobType === 'imdb_rating_refresh') return 'IMDb ratings refresh'
   if (job.jobType === 'imdb_catalog_enrichment') return 'IMDb catalog enrichment'
   return 'Oscar dataset import'
 }
@@ -281,6 +284,33 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
     }
   }
 
+  async function startImdbRatingRefresh() {
+    setBusy(true)
+    setError(null)
+    try {
+      const accepted = await enqueueImdbRatingRefresh()
+      await showJob(accepted.id)
+    } catch (requestError: unknown) {
+      setError(requestError instanceof Error ? requestError.message : 'Could not queue the IMDb ratings refresh.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function showLatestImdbRatingRefresh() {
+    setBusy(true)
+    setError(null)
+    try {
+      const latest = await getLatestImdbRatingRefresh()
+      if (latest) await showJob(latest.id)
+      else setError('No IMDb ratings refresh has been recorded.')
+    } catch (requestError: unknown) {
+      setError(requestError instanceof Error ? requestError.message : 'Could not load the IMDb ratings refresh.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function startOscarEnrichment() {
     if (!window.confirm('Start Oscar film metadata extraction? It may send OMDb requests within the saved limits.')) return
     setBusy(true)
@@ -350,6 +380,12 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
             </button>
             <button className="button button-secondary" disabled={busy || (job?.jobType === 'golden_globe_enrichment' && active)} onClick={() => { void startGoldenGlobeEnrichment() }} type="button">
               Enrich Golden Globes films
+            </button>
+            <button className="button button-secondary" disabled={busy || (job?.jobType === 'imdb_rating_refresh' && active)} onClick={() => { void startImdbRatingRefresh() }} type="button">
+              Refresh IMDb ratings
+            </button>
+            <button className="button button-secondary" disabled={busy} onClick={() => { void showLatestImdbRatingRefresh() }} type="button">
+              View latest IMDb refresh
             </button>
           </>}
           {job && <button className="button button-secondary" onClick={() => { void showJob(job.id) }} type="button">View job</button>}
@@ -443,8 +479,28 @@ export function BackgroundIngestionPanel({ mode, onOpenHistory }: BackgroundInge
                   <div><dt>ROWS UPDATED</dt><dd>{counter(summary, 'rowsUpdated', 'RowsUpdated')}</dd></div>
                   <div><dt>ROWS IGNORED</dt><dd>{counter(summary, 'rowsIgnored', 'RowsIgnored')}</dd></div>
                 </>}
+                {job.jobType === 'imdb_rating_refresh' && job.status === 'succeeded' && <>
+                  <div><dt>SELECTED TITLES</dt><dd>{counter(summary, 'selectedTitles', 'SelectedTitles')}</dd></div>
+                  <div><dt>ROWS SCANNED</dt><dd>{counter(summary, 'rowsScanned', 'RowsScanned')}</dd></div>
+                  <div><dt>MATCHED</dt><dd>{counter(summary, 'matchedRows', 'MatchedRows')}</dd></div>
+                  <div><dt>UPDATED</dt><dd>{counter(summary, 'updatedRows', 'UpdatedRows')}</dd></div>
+                  <div><dt>UNCHANGED</dt><dd>{counter(summary, 'unchangedRows', 'UnchangedRows')}</dd></div>
+                  <div><dt>ABSENT</dt><dd>{counter(summary, 'absentFromSnapshot', 'AbsentFromSnapshot')}</dd></div>
+                  <div><dt>CONFLICTS</dt><dd>{counter(summary, 'concurrentConflicts', 'ConcurrentConflicts')}</dd></div>
+                  <div><dt>COMPRESSED BYTES</dt><dd>{counter(summary, 'compressedBytes', 'CompressedBytes')}</dd></div>
+                  <div><dt>DECOMPRESSED BYTES</dt><dd>{counter(summary, 'decompressedBytes', 'DecompressedBytes')}</dd></div>
+                  <div><dt>RETRIEVED</dt><dd>{formatDate(typeof summary.RetrievedAt === 'string' ? summary.RetrievedAt : typeof summary.retrievedAt === 'string' ? summary.retrievedAt : null)}</dd></div>
+                  <div><dt>LAST MODIFIED</dt><dd>{formatDate(typeof summary.PublishedLastModified === 'string' ? summary.PublishedLastModified : typeof summary.publishedLastModified === 'string' ? summary.publishedLastModified : null)}</dd></div>
+                  <div><dt>DATABASE READ</dt><dd>{counter(summary, 'databaseReadMilliseconds', 'DatabaseReadMilliseconds')} ms</dd></div>
+                  <div><dt>DATASET PROCESSING</dt><dd>{counter(summary, 'processingMilliseconds', 'ProcessingMilliseconds')} ms</dd></div>
+                  <div><dt>DATABASE APPLY</dt><dd>{counter(summary, 'databaseApplyMilliseconds', 'DatabaseApplyMilliseconds')} ms</dd></div>
+                  <div><dt>FINALIZATION</dt><dd>{counter(summary, 'finalizationMilliseconds', 'FinalizationMilliseconds')} ms</dd></div>
+                  <div><dt>JOB TOTAL</dt><dd>{counter(summary, 'jobTotalMilliseconds', 'JobTotalMilliseconds')} ms</dd></div>
+                </>}
                 {job.errorCode && <div><dt>ERROR</dt><dd>{formatWords(job.errorCode)}</dd></div>}
               </dl>
+              {job.jobType === 'imdb_rating_refresh' && job.status === 'succeeded' && typeof (summary.Message ?? summary.message) === 'string'
+                && <p>{String(summary.Message ?? summary.message)}</p>}
               {enrichmentJobId !== null && (
                 <section aria-label="IMDb catalog enrichment job" className="background-job-state">
                   <strong>IMDb catalog enrichment</strong>

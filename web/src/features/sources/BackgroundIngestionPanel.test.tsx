@@ -6,11 +6,13 @@ import {
   enqueueGoldenGlobeEnrichment,
   enqueueGoldenGlobeImport,
   enqueueImdbTitleImport,
+  enqueueImdbRatingRefresh,
   enqueueManualScan,
   enqueueOscarImport,
   getActiveBackgroundJob,
   getBackgroundJob,
   getBackgroundJobEvents,
+  getLatestImdbRatingRefresh,
 } from '../../api/client'
 import type { BackgroundJob } from '../../api/types'
 import { BackgroundIngestionPanel } from './BackgroundIngestionPanel'
@@ -28,11 +30,13 @@ vi.mock('../../api/client', () => ({
   enqueueGoldenGlobeEnrichment: vi.fn(),
   enqueueGoldenGlobeImport: vi.fn(),
   enqueueImdbTitleImport: vi.fn(),
+  enqueueImdbRatingRefresh: vi.fn(),
   enqueueManualScan: vi.fn(),
   enqueueOscarImport: vi.fn(),
   getActiveBackgroundJob: vi.fn(),
   getBackgroundJob: vi.fn(),
   getBackgroundJobEvents: vi.fn(),
+  getLatestImdbRatingRefresh: vi.fn(),
 }))
 
 const queuedJob: BackgroundJob = {
@@ -58,11 +62,13 @@ describe('BackgroundIngestionPanel', () => {
     vi.mocked(enqueueGoldenGlobeEnrichment).mockReset().mockResolvedValue({ id: 9, status: 'queued', statusUrl: '/api/background-jobs/9' })
     vi.mocked(enqueueGoldenGlobeImport).mockReset().mockResolvedValue({ id: 10, status: 'queued', statusUrl: '/api/background-jobs/10' })
     vi.mocked(enqueueImdbTitleImport).mockReset().mockResolvedValue({ id: 12, status: 'queued', statusUrl: '/api/background-jobs/12' })
+    vi.mocked(enqueueImdbRatingRefresh).mockReset().mockResolvedValue({ id: 13, status: 'queued', statusUrl: '/api/background-jobs/13' })
     vi.mocked(enqueueManualScan).mockReset().mockResolvedValue({ id: 7, status: 'queued', statusUrl: '/api/background-jobs/7' })
     vi.mocked(enqueueOscarImport).mockReset().mockResolvedValue({ id: 8, status: 'queued', statusUrl: '/api/background-jobs/8' })
     vi.mocked(getActiveBackgroundJob).mockReset().mockResolvedValue(null)
     vi.mocked(getBackgroundJob).mockReset().mockResolvedValue(queuedJob)
     vi.mocked(getBackgroundJobEvents).mockReset().mockResolvedValue({ items: [], nextAfterId: 0 })
+    vi.mocked(getLatestImdbRatingRefresh).mockReset().mockResolvedValue(null)
   })
 
   afterEach(() => {
@@ -186,6 +192,31 @@ describe('BackgroundIngestionPanel', () => {
     const enrichmentStatus = await screen.findByRole('region', { name: 'IMDb catalog enrichment job' })
     expect(within(enrichmentStatus).getByText('running')).toBeTruthy()
     expect(getBackgroundJob).toHaveBeenCalledWith(18)
+  })
+
+  it('queues an IMDb ratings refresh and displays its summary', async () => {
+    vi.mocked(getBackgroundJob).mockResolvedValue({
+      ...queuedJob, id: 13, jobType: 'imdb_rating_refresh', status: 'succeeded',
+      resultSummary: { UpdatedRows: 4, ConcurrentConflicts: 2, ProcessingMilliseconds: 1200, DatabaseApplyMilliseconds: 35, FinalizationMilliseconds: 5, JobTotalMilliseconds: 1240, Message: '4 titles updated.' },
+    })
+    render(<BackgroundIngestionPanel mode="awards" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Refresh IMDb ratings' }))
+    await screen.findByRole('dialog')
+    expect(enqueueImdbRatingRefresh).toHaveBeenCalledOnce()
+    expect(screen.getByText('UPDATED').nextElementSibling?.textContent).toBe('4')
+    expect(screen.getByText('CONFLICTS').nextElementSibling?.textContent).toBe('2')
+    expect(screen.getByText('DATASET PROCESSING').nextElementSibling?.textContent).toBe('1200 ms')
+    expect(screen.getByText('4 titles updated.')).toBeTruthy()
+  })
+
+  it('opens the latest completed IMDb refresh', async () => {
+    const completed: BackgroundJob = { ...queuedJob, id: 13, jobType: 'imdb_rating_refresh', status: 'succeeded' }
+    vi.mocked(getLatestImdbRatingRefresh).mockResolvedValue(completed)
+    vi.mocked(getBackgroundJob).mockResolvedValue(completed)
+    render(<BackgroundIngestionPanel mode="awards" />)
+    fireEvent.click(await screen.findByRole('button', { name: 'View latest IMDb refresh' }))
+    expect(await screen.findByRole('heading', { name: 'IMDb ratings refresh' })).toBeTruthy()
+    expect(getBackgroundJob).toHaveBeenCalledWith(13)
   })
 
   it('rejects non-TSV, empty, and oversized IMDb files before submitting', async () => {

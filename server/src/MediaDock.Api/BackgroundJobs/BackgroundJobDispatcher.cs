@@ -215,7 +215,13 @@ internal sealed class BackgroundJobDispatcher(
             await MarkJobFailedWithFreshContextAsync(
                 job.Id,
                 errorCode,
-                exception.Message,
+                job.JobType == "imdb_rating_refresh" && exception is TimeoutException
+                    ? "IMDb ratings refresh exceeded its time limit."
+                    : job.JobType == "imdb_rating_refresh" && exception is HttpRequestException httpException
+                        ? httpException.StatusCode is { } statusCode
+                            ? $"IMDb ratings download failed with HTTP {(int)statusCode}."
+                            : "IMDb ratings download failed due to a network error."
+                        : exception.Message,
                 exception.GetType().FullName,
                 exception.InnerException?.Message);
         }
@@ -242,6 +248,14 @@ internal sealed class BackgroundJobDispatcher(
             job.ProgressUpdatedAt = now;
             job.ResultSummary = job.JobType == "imdb_title_enrichment"
                 ? null
+                : job.JobType == "imdb_rating_refresh"
+                ? JsonSerializer.Serialize(new
+                {
+                    error = errorCode == "invalid_dataset" || exceptionType == typeof(TimeoutException).FullName
+                        || exceptionType == typeof(HttpRequestException).FullName
+                        ? (errorMessage is { Length: > 300 } ? errorMessage[..300] : errorMessage)
+                        : "IMDb ratings refresh failed. Check the server logs for details."
+                })
                 : JsonSerializer.Serialize(new
                 {
                     error = errorMessage ?? "The job failed before its error details could be persisted.",

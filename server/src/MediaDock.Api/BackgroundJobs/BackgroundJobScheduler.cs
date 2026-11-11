@@ -17,6 +17,7 @@ public sealed class BackgroundJobScheduler(
     TimeProvider timeProvider)
 {
     private const string ScheduleName = "rss_ingestion";
+    private const string ImdbRatingScheduleName = "imdb_rating_refresh";
     private static readonly TimeZoneInfo SofiaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Sofia");
 
     public async Task EnqueueDueSlotAsync(CancellationToken cancellationToken)
@@ -38,6 +39,7 @@ public sealed class BackgroundJobScheduler(
             .SingleAsync(item => item.ScheduleName == ScheduleName, cancellationToken);
 
         await EnqueueQuotaRecoveryIfDueAsync(now, cancellationToken);
+        await EnqueueImdbRatingRefreshIfDueAsync(now, cancellationToken);
 
         var activeRssJob = await dbContext.BackgroundJobs.AsNoTracking()
             .AnyAsync(job => job.JobType == "rss_scan" && (job.Status == "queued" || job.Status == "running"), cancellationToken);
@@ -99,6 +101,49 @@ public sealed class BackgroundJobScheduler(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    private async Task EnqueueImdbRatingRefreshIfDueAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var latestSlot = GetLatestImdbRatingSlot(now);
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO background_scheduler_state (schedule_name, last_evaluated_slot_utc)
+            VALUES ({ImdbRatingScheduleName}, {latestSlot})
+            ON CONFLICT (schedule_name) DO NOTHING;
+            """,
+            cancellationToken);
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE background_scheduler_state SET schedule_name = schedule_name WHERE schedule_name = {ImdbRatingScheduleName};",
+            cancellationToken);
+        var state = await dbContext.BackgroundSchedulerStates
+            .SingleAsync(item => item.ScheduleName == ImdbRatingScheduleName, cancellationToken);
+        if (latestSlot <= state.LastEvaluatedSlotUtc || await dbContext.BackgroundJobs.AsNoTracking()
+                .AnyAsync(job => job.JobType == "imdb_rating_refresh"
+                    && (job.Status == "queued" || job.Status == "running"), cancellationToken))
+        {
+            return;
+        }
+
+        var job = new BackgroundJob
+        {
+            JobType = "imdb_rating_refresh",
+            Trigger = "schedule",
+            Status = "queued",
+            EnqueuedAt = now,
+            ScheduledSlotUtc = latestSlot,
+            CurrentStage = "queued"
+        };
+        job.Events.Add(new BackgroundJobEvent
+        {
+            OccurredAt = now,
+            Level = "information",
+            EventCode = "job_scheduled",
+            Message = "Scheduled IMDb ratings refresh queued.",
+            DataJson = "{}"
+        });
+        dbContext.BackgroundJobs.Add(job);
+        state.LastEvaluatedSlotUtc = latestSlot;
     }
 
     private async Task EnqueueQuotaRecoveryIfDueAsync(
@@ -300,6 +345,15 @@ public sealed class BackgroundJobScheduler(
         }
 
         return ConvertLocalSlotToUtc(slot);
+    }
+
+    public static DateTimeOffset GetLatestImdbRatingSlot(DateTimeOffset now)
+    {
+        var local = TimeZoneInfo.ConvertTime(now, SofiaTimeZone);
+        var daysSinceWednesday = ((int)local.DayOfWeek - (int)DayOfWeek.Wednesday + 7) % 7;
+        var localSlot = local.Date.AddDays(-daysSinceWednesday).AddHours(3);
+        var slot = ConvertLocalSlotToUtc(localSlot);
+        return slot <= now ? slot : ConvertLocalSlotToUtc(localSlot.AddDays(-7));
     }
 
     private static DateTimeOffset GetLatestDueSlot(DateTimeOffset now) =>

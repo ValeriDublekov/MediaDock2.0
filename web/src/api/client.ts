@@ -584,6 +584,14 @@ export function enqueueImdbTitleImport(file: File, fetcher?: typeof fetch) {
   return requestJson<BackgroundJobAccepted>('/background-jobs/imdb-title-import', { method: 'POST', body }, fetcher)
 }
 
+export function enqueueImdbRatingRefresh(fetcher?: typeof fetch) {
+  return requestJson<BackgroundJobAccepted>('/background-jobs/imdb-rating-refresh', { method: 'POST' }, fetcher)
+}
+
+export function getLatestImdbRatingRefresh(fetcher?: typeof fetch) {
+  return requestJson<BackgroundJob | null>('/background-jobs/imdb-rating-refresh/latest', {}, fetcher)
+}
+
 export function getGoldenGlobeFilms(query: GoldenGlobeCatalogQuery, fetcher?: typeof fetch) {
   return requestJson<PageResponse<GoldenGlobeFilm>>(withQuery('/golden-globes', query, ['categories']), {}, fetcher)
 }

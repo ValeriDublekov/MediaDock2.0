@@ -67,6 +67,17 @@ internal sealed class BackgroundJobApiService(
         return ToResponse(job);
     }
 
+    public async Task<BackgroundJobResponse?> GetLatestImdbRatingRefreshAsync(CancellationToken cancellationToken)
+    {
+        var job = await dbContext.BackgroundJobs.AsNoTracking()
+            .Where(item => item.JobType == "imdb_rating_refresh")
+            .OrderByDescending(item => item.Status == "queued" || item.Status == "running")
+            .ThenByDescending(item => item.EnqueuedAt)
+            .ThenByDescending(item => item.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        return job is null ? null : ToResponse(job);
+    }
+
     public async Task<BackgroundJobResponse> GetOwnedImdbTitleEnrichmentAsync(
         long ownerUserId,
         long id,

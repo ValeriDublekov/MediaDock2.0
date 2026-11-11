@@ -22,7 +22,11 @@ public sealed record ImdbRatingRefreshSummary(
     long ProcessingMilliseconds,
     long DatabaseApplyMilliseconds,
     long TotalMilliseconds,
-    string Message);
+    string Message,
+    DateTimeOffset? RetrievedAt = null,
+    DateTimeOffset? PublishedLastModified = null,
+    long FinalizationMilliseconds = 0,
+    long JobTotalMilliseconds = 0);
 
 public sealed class ImdbRatingRefreshService(
     MediaDockDbContext dbContext,
@@ -35,7 +39,9 @@ public sealed class ImdbRatingRefreshService(
     private static readonly Uri DatasetUri = new("https://datasets.imdbws.com/title.ratings.tsv.gz");
     private static readonly TimeZoneInfo SofiaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Sofia");
 
-    public async Task<ImdbRatingRefreshSummary> RefreshAsync(CancellationToken cancellationToken = default)
+    public async Task<ImdbRatingRefreshSummary> RefreshAsync(
+        CancellationToken cancellationToken = default,
+        Func<CancellationToken, Task>? onDatabaseApply = null)
     {
         var totalTimer = Stopwatch.StartNew();
         var processingTimer = Stopwatch.StartNew();
@@ -71,10 +77,13 @@ public sealed class ImdbRatingRefreshService(
                             response.StatusCode);
                     }
 
+                    var retrievedAt = timeProvider.GetUtcNow();
+                    var lastModified = response.Content.Headers.LastModified;
                     await using var contentStream = await response.Content.ReadAsStreamAsync(timeout.Token);
                     using var transportStream = new TransportReadStream(contentStream);
-                    return await RefreshFromSnapshotAsync(
-                        transportStream, targetYear, totalTimer, processingTimer, databaseReadTimer, timeout.Token);
+                    var summary = await RefreshFromSnapshotAsync(
+                        transportStream, targetYear, totalTimer, processingTimer, databaseReadTimer, timeout.Token, onDatabaseApply);
+                    return summary with { RetrievedAt = retrievedAt, PublishedLastModified = lastModified };
                 }
                 catch (HttpRequestException exception) when (
                     attempt < MaximumDownloadAttempts && IsRetryableHttpRequest(exception))
@@ -117,7 +126,8 @@ public sealed class ImdbRatingRefreshService(
         Stopwatch totalTimer,
         Stopwatch processingTimer,
         Stopwatch databaseReadTimer,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<CancellationToken, Task>? onDatabaseApply = null)
     {
         var firstYear = targetYear - 1;
 
@@ -162,6 +172,10 @@ public sealed class ImdbRatingRefreshService(
         var absentFromSnapshot = selectedTitles.LongLength - parsed.Matches.Count;
         processingTimer.Stop();
 
+        if (onDatabaseApply is not null)
+        {
+            await onDatabaseApply(cancellationToken);
+        }
         var applyTimer = Stopwatch.StartNew();
         long updatedRows = 0;
         long unchangedRows = 0;

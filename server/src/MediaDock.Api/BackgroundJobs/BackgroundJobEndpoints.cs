@@ -217,6 +217,18 @@ internal static class BackgroundJobEndpoints
             .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
+        app.MapGet("/api/background-jobs/imdb-rating-refresh/latest", async (
+            BackgroundJobApiService service, CancellationToken token) =>
+        {
+            var job = await service.GetLatestImdbRatingRefreshAsync(token);
+            return job is null ? Results.NoContent() : Results.Ok(job);
+        })
+            .WithName("GetLatestImdbRatingRefresh")
+            .WithSummary("Get the active or most recent IMDb ratings refresh.")
+            .RequireAuthorization(AccessPolicies.Administrator)
+            .Produces<BackgroundJobResponse>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status204NoContent);
+
         app.MapGet("/api/background-jobs/{id:long}", async (
             long id,
             BackgroundJobApiService service,

@@ -394,6 +394,7 @@ export function ImdbTitlesCatalogView({ hasActiveAccount, canDeleteTitles = fals
   }
 
   return <section aria-label="IMDb titles catalog" className="media-view imdb-titles-view">
+    <p className="section-caption">Information courtesy of <a href="https://www.imdb.com">IMDb (https://www.imdb.com)</a>. Used with permission.</p>
     <div className="page-heading">
       <div className="page-heading-copy">
         <h1>IMDb titles</h1>

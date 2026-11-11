@@ -188,13 +188,22 @@ internal sealed class ImdbRatingRefreshBackgroundJobHandler(
         BackgroundJobExecutionContext context,
         CancellationToken cancellationToken)
     {
+        var jobTimer = System.Diagnostics.Stopwatch.StartNew();
         await context.SetStageAsync(
             "imdb_rating_refresh_download",
             "Downloading and validating the official IMDb ratings snapshot.",
             cancellationToken);
-        var summary = await refreshService.RefreshAsync(cancellationToken);
+        var summary = await refreshService.RefreshAsync(cancellationToken, token => context.SetStageAsync(
+            "imdb_rating_refresh_apply", "Applying validated IMDb rating changes.", token));
+        var finalizationTimer = System.Diagnostics.Stopwatch.StartNew();
         await context.SetStageAsync("imdb_rating_refresh_completed", summary.Message, cancellationToken);
-        return new BackgroundJobExecutionResult("succeeded", summary);
+        finalizationTimer.Stop();
+        jobTimer.Stop();
+        return new BackgroundJobExecutionResult("succeeded", summary with
+        {
+            FinalizationMilliseconds = finalizationTimer.ElapsedMilliseconds,
+            JobTotalMilliseconds = jobTimer.ElapsedMilliseconds
+        });
     }
 }
 

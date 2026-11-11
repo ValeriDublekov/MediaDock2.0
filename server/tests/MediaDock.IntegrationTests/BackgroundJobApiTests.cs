@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using MediaDock.Api.BackgroundJobs;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
@@ -179,6 +180,19 @@ public sealed class BackgroundJobApiTests
         var queuedEvent = await verificationDb.BackgroundJobEvents.AsNoTracking()
             .SingleAsync(jobEvent => jobEvent.JobId == accepted.Id);
         Assert.Contains("validated before any title is updated", queuedEvent.Message);
+
+        using var latestResponse = await client.GetAsync("/api/background-jobs/imdb-rating-refresh/latest");
+        Assert.Equal(accepted.Id, (await latestResponse.Content.ReadFromJsonAsync<BackgroundJobResponse>())!.Id);
+        var completed = await verificationDb.BackgroundJobs.SingleAsync(job => job.Id == accepted.Id);
+        completed.Status = "succeeded";
+        completed.StartedAt = DateTimeOffset.UtcNow;
+        completed.FinishedAt = completed.StartedAt;
+        completed.CurrentStage = "succeeded";
+        await verificationDb.SaveChangesAsync();
+        using var completedResponse = await client.GetAsync("/api/background-jobs/imdb-rating-refresh/latest");
+        Assert.Equal(accepted.Id, (await completedResponse.Content.ReadFromJsonAsync<BackgroundJobResponse>())!.Id);
+        using var nextResponse = await client.PostAsync("/api/background-jobs/imdb-rating-refresh", content: null);
+        Assert.Equal(HttpStatusCode.Accepted, nextResponse.StatusCode);
     }
 
     private sealed record AcceptedJob(long Id, string Status, string StatusUrl);
