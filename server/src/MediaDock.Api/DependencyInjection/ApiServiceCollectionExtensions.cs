@@ -48,6 +48,9 @@ public static class ApiServiceCollectionExtensions
 		services.AddIngestionInfrastructure();
 		services.AddScoped<GoldenGlobeDatasetImporter>();
 		services.AddScoped<ImdbTitleDatasetImporter>();
+		services.AddScoped<ImdbRatingSnapshotParser>();
+		services.AddHttpClient<ImdbRatingRefreshService>(client =>
+			client.Timeout = TimeSpan.FromMinutes(10));
 		services.AddScoped<BackgroundJobApiService>();
 		services.AddScoped<BackgroundJobScheduler>();
 		services.AddScoped(typeof(IBackgroundJobServiceFactory<>), typeof(BackgroundJobServiceFactory<>));
@@ -55,6 +58,7 @@ public static class ApiServiceCollectionExtensions
 		services.AddKeyedScoped<IBackgroundJobHandler, OscarImportBackgroundJobHandler>("oscar_import");
 		services.AddKeyedScoped<IBackgroundJobHandler, GoldenGlobeImportBackgroundJobHandler>("golden_globe_import");
 		services.AddKeyedScoped<IBackgroundJobHandler, ImdbTitleImportBackgroundJobHandler>("imdb_title_import");
+		services.AddKeyedScoped<IBackgroundJobHandler, ImdbRatingRefreshBackgroundJobHandler>("imdb_rating_refresh");
 		services.AddKeyedScoped<IBackgroundJobHandler, OscarEnrichmentBackgroundJobHandler>("oscar_enrichment");
 		services.AddKeyedScoped<IBackgroundJobHandler, GoldenGlobeEnrichmentBackgroundJobHandler>("golden_globe_enrichment");
 		services.AddKeyedScoped<IBackgroundJobHandler, ImdbTitleEnrichmentBackgroundJobHandler>("imdb_title_enrichment");

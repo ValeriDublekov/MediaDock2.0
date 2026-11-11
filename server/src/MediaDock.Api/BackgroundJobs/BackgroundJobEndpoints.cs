@@ -189,6 +189,34 @@ internal static class BackgroundJobEndpoints
             .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        app.MapPost("/api/background-jobs/imdb-rating-refresh", async (
+            BackgroundJobApiService service,
+            CancellationToken token) =>
+        {
+            var result = await service.EnqueueImdbRatingRefreshAsync(token);
+            if (!result.Accepted)
+            {
+                var problem = new ProblemDetails
+                {
+                    Status = StatusCodes.Status409Conflict,
+                    Title = "An IMDb ratings refresh is already queued or running.",
+                    Detail = "Wait for the active IMDb ratings refresh to finish before requesting another."
+                };
+                problem.Extensions["activeJobId"] = result.Job.Id;
+                problem.Extensions["activeJobStatusUrl"] = $"/api/background-jobs/{result.Job.Id}";
+                return Results.Conflict(problem);
+            }
+
+            var statusUrl = $"/api/background-jobs/{result.Job.Id}";
+            return Results.Accepted(statusUrl, new BackgroundJobAcceptedResponse(result.Job.Id, result.Job.Status, statusUrl));
+        })
+            .WithName("EnqueueImdbRatingRefresh")
+            .WithSummary("Queue a manual update-only refresh of IMDb ratings and vote counts.")
+            .WithDescription("Downloads and validates IMDb's official ratings snapshot before applying rating/vote changes to existing canonical titles from the current and previous Europe/Sofia calendar years.")
+            .RequireAuthorization(AccessPolicies.Administrator)
+            .Produces<BackgroundJobAcceptedResponse>(StatusCodes.Status202Accepted)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
         app.MapGet("/api/background-jobs/{id:long}", async (
             long id,
             BackgroundJobApiService service,

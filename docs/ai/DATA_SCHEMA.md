@@ -21,7 +21,7 @@ Compact map of the PostgreSQL persistence model in `server/`. This is an orienta
 | `rss_item_states` | [`RssItemProcessingState`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/RssItemProcessingState.cs) | Fingerprint and disposition for each source/feed-item identity. |
 | `scan_runs` | [`ScanRun`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/ScanRun.cs) | RSS scan lifecycle and aggregate counts. |
 | `parse_logs` | [`ParseLog`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/ParseLog.cs) | Parse, lookup, ignore, and retry decisions for feed items. |
-| `background_jobs` | [`BackgroundJob`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/BackgroundJob.cs) | Queued scans, imports, and enrichment; personal IMDb enrichment is owner-scoped. |
+| `background_jobs` | [`BackgroundJob`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/BackgroundJob.cs) | Queued scans, imports, enrichment, and IMDb ratings refresh; personal IMDb enrichment is owner-scoped. |
 | `background_job_events` | [`BackgroundJobEvent`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/BackgroundJobEvent.cs) | Bounded event history for a background job. |
 | `background_scheduler_state` | [`BackgroundSchedulerState`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/BackgroundSchedulerState.cs) | Scheduler checkpoint, stored as a singleton. |
 | `settings` | [`AppSetting`](../../server/src/MediaDock.Infrastructure/Persistence/Entities/AppSetting.cs) | Singleton provider and matching settings; legacy Oscar-specific limits are ignored. |

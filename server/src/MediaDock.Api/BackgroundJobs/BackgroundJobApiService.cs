@@ -443,6 +443,54 @@ internal sealed class BackgroundJobApiService(
         return ToResponse(job);
     }
 
+    public async Task<EnqueuedBackgroundJob> EnqueueImdbRatingRefreshAsync(
+        CancellationToken cancellationToken)
+    {
+        var active = await dbContext.BackgroundJobs.AsNoTracking()
+            .Where(job => job.JobType == "imdb_rating_refresh"
+                && (job.Status == "queued" || job.Status == "running"))
+            .OrderByDescending(job => job.EnqueuedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (active is not null)
+        {
+            return new EnqueuedBackgroundJob(ToResponse(active), false);
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var job = new BackgroundJob
+        {
+            JobType = "imdb_rating_refresh",
+            Trigger = "manual",
+            Status = "queued",
+            EnqueuedAt = now,
+            CurrentStage = "queued"
+        };
+        job.Events.Add(new BackgroundJobEvent
+        {
+            OccurredAt = now,
+            Level = "information",
+            EventCode = "job_queued",
+            Message = "IMDb ratings refresh queued. The official snapshot will be validated before any title is updated."
+        });
+        dbContext.BackgroundJobs.Add(job);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return new EnqueuedBackgroundJob(ToResponse(job), true);
+        }
+        catch (DbUpdateException exception) when (IsActiveImdbRatingRefreshConflict(exception))
+        {
+            dbContext.ChangeTracker.Clear();
+            var existing = await dbContext.BackgroundJobs.AsNoTracking()
+                .Where(item => item.JobType == "imdb_rating_refresh"
+                    && (item.Status == "queued" || item.Status == "running"))
+                .OrderByDescending(item => item.EnqueuedAt)
+                .SingleAsync(cancellationToken);
+            return new EnqueuedBackgroundJob(ToResponse(existing), false);
+        }
+    }
+
     public async Task<BackgroundJobResponse?> EnqueueImdbCatalogEnrichmentAsync(
         string trigger,
         CancellationToken cancellationToken)
@@ -614,6 +662,13 @@ internal sealed class BackgroundJobApiService(
         {
             SqlState: PostgresErrorCodes.UniqueViolation,
             ConstraintName: "ux_background_jobs_active_imdb_catalog_enrichment"
+        };
+
+    private static bool IsActiveImdbRatingRefreshConflict(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "ux_background_jobs_active_imdb_rating_refresh"
         };
 
 }

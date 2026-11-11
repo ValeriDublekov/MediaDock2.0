@@ -146,6 +146,41 @@ public sealed class BackgroundJobApiTests
         Assert.Equal("golden_globe_enrichment", savedGoldenGlobeEnrichment.JobType);
     }
 
+    [Fact]
+    public async Task ImdbRatingRefreshQueuesOnceAndReportsItsValidationStage()
+    {
+        await using var postgres = PostgreSqlTestContainerBuilder.Create("mediadock_imdb_rating_refresh_api_test").Build();
+        await postgres.StartAsync();
+
+        var connectionString = postgres.GetConnectionString();
+        var options = new DbContextOptionsBuilder<MediaDock.Infrastructure.Persistence.MediaDockDbContext>()
+            .UseNpgsql(connectionString)
+            .Options;
+        await using (var db = new MediaDock.Infrastructure.Persistence.MediaDockDbContext(options))
+        {
+            await db.Database.MigrateAsync();
+        }
+
+        using var factory = new BackgroundJobsApiFactory(connectionString);
+        using var client = factory.CreateClient();
+
+        using var response = await client.PostAsync("/api/background-jobs/imdb-rating-refresh", content: null);
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var accepted = await response.Content.ReadFromJsonAsync<AcceptedJob>();
+        Assert.NotNull(accepted);
+
+        using var duplicateResponse = await client.PostAsync("/api/background-jobs/imdb-rating-refresh", content: null);
+        Assert.Equal(HttpStatusCode.Conflict, duplicateResponse.StatusCode);
+
+        await using var verificationDb = new MediaDock.Infrastructure.Persistence.MediaDockDbContext(options);
+        var queuedJob = await verificationDb.BackgroundJobs.AsNoTracking().SingleAsync(job => job.Id == accepted.Id);
+        Assert.Equal("imdb_rating_refresh", queuedJob.JobType);
+        Assert.Null(queuedJob.InputBytes);
+        var queuedEvent = await verificationDb.BackgroundJobEvents.AsNoTracking()
+            .SingleAsync(jobEvent => jobEvent.JobId == accepted.Id);
+        Assert.Contains("validated before any title is updated", queuedEvent.Message);
+    }
+
     private sealed record AcceptedJob(long Id, string Status, string StatusUrl);
 
     private sealed class BackgroundJobsApiFactory(string connectionString) : WebApplicationFactory<Program>

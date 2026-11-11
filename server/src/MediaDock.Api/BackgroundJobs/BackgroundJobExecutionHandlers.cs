@@ -181,6 +181,23 @@ internal sealed class ImdbTitleImportBackgroundJobHandler(
     }
 }
 
+internal sealed class ImdbRatingRefreshBackgroundJobHandler(
+    ImdbRatingRefreshService refreshService) : IBackgroundJobHandler
+{
+    public async Task<BackgroundJobExecutionResult> ExecuteAsync(
+        BackgroundJobExecutionContext context,
+        CancellationToken cancellationToken)
+    {
+        await context.SetStageAsync(
+            "imdb_rating_refresh_download",
+            "Downloading and validating the official IMDb ratings snapshot.",
+            cancellationToken);
+        var summary = await refreshService.RefreshAsync(cancellationToken);
+        await context.SetStageAsync("imdb_rating_refresh_completed", summary.Message, cancellationToken);
+        return new BackgroundJobExecutionResult("succeeded", summary);
+    }
+}
+
 internal sealed class OscarEnrichmentBackgroundJobHandler(
     IBackgroundJobServiceFactory<OscarEnrichmentService> enrichmentServiceFactory)
     : IBackgroundJobHandler
